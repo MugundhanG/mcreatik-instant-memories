@@ -15,7 +15,7 @@ The repository was empty at the start of V1 (no commits, no existing McreatiK co
                                                                        (3) POST .../complete ─────> API
                                                                                                     │
                                                               Processing worker (DB-backed queue) ◄─┘
-                                                              validate → decode → web 2048px → thumb 480px → metadata
+                                                              validate → decode → web 2048px → thumb 640px → metadata
                                                                                                     │ PHOTO_READY
                                                                                                     ▼
      Guest phone ── QR ──> gallery.mcreatik.com/e/{slug} (Vercel, React) ◄── SSE /api/public/events/{slug}/stream
@@ -174,6 +174,15 @@ Onboarding: admin creates an uploader → dashboard shows a **connection code** 
 ## 10. Privacy & retention
 
 No guest accounts, no guest PII stored (not even IPs beyond the in-memory rate limiter). Event owner can delete photos or the entire event (DB cascade + R2 prefix delete). `retention_until` defaults to event date + 90 days; a daily job archives/deletes expired events (configurable, V1 logs + deletes originals first). No biometric processing in V1.
+
+## 10b. Implementation notes (as built)
+
+- Uploads are accepted in every status except ARCHIVED, so a forgotten status switch never loses photos. The first upload into an UPCOMING event flips it to LIVE automatically.
+- Guests can open galleries in UPCOMING, LIVE and COMPLETED; DRAFT and ARCHIVED return 404.
+- Web image 2048 px (q 0.85, progressive JPEG), thumbnail 640 px (q 0.78). Derivatives carry no EXIF (no GPS or camera serials reach guests).
+- Deleting a photo also pushes `PHOTO_REMOVED` so it disappears from open guest screens.
+- Local development uses a filesystem storage adapter with HMAC-signed URLs that behaves like R2 presigned URLs, so the full flow runs without cloud credentials.
+- End-to-end verification: `scripts/simulate_event.py` (3 real uploader processes, 25 s internet outage on one laptop, kill -9 + restart of another, duplicate copies) passes all V1 success criteria.
 
 ## 11. Biggest technical risks
 
