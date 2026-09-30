@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
+import { IS_DEMO } from '../demo/isDemo'
 import { qrPngBlob, qrSvg } from '../shared/qr'
 import { saveBlob } from '../shared/saveBlob'
 import { Button, Card } from './ui'
@@ -27,6 +28,16 @@ export function QrCode({ url, className = '' }: { url: string; className?: strin
 
 export function QrPanel({ eventId, eventSlug, galleryUrl }: { eventId: string; eventSlug: string; galleryUrl: string }) {
   const [copied, setCopied] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+
+  const download = async (kind: 'png' | 'svg') => {
+    if (IS_DEMO) {
+      setNote('Downloads are turned off in this demo. They work in the live dashboard.')
+      return
+    }
+    const blob = kind === 'png' ? await qrPngBlob(galleryUrl) : new Blob([await qrSvg(galleryUrl)], { type: 'image/svg+xml' })
+    saveBlob(blob, `${eventSlug}-qr.${kind}`)
+  }
 
   const copy = async () => {
     await navigator.clipboard?.writeText(galleryUrl)
@@ -41,19 +52,18 @@ export function QrPanel({ eventId, eventSlug, galleryUrl }: { eventId: string; e
       </div>
       <p className="mt-3 text-center text-xs break-all text-muted">{galleryUrl}</p>
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <Button onClick={async () => saveBlob(await qrPngBlob(galleryUrl), `${eventSlug}-qr.png`)}>Download PNG</Button>
-        <Button onClick={async () => saveBlob(new Blob([await qrSvg(galleryUrl)], { type: 'image/svg+xml' }), `${eventSlug}-qr.svg`)}>
-          Download SVG
-        </Button>
+        <Button onClick={() => download('png')}>Download PNG</Button>
+        <Button onClick={() => download('svg')}>Download SVG</Button>
         <Link
           to={`/admin/events/${eventId}/print`}
-          target="_blank"
+          target={IS_DEMO ? undefined : '_blank'}
           className="inline-flex h-9 items-center justify-center rounded-lg border border-line bg-white px-3.5 text-sm font-medium hover:bg-stone-50"
         >
           Print poster
         </Link>
         <Button onClick={copy}>{copied ? 'Copied' : 'Copy link'}</Button>
       </div>
+      {note && <p role="status" className="mt-3 text-center text-xs text-muted">{note}</p>}
     </Card>
   )
 }

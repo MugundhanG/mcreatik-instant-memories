@@ -60,8 +60,9 @@ export function PhotoViewer({ photos, index, eventSlug, eventName, onIndexChange
 
   const onDownload = async () => {
     setBusy('download')
-    await downloadPhoto(photo.webUrl, eventSlug, photo.id)
+    const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id)
     setBusy(null)
+    if (result === 'unavailable') setToast('Downloads are turned off in this demo')
   }
 
   const onShare = async () => {
