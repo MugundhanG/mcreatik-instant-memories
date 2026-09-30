@@ -1,0 +1,86 @@
+spring:
+  application:
+    name: mcreatik-live-gallery
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/mcreatik}
+    username: ${DATABASE_USERNAME:mcreatik}
+    password: ${DATABASE_PASSWORD:mcreatik}
+    hikari:
+      maximum-pool-size: ${DATABASE_POOL_SIZE:10}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+  mvc:
+    async:
+      request-timeout: -1
+
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+  shutdown: graceful
+  compression:
+    enabled: true
+    mime-types: application/json
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+gallery:
+  public-gallery-base-url: ${PUBLIC_GALLERY_BASE_URL:http://localhost:5173}
+  api-public-base-url: ${API_PUBLIC_BASE_URL:http://localhost:8080}
+  cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  security:
+    jwt-secret: ${JWT_SECRET:}
+    jwt-ttl: ${JWT_TTL:12h}
+    bootstrap-admin-email: ${ADMIN_EMAIL:}
+    bootstrap-admin-password: ${ADMIN_PASSWORD:}
+  upload:
+    max-file-size-bytes: ${UPLOAD_MAX_FILE_SIZE_BYTES:62914560}
+    presign-ttl: ${UPLOAD_PRESIGN_TTL:15m}
+    allowed-mime-types: image/jpeg,image/png
+  uploader:
+    online-threshold: ${UPLOADER_ONLINE_THRESHOLD:45s}
+  processing:
+    enabled: ${PROCESSING_ENABLED:true}
+    workers: ${PROCESSING_WORKERS:2}
+    max-attempts: 3
+    stale-after: 5m
+    optimized-long-edge: 2048
+    optimized-quality: 0.85
+    thumbnail-long-edge: 640
+    thumbnail-quality: 0.78
+  realtime:
+    heartbeat-interval: 20s
+    emitter-timeout: 30m
+  rate-limit:
+    public-capacity: ${PUBLIC_RATE_LIMIT_CAPACITY:600}
+    public-refill-per-second: ${PUBLIC_RATE_LIMIT_REFILL:20}
+  retention:
+    default-days: ${RETENTION_DEFAULT_DAYS:90}
+    purge-enabled: ${RETENTION_PURGE_ENABLED:true}
+  storage:
+    type: ${STORAGE_TYPE:local}
+    local:
+      root: ${LOCAL_STORAGE_ROOT:./data/storage}
+    r2:
+      account-id: ${R2_ACCOUNT_ID:}
+      access-key-id: ${R2_ACCESS_KEY_ID:}
+      secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+      originals-bucket: ${R2_ORIGINALS_BUCKET:mcreatik-originals}
+      media-bucket: ${R2_MEDIA_BUCKET:mcreatik-media}
+      media-public-base-url: ${R2_MEDIA_PUBLIC_BASE_URL:}
