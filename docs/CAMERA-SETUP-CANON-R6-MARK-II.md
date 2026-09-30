@@ -61,8 +61,26 @@ in the live gallery.
 | Uploader closed, shot 5, uploader reopened | Photos arrived after reopening, nothing missing |
 | Battery over ~15 min with Wi-Fi transfer | No visible drop on the camera's indicator |
 
-Not yet tested: a full event length (3–6 h) for battery, a phone hotspot instead of a router, and the
-laptop → live gallery upload over mobile data (needs the deployed backend).
+Also connected over an **Android phone hotspot** after re-entering the laptop's new address (see below).
+
+Not yet tested: a full event length (3–6 h) for battery, and the laptop → live gallery upload over mobile data
+(needs the deployed backend).
+
+## Switching between home Wi-Fi and a phone hotspot
+The laptop gets a **different address on each network** (home router e.g. `192.168.1.8`, Android hotspot usually
+`192.168.43.x` or `10.x.x.x`, iPhone `172.20.10.x`). The camera stores the Wi-Fi network and the FTP address together,
+so keep one camera connection **SET per network** (e.g. SET1 = home, SET2 = event hotspot) and pick the right one.
+
+For the hotspot SET:
+1. Connect the laptop to the hotspot, then read the **Server address** in the uploader (or `ipconfig` → IPv4 Address).
+2. Run the "Transfer images to FTP server" wizard into an empty SET, choose the hotspot, enter that address,
+   port `2121`, Passive mode on, same user and password.
+3. Allow "OpenJDK Platform binary" in the Windows firewall on **Public** networks too: a new hotspot is Public.
+4. Android: hotspot band 2.4 GHz. iPhone: turn on Maximize Compatibility.
+
+Always use the **same phone** as the event hotspot: it normally hands the laptop the same address every time, so the
+hotspot SET keeps working with no setup at the venue. If the camera shows "Busy" after a network change, the address
+in the camera is the first thing to check.
 
 ## Test this before selling it
 Run at least one rehearsal with the real camera before a paid event:
