@@ -50,17 +50,33 @@ in the live gallery.
   photos wait on the laptop and upload automatically. Either way, nothing is lost: every photo is still on the card.
 - Wi-Fi transfer uses extra battery: carry spares.
 
+## Field test: Canon EOS R6 Mark II → Windows laptop (home Wi-Fi router)
+
+| Test | Result |
+|---|---|
+| 10 single frames | 10/10 arrived, 2–3 s from shutter to laptop |
+| 3 bursts of ~20 frames | All arrived |
+| Shot 10 frames 15–20 m away, walked back | Backlog arrived on its own, no camera action needed |
+| Camera off/on, then shot 5 | Reconnected and sent without re-entering settings |
+| Uploader closed, shot 5, uploader reopened | Photos arrived after reopening, nothing missing |
+| Battery over ~15 min with Wi-Fi transfer | No visible drop on the camera's indicator |
+
+Not yet tested: a full event length (3–6 h) for battery, a phone hotspot instead of a router, and the
+laptop → live gallery upload over mobile data (needs the deployed backend).
+
 ## Test this before selling it
 Run at least one rehearsal with the real camera before a paid event:
 - 200+ frames in bursts, check they all reach the gallery.
 - Walk away from the laptop and come back, check the backlog catches up.
 - Note battery drain per hour with Wi-Fi on.
+- Set Windows to never sleep when plugged in (Settings → System → Power & battery), and keep the laptop plugged in.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
 | Camera: "cannot connect to FTP server" | Camera and laptop on the same network? Address typed exactly as shown? Laptop firewall allowed? |
+| Camera shows "Busy" on the first connection | Usually clears by itself after the first connection or transfer. If not: allow "OpenJDK Platform binary" in the Windows firewall on Private **and** Public networks, check the laptop's address has not changed, and toggle Passive mode. |
 | Connects, but transfers fail | Toggle **Passive mode** in the camera; check the port is 2121. |
 | Uploader shows "could not start on port 2121" | Another program uses the port: start with `--ftp-port 2122` and enter 2122 in the camera. |
 | Photos arrive on the laptop but not in the gallery | Check the uploader's online status: it is the internet link (hotspot data) that's down. |
