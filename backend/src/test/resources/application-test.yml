@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: ${TEST_DATABASE_URL:jdbc:postgresql://localhost:5432/mcreatik_test}
+    username: ${TEST_DATABASE_USERNAME:mcreatik}
+    password: ${TEST_DATABASE_PASSWORD:mcreatik}
+  flyway:
+    clean-disabled: false
+
+gallery:
+  public-gallery-base-url: https://gallery.mcreatik.test
+  api-public-base-url: http://localhost:8080
+  cors-allowed-origins: https://gallery.mcreatik.test
+  security:
+    jwt-secret: test-secret-test-secret-test-secret-0123456789
+    bootstrap-admin-email: admin@mcreatik.test
+    bootstrap-admin-password: correct-horse-battery
+  processing:
+    enabled: false
+  rate-limit:
+    public-capacity: 100000
+    public-refill-per-second: 100000
+  retention:
+    purge-enabled: false
+  storage:
+    type: local
+    local:
+      root: ${java.io.tmpdir}/mcreatik-test-storage
