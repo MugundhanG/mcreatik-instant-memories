@@ -41,12 +41,21 @@ import com.mcreatik.uploader.ui.UploaderWindow;
 public final class UploaderMain {
 
     private static final Logger log = Logger.getLogger(UploaderMain.class.getName());
+    /**
+     * The embedded FTP server logs every command at INFO; photographers only need problems.
+     * Held in a static field because java.util.logging keeps loggers (and their levels) only weakly.
+     */
+    private static final List<Logger> QUIET_LOGGERS =
+            List.of(Logger.getLogger("org.apache.ftpserver"), Logger.getLogger("org.apache.mina"));
 
     private UploaderMain() {
     }
 
     public static void main(String[] args) throws Exception {
         System.setProperty("java.util.logging.SimpleFormatter.format", "%1$tT %4$s %5$s%6$s%n");
+        for (Logger quiet : QUIET_LOGGERS) {
+            quiet.setLevel(java.util.logging.Level.WARNING);
+        }
         Args a = Args.parse(args);
         if (a.help) {
             System.out.println("""
@@ -203,7 +212,7 @@ public final class UploaderMain {
             while (true) {
                 EngineStatus s = engine.status();
                 String line = "[%s] %s | waiting %d, uploading %d, uploaded %d, duplicates %d, failed %d%s".formatted(
-                        s.connection(), s.eventName() == null ? "…" : s.eventName(), s.counts().queued(),
+                        s.connection(), s.eventName() == null ? "(event not loaded yet)" : s.eventName(), s.counts().queued(),
                         s.counts().uploading(), s.counts().done(), s.counts().duplicate(), s.counts().failed(),
                         s.blockedReason() == null ? "" : " | PAUSED: " + s.blockedReason());
                 if (!line.equals(previous)) {

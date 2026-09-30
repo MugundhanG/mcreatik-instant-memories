@@ -21,3 +21,4 @@ coverage/
 *.iml
 dist-demo/
 !.env.demo
+dist-camera-test/
