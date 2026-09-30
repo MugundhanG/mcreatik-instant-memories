@@ -135,7 +135,9 @@ Stages are Spring beans ordered with `@Order`; adding a stage = adding a bean. F
 ## 7. Uploader architecture
 
 ```
-PhotoSource (interface)  ← FolderPhotoSource (V1: polling scan + stability)   (later: FTP server, Canon/Sony/Nikon SDKs)
+PhotoSource (interface)  ← FolderPhotoSource (polling scan + stability)
+                         ← FtpPhotoSource (built-in FTP server for camera Wi-Fi transfer, e.g. Canon R6 II)
+                         ← CompositePhotoSource (both at once)          (later: Canon/Sony/Nikon SDKs)
       │ candidate files
       ▼
 UploadQueue (SQLite: path, sha256, size, status, attempts, next_attempt_at, photo_id, error)
@@ -183,6 +185,12 @@ No guest accounts, no guest PII stored (not even IPs beyond the in-memory rate l
 - Deleting a photo also pushes `PHOTO_REMOVED` so it disappears from open guest screens.
 - Local development uses a filesystem storage adapter with HMAC-signed URLs that behaves like R2 presigned URLs, so the full flow runs without cloud credentials.
 - End-to-end verification: `scripts/simulate_event.py` (3 real uploader processes, 25 s internet outage on one laptop, kill -9 + restart of another, duplicate copies) passes all V1 success criteria.
+
+### Camera FTP source
+
+- Apache FtpServer embedded in the uploader, plain FTP on the LAN only (port 2121 by default, passive ports 50000–50100, active mode also allowed; anonymous login off; random 8-character camera-friendly password stored in the uploader config).
+- Uploads land in a hidden `.incoming` folder and move into the photo folder only after reply 226 (transfer complete), so a Wi-Fi drop never publishes a half photo. Identical re-sends are dropped; same name with different content gets a `_1` suffix.
+- Completed files are handed to the queue immediately; the folder scanner still runs and the queue dedupes.
 
 ## 11. Biggest technical risks
 
