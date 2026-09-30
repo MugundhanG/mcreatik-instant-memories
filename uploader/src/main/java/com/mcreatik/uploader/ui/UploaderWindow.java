@@ -7,7 +7,6 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.net.URI;
-import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -31,6 +30,7 @@ import com.mcreatik.uploader.config.UploaderConfig;
 import com.mcreatik.uploader.engine.EngineStatus;
 import com.mcreatik.uploader.engine.UploadEngine;
 import com.mcreatik.uploader.queue.QueueItem;
+import com.mcreatik.uploader.source.FtpPhotoSource;
 
 /**
  * Status window. Designed to be glanced at from across a room: big connection state, big counters.
@@ -47,14 +47,19 @@ public final class UploaderWindow {
     private final JPanel activePanel = new JPanel();
     private final RecentModel recentModel = new RecentModel();
     private final JButton galleryButton = new JButton("Open live gallery");
+    private final FtpPhotoSource ftp;
+    private final JLabel ftpSettings = new JLabel(" ");
+    private final JLabel ftpActivity = new JLabel(" ");
     private String galleryUrl;
 
-    private UploaderWindow(UploadEngine engine) {
+    private UploaderWindow(UploadEngine engine, FtpPhotoSource ftp) {
         this.engine = engine;
+        this.ftp = ftp;
     }
 
-    public static void open(UploadEngine engine, Path dataDir, UploaderConfig config) {
-        SwingUtilities.invokeLater(() -> new UploaderWindow(engine).build(config));
+    /** @param ftp the built-in camera FTP server, or null when the camera writes into the folder itself */
+    public static void open(UploadEngine engine, UploaderConfig config, FtpPhotoSource ftp) {
+        SwingUtilities.invokeLater(() -> new UploaderWindow(engine, ftp).build(config));
     }
 
     private void build(UploaderConfig config) {
@@ -81,6 +86,23 @@ public final class UploaderWindow {
         header.add(Box.createVerticalStrut(10));
         header.add(connectionLabel);
         header.add(detailLabel);
+        if (ftp != null) {
+            JPanel ftpBox = new JPanel();
+            ftpBox.setLayout(new BoxLayout(ftpBox, BoxLayout.Y_AXIS));
+            ftpBox.setBackground(java.awt.Color.WHITE);
+            ftpBox.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(UiTheme.LINE),
+                    BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+            ftpBox.setAlignmentX(0f);
+            JLabel title = new JLabel("Camera Wi-Fi (FTP) — enter these in the camera's FTP settings");
+            title.setFont(UiTheme.font(Font.BOLD, 12f));
+            ftpActivity.setForeground(UiTheme.MUTED);
+            ftpBox.add(title);
+            ftpBox.add(Box.createVerticalStrut(4));
+            ftpBox.add(ftpSettings);
+            ftpBox.add(ftpActivity);
+            header.add(Box.createVerticalStrut(10));
+            header.add(ftpBox);
+        }
 
         // Counters
         String[] names = {"Waiting", "Uploading", "Uploaded", "Duplicates", "Failed"};
@@ -120,7 +142,7 @@ public final class UploaderWindow {
         centre.add(new JScrollPane(table), BorderLayout.CENTER);
 
         // Footer
-        JLabel folderLabel = new JLabel("Watching: " + config.watchFolder());
+        JLabel folderLabel = new JLabel((ftp != null ? "Photos saved in: " : "Watching: ") + config.watchFolder());
         folderLabel.setForeground(UiTheme.MUTED);
         JButton retry = new JButton("Retry failed");
         retry.addActionListener(e -> engine.retryFailed());
@@ -137,10 +159,11 @@ public final class UploaderWindow {
         buttons.add(openFolder);
         buttons.add(retry);
         buttons.add(galleryButton);
-        JPanel footer = new JPanel(new BorderLayout());
+        folderLabel.setToolTipText(config.watchFolder().toString());
+        JPanel footer = new JPanel(new BorderLayout(0, 8));
         footer.setOpaque(false);
-        footer.add(folderLabel, BorderLayout.WEST);
-        footer.add(buttons, BorderLayout.EAST);
+        footer.add(folderLabel, BorderLayout.NORTH); // own line: long paths never collide with the buttons
+        footer.add(buttons, BorderLayout.SOUTH);
 
         root.add(header, BorderLayout.NORTH);
         root.add(centre, BorderLayout.CENTER);
@@ -166,7 +189,8 @@ public final class UploaderWindow {
             case ONLINE -> {
                 connectionLabel.setText("● Online — photos upload automatically");
                 connectionLabel.setForeground(UiTheme.GREEN);
-                detailLabel.setText(s.counts().pending() == 0 ? "Waiting for new photos in the folder." : " ");
+                detailLabel.setText(s.counts().pending() > 0 ? " "
+                        : ftp != null ? "Waiting for new photos from the camera." : "Waiting for new photos in the folder.");
             }
             case OFFLINE -> {
                 connectionLabel.setText("● Offline — photos are safely queued");
@@ -203,6 +227,27 @@ public final class UploaderWindow {
         activePanel.revalidate();
         activePanel.repaint();
         recentModel.update(engine.queue().recent(200));
+        if (ftp != null) {
+            refreshFtp(ftp.status());
+        }
+    }
+
+    private void refreshFtp(FtpPhotoSource.Status f) {
+        String address = f.addresses().isEmpty() ? "no Wi-Fi network found" : String.join(" or ", f.addresses());
+        ftpSettings.setText("<html>Server <b>" + address + "</b> &nbsp; Port <b>" + f.port() + "</b> &nbsp; User <b>"
+                + f.username() + "</b> &nbsp; Password <b>" + f.password() + "</b> &nbsp; Passive mode: either</html>");
+        if (f.error() != null) {
+            ftpActivity.setText(f.error());
+            ftpActivity.setForeground(UiTheme.RED);
+        } else if (f.lastFileAt() == null) {
+            ftpActivity.setText("Waiting for the camera… (camera and this computer must be on the same Wi-Fi / hotspot)");
+            ftpActivity.setForeground(UiTheme.MUTED);
+        } else {
+            long ago = java.time.Duration.between(f.lastFileAt(), java.time.Instant.now()).toSeconds();
+            ftpActivity.setText("Camera connected" + (f.lastClient() == null ? "" : " (" + f.lastClient() + ")")
+                    + " · " + f.filesReceived() + " received · last photo " + ago + "s ago");
+            ftpActivity.setForeground(UiTheme.GREEN);
+        }
     }
 
     private static void browse(URI uri) {

@@ -6,6 +6,7 @@ import type { EventDetail, EventStats, EventStatus } from '../lib/types'
 import { PhotosPanel } from './PhotosPanel'
 import { QrPanel } from './QrPanel'
 import { Button, Card, ErrorText, EventStatusBadge, Field, inputClass, Stat } from './ui'
+import { useConfirm } from './useConfirm'
 import { UploadersPanel } from './UploadersPanel'
 
 const STATUSES: EventStatus[] = ['DRAFT', 'UPCOMING', 'LIVE', 'COMPLETED', 'ARCHIVED']
@@ -17,6 +18,7 @@ export default function EventDashboardPage() {
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [stats, setStats] = useState<EventStats | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [confirm, confirmDialog] = useConfirm()
 
   const loadStats = useCallback(
     () =>
@@ -46,8 +48,14 @@ export default function EventDashboardPage() {
 
   const deleteEvent = async () => {
     if (!event) return
-    const typed = prompt(`This permanently deletes “${event.name}”, all photos and all files.\nType the event name to confirm:`)
-    if (typed !== event.name) return
+    const ok = await confirm({
+      title: 'Delete this event permanently?',
+      body: `All photos, files, uploaders and the guest gallery of “${event.name}” are deleted. This cannot be undone.`,
+      confirmLabel: 'Delete event',
+      danger: true,
+      requireText: event.name,
+    })
+    if (!ok) return
     await adminApi.deleteEvent(event.id)
     navigate('/admin', { replace: true })
   }
@@ -56,6 +64,7 @@ export default function EventDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {confirmDialog}
       <Link to="/admin" className="text-sm text-muted hover:text-ink">← Events</Link>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -66,9 +75,9 @@ export default function EventDashboardPage() {
           </div>
           <p className="mt-1 text-sm text-muted">
             {formatEventDate(event.eventDate)} ·{' '}
-            <a href={event.galleryUrl} target="_blank" rel="noreferrer" className="underline decoration-line underline-offset-4 hover:text-ink">
+            <Link to={`/e/${event.slug}`} className="underline decoration-line underline-offset-4 hover:text-ink">
               {event.galleryUrl.replace(/^https?:\/\//, '')}
-            </a>
+            </Link>
           </p>
         </div>
         <label className="flex items-center gap-2 text-sm">

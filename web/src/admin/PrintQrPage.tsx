@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
+import { IS_DEMO } from '../demo/isDemo'
 import { adminApi } from '../lib/api'
 import { formatEventDate } from '../lib/format'
 import type { EventDetail } from '../lib/types'
@@ -26,9 +27,14 @@ export default function PrintQrPage() {
       </div>
       <p className="mt-8 font-display text-3xl">Scan to see the photos live</p>
       <p className="mt-2 text-sm text-muted">No app or sign-up needed · {event.galleryUrl.replace(/^https?:\/\//, '')}</p>
-      <button type="button" onClick={() => window.print()} className="no-print mt-10 rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-white">
-        Print
-      </button>
+      <div className="no-print mt-10 flex items-center gap-4">
+        <Link to={`/admin/events/${event.id}`} className="text-sm text-muted hover:text-ink">← Back to event</Link>
+        {!IS_DEMO && (
+          <button type="button" onClick={() => window.print()} className="rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-white">
+            Print
+          </button>
+        )}
+      </div>
     </div>
   )
 }

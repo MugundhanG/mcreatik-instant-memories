@@ -15,6 +15,8 @@
     <sqlite.version>3.53.4.0</sqlite.version>
     <junit.version>5.14.4</junit.version>
     <assertj.version>3.27.7</assertj.version>
+    <ftpserver.version>1.2.1</ftpserver.version>
+    <commons-net.version>3.13.0</commons-net.version>
   </properties>
 
   <dependencyManagement>
@@ -41,6 +43,25 @@
       <version>${sqlite.version}</version>
     </dependency>
 
+    <!-- Built-in FTP server so cameras (e.g. Canon R6 Mark II FTP transfer) can send photos over Wi-Fi -->
+    <dependency>
+      <groupId>org.apache.ftpserver</groupId>
+      <artifactId>ftpserver-core</artifactId>
+      <version>${ftpserver.version}</version>
+    </dependency>
+    <dependency>
+      <!-- routes the FTP server's slf4j logging into java.util.logging like the rest of the app -->
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-jdk14</artifactId>
+      <version>1.7.36</version>
+    </dependency>
+
+    <dependency>
+      <groupId>commons-net</groupId>
+      <artifactId>commons-net</artifactId>
+      <version>${commons-net.version}</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>

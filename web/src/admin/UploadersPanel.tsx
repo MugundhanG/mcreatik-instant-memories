@@ -3,6 +3,7 @@ import { adminApi, ApiError } from '../lib/api'
 import { formatCount, timeAgo } from '../lib/format'
 import type { UploaderCredentials, UploaderStats } from '../lib/types'
 import { Button, Card, ErrorText, inputClass, UploaderStatusDot } from './ui'
+import { useConfirm } from './useConfirm'
 
 function CredentialsDialog({ credentials, onClose }: { credentials: UploaderCredentials; onClose: () => void }) {
   const [copied, setCopied] = useState(false)
@@ -41,6 +42,7 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
   const [name, setName] = useState('')
   const [credentials, setCredentials] = useState<UploaderCredentials | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [confirm, confirmDialog] = useConfirm()
 
   const add = async (e: FormEvent) => {
     e.preventDefault()
@@ -55,13 +57,24 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
   }
 
   const rotate = async (u: UploaderStats) => {
-    if (!confirm(`Create a new code for “${u.name}”? The current code stops working immediately.`)) return
+    const ok = await confirm({
+      title: `New code for “${u.name}”?`,
+      body: 'The current code stops working immediately. Paste the new code into the uploader on that laptop.',
+      confirmLabel: 'Create new code',
+    })
+    if (!ok) return
     setCredentials(await adminApi.rotateUploader(u.id))
     onChange()
   }
 
   const remove = async (u: UploaderStats) => {
-    if (!confirm(`Remove “${u.name}”? Its photos stay in the gallery.`)) return
+    const ok = await confirm({
+      title: `Remove “${u.name}”?`,
+      body: 'That laptop can no longer upload. Photos it already uploaded stay in the gallery.',
+      confirmLabel: 'Remove uploader',
+      danger: true,
+    })
+    if (!ok) return
     await adminApi.deleteUploader(u.id)
     onChange()
   }
@@ -100,6 +113,7 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
         <Button type="submit" variant="primary" className="shrink-0">Add uploader</Button>
       </form>
       <ErrorText>{error}</ErrorText>
+      {confirmDialog}
       {credentials && <CredentialsDialog credentials={credentials} onClose={() => setCredentials(null)} />}
     </Card>
   )

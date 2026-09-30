@@ -60,7 +60,7 @@ It creates "Arun & Priya Wedding", registers three uploaders, starts three real 
 
 ```bash
 cd backend  && mvn test          # 40 tests, needs PostgreSQL (TEST_DATABASE_URL to override)
-cd uploader && mvn test          # 23 tests incl. outage/reconnect, restart, duplicates
+cd uploader && mvn test          # 33 tests incl. outage/reconnect, restart, duplicates, camera FTP
 cd web      && npm test && npm run lint && npm run typecheck
 ```
 
@@ -93,8 +93,15 @@ Scaling beyond one backend instance: processing is already multi-instance safe; 
 
 ## For photographers (uploader)
 
-1. Set the camera to shoot **RAW+JPEG** (JPEGs are what guests see) and to transfer JPEGs to a folder on the laptop (camera app / FTP / tethering software).
-2. Start McreatiK Uploader, paste the connection code from the dashboard, choose that folder.
+The uploader receives photos in one of two ways:
+
+- **Camera Wi-Fi (FTP), built in.** For cameras with FTP transfer, e.g. Canon EOS R6 Mark II.
+  The camera sends each JPEG straight to the uploader; nothing else to install.
+  Step-by-step: [docs/CAMERA-SETUP-CANON-R6-MARK-II.md](docs/CAMERA-SETUP-CANON-R6-MARK-II.md).
+- **Folder.** Any camera app, tethering software or card reader that saves JPEGs into a folder.
+
+1. Set the camera to shoot **RAW+JPEG** (JPEGs are what guests see).
+2. Start McreatiK Uploader, paste the connection code from the dashboard, and either keep "Receive photos from the camera over Wi-Fi" ticked (FTP) or choose the folder your camera software saves to.
 3. Leave it running. Green means online. Amber means offline, and photos are safely queued and upload automatically when the connection returns.
 
-One laptop per camera is simplest. To run two cameras on one laptop, start a second instance with `--data-dir ~/.mcreatik-camera2`. Headless mode: `java -jar mcreatik-uploader.jar --headless`.
+One laptop per camera is simplest. To run two cameras on one laptop, start a second instance with `--data-dir ~/.mcreatik-camera2` (and `--ftp-port 2122` if both use FTP). Headless mode: `java -jar mcreatik-uploader.jar --headless`.

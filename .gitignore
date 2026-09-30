@@ -19,3 +19,6 @@ coverage/
 .idea/
 .vscode/
 *.iml
+dist-demo/
+!.env.demo
+dist-camera-test/

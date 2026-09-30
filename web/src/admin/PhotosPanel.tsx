@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { adminApi } from '../lib/api'
 import type { AdminPhoto } from '../lib/types'
 import { Button, Card } from './ui'
+import { useConfirm } from './useConfirm'
 
 const statusLabel: Record<AdminPhoto['status'], string> = {
   QUEUED: 'Queued',
@@ -15,6 +16,7 @@ const statusLabel: Record<AdminPhoto['status'], string> = {
 export function PhotosPanel({ eventId, coverPhotoId, refreshKey, onCoverChange }: { eventId: string; coverPhotoId: string | null; refreshKey: number; onCoverChange: (id: string) => void }) {
   const [photos, setPhotos] = useState<AdminPhoto[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
+  const [confirm, confirmDialog] = useConfirm()
 
   // Reload the newest page whenever the number of processed photos changes.
   useEffect(() => {
@@ -40,7 +42,13 @@ export function PhotosPanel({ eventId, coverPhotoId, refreshKey, onCoverChange }
   }
 
   const remove = async (p: AdminPhoto) => {
-    if (!confirm(`Delete ${p.originalFileName}? It disappears from every guest's screen.`)) return
+    const ok = await confirm({
+      title: 'Delete this photo?',
+      body: `${p.originalFileName} is removed from the gallery, including from guests' open screens. This cannot be undone.`,
+      confirmLabel: 'Delete photo',
+      danger: true,
+    })
+    if (!ok) return
     await adminApi.deletePhoto(p.id)
     setPhotos((list) => list.filter((x) => x.id !== p.id))
   }
@@ -82,6 +90,7 @@ export function PhotosPanel({ eventId, coverPhotoId, refreshKey, onCoverChange }
           </li>
         ))}
       </ul>
+      {confirmDialog}
       {cursor && (
         <div className="mt-4 text-center">
           <Button onClick={more}>Load more</Button>

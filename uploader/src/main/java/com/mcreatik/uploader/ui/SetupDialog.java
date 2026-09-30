@@ -9,6 +9,7 @@ import java.util.Optional;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -26,15 +27,25 @@ public final class SetupDialog {
     private SetupDialog() {
     }
 
-    public static Optional<UploaderConfig> show(Path dataDir, int concurrency) {
+    public static Optional<UploaderConfig> show(Path dataDir, int concurrency, boolean ftpByDefault) {
         UiTheme.apply();
         JTextField code = new JTextField(40);
         JTextField folder = new JTextField(30);
+        JCheckBox ftp = new JCheckBox("<html>Receive photos from the camera over Wi-Fi (built-in FTP server)<br>"
+                + "<span style='color:#78716c'>For cameras with FTP transfer, e.g. Canon EOS R6 Mark II. "
+                + "Untick if the camera already saves into a folder.</span></html>", ftpByDefault);
+        Runnable defaultFolder = () -> {
+            if (ftp.isSelected() && folder.getText().isBlank()) {
+                folder.setText(Path.of(System.getProperty("user.home"), "McreatiK Photos").toString());
+            }
+        };
+        ftp.addActionListener(e -> defaultFolder.run());
+        defaultFolder.run();
         JButton browse = new JButton("Choose…");
         browse.addActionListener(e -> {
             JFileChooser chooser = new JFileChooser();
             chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            chooser.setDialogTitle("Folder your camera sends photos to");
+            chooser.setDialogTitle(ftp.isSelected() ? "Folder to keep received photos in" : "Folder your camera sends photos to");
             if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
                 folder.setText(chooser.getSelectedFile().getAbsolutePath());
             }
@@ -68,6 +79,10 @@ public final class SetupDialog {
         c.gridx = 2;
         c.fill = GridBagConstraints.NONE;
         form.add(browse, c);
+        c.gridy = 3;
+        c.gridx = 0;
+        c.gridwidth = 3;
+        form.add(ftp, c);
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.add(form, BorderLayout.CENTER);
@@ -84,7 +99,8 @@ public final class SetupDialog {
                     throw new IllegalArgumentException("Choose the folder your camera sends photos to.");
                 }
                 UploaderConfig config = new UploaderConfig(parsed.server(), parsed.token(),
-                        Path.of(folder.getText().trim()), concurrency, DeviceId.generate());
+                        Path.of(folder.getText().trim()), concurrency, DeviceId.generate(),
+                        UploaderConfig.Ftp.generate(ftp.isSelected()));
                 UploaderMain.verify(config);
                 config.save(dataDir);
                 return Optional.of(config);

@@ -1,3 +1,4 @@
+import { IS_DEMO } from '../demo/isDemo'
 import { saveBlob } from '../shared/saveBlob'
 
 function fileNameFor(eventSlug: string, photoId: string) {
@@ -10,12 +11,17 @@ async function fetchPhoto(url: string): Promise<Blob> {
   return response.blob()
 }
 
+export type DownloadResult = 'saved' | 'opened' | 'unavailable'
+
 /** Saves the web-quality photo. Falls back to opening it (long-press to save) if the fetch is blocked. */
-export async function downloadPhoto(url: string, eventSlug: string, photoId: string) {
+export async function downloadPhoto(url: string, eventSlug: string, photoId: string): Promise<DownloadResult> {
+  if (IS_DEMO) return 'unavailable' // the hosted demo frame blocks downloads
   try {
     saveBlob(await fetchPhoto(url), fileNameFor(eventSlug, photoId))
+    return 'saved'
   } catch {
     window.open(url, '_blank', 'noopener')
+    return 'opened'
   }
 }
 

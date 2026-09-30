@@ -17,10 +17,12 @@ export default function GalleryPage() {
   const openedHere = useRef(false)
   const selectedId = params.get('photo')
 
-  const shouldShowImmediately = useCallback(
-    () => window.scrollY < AUTO_INSERT_SCROLL_PX && !new URLSearchParams(window.location.search).has('photo'),
-    [],
-  )
+  // While a photo is open, new arrivals wait behind the "new photos" button so the viewer's index never shifts.
+  const viewerOpen = useRef(false)
+  useEffect(() => {
+    viewerOpen.current = selectedId !== null
+  }, [selectedId])
+  const shouldShowImmediately = useCallback(() => window.scrollY < AUTO_INSERT_SCROLL_PX && !viewerOpen.current, [])
   const gallery = useLiveGallery(slug, shouldShowImmediately)
   const { event, photos, incoming, status, connection, nextCursor, loadMore, showIncoming } = gallery
 
