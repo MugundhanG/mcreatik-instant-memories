@@ -160,7 +160,7 @@ Onboarding: admin creates an uploader → dashboard shows a **connection code** 
 | `web/` | Vercel | `VITE_API_BASE_URL`, SPA rewrite to `index.html`. `gallery.mcreatik.com` |
 | `backend/` | Docker image on Render / Railway / Fly.io (1 instance, 1–2 GB RAM) | `api.mcreatik.com`. Env-only config. Health: `/actuator/health`. |
 | PostgreSQL | Supabase (use the **session pooler / direct** connection string, not transaction pooler) | Flyway migrates on boot. |
-| R2 | 2 buckets: `mcreatik-originals` (private), `mcreatik-media` (public, custom domain `media.mcreatik.com`) | CORS on both: PUT from uploader (not needed, not a browser), GET from gallery origin for downloads. |
+| R2 | 2 buckets: `mcreatik-live-originals` (private), `mcreatik-live-media` (public, custom domain `live-media.mcreatik.com`) | CORS on both: PUT from uploader (not needed, not a browser), GET from gallery origin for downloads. |
 
 **Single backend instance in V1.** The SSE broadcaster is in-memory. Scaling out later means swapping `GalleryBroadcaster` for Redis pub/sub or Postgres `LISTEN/NOTIFY` (interface already isolated). The processing queue is already multi-instance safe.
 

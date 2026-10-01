@@ -78,10 +78,10 @@ CI runs all three on every PR (`.github/workflows/ci.yml`).
 | Web | Vercel | Root directory `web`, framework Vite, env `VITE_API_BASE_URL=https://api.mcreatik.com`. `vercel.json` handles SPA routing. |
 
 **R2 setup**
-1. Create `mcreatik-originals` (private) and `mcreatik-media` (public through a custom domain, e.g. `media.mcreatik.com`).
+1. Create `mcreatik-live-originals` (private) and `mcreatik-live-media` (public through a custom domain, e.g. `live-media.mcreatik.com`).
 2. Create an R2 API token with Object Read & Write on both buckets → `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`.
-3. CORS on `mcreatik-media`: allow `GET` from `https://gallery.mcreatik.com` (guests download photos with `fetch`).
-4. Set `R2_MEDIA_PUBLIC_BASE_URL=https://media.mcreatik.com`.
+3. CORS on `mcreatik-live-media`: allow `GET` from `https://gallery.mcreatik.com` (guests download photos with `fetch`).
+4. Set `R2_MEDIA_PUBLIC_BASE_URL=https://live-media.mcreatik.com`.
 
 **Domains**
 - `gallery.mcreatik.com` → Vercel (guest links are `https://gallery.mcreatik.com/e/<slug>`; set `PUBLIC_GALLERY_BASE_URL` to match).
