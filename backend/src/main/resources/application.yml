@@ -81,6 +81,6 @@ gallery:
       account-id: ${R2_ACCOUNT_ID:}
       access-key-id: ${R2_ACCESS_KEY_ID:}
       secret-access-key: ${R2_SECRET_ACCESS_KEY:}
-      originals-bucket: ${R2_ORIGINALS_BUCKET:mcreatik-live-originals}
-      media-bucket: ${R2_MEDIA_BUCKET:mcreatik-live-media}
+      originals-bucket: ${R2_ORIGINALS_BUCKET:mcreatik-instant-memories-originals}
+      media-bucket: ${R2_MEDIA_BUCKET:mcreatik-instant-memories-media}
       media-public-base-url: ${R2_MEDIA_PUBLIC_BASE_URL:}
