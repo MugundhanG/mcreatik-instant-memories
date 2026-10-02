@@ -1,0 +1,12 @@
+// Cloudflare Workers static-assets deployment of the web app (guest gallery + admin dashboard).
+// Cloudflare build settings: root directory `web`, build command `npm run build`,
+// deploy command `npx wrangler deploy`, build variable VITE_API_BASE_URL=https://im-api.mcreatik.com.
+{
+  "name": "mcreatik-instant-memories",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    // Client-side routes (/e/:slug, /admin/...) all serve index.html.
+    "not_found_handling": "single-page-application"
+  }
+}
