@@ -4,6 +4,9 @@
 #
 #   cd ~/mcreatik-instant-memories && git pull && deploy/oracle/deploy.sh
 #
+# Small VMs (e.g. the 1 GB E2.1.Micro) should not compile Java: use the image GitHub Actions builds instead:
+#   IMAGE=ghcr.io/mugundhang/mcreatik-instant-memories-backend:latest GALLERY_MEMORY=900m GALLERY_CPUS=1 deploy/oracle/deploy.sh
+#
 # The container is capped (memory/CPU) so a busy event can never starve the website backend.
 set -euo pipefail
 
@@ -35,9 +38,17 @@ wait_healthy() { # name port
   return 1
 }
 
-commit=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
-echo "==> Building $NAME:new from commit $commit"
-docker build -t "$NAME:new" --label "commit=$commit" backend
+if [[ -n "${IMAGE:-}" ]]; then
+  echo "==> Pulling $IMAGE"
+  docker pull "$IMAGE"
+  docker tag "$IMAGE" "$NAME:new"
+  commit=$(docker inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$NAME:new" 2>/dev/null | cut -c1-7)
+  commit=${commit:-unknown}
+else
+  commit=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+  echo "==> Building $NAME:new from commit $commit"
+  docker build -t "$NAME:new" --label "commit=$commit" backend
+fi
 
 echo "==> Testing the new image on port $TEST_PORT"
 docker rm -f "$NAME-test" >/dev/null 2>&1 || true

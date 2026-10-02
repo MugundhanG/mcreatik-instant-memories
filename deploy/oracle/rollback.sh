@@ -9,6 +9,6 @@ docker tag "$NAME:current" "$NAME:failed" 2>/dev/null || true
 docker tag "$NAME:previous" "$NAME:current"
 docker rm -f "$NAME" >/dev/null 2>&1 || true
 docker run -d --name "$NAME" --env-file "$ENV_FILE" -e PORT=8080 -p "127.0.0.1:$LIVE_PORT:8080" \
-  --memory "${GALLERY_MEMORY:-2g}" --cpus "${GALLERY_CPUS:-2}" \
+  --memory "${GALLERY_MEMORY:-2g}" --cpus "${GALLERY_CPUS:-2}"  # match what deploy.sh used \
   --log-opt max-size=20m --log-opt max-file=5 --restart unless-stopped "$NAME:current" >/dev/null
 echo "Rolled back. Check: curl -s http://127.0.0.1:$LIVE_PORT/actuator/health"
