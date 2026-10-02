@@ -1,7 +1,7 @@
 import QRCode from 'qrcode'
 
 /**
- * QR codes only ever contain the public gallery URL (e.g. https://gallery.mcreatik.com/e/arun-priya-7k3d):
+ * QR codes only ever contain the public gallery URL (e.g. https://instant-memories.mcreatik.com/e/arun-priya-7k3d):
  * no tokens, ids or anything else sensitive.
  */
 export function qrSvg(url: string): Promise<string> {

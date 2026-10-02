@@ -74,18 +74,20 @@ CI runs all three on every PR (`.github/workflows/ci.yml`).
 |---|---|---|
 | Database | Supabase Postgres | Use the **session pooler** or direct connection string (Flyway + `SKIP LOCKED` need a session). |
 | Storage | Cloudflare R2 | Two buckets, see below. |
-| Backend | Any Docker host (Render, Railway, Fly.io, a VPS) | `backend/Dockerfile`. One instance, 1–2 GB RAM. All config via env: see `backend/.env.example`. |
-| Web | Vercel | Root directory `web`, framework Vite, env `VITE_API_BASE_URL=https://api.mcreatik.com`. `vercel.json` handles SPA routing. |
+| Backend | McreatiK Oracle VM, next to the website backend (any Docker host works) | `backend/Dockerfile`. One instance, 1–2 GB RAM. All config via env: see `backend/.env.example`. |
+| Web | Vercel | Root directory `web`, framework Vite, env `VITE_API_BASE_URL=https://im-api.mcreatik.com`. `vercel.json` handles SPA routing. |
 
 **R2 setup**
-1. Create `mcreatik-originals` (private) and `mcreatik-media` (public through a custom domain, e.g. `media.mcreatik.com`).
+1. Create `mcreatik-instant-memories-originals` (private) and `mcreatik-instant-memories-media` (public: custom domain `im-media.mcreatik.com` once mcreatik.com DNS is on Cloudflare; until then its r2.dev URL, which is rate-limited and for testing only).
 2. Create an R2 API token with Object Read & Write on both buckets → `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`.
-3. CORS on `mcreatik-media`: allow `GET` from `https://gallery.mcreatik.com` (guests download photos with `fetch`).
-4. Set `R2_MEDIA_PUBLIC_BASE_URL=https://media.mcreatik.com`.
+3. CORS on `mcreatik-instant-memories-media`: allow `GET` from `https://instant-memories.mcreatik.com` (guests download photos with `fetch`).
+4. Set `R2_MEDIA_PUBLIC_BASE_URL=https://im-media.mcreatik.com`.
 
 **Domains**
-- `gallery.mcreatik.com` → Vercel (guest links are `https://gallery.mcreatik.com/e/<slug>`; set `PUBLIC_GALLERY_BASE_URL` to match).
-- `api.mcreatik.com` → backend (`API_PUBLIC_BASE_URL`, `CORS_ALLOWED_ORIGINS=https://gallery.mcreatik.com`).
+- `instant-memories.mcreatik.com` → Vercel (guest links are `https://instant-memories.mcreatik.com/e/<slug>`; set `PUBLIC_GALLERY_BASE_URL` to match).
+- `im-api.mcreatik.com` → backend (`API_PUBLIC_BASE_URL`, `CORS_ALLOWED_ORIGINS=https://instant-memories.mcreatik.com`).
+
+**Production (McreatiK Oracle VM):** see [`deploy/oracle/`](deploy/oracle): `deploy.sh` builds, tests on a spare port, switches and keeps `:previous` for `rollback.sh`; nginx/Caddy configs for `im-api.mcreatik.com` included.
 
 Scaling beyond one backend instance: processing is already multi-instance safe; swap the in-memory `GalleryBroadcaster` for Redis/Postgres pub-sub first.
 

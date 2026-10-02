@@ -18,7 +18,7 @@ The repository was empty at the start of V1 (no commits, no existing McreatiK co
                                                               validate → decode → web 2048px → thumb 640px → metadata
                                                                                                     │ PHOTO_READY
                                                                                                     ▼
-     Guest phone ── QR ──> gallery.mcreatik.com/e/{slug} (Vercel, React) ◄── SSE /api/public/events/{slug}/stream
+     Guest phone ── QR ──> instant-memories.mcreatik.com/e/{slug} (Vercel, React) ◄── SSE /api/public/events/{slug}/stream
                            images ◄── cdn (R2 public bucket: web + thumb only)
 ```
 
@@ -157,10 +157,10 @@ Onboarding: admin creates an uploader → dashboard shows a **connection code** 
 
 | Component | Where | Notes |
 |---|---|---|
-| `web/` | Vercel | `VITE_API_BASE_URL`, SPA rewrite to `index.html`. `gallery.mcreatik.com` |
-| `backend/` | Docker image on Render / Railway / Fly.io (1 instance, 1–2 GB RAM) | `api.mcreatik.com`. Env-only config. Health: `/actuator/health`. |
+| `web/` | Vercel | `VITE_API_BASE_URL`, SPA rewrite to `index.html`. `instant-memories.mcreatik.com` |
+| `backend/` | Docker container on the McreatiK Oracle VM next to the website backend, capped at 2 GB / 2 CPUs (`deploy/oracle/`) | `im-api.mcreatik.com`. Env-only config. Health: `/actuator/health`. |
 | PostgreSQL | Supabase (use the **session pooler / direct** connection string, not transaction pooler) | Flyway migrates on boot. |
-| R2 | 2 buckets: `mcreatik-originals` (private), `mcreatik-media` (public, custom domain `media.mcreatik.com`) | CORS on both: PUT from uploader (not needed, not a browser), GET from gallery origin for downloads. |
+| R2 | 2 buckets: `mcreatik-instant-memories-originals` (private), `mcreatik-instant-memories-media` (public, custom domain `im-media.mcreatik.com`) | CORS on both: PUT from uploader (not needed, not a browser), GET from gallery origin for downloads. |
 
 **Single backend instance in V1.** The SSE broadcaster is in-memory. Scaling out later means swapping `GalleryBroadcaster` for Redis pub/sub or Postgres `LISTEN/NOTIFY` (interface already isolated). The processing queue is already multi-instance safe.
 
