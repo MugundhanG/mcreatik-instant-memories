@@ -67,6 +67,10 @@ public class AdminPhotoController {
     @GetMapping("/photos/{photoId}/original")
     public OriginalUrl original(Authentication auth, @PathVariable UUID photoId) {
         Photo photo = owned(auth, photoId);
+        if (!photo.isOriginalStored()) {
+            throw ApiException.conflict("ORIGINAL_NOT_UPLOADED",
+                    "The original was not uploaded: it stays on the photographer's laptop and memory card");
+        }
         return new OriginalUrl(storage.presignDownload(StorageArea.ORIGINALS, photo.getStorageKey(),
                 Duration.ofMinutes(5), photo.getOriginalFileName()));
     }
@@ -76,7 +80,9 @@ public class AdminPhotoController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(Authentication auth, @PathVariable UUID photoId) {
         Photo photo = owned(auth, photoId);
-        storage.delete(StorageArea.ORIGINALS, photo.getStorageKey());
+        if (photo.isOriginalStored()) {
+            storage.delete(StorageArea.ORIGINALS, photo.getStorageKey());
+        }
         if (photo.getOptimizedStorageKey() != null) {
             storage.delete(StorageArea.MEDIA, photo.getOptimizedStorageKey());
         }

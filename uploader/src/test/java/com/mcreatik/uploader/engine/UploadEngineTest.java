@@ -215,4 +215,42 @@ class UploadEngineTest {
         await("real one uploaded", () -> queue.counts().done() == 1);
         assertThat(queue.counts().total()).isEqualTo(1);
     }
+
+    @Test
+    void photosArePreparedOnTheLaptopAndOnlySmallVersionsAreUploaded() throws Exception {
+        server.supportsPrepared = true;
+        startEngine();
+        byte[] original = TestPhotos.jpeg(4000, 3000);
+        TestPhotos.write(folder, "IMG_0001.JPG", original);
+
+        await("photo live", () -> queue.counts().done() == 1);
+        String id = server.photosBySha.get(FakeMcreatikServer.sha256(original));
+        assertThat(server.completed).contains(id);
+        assertThat(server.stored).containsKeys(id + ".web", id + ".thumb").doesNotContainKey(id);
+        assertThat(server.preparedSessions.get(id)).contains("\"width\":4000").contains("\"height\":3000");
+
+        var web = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(server.stored.get(id + ".web")));
+        var thumb = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(server.stored.get(id + ".thumb")));
+        assertThat(web.getWidth()).isEqualTo(2048);
+        assertThat(thumb.getWidth()).isEqualTo(640);
+        assertThat(server.stored.get(id + ".web").length + server.stored.get(id + ".thumb").length)
+                .isLessThan(original.length / 2);
+    }
+
+    @Test
+    void photoThatCannotBePreparedHereIsSentAsTheOriginal() throws Exception {
+        server.supportsPrepared = true;
+        startEngine();
+        byte[] broken = new byte[5_000];
+        java.util.concurrent.ThreadLocalRandom.current().nextBytes(broken);
+        broken[0] = (byte) 0xFF; // JPEG signature, garbage after: queued, but cannot be decoded
+        broken[1] = (byte) 0xD8;
+        broken[2] = (byte) 0xFF;
+        TestPhotos.write(folder, "IMG_BROKEN.JPG", broken);
+
+        await("sent", () -> queue.counts().done() == 1);
+        String id = server.photosBySha.get(FakeMcreatikServer.sha256(broken));
+        assertThat(server.stored.get(id)).isEqualTo(broken); // the server gets the real file and decides
+        assertThat(server.preparedSessions).doesNotContainKey(id);
+    }
 }

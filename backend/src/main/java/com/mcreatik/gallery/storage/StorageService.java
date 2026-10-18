@@ -9,8 +9,15 @@ import java.util.Optional;
  */
 public interface StorageService {
 
-    /** Presigned PUT into {@link StorageArea#ORIGINALS}. The server always chooses the key. */
-    PresignedUpload presignOriginalUpload(String key, String contentType, long contentLength, Duration ttl);
+    /**
+     * Presigned PUT of exactly {@code contentLength} bytes. The server always chooses the key. Originals go to
+     * {@link StorageArea#ORIGINALS}; web/thumbnail versions prepared by the uploader go straight to {@link StorageArea#MEDIA}.
+     */
+    PresignedUpload presignUpload(StorageArea area, String key, String contentType, long contentLength, Duration ttl);
+
+    default PresignedUpload presignOriginalUpload(String key, String contentType, long contentLength, Duration ttl) {
+        return presignUpload(StorageArea.ORIGINALS, key, contentType, contentLength, ttl);
+    }
 
     /** Size of a stored object, or empty if it does not exist. */
     Optional<Long> size(StorageArea area, String key);

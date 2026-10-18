@@ -107,6 +107,8 @@ export interface AdminPhoto {
   uploadedAt: string | null
   readyAt: string | null
   createdAt: string
+  /** False when the uploader prepared the web/thumbnail versions and the original stayed on the laptop. */
+  originalAvailable: boolean
 }
 
 export interface AdminPhotoPage {

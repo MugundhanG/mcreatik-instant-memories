@@ -19,13 +19,20 @@ public final class TestPhotos {
 
     /** A unique, valid JPEG. */
     public static byte[] jpeg() throws IOException {
-        BufferedImage img = new BufferedImage(320, 240, BufferedImage.TYPE_INT_RGB);
+        return jpeg(320, 240);
+    }
+
+    /** A unique, valid JPEG of the given size, with enough detail that it does not compress to nothing. */
+    public static byte[] jpeg(int width, int height) throws IOException {
+        BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = img.createGraphics();
         ThreadLocalRandom r = ThreadLocalRandom.current();
         g.setColor(new Color(r.nextInt(0xFFFFFF)));
-        g.fillRect(0, 0, 320, 240);
-        g.setColor(new Color(r.nextInt(0xFFFFFF)));
-        g.fillOval(r.nextInt(200), r.nextInt(120), 100, 100);
+        g.fillRect(0, 0, width, height);
+        for (int i = 0; i < 40; i++) {
+            g.setColor(new Color(r.nextInt(0xFFFFFF)));
+            g.fillOval(r.nextInt(width), r.nextInt(height), width / 8, height / 8);
+        }
         g.dispose();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ImageIO.write(img, "jpg", out);

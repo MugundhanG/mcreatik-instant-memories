@@ -80,10 +80,11 @@ public class R2StorageService implements StorageService {
     }
 
     @Override
-    public PresignedUpload presignOriginalUpload(String key, String contentType, long contentLength, Duration ttl) {
+    public PresignedUpload presignUpload(StorageArea area, String key, String contentType, long contentLength,
+                                         Duration ttl) {
         var presigned = presigner.presignPutObject(r -> r
                 .signatureDuration(ttl)
-                .putObjectRequest(p -> p.bucket(config.originalsBucket()).key(key)
+                .putObjectRequest(p -> p.bucket(bucket(area)).key(key)
                         .contentType(contentType).contentLength(contentLength)));
         Map<String, String> headers = presigned.signedHeaders().entrySet().stream()
                 .filter(e -> !e.getKey().equalsIgnoreCase("host"))

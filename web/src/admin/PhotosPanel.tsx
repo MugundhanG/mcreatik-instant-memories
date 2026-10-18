@@ -84,7 +84,13 @@ export function PhotosPanel({ eventId, coverPhotoId, refreshKey, onCoverChange }
               {p.status === 'READY' && p.id !== coverPhotoId && (
                 <button type="button" className="text-muted hover:text-ink" onClick={() => onCoverChange(p.id)}>Cover</button>
               )}
-              <button type="button" className="text-muted hover:text-ink" onClick={() => original(p)}>Original</button>
+              {p.originalAvailable ? (
+                <button type="button" className="text-muted hover:text-ink" onClick={() => original(p)}>Original</button>
+              ) : (
+                <span className="text-muted/70" title="Prepared on the laptop: the full-size original stays on the photographer's laptop and card">
+                  Original on laptop
+                </span>
+              )}
               <button type="button" className="text-red-700 hover:underline" onClick={() => remove(p)}>Delete</button>
             </div>
           </li>

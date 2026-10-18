@@ -38,17 +38,24 @@ public class LocalStorageController {
                                        @RequestParam long expires,
                                        @RequestParam long length,
                                        @RequestParam String sig,
+                                       @RequestParam(defaultValue = "originals") String area,
                                        @RequestHeader(value = HttpHeaders.CONTENT_TYPE, required = false) String contentType,
                                        HttpServletRequest request) throws IOException {
         String cleanKey = key.substring(1);
-        if (!storage.verifyUpload(cleanKey, expires, normalizeMediaType(contentType), length, sig)) {
+        StorageArea target;
+        try {
+            target = StorageArea.valueOf(area.toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        if (!storage.verifyUpload(target, cleanKey, expires, normalizeMediaType(contentType), length, sig)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         if (request.getContentLengthLong() >= 0 && request.getContentLengthLong() != length) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         try {
-            storage.writeStream(StorageArea.ORIGINALS, cleanKey, request.getInputStream(), length);
+            storage.writeStream(target, cleanKey, request.getInputStream(), length);
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
