@@ -20,7 +20,7 @@ public final class PhotoDtos {
     public record AdminPhoto(UUID id, UUID uploaderId, String originalFileName, PhotoStatus status,
                              String failureReason, long fileSize, Integer width, Integer height,
                              String thumbnailUrl, String webUrl, Instant capturedAt, Instant uploadedAt,
-                             Instant readyAt, Instant createdAt) {
+                             Instant readyAt, Instant createdAt, boolean originalAvailable) {
     }
 
     public record AdminPhotoPage(List<AdminPhoto> photos, String nextCursor) {

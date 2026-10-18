@@ -121,6 +121,23 @@ SSE message: `event: PHOTO_READY`, data `{eventId, photoId, thumbnailUrl, webUrl
 
 Every step is idempotent, so any crash/network drop is fixed by simply retrying from the uploader's persisted state.
 
+### 5b. Prepared uploads (default since the first live camera test)
+
+Measured on the Free Tier E2.1.Micro (≈1/8 CPU): server-side processing took **93 s per 24 MP photo**, and uploading
+12 MB originals over a phone hotspot took 14 s, so photos reached guests after ~3 minutes. The uploader therefore
+prepares photos on the laptop (`uploader/…/prepare/PhotoPreparer`, the same `ImageOps` code and settings as the
+backend: EXIF orientation applied, metadata stripped, 2048 px web @0.85 + 640 px thumbnail @0.78):
+
+1. `POST /uploads {…, prepared: {webSize, thumbnailSize, width, height, capturedAt}}` → the server returns
+   `webUpload` + `thumbnailUpload` (presigned PUTs to the photo's final **media** keys, exact length) instead of `upload`.
+2. Uploader PUTs the two JPEGs (~0.6 MB in total instead of ~12 MB).
+3. `complete` → server checks both objects exist ⇒ `READY` directly ⇒ `PHOTO_READY` (no worker, ~0.1 s).
+
+The original stays on the laptop/card (`photos.original_stored = false`, the admin shows "Original on laptop").
+Fallbacks keep both directions compatible: if the laptop cannot decode a file, or the server predates prepared
+uploads (no `webUpload` in the response), the original is uploaded and processed by the pipeline as before.
+`--upload-originals` forces the original path. Measured locally: five 24 MP / 12 MB JPEGs live in ~7 s in total.
+
 ## 6. Processing pipeline (modular)
 
 ```java

@@ -104,6 +104,9 @@ The uploader receives photos in one of two ways:
 
 1. Set the camera to shoot **RAW+JPEG** (JPEGs are what guests see).
 2. Start McreatiK Uploader, paste the connection code from the dashboard, and either keep "Receive photos from the camera over Wi-Fi" ticked (FTP) or choose the folder your camera software saves to.
-3. Leave it running. Green means online. Amber means offline, and photos are safely queued and upload automatically when the connection returns.
+3. Leave it running. Each photo is resized on the laptop and only the web + thumbnail versions (~0.6 MB) are uploaded,
+   so photos reach guests within seconds even on a phone hotspot; the full-size originals stay on your laptop and card
+   (start with `--upload-originals` to send originals for server-side processing instead).
+   Green means online. Amber means offline, and photos are safely queued and upload automatically when the connection returns.
 
 One laptop per camera is simplest. To run two cameras on one laptop, start a second instance with `--data-dir ~/.mcreatik-camera2` (and `--ftp-port 2122` if both use FTP). Headless mode: `java -jar mcreatik-uploader.jar --headless`.

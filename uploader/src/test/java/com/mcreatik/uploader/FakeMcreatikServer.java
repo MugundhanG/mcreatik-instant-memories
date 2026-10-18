@@ -39,6 +39,11 @@ public class FakeMcreatikServer implements AutoCloseable {
     public final AtomicBoolean revoked = new AtomicBoolean();
     public final AtomicInteger failNextPuts = new AtomicInteger();
     public volatile String rejectUploadsWithCode;
+    /** True = behaves like a server that accepts web/thumbnail versions prepared by the uploader. */
+    public volatile boolean supportsPrepared;
+    /** photoId → the "prepared" JSON object of its latest session, for photos sent in prepared mode */
+    public final Map<String, String> preparedSessions = new ConcurrentHashMap<>();
+    private static final Pattern PREPARED = Pattern.compile("\"prepared\"\\s*:\\s*(\\{[^}]*\\})");
 
     public final AtomicInteger sessionCalls = new AtomicInteger();
     public final AtomicInteger putCalls = new AtomicInteger();
@@ -102,6 +107,15 @@ public class FakeMcreatikServer implements AutoCloseable {
             default -> {
                 if (method.equals("POST") && path.startsWith("/api/uploader/uploads/") && path.endsWith("/complete")) {
                     String id = path.substring("/api/uploader/uploads/".length(), path.length() - "/complete".length());
+                    if (preparedSessions.containsKey(id)) {
+                        if (!stored.containsKey(id + ".web") || !stored.containsKey(id + ".thumb")) {
+                            respond(ex, 409, "{\"code\":\"UPLOAD_NOT_FOUND\",\"message\":\"not stored\"}");
+                            return;
+                        }
+                        completed.add(id);
+                        respond(ex, 200, "{\"photoId\":\"" + id + "\",\"status\":\"READY\"}");
+                        return;
+                    }
                     byte[] bytes = stored.get(id);
                     if (bytes == null) {
                         respond(ex, 409, "{\"code\":\"UPLOAD_NOT_FOUND\",\"message\":\"not stored\"}");
@@ -139,9 +153,20 @@ public class FakeMcreatikServer implements AutoCloseable {
             respond(ex, 200, "{\"outcome\":\"DUPLICATE\",\"photoId\":\"" + id + "\",\"upload\":null}");
             return;
         }
-        respond(ex, 200, "{\"outcome\":\"UPLOAD\",\"photoId\":\"" + id + "\",\"upload\":{\"url\":\"" + url()
-                + "/storage/" + id + "\",\"method\":\"PUT\",\"headers\":{\"Content-Type\":\"image/jpeg\"},"
-                + "\"expiresAt\":\"2030-01-01T00:00:00Z\"}}");
+        Matcher prepared = PREPARED.matcher(json);
+        if (supportsPrepared && prepared.find()) {
+            preparedSessions.put(id, prepared.group(1));
+            respond(ex, 200, "{\"outcome\":\"UPLOAD\",\"photoId\":\"" + id + "\",\"upload\":null,"
+                    + "\"webUpload\":" + presigned(id + ".web") + ",\"thumbnailUpload\":" + presigned(id + ".thumb") + "}");
+            return;
+        }
+        preparedSessions.remove(id);
+        respond(ex, 200, "{\"outcome\":\"UPLOAD\",\"photoId\":\"" + id + "\",\"upload\":" + presigned(id) + "}");
+    }
+
+    private String presigned(String storageKey) {
+        return "{\"url\":\"" + url() + "/storage/" + storageKey + "\",\"method\":\"PUT\","
+                + "\"headers\":{\"Content-Type\":\"image/jpeg\"},\"expiresAt\":\"2030-01-01T00:00:00Z\"}";
     }
 
     private static void respond(HttpExchange ex, int status, String body) throws IOException {

@@ -81,14 +81,23 @@ public class UploaderApiController {
     public record CreateUploadRequest(@NotBlank @Size(max = 1024) String fileName,
                                       @Positive long fileSize,
                                       @NotBlank @Size(max = 50) String mimeType,
-                                      @NotNull @Size(min = 64, max = 64) String checksumSha256) {
+                                      @NotNull @Size(min = 64, max = 64) String checksumSha256,
+                                      @Valid PreparedVersions prepared) {
+    }
+
+    /** Present when the uploader made the web and thumbnail versions itself (see UploadService). */
+    public record PreparedVersions(@Positive long webSize, @Positive long thumbnailSize, @Positive int width,
+                                   @Positive int height, java.time.Instant capturedAt) {
     }
 
     @PostMapping("/uploads")
     public UploadService.UploadSessionResponse createUpload(@AuthenticationPrincipal UploaderPrincipal principal,
                                                             @Valid @RequestBody CreateUploadRequest request) {
         return uploadService.createSession(principal, new UploadService.UploadSessionRequest(
-                request.fileName(), request.fileSize(), request.mimeType(), request.checksumSha256()));
+                request.fileName(), request.fileSize(), request.mimeType(), request.checksumSha256(),
+                request.prepared() == null ? null : new UploadService.Prepared(request.prepared().webSize(),
+                        request.prepared().thumbnailSize(), request.prepared().width(), request.prepared().height(),
+                        request.prepared().capturedAt())));
     }
 
     @PostMapping("/uploads/{photoId}/complete")

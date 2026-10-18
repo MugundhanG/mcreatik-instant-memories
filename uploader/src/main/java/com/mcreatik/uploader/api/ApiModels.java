@@ -19,14 +19,32 @@ public final class ApiModels {
     public record HeartbeatResponse(String eventStatus, boolean acceptingUploads) {
     }
 
-    public record CreateUploadRequest(String fileName, long fileSize, String mimeType, String checksumSha256) {
+    /** {@code prepared} is null when sending the original for server-side processing. */
+    public record CreateUploadRequest(String fileName, long fileSize, String mimeType, String checksumSha256,
+                                      PreparedVersions prepared) {
+        public CreateUploadRequest(String fileName, long fileSize, String mimeType, String checksumSha256) {
+            this(fileName, fileSize, mimeType, checksumSha256, null);
+        }
+    }
+
+    /** Web and thumbnail versions made on the laptop. Width/height/capturedAt describe the original. */
+    public record PreparedVersions(long webSize, long thumbnailSize, int width, int height, String capturedAt) {
     }
 
     public record PresignedUpload(String url, String method, Map<String, String> headers, String expiresAt) {
     }
 
-    /** outcome = UPLOAD (send the bytes) or DUPLICATE (already in the event). */
-    public record UploadSession(String outcome, String photoId, PresignedUpload upload) {
+    /**
+     * outcome = UPLOAD (send the bytes) or DUPLICATE (already in the event). A server that accepted the prepared
+     * versions returns {@code webUpload} + {@code thumbnailUpload}; otherwise (or an older server) {@code upload}
+     * for the original.
+     */
+    public record UploadSession(String outcome, String photoId, PresignedUpload upload, PresignedUpload webUpload,
+                                PresignedUpload thumbnailUpload) {
+        public boolean acceptsPrepared() {
+            return webUpload != null && thumbnailUpload != null;
+        }
+
         public boolean isDuplicate() {
             return "DUPLICATE".equals(outcome);
         }

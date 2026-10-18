@@ -49,6 +49,10 @@ public class Photo {
     @Column(name = "checksum_sha256", nullable = false)
     private String checksumSha256;
 
+    /** False when the uploader prepared the web/thumbnail versions itself and kept the original. */
+    @Column(name = "original_stored", nullable = false)
+    private boolean originalStored = true;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PhotoStatus status;
@@ -116,6 +120,37 @@ public class Photo {
         this.failureReason = null;
         this.processingAttempts = 0;
         this.updatedAt = now();
+    }
+
+    /**
+     * Switches the photo to uploader-prepared mode: web and thumbnail versions are uploaded directly to their
+     * final media keys, the original is not uploaded. Safe to call again on retries.
+     */
+    public void prepareOnUploader(int width, int height, Instant capturedAt, String optimizedKey, String thumbnailKey) {
+        this.originalStored = false;
+        this.width = width;
+        this.height = height;
+        this.capturedAt = capturedAt;
+        this.optimizedStorageKey = optimizedKey;
+        this.thumbnailStorageKey = thumbnailKey;
+        this.updatedAt = now();
+    }
+
+    /** Switches back to server processing (an uploader without local preparation re-sent the photo). */
+    public void expectOriginal() {
+        this.originalStored = true;
+        this.updatedAt = now();
+    }
+
+    /** Uploader-prepared versions are in media storage: the photo goes live without server processing. */
+    public void markReadyFromUploader() {
+        Instant now = now();
+        this.status = PhotoStatus.READY;
+        this.failureReason = null;
+        this.uploadedAt = now;
+        this.processedAt = now;
+        this.readyAt = now;
+        this.updatedAt = now;
     }
 
     public void markReady(int width, int height, Instant capturedAt, String optimizedKey, String thumbnailKey,
@@ -194,6 +229,10 @@ public class Photo {
 
     public String getChecksumSha256() {
         return checksumSha256;
+    }
+
+    public boolean isOriginalStored() {
+        return originalStored;
     }
 
     public PhotoStatus getStatus() {

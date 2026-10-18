@@ -67,6 +67,8 @@ public final class UploaderMain {
                       --ftp                receive photos from the camera over Wi-Fi (built-in FTP server)
                       --ftp-port <n>       FTP port to enter in the camera (default 2121)
                       --no-ftp             turn the built-in FTP server off
+                      --upload-originals   send full-size originals for server processing instead of
+                                           preparing web + thumbnail versions on this computer (slower)
                       --headless           no window; log to the console
                     """.formatted(UploadEngine.APP_VERSION));
             return;
@@ -95,7 +97,8 @@ public final class UploaderMain {
                 : null;
         PhotoSource source = ftp == null ? new FolderPhotoSource(config.watchFolder())
                 : new CompositePhotoSource(List.of(new FolderPhotoSource(config.watchFolder()), ftp));
-        UploadEngine engine = new UploadEngine(api, queue, source, config.concurrency(), config.deviceId());
+        UploadEngine engine = new UploadEngine(api, queue, source, config.concurrency(), config.deviceId(),
+                !a.uploadOriginals);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             engine.close();
@@ -254,6 +257,7 @@ public final class UploaderMain {
         boolean help;
         Boolean ftp;
         Integer ftpPort;
+        boolean uploadOriginals;
 
         static Args parse(String[] args) {
             Args a = new Args();
@@ -267,6 +271,7 @@ public final class UploaderMain {
                     case "--ftp" -> a.ftp = true;
                     case "--no-ftp" -> a.ftp = false;
                     case "--ftp-port" -> a.ftpPort = Integer.parseInt(args[++i]);
+                    case "--upload-originals" -> a.uploadOriginals = true;
                     case "--help", "-h" -> a.help = true;
                     default -> throw new IllegalArgumentException("Unknown option " + args[i] + " (try --help)");
                 }

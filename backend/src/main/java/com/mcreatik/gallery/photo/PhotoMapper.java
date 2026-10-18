@@ -21,8 +21,13 @@ public class PhotoMapper {
     public PhotoDtos.AdminPhoto toAdmin(Photo p) {
         return new PhotoDtos.AdminPhoto(p.getId(), p.getUploaderId(), p.getOriginalFileName(), p.getStatus(),
                 p.getFailureReason(), p.getFileSize(), p.getWidth(), p.getHeight(),
-                url(p.getThumbnailStorageKey()), url(p.getOptimizedStorageKey()),
-                p.getCapturedAt(), p.getUploadedAt(), p.getReadyAt(), p.getCreatedAt());
+                readyUrl(p, p.getThumbnailStorageKey()), readyUrl(p, p.getOptimizedStorageKey()),
+                p.getCapturedAt(), p.getUploadedAt(), p.getReadyAt(), p.getCreatedAt(), p.isOriginalStored());
+    }
+
+    /** Uploader-prepared photos know their media keys before the files arrive: only link them once READY. */
+    private String readyUrl(Photo p, String mediaKey) {
+        return p.getStatus() == PhotoStatus.READY ? url(mediaKey) : null;
     }
 
     public String url(String mediaKey) {

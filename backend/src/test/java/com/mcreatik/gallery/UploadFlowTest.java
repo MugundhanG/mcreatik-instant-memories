@@ -69,6 +69,98 @@ class UploadFlowTest extends IntegrationTest {
         assertThat(thumb.length).isLessThan(web.length);
     }
 
+    private static String preparedRequestJson(String fileName, byte[] original, byte[] web, byte[] thumb,
+                                              int width, int height) {
+        String base = uploadRequestJson(fileName, original);
+        return base.substring(0, base.length() - 1) + ",\"prepared\":{\"webSize\":" + web.length
+                + ",\"thumbnailSize\":" + thumb.length + ",\"width\":" + width + ",\"height\":" + height
+                + ",\"capturedAt\":\"2026-10-18T08:43:00Z\"}}";
+    }
+
+    @Test
+    void uploaderPreparedPhotoGoesLiveWithoutServerProcessing() throws Exception {
+        String event = createEvent("Prepared", "UPCOMING");
+        String token = createUploader(eventId(event), "Camera 1");
+        byte[] original = jpeg(1200, 800);
+        byte[] web = jpeg(1024, 683);
+        byte[] thumb = jpeg(640, 427);
+
+        String session = mvc.perform(post("/api/uploader/uploads").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(preparedRequestJson("IMG_0042.JPG", original, web, thumb, 6000, 4000)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("UPLOAD"))
+                .andExpect(jsonPath("$.upload").doesNotExist())
+                .andExpect(jsonPath("$.webUpload.url").exists())
+                .andExpect(jsonPath("$.thumbnailUpload.url").exists())
+                .andReturn().getResponse().getContentAsString();
+        String photoId = JsonPath.read(session, "$.photoId");
+
+        // Complete before the files arrive is refused, so the uploader retries instead of publishing a broken photo.
+        mvc.perform(post("/api/uploader/uploads/" + photoId + "/complete").header("Authorization", bearer(token)))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("UPLOAD_NOT_FOUND"));
+        putToStorage(JsonPath.read(session, "$.webUpload.url"), web);
+        mvc.perform(post("/api/uploader/uploads/" + photoId + "/complete").header("Authorization", bearer(token)))
+                .andExpect(status().isConflict());
+        putToStorage(JsonPath.read(session, "$.thumbnailUpload.url"), thumb);
+
+        for (int i = 0; i < 2; i++) {
+            mvc.perform(post("/api/uploader/uploads/" + photoId + "/complete").header("Authorization", bearer(token)))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("READY"));
+        }
+        assertThat(worker.processNext()).isFalse(); // nothing queued for the server
+        assertThat(jdbc.queryForObject("select status from events", String.class)).isEqualTo("LIVE");
+
+        var row = jdbc.queryForMap("select * from photos where id = ?::uuid", photoId);
+        assertThat(row.get("width")).isEqualTo(6000);
+        assertThat(row.get("height")).isEqualTo(4000);
+        assertThat(row.get("original_stored")).isEqualTo(false);
+        assertThat(row.get("ready_at")).isNotNull();
+
+        String page = publicPhotos(slug(event));
+        assertThat((List<?>) JsonPath.read(page, "$.photos")).hasSize(1);
+        byte[] served = mvc.perform(get(URI.create(JsonPath.<String>read(page, "$.photos[0].thumbnailUrl")).getPath()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        assertThat(served).isEqualTo(thumb);
+
+        mvc.perform(get("/api/admin/events/" + eventId(event) + "/photos").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.photos[0].originalAvailable").value(false));
+        mvc.perform(get("/api/admin/photos/" + photoId + "/original").header("Authorization", bearer(adminToken())))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ORIGINAL_NOT_UPLOADED"));
+        mvc.perform(delete("/api/admin/photos/" + photoId).header("Authorization", bearer(adminToken())))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void preparedThenOriginalRetryFollowsTheLatestRequest() throws Exception {
+        String token = createUploader(eventId(createEvent("Switch", "LIVE")), "Camera 1");
+        byte[] original = jpeg(1200, 800);
+        byte[] web = jpeg(800, 533);
+        byte[] thumb = jpeg(640, 427);
+        mvc.perform(post("/api/uploader/uploads").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(preparedRequestJson("IMG.JPG", original, web, thumb, 1200, 800)))
+                .andExpect(jsonPath("$.webUpload").exists());
+        // An older uploader (or local preparation failing) re-sends the same photo as an original.
+        String photoId = uploadPhoto(token, "IMG.JPG", original);
+        assertThat(jdbc.queryForObject("select status from photos where id = ?::uuid", String.class, photoId))
+                .isEqualTo("UPLOADED");
+        assertThat(jdbc.queryForObject("select original_stored from photos", Boolean.class)).isTrue();
+        processAll();
+        assertThat(jdbc.queryForObject("select status from photos", String.class)).isEqualTo("READY");
+    }
+
+    @Test
+    void preparedVersionsMustBeReasonable() throws Exception {
+        String token = createUploader(eventId(createEvent("Bad", "LIVE")), "Camera 1");
+        byte[] original = jpeg(640, 480);
+        String tooBig = preparedRequestJson("IMG.JPG", original, new byte[1], new byte[1], 640, 480)
+                .replace("\"webSize\":1", "\"webSize\":999999999");
+        mvc.perform(post("/api/uploader/uploads").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(tooBig))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_PREPARED"));
+    }
+
     @Test
     void duplicateUploadIsDetectedWithoutSendingBytesAgain() throws Exception {
         String eventId = eventId(createEvent("Dup", "LIVE"));

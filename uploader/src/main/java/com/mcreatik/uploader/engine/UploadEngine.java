@@ -20,6 +20,7 @@ import java.util.logging.Logger;
 import com.mcreatik.uploader.api.ApiClient;
 import com.mcreatik.uploader.api.ApiException;
 import com.mcreatik.uploader.api.ApiModels;
+import com.mcreatik.uploader.prepare.PhotoPreparer;
 import com.mcreatik.uploader.queue.QueueCounts;
 import com.mcreatik.uploader.queue.QueueItem;
 import com.mcreatik.uploader.queue.UploadQueue;
@@ -36,6 +37,10 @@ import com.mcreatik.uploader.source.PhotoSource;
  *   <li>If the token is revoked or the event archived, uploading pauses; nothing is dropped.</li>
  *   <li>On restart, in-flight photos return to the queue and the folder is rescanned.</li>
  * </ul>
+ *
+ * <p>By default each photo is prepared on the laptop (2048 px web + 640 px thumbnail, ~1 MB in total) and only
+ * those are uploaded, so photos reach guests within seconds even on a weak venue uplink and a small server. If
+ * preparation fails or the server does not support it, the original is uploaded for server-side processing.
  */
 public class UploadEngine implements AutoCloseable {
 
@@ -50,6 +55,7 @@ public class UploadEngine implements AutoCloseable {
     private final Backoff backoff;
     private final LongSupplier clock;
     private final Duration heartbeatInterval;
+    private final boolean prepareLocally;
 
     private final Object signal = new Object();
     private final Map<Long, EngineStatus.ActiveUpload> active = new ConcurrentHashMap<>();
@@ -67,7 +73,19 @@ public class UploadEngine implements AutoCloseable {
     }
 
     public UploadEngine(ApiClient api, UploadQueue queue, PhotoSource source, int concurrency, String deviceId,
+                        boolean prepareLocally) {
+        this(api, queue, source, concurrency, deviceId, Backoff.DEFAULT, System::currentTimeMillis,
+                Duration.ofSeconds(15), prepareLocally);
+    }
+
+    public UploadEngine(ApiClient api, UploadQueue queue, PhotoSource source, int concurrency, String deviceId,
                         Backoff backoff, LongSupplier clock, Duration heartbeatInterval) {
+        this(api, queue, source, concurrency, deviceId, backoff, clock, heartbeatInterval, true);
+    }
+
+    public UploadEngine(ApiClient api, UploadQueue queue, PhotoSource source, int concurrency, String deviceId,
+                        Backoff backoff, LongSupplier clock, Duration heartbeatInterval, boolean prepareLocally) {
+        this.prepareLocally = prepareLocally;
         this.api = api;
         this.queue = queue;
         this.source = source;
@@ -167,16 +185,30 @@ public class UploadEngine implements AutoCloseable {
                 queue.markFailed(item.id(), "File changed after it was queued; the new version will be uploaded");
                 return;
             }
+            PhotoPreparer.Prepared prepared = prepareLocally ? prepare(item) : null;
             ApiModels.UploadSession session = api.createUpload(new ApiModels.CreateUploadRequest(
-                    item.fileName(), item.size(), item.mimeType(), item.sha256()));
+                    item.fileName(), item.size(), item.mimeType(), item.sha256(), versions(prepared)));
             markOnline();
             if (session.isDuplicate()) {
                 queue.markDone(item.id(), session.photoId(), true);
                 return;
             }
-            active.put(item.id(), new EngineStatus.ActiveUpload(item.fileName(), 0, item.size()));
-            api.putFile(session.upload(), item.path(),
-                    sent -> active.put(item.id(), new EngineStatus.ActiveUpload(item.fileName(), sent, item.size())));
+            if (prepared != null && session.acceptsPrepared()) {
+                long webSize = prepared.web().length;
+                long total = webSize + prepared.thumbnail().length;
+                active.put(item.id(), new EngineStatus.ActiveUpload(item.fileName(), 0, total));
+                api.putBytes(session.webUpload(), prepared.web(),
+                        sent -> active.put(item.id(), new EngineStatus.ActiveUpload(item.fileName(), sent, total)));
+                api.putBytes(session.thumbnailUpload(), prepared.thumbnail(),
+                        sent -> active.put(item.id(), new EngineStatus.ActiveUpload(item.fileName(), webSize + sent, total)));
+            } else if (session.upload() != null) {
+                active.put(item.id(), new EngineStatus.ActiveUpload(item.fileName(), 0, item.size()));
+                api.putFile(session.upload(), item.path(),
+                        sent -> active.put(item.id(), new EngineStatus.ActiveUpload(item.fileName(), sent, item.size())));
+            } else {
+                throw new ApiException(ApiException.Kind.TRANSIENT, 502, "NO_UPLOAD_URL",
+                        "Server did not return an upload address");
+            }
             api.complete(session.photoId());
             queue.markDone(item.id(), session.photoId(), false);
             lastError = null;
@@ -187,6 +219,22 @@ public class UploadEngine implements AutoCloseable {
         } finally {
             active.remove(item.id());
         }
+    }
+
+    /** Null when the photo cannot be prepared here: the original is then sent and the server decides. */
+    private PhotoPreparer.Prepared prepare(QueueItem item) {
+        try {
+            return PhotoPreparer.prepare(item.path());
+        } catch (IOException | RuntimeException | OutOfMemoryError e) {
+            log.warning("Could not prepare " + item.fileName() + " on this computer (" + e.getMessage()
+                    + "); uploading the original instead");
+            return null;
+        }
+    }
+
+    private static ApiModels.PreparedVersions versions(PhotoPreparer.Prepared p) {
+        return p == null ? null : new ApiModels.PreparedVersions(p.web().length, p.thumbnail().length, p.width(),
+                p.height(), p.capturedAt() == null ? null : p.capturedAt().toString());
     }
 
     private void handleFailure(QueueItem item, ApiException e) {

@@ -68,16 +68,26 @@ public class ApiClient {
         HttpRequest.BodyPublisher body;
         try {
             size = Files.size(file);
-            body = new CountingPublisher(HttpRequest.BodyPublishers.ofFile(file), bytesSent);
+            body = HttpRequest.BodyPublishers.ofFile(file);
         } catch (java.nio.file.NoSuchFileException | java.io.FileNotFoundException e) {
             throw new ApiException(ApiException.Kind.PERMANENT, FILE_GONE, e);
         } catch (IOException e) {
             throw new ApiException(ApiException.Kind.PERMANENT, "Cannot read file: " + e.getMessage(), e);
         }
+        put(upload, body, size, bytesSent);
+    }
+
+    /** Uploads an in-memory file (a web or thumbnail version prepared on this laptop). */
+    public void putBytes(ApiModels.PresignedUpload upload, byte[] data, LongConsumer bytesSent) throws ApiException {
+        put(upload, HttpRequest.BodyPublishers.ofByteArray(data), data.length, bytesSent);
+    }
+
+    private void put(ApiModels.PresignedUpload upload, HttpRequest.BodyPublisher body, long size,
+                     LongConsumer bytesSent) throws ApiException {
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(upload.url()))
                 // generous: 60 MB over a slow 1 Mbit/s uplink still fits
                 .timeout(Duration.ofSeconds(Math.max(120, size / 50_000)))
-                .method(upload.method() == null ? "PUT" : upload.method(), body);
+                .method(upload.method() == null ? "PUT" : upload.method(), new CountingPublisher(body, bytesSent));
         if (upload.headers() != null) {
             upload.headers().forEach((k, v) -> {
                 if (!RESTRICTED.contains(k.toLowerCase())) {

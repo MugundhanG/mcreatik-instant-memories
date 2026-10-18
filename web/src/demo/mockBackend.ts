@@ -154,6 +154,7 @@ function toAdmin(p: DemoPhoto): AdminPhoto {
     id: p.id, uploaderId: p.uploaderId, originalFileName: p.originalFileName, status: 'READY', failureReason: null,
     fileSize: p.fileSize, width: p.width, height: p.height, thumbnailUrl: p.thumbnailUrl, webUrl: p.webUrl,
     capturedAt: p.readyAt, uploadedAt: p.readyAt, readyAt: p.readyAt, createdAt: p.createdAt,
+    originalAvailable: false,
   }
 }
 

@@ -16,6 +16,8 @@ LIVE_PORT=${LIVE_PORT:-8081}
 TEST_PORT=${TEST_PORT:-18081}
 MEMORY=${GALLERY_MEMORY:-2g}
 CPUS=${GALLERY_CPUS:-2}
+# Fast servers answer in ~20 s; the 1 GB E2.1.Micro can need several minutes for a cold start.
+HEALTH_WAIT_SECONDS=${HEALTH_WAIT_SECONDS:-600}
 
 cd "$(dirname "$0")/../.."
 [[ -r "$ENV_FILE" ]] || { echo "Missing $ENV_FILE (copy deploy/oracle/gallery.env.example and fill it in)"; exit 1; }
@@ -28,7 +30,7 @@ start() { # name port image restart-policy
 }
 
 wait_healthy() { # name port
-  for _ in $(seq 1 90); do
+  for _ in $(seq 1 $((HEALTH_WAIT_SECONDS / 2))); do
     if curl -fsS "http://127.0.0.1:$2/actuator/health" 2>/dev/null | grep -q '"UP"'; then return 0; fi
     if [[ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" != "true" ]]; then break; fi
     sleep 2

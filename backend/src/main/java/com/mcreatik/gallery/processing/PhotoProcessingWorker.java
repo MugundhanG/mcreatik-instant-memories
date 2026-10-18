@@ -74,7 +74,7 @@ public class PhotoProcessingWorker implements SmartLifecycle {
         log.info("Started {} photo processing workers", config.workers());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onPhotoUploaded(PhotoUploadedEvent event) {
         wake();
     }

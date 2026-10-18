@@ -54,18 +54,20 @@ public class LocalStorageService implements StorageService {
     }
 
     @Override
-    public PresignedUpload presignOriginalUpload(String key, String contentType, long contentLength, Duration ttl) {
+    public PresignedUpload presignUpload(StorageArea area, String key, String contentType, long contentLength,
+                                         Duration ttl) {
         Instant expires = Instant.now().plus(ttl);
-        String sig = sign("PUT", key, expires.getEpochSecond(), contentType, contentLength);
-        String url = baseUrl + "/upload/" + key + "?expires=" + expires.getEpochSecond()
+        String sig = sign("PUT", area.name() + ":" + key, expires.getEpochSecond(), contentType, contentLength);
+        String url = baseUrl + "/upload/" + key + "?area=" + area.name().toLowerCase() + "&expires=" + expires.getEpochSecond()
                 + "&length=" + contentLength + "&sig=" + sig;
         return new PresignedUpload(url, "PUT", Map.of("Content-Type", contentType), expires);
     }
 
-    boolean verifyUpload(String key, long expires, String contentType, long length, String sig) {
+    boolean verifyUpload(StorageArea area, String key, long expires, String contentType, long length, String sig) {
         return Instant.now().getEpochSecond() <= expires
                 && sig != null
-                && MessageDigest.isEqual(sign("PUT", key, expires, contentType, length).getBytes(StandardCharsets.UTF_8),
+                && MessageDigest.isEqual(sign("PUT", area.name() + ":" + key, expires, contentType, length)
+                        .getBytes(StandardCharsets.UTF_8),
                         sig.getBytes(StandardCharsets.UTF_8));
     }
 
