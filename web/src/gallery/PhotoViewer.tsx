@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { downloadPhoto, sharePhoto } from '../lib/photoActions'
+import { downloadPhoto, fetchPhoto, isIOS, sharePhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
 
 interface Props {
@@ -13,11 +13,16 @@ interface Props {
 }
 
 const SWIPE_PX = 50
+/** Share is hidden for now; flip to bring the button back. */
+const SHOW_SHARE = false
+const SAVE_HINT = 'Press and hold the photo, then tap “Save image”'
 
 export function PhotoViewer({ photos, index, eventSlug, eventName, onIndexChange, onClose, onNearEnd }: Props) {
   const photo = photos[index]
   const [loadedId, setLoadedId] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ text: string; ms: number } | null>(null)
+  // iPhone: the photo must already be fetched when Download is tapped (see downloadPhoto).
+  const [prefetched, setPrefetched] = useState<{ id: string; blob: Blob } | null>(null)
   const [busy, setBusy] = useState<'download' | 'share' | null>(null)
   const start = useRef<{ x: number; y: number } | null>(null)
 
@@ -52,25 +57,41 @@ export function PhotoViewer({ photos, index, eventSlug, eventName, onIndexChange
 
   useEffect(() => {
     if (!toast) return
-    const t = setTimeout(() => setToast(null), 2500)
+    const t = setTimeout(() => setToast(null), toast.ms)
     return () => clearTimeout(t)
   }, [toast])
+
+  const currentId = photo?.id
+  const currentWebUrl = photo?.webUrl
+  useEffect(() => {
+    if (!currentId || !currentWebUrl || !isIOS()) return
+    let active = true
+    fetchPhoto(currentWebUrl)
+      .then((blob) => active && setPrefetched({ id: currentId, blob }))
+      .catch(() => {}) // Download then falls back to the press-and-hold hint
+    return () => {
+      active = false
+    }
+  }, [currentId, currentWebUrl])
 
   if (!photo) return null
 
   const onDownload = async () => {
     setBusy('download')
-    const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id)
+    const blob = prefetched?.id === photo.id ? prefetched.blob : null
+    const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id, blob)
     setBusy(null)
-    if (result === 'unavailable') setToast('Downloads are turned off in this demo')
+    if (result === 'saved') setToast({ text: 'Saved to your phone', ms: 2500 })
+    if (result === 'hint') setToast({ text: SAVE_HINT, ms: 6000 })
+    if (result === 'unavailable') setToast({ text: 'Downloads are turned off in this demo', ms: 2500 })
   }
 
   const onShare = async () => {
     setBusy('share')
     const result = await sharePhoto({ url: photo.webUrl, eventSlug, eventName, photoId: photo.id })
     setBusy(null)
-    if (result === 'copied') setToast('Link copied')
-    if (result === 'unsupported') setToast('Sharing is not available on this device')
+    if (result === 'copied') setToast({ text: 'Link copied', ms: 2500 })
+    if (result === 'unsupported') setToast({ text: 'Sharing is not available on this device', ms: 2500 })
   }
 
   return (
@@ -138,7 +159,7 @@ export function PhotoViewer({ photos, index, eventSlug, eventName, onIndexChange
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" /></svg>
           {busy === 'download' ? 'Saving…' : 'Download'}
         </button>
-        <button
+        {SHOW_SHARE && <button
           type="button"
           onClick={onShare}
           disabled={busy !== null}
@@ -146,12 +167,12 @@ export function PhotoViewer({ photos, index, eventSlug, eventName, onIndexChange
         >
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M5 13v6h14v-6" /></svg>
           {busy === 'share' ? 'Sharing…' : 'Share'}
-        </button>
+        </button>}
       </div>
 
       {toast && (
-        <div role="status" className="pointer-events-none absolute bottom-24 left-1/2 -translate-x-1/2 rounded-full bg-white px-4 py-2 text-sm text-ink shadow-lg">
-          {toast}
+        <div role="status" className="pointer-events-none absolute bottom-24 left-1/2 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-white px-4 py-2 text-center text-sm text-ink shadow-lg">
+          {toast.text}
         </div>
       )}
     </div>
