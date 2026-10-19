@@ -53,6 +53,10 @@ public class Photo {
     @Column(name = "original_stored", nullable = false)
     private boolean originalStored = true;
 
+    /** Size of the web + thumbnail versions in media storage. */
+    @Column(name = "media_bytes", nullable = false)
+    private long mediaBytes;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PhotoStatus status;
@@ -126,8 +130,10 @@ public class Photo {
      * Switches the photo to uploader-prepared mode: web and thumbnail versions are uploaded directly to their
      * final media keys, the original is not uploaded. Safe to call again on retries.
      */
-    public void prepareOnUploader(int width, int height, Instant capturedAt, String optimizedKey, String thumbnailKey) {
+    public void prepareOnUploader(int width, int height, Instant capturedAt, String optimizedKey, String thumbnailKey,
+                                  long mediaBytes) {
         this.originalStored = false;
+        this.mediaBytes = mediaBytes;
         this.width = width;
         this.height = height;
         this.capturedAt = capturedAt;
@@ -154,8 +160,9 @@ public class Photo {
     }
 
     public void markReady(int width, int height, Instant capturedAt, String optimizedKey, String thumbnailKey,
-                          String detectedMimeType) {
+                          String detectedMimeType, long mediaBytes) {
         Instant now = now();
+        this.mediaBytes = mediaBytes;
         this.width = width;
         this.height = height;
         this.capturedAt = capturedAt;
@@ -229,6 +236,10 @@ public class Photo {
 
     public String getChecksumSha256() {
         return checksumSha256;
+    }
+
+    public long getMediaBytes() {
+        return mediaBytes;
     }
 
     public boolean isOriginalStored() {

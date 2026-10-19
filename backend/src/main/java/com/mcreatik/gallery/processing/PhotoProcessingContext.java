@@ -19,6 +19,7 @@ public class PhotoProcessingContext {
     private BufferedImage decoded;
     private String optimizedKey;
     private String thumbnailKey;
+    private long mediaBytes;
 
     public PhotoProcessingContext(Photo photo) {
         this.photo = photo;
@@ -104,6 +105,15 @@ public class PhotoProcessingContext {
 
     public void thumbnailKey(String thumbnailKey) {
         this.thumbnailKey = thumbnailKey;
+    }
+
+    public long mediaBytes() {
+        return mediaBytes;
+    }
+
+    /** Records bytes written to media storage (web + thumbnail). */
+    public void addMediaBytes(long bytes) {
+        this.mediaBytes += bytes;
     }
 
     /** Drops large buffers as soon as they are no longer needed. */

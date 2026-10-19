@@ -146,7 +146,7 @@ public class PhotoProcessingWorker implements SmartLifecycle {
         }
 
         boolean stillExists = finish(photoId, p -> p.markReady(ctx.width(), ctx.height(), ctx.capturedAt(),
-                ctx.optimizedKey(), ctx.thumbnailKey(), ctx.detectedMimeType()));
+                ctx.optimizedKey(), ctx.thumbnailKey(), ctx.detectedMimeType(), ctx.mediaBytes()));
         if (stillExists) {
             publisher.publishEvent(new PhotoReadyEvent(photo.getEventId(), photoId));
         } else {

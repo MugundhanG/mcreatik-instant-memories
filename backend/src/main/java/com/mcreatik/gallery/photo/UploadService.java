@@ -142,7 +142,8 @@ public class UploadService {
         } else {
             photo.prepareOnUploader(prepared.width(), prepared.height(), prepared.capturedAt(),
                     StorageKeys.optimized(photo.getEventId(), photo.getId()),
-                    StorageKeys.thumbnail(photo.getEventId(), photo.getId()));
+                    StorageKeys.thumbnail(photo.getEventId(), photo.getId()),
+                    prepared.webSize() + prepared.thumbnailSize());
         }
     }
 
