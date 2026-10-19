@@ -266,7 +266,7 @@ function stats(e: DemoEvent) {
   })
   return {
     totalPhotos: e.photos.length, readyPhotos: e.photos.length, inProgressPhotos: 0, failedPhotos: 0,
-    storageBytes: e.photos.reduce((s, p) => s + p.fileSize, 0), activeUploaders: uploaders.filter((u) => u.status !== 'OFFLINE').length,
+    storageBytes: e.photos.reduce((s, p) => s + Math.round(p.fileSize / 12), 0), activeUploaders: uploaders.filter((u) => u.status !== 'OFFLINE').length,
     latestPhoto: e.photos[0] ? toAdmin(e.photos[0]) : null, uploaders,
   }
 }

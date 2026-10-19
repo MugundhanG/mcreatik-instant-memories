@@ -48,6 +48,7 @@ class UploadFlowTest extends IntegrationTest {
         var row = jdbc.queryForMap("select * from photos where id = ?::uuid", photoId);
         assertThat(row.get("status")).isEqualTo("READY");
         assertThat(row.get("original_file_name")).isEqualTo("IMG_0001.JPG");
+        assertThat((Long) row.get("media_bytes")).isPositive(); // web + thumbnail written by the pipeline
         assertThat(row.get("width")).isEqualTo(3000);
         assertThat(row.get("height")).isEqualTo(2000);
         assertThat(row.get("processed_at")).isNotNull();
@@ -125,6 +126,9 @@ class UploadFlowTest extends IntegrationTest {
 
         mvc.perform(get("/api/admin/events/" + eventId(event) + "/photos").header("Authorization", bearer(adminToken())))
                 .andExpect(jsonPath("$.photos[0].originalAvailable").value(false));
+        // Cloud storage counts what is really stored: the two small versions, not the camera original.
+        mvc.perform(get("/api/admin/events/" + eventId(event) + "/stats").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.storageBytes").value(web.length + thumb.length));
         mvc.perform(get("/api/admin/photos/" + photoId + "/original").header("Authorization", bearer(adminToken())))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ORIGINAL_NOT_UPLOADED"));
         mvc.perform(delete("/api/admin/photos/" + photoId).header("Authorization", bearer(adminToken())))

@@ -47,7 +47,8 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID> {
     List<Photo> findForAdminBefore(UUID eventId, Instant createdAt, UUID id, Limit limit);
 
     @Query(value = """
-            SELECT status, count(*) AS photos, coalesce(sum(file_size), 0) AS bytes
+            SELECT status, count(*) AS photos,
+                   coalesce(sum(media_bytes + CASE WHEN original_stored THEN file_size ELSE 0 END), 0) AS bytes
             FROM photos WHERE event_id = ?1 GROUP BY status""", nativeQuery = true)
     List<Object[]> countByStatus(UUID eventId);
 

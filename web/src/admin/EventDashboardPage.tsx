@@ -96,7 +96,7 @@ export default function EventDashboardPage() {
           <Stat label="Processing" value={formatCount(stats.inProgressPhotos)} />
           <Stat label="Failed" value={formatCount(stats.failedPhotos)} tone={stats.failedPhotos > 0 ? 'danger' : undefined} />
           <Stat label="Active uploaders" value={`${stats.activeUploaders} / ${stats.uploaders.length}`} />
-          <Stat label="Storage used" value={formatBytes(stats.storageBytes)} />
+          <Stat label="Cloud storage" value={formatBytes(stats.storageBytes)} />
         </div>
       )}
 

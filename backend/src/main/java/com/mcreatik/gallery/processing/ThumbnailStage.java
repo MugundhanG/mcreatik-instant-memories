@@ -26,7 +26,9 @@ public class ThumbnailStage implements PhotoProcessingStage {
         var p = properties.processing();
         var thumb = ImageOps.fitWithin(ctx.decoded(), p.thumbnailLongEdge());
         String key = StorageKeys.thumbnail(ctx.eventId(), ctx.photoId());
-        storage.write(StorageArea.MEDIA, key, ImageOps.encodeJpeg(thumb, p.thumbnailQuality()), "image/jpeg");
+        byte[] jpeg = ImageOps.encodeJpeg(thumb, p.thumbnailQuality());
+        storage.write(StorageArea.MEDIA, key, jpeg, "image/jpeg");
+        ctx.addMediaBytes(jpeg.length);
         ctx.thumbnailKey(key);
         ctx.releaseDecoded();
     }

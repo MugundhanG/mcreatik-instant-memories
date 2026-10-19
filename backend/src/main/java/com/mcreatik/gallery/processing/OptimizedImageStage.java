@@ -28,7 +28,9 @@ public class OptimizedImageStage implements PhotoProcessingStage {
         var p = properties.processing();
         BufferedImage web = ImageOps.fitWithin(ctx.decoded(), p.optimizedLongEdge());
         String key = StorageKeys.optimized(ctx.eventId(), ctx.photoId());
-        storage.write(StorageArea.MEDIA, key, ImageOps.encodeJpeg(web, p.optimizedQuality()), "image/jpeg");
+        byte[] jpeg = ImageOps.encodeJpeg(web, p.optimizedQuality());
+        storage.write(StorageArea.MEDIA, key, jpeg, "image/jpeg");
+        ctx.addMediaBytes(jpeg.length);
         ctx.optimizedKey(key);
         // Thumbnails are derived from the (already smaller) web image: faster and visually identical.
         ctx.decoded(web);
