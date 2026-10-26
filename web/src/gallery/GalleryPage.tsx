@@ -4,7 +4,7 @@ import { formatCount, formatEventDate } from '../lib/format'
 import type { PublicPhoto } from '../lib/types'
 import { LiveBadge } from './LiveBadge'
 import { PhotoGrid } from './PhotoGrid'
-import { StudioLogo } from '../shared/StudioLogo'
+import { StudioBrand } from '../shared/StudioLogo'
 import { PhotoViewer } from './PhotoViewer'
 import { useLiveGallery } from './useLiveGallery'
 
@@ -83,9 +83,7 @@ export default function GalleryPage() {
 
   return (
     <div className="min-h-dvh">
-      <div className="px-4 pt-4 sm:px-6 sm:pt-5">
-        <StudioLogo className="h-16 sm:h-20" />
-      </div>
+      <StudioBrand className="px-4 pt-4 sm:px-6 sm:pt-5" logoClassName="h-14 sm:h-16" nameClassName="text-2xl sm:text-3xl" />
       <header className="px-6 pt-4 pb-8 text-center sm:pt-6 sm:pb-10">
         <h1 className="font-display text-4xl leading-tight font-medium text-balance sm:text-5xl">{event.name}</h1>
         <p className="mt-2 text-sm text-muted">
