@@ -7,12 +7,7 @@ export function StudioLogo({ className = '' }: { className?: string }) {
   return <img src={logoUrl} alt="" aria-hidden="true" width={400} height={307} className={`w-auto ${className}`} />
 }
 
-/** Logo with the studio name beside it, for page headers. */
-export function StudioBrand({ className = '', logoClassName, nameClassName }: { className?: string; logoClassName: string; nameClassName: string }) {
-  return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      <StudioLogo className={logoClassName} />
-      <span className={`font-display font-medium text-ink ${nameClassName}`}>{STUDIO_NAME}</span>
-    </div>
-  )
+/** The studio name as a heading line above the event name. */
+export function StudioName({ className = '' }: { className?: string }) {
+  return <p className={`font-display font-medium tracking-wide text-ink ${className}`}>{STUDIO_NAME}</p>
 }
