@@ -4,6 +4,7 @@ import { formatCount, formatEventDate } from '../lib/format'
 import type { PublicPhoto } from '../lib/types'
 import { LiveBadge } from './LiveBadge'
 import { PhotoGrid } from './PhotoGrid'
+import { StudioLogo } from '../shared/StudioLogo'
 import { PhotoViewer } from './PhotoViewer'
 import { useLiveGallery } from './useLiveGallery'
 
@@ -82,9 +83,11 @@ export default function GalleryPage() {
 
   return (
     <div className="min-h-dvh">
-      <header className="px-6 pt-10 pb-8 text-center sm:pt-14 sm:pb-10">
-        <p className="text-[11px] font-medium tracking-[0.3em] text-muted uppercase">McreatiK Studios</p>
-        <h1 className="mt-4 font-display text-4xl leading-tight font-medium text-balance sm:text-5xl">{event.name}</h1>
+      <div className="px-4 pt-4 sm:px-6 sm:pt-5">
+        <StudioLogo className="h-16 sm:h-20" />
+      </div>
+      <header className="px-6 pt-4 pb-8 text-center sm:pt-6 sm:pb-10">
+        <h1 className="font-display text-4xl leading-tight font-medium text-balance sm:text-5xl">{event.name}</h1>
         <p className="mt-2 text-sm text-muted">
           {formatEventDate(event.eventDate)}
           {event.photoCount > 0 && <> · {formatCount(event.photoCount)} photos</>}
