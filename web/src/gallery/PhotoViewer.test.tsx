@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -121,5 +121,86 @@ describe('Photo viewer', () => {
     await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
     await user.click(screen.getByRole('button', { name: 'Download' }))
     expect(await screen.findByText(/Press and hold the photo/)).toBeInTheDocument()
+  })
+
+  describe('gestures', () => {
+    const at = (x: number, y: number, pointerId = 1) => ({ pointerId, clientX: x, clientY: y })
+    const drag = (el: HTMLElement, from: [number, number], to: [number, number]) => {
+      fireEvent.pointerDown(el, at(...from))
+      fireEvent.pointerMove(el, at((from[0] + to[0]) / 2, (from[1] + to[1]) / 2))
+      fireEvent.pointerMove(el, at(...to))
+      fireEvent.pointerUp(el, at(...to))
+    }
+    const tap = (el: HTMLElement, x = 100, y = 100) => {
+      fireEvent.pointerDown(el, at(x, y))
+      fireEvent.pointerUp(el, at(x, y))
+    }
+    const scaleOf = () => /scale\(([\d.]+)\)/.exec(screen.getByTestId('viewer-zoom').style.transform)?.[1]
+
+    async function open() {
+      const user = userEvent.setup()
+      renderGallery()
+      await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
+      return screen.getByTestId('viewer-stage')
+    }
+
+    it('swiping left and right moves between photos', async () => {
+      const stage = await open()
+      drag(stage, [300, 200], [100, 210])
+      await waitFor(() => expect(screen.getByTestId('viewer-counter')).toHaveTextContent('2 / 3'))
+      drag(stage, [100, 200], [300, 190])
+      await waitFor(() => expect(screen.getByTestId('viewer-counter')).toHaveTextContent('1 / 3'))
+    })
+
+    it('a short drag snaps back to the same photo', async () => {
+      const stage = await open()
+      fireEvent.pointerDown(stage, at(300, 200))
+      fireEvent.pointerMove(stage, at(280, 200))
+      await new Promise((r) => setTimeout(r, 300)) // slow: not a flick
+      fireEvent.pointerMove(stage, at(270, 200))
+      fireEvent.pointerUp(stage, at(270, 200))
+      await new Promise((r) => setTimeout(r, 300))
+      expect(screen.getByTestId('viewer-counter')).toHaveTextContent('1 / 3')
+    })
+
+    it('pinching zooms in, and a swipe then pans instead of changing photo', async () => {
+      const stage = await open()
+      fireEvent.pointerDown(stage, at(100, 200, 1))
+      fireEvent.pointerDown(stage, at(200, 200, 2))
+      fireEvent.pointerMove(stage, at(50, 200, 1))
+      fireEvent.pointerMove(stage, at(250, 200, 2))
+      expect(Number(scaleOf())).toBeCloseTo(2)
+      fireEvent.pointerUp(stage, at(50, 200, 1))
+      fireEvent.pointerUp(stage, at(250, 200, 2))
+
+      drag(stage, [300, 200], [100, 200])
+      await new Promise((r) => setTimeout(r, 300))
+      expect(screen.getByTestId('viewer-counter')).toHaveTextContent('1 / 3')
+      expect(Number(scaleOf())).toBeCloseTo(2)
+    })
+
+    it('double-tap zooms in and out; zoom resets on the next photo', async () => {
+      const user = userEvent.setup()
+      const stage = await open()
+      tap(stage)
+      tap(stage)
+      expect(Number(scaleOf())).toBeCloseTo(2.5)
+      await new Promise((r) => setTimeout(r, 350))
+      tap(stage)
+      tap(stage)
+      expect(Number(scaleOf())).toBe(1)
+
+      tap(stage)
+      tap(stage)
+      await user.keyboard('{ArrowRight}')
+      expect(screen.getByTestId('viewer-counter')).toHaveTextContent('2 / 3')
+      expect(Number(scaleOf())).toBe(1)
+    })
+
+    it('swiping down closes the viewer', async () => {
+      const stage = await open()
+      drag(stage, [200, 100], [205, 400])
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
   })
 })

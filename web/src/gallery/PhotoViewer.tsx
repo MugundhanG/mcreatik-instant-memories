@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { downloadPhoto, fetchPhoto, isIOS, sharePhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
+import { SLIDE_MS, useViewerGestures } from './useViewerGestures'
 
 interface Props {
   photos: PublicPhoto[]
@@ -12,7 +14,6 @@ interface Props {
   onNearEnd: () => void
 }
 
-const SWIPE_PX = 50
 /** Share is hidden for now; flip to bring the button back. */
 const SHOW_SHARE = false
 const SAVE_HINT = 'Press and hold the photo, then tap “Save image”'
@@ -24,12 +25,16 @@ export function PhotoViewer({ photos, index, eventSlug, eventName, onIndexChange
   // iPhone: the photo must already be fetched when Download is tapped (see downloadPhoto).
   const [prefetched, setPrefetched] = useState<{ id: string; blob: Blob } | null>(null)
   const [busy, setBusy] = useState<'download' | 'share' | null>(null)
-  const start = useRef<{ x: number; y: number } | null>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
 
   const hasPrev = index > 0
   const hasNext = index < photos.length - 1
   const prev = () => hasPrev && onIndexChange(index - 1)
   const next = () => hasNext && onIndexChange(index + 1)
+  const { zoom, slide, handlers } = useViewerGestures({
+    stageRef, imageRef, photoKey: photo?.id, canPrev: hasPrev, canNext: hasNext, onPrev: prev, onNext: next, onClose,
+  })
 
   // Keyboard navigation + lock page scroll while open.
   useEffect(() => {
@@ -99,20 +104,9 @@ export function PhotoViewer({ photos, index, eventSlug, eventName, onIndexChange
       role="dialog"
       aria-modal="true"
       aria-label="Photo viewer"
-      className="fixed inset-0 z-50 flex flex-col bg-black text-white select-none"
-      onPointerDown={(e) => (start.current = { x: e.clientX, y: e.clientY })}
-      onPointerUp={(e) => {
-        if (!start.current) return
-        const dx = e.clientX - start.current.x
-        const dy = e.clientY - start.current.y
-        start.current = null
-        if (Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(dy)) {
-          if (dx < 0) next()
-          else prev()
-        } else if (dy > 120 && Math.abs(dy) > Math.abs(dx)) {
-          onClose()
-        }
-      }}
+      className="fixed inset-0 z-50 flex flex-col text-white select-none"
+      // Swiping down to close fades the backdrop with the photo.
+      style={{ backgroundColor: `rgba(0,0,0,${1 - Math.min(slide.y / 400, 0.6)})` }}
     >
       <div className="flex items-center justify-between px-3 pt-[max(env(safe-area-inset-top),0.75rem)] pb-2">
         <button type="button" onClick={onClose} aria-label="Close" className="flex size-11 items-center justify-center rounded-full hover:bg-white/10">
@@ -126,17 +120,35 @@ export function PhotoViewer({ photos, index, eventSlug, eventName, onIndexChange
         <span className="size-11" aria-hidden="true" />
       </div>
 
-      <div className="relative flex min-h-0 flex-1 items-center justify-center">
-        {/* Thumbnail shows instantly (already cached); the sharp version fades in over it. */}
-        <img src={photo.thumbnailUrl} alt="" aria-hidden="true" className="absolute max-h-full max-w-full object-contain" />
-        <img
-          key={photo.id}
-          src={photo.webUrl}
-          alt={`Photo ${index + 1} of ${photos.length}`}
-          onLoad={() => setLoadedId(photo.id)}
-          className={`relative max-h-full max-w-full object-contain transition-opacity duration-300 ${loadedId === photo.id ? 'opacity-100' : 'opacity-0'}`}
-          draggable={false}
-        />
+      <div ref={stageRef} data-testid="viewer-stage" className="relative min-h-0 flex-1 touch-none overflow-hidden" {...handlers}>
+        {/* The neighbours sit beside the photo, so a swipe drags the next one in like a phone gallery. */}
+        <div
+          className="absolute inset-0"
+          style={{ transform: `translate3d(${slide.x}px, ${slide.y}px, 0)`, transition: slide.animate ? `transform ${SLIDE_MS}ms ease-out` : undefined }}
+        >
+          {hasPrev && <Neighbour photo={photos[index - 1]} side={-1} />}
+          <div
+            data-testid="viewer-zoom"
+            className="absolute inset-0 flex items-center justify-center"
+            style={{
+              transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.scale})`,
+              transition: zoom.animate ? 'transform 200ms ease-out' : undefined,
+            }}
+          >
+            {/* Thumbnail shows instantly (already cached); the sharp version fades in over it. */}
+            <img src={photo.thumbnailUrl} alt="" aria-hidden="true" className="absolute max-h-full max-w-full object-contain" draggable={false} />
+            <img
+              ref={imageRef}
+              key={photo.id}
+              src={photo.webUrl}
+              alt={`Photo ${index + 1} of ${photos.length}`}
+              onLoad={() => setLoadedId(photo.id)}
+              className={`relative max-h-full max-w-full object-contain transition-opacity duration-300 ${loadedId === photo.id ? 'opacity-100' : 'opacity-0'}`}
+              draggable={false}
+            />
+          </div>
+          {hasNext && <Neighbour photo={photos[index + 1]} side={1} />}
+        </div>
         {hasPrev && (
           <button type="button" onClick={prev} aria-label="Previous photo" className="absolute top-1/2 left-2 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 hover:bg-black/50 sm:flex">
             <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
@@ -175,6 +187,17 @@ export function PhotoViewer({ photos, index, eventSlug, eventName, onIndexChange
           {toast.text}
         </div>
       )}
+    </div>
+  )
+}
+
+/** The previous (-1) or next (1) photo, one screen (plus a small gap) to the side. */
+function Neighbour({ photo, side }: { photo: PublicPhoto; side: -1 | 1 }) {
+  const style: CSSProperties = { transform: `translateX(calc(${side * 100}% + ${side * 16}px))` }
+  return (
+    <div className="absolute inset-0 flex items-center justify-center" style={style} aria-hidden="true">
+      <img src={photo.thumbnailUrl} alt="" className="absolute max-h-full max-w-full object-contain" draggable={false} />
+      <img src={photo.webUrl} alt="" className="relative max-h-full max-w-full object-contain" draggable={false} />
     </div>
   )
 }
