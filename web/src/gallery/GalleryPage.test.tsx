@@ -43,6 +43,19 @@ describe('Live gallery', () => {
     expect(firstImg).toHaveAttribute('src', 'https://media.test/thumb/3.jpg')
   })
 
+  it('invites guests to follow the studio on Instagram', async () => {
+    mockFetch({
+      [base]: () => liveEvent,
+      [`${base}/photos`]: () => ({ photos: [photo(1)], nextCursor: null }),
+    })
+    renderGallery()
+    await screen.findByRole('heading', { name: liveEvent.name })
+    const links = screen.getAllByRole('link', { name: /Follow/ })
+    expect(links.length).toBeGreaterThanOrEqual(2) // bar icon + footer button
+    for (const link of links) expect(link).toHaveAttribute('href', 'https://www.instagram.com/mcreatik.studios/')
+    expect(screen.getByText('Follow @mcreatik.studios for more')).toBeInTheDocument()
+  })
+
   it('inserts a new photo in real time without a refresh', async () => {
     mockFetch({
       [base]: () => liveEvent,

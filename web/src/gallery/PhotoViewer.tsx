@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import { formatCount } from '../lib/format'
 import { downloadPhoto, fetchPhoto, isIOS, sharePhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
+import { INSTAGRAM_HANDLE, InstagramLink } from '../shared/StudioLogo'
 import { SLIDE_MS, useViewerGestures } from './useViewerGestures'
 
 interface Props {
@@ -25,7 +26,7 @@ export function PhotoViewer({ photos, index, total, eventSlug, eventName, onInde
   const photo = photos[index]
   const count = Math.max(total, photos.length)
   const [loadedId, setLoadedId] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ text: string; ms: number } | null>(null)
+  const [toast, setToast] = useState<{ text: string; ms: number; follow?: boolean } | null>(null)
   // iPhone: the photo must already be fetched when Download is tapped (see downloadPhoto).
   const [prefetched, setPrefetched] = useState<{ id: string; blob: Blob } | null>(null)
   const [busy, setBusy] = useState<'download' | 'share' | null>(null)
@@ -90,7 +91,9 @@ export function PhotoViewer({ photos, index, total, eventSlug, eventName, onInde
     const blob = prefetched?.id === photo.id ? prefetched.blob : null
     const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id, blob)
     setBusy(null)
-    if (result === 'saved') setToast({ text: 'Saved to your phone', ms: 2500 })
+    // Right after saving is when guests are happiest with the photos: ask them to follow.
+    if (result === 'saved') setToast({ text: 'Saved to your phone ✓', ms: 5000, follow: true })
+    if (result === 'save-sheet') setToast({ text: 'Love the photos?', ms: 5000, follow: true })
     if (result === 'hint') setToast({ text: SAVE_HINT, ms: 6000 })
     if (result === 'unavailable') setToast({ text: 'Downloads are turned off in this demo', ms: 2500 })
   }
@@ -187,8 +190,14 @@ export function PhotoViewer({ photos, index, total, eventSlug, eventName, onInde
       </div>
 
       {toast && (
-        <div role="status" className="pointer-events-none absolute bottom-24 left-1/2 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-white px-4 py-2 text-center text-sm text-ink shadow-lg">
+        <div
+          role="status"
+          className={`absolute bottom-24 left-1/2 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-white px-4 py-2 text-center text-sm text-ink shadow-lg ${toast.follow ? '' : 'pointer-events-none'}`}
+        >
           {toast.text}
+          {toast.follow && (
+            <InstagramLink className="mt-0.5 block text-xs font-semibold text-[#b37a2c]">Follow @{INSTAGRAM_HANDLE} on Instagram →</InstagramLink>
+          )}
         </div>
       )}
     </div>

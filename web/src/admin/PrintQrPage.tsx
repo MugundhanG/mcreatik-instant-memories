@@ -5,7 +5,7 @@ import { IS_DEMO } from '../demo/isDemo'
 import { adminApi } from '../lib/api'
 import { formatEventDate, splitEventName } from '../lib/format'
 import type { EventDetail } from '../lib/types'
-import { STUDIO_NAME } from '../shared/StudioLogo'
+import { INSTAGRAM_HANDLE, InstagramIcon, STUDIO_NAME } from '../shared/StudioLogo'
 import { QrCode } from './QrPanel'
 
 /** Smaller headline for long names so it stays on one or two lines. */
@@ -70,7 +70,12 @@ export default function PrintQrPage() {
             <span><b className="mr-1.5 text-[#b37a2c]">2</b>Watch live</span>
             <span><b className="mr-1.5 text-[#b37a2c]">3</b>Save</span>
           </div>
-          <p className="mt-auto text-[11px] tracking-[0.25em] text-[#8a7a66] uppercase">No app · No sign-up needed</p>
+          <div className="mt-auto flex w-full items-end justify-between">
+            <p className="text-[11px] tracking-[0.25em] text-[#8a7a66] uppercase">No app · No sign-up needed</p>
+            <p className="inline-flex items-center gap-2 text-[17px] font-medium tracking-wide text-[#7a4f17]">
+              <InstagramIcon className="size-6" />@{INSTAGRAM_HANDLE}
+            </p>
+          </div>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -81,7 +81,9 @@ describe('Photo viewer', () => {
 
     await user.click(screen.getByRole('button', { name: 'Download' }))
     await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
-    expect(await screen.findByText('Saved to your phone')).toBeInTheDocument()
+    const saved = await screen.findByText(/Saved to your phone/)
+    // Right after saving, the toast invites the guest to follow the studio.
+    expect(within(saved).getByRole('link', { name: /Follow @mcreatik.studios/ })).toHaveAttribute('href', 'https://www.instagram.com/mcreatik.studios/')
     expect(open).not.toHaveBeenCalled()
     // Bypasses the cached non-CORS copy the <img> loaded, which would make the CORS fetch fail.
     const call = vi.mocked(fetch).mock.calls.find(([input]) => String(input).endsWith('/web/3.jpg'))
