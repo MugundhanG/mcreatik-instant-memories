@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { formatCount } from '../lib/format'
 import { downloadPhoto, fetchPhoto, isIOS, sharePhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
 import { INSTAGRAM_HANDLE, InstagramLink } from '../shared/StudioLogo'
 import { SLIDE_MS, useViewerGestures } from './useViewerGestures'
+import type { Zoom } from './useViewerGestures'
 
 interface Props {
   photos: PublicPhoto[]
@@ -33,7 +34,6 @@ export function PhotoViewer({
 }: Props) {
   const photo = photos[index]
   const count = Math.max(total, photos.length)
-  const [loadedId, setLoadedId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ text: string; ms: number; follow?: boolean } | null>(null)
   // iPhone: the photo must already be fetched when Download is tapped (see downloadPhoto).
   const [prefetched, setPrefetched] = useState<{ id: string; blob: Blob } | null>(null)
@@ -144,28 +144,22 @@ export function PhotoViewer({
           className="absolute inset-0"
           style={{ transform: `translate3d(${slide.x}px, ${slide.y}px, 0)`, transition: slide.animate ? `transform ${SLIDE_MS}ms ease-out` : undefined }}
         >
-          {hasPrev && <Neighbour photo={photos[index - 1]} side={-1} />}
-          <div
-            data-testid="viewer-zoom"
-            className="absolute inset-0 flex items-center justify-center"
-            style={{
-              transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.scale})`,
-              transition: zoom.animate ? 'transform 200ms ease-out' : undefined,
-            }}
-          >
-            {/* Thumbnail shows instantly (already cached); the sharp version fades in over it. */}
-            <img src={photo.thumbnailUrl} alt="" aria-hidden="true" className="absolute max-h-full max-w-full object-contain" draggable={false} />
-            <img
-              ref={imageRef}
-              key={photo.id}
-              src={photo.webUrl}
-              alt={`Photo ${index + 1} of ${count}`}
-              onLoad={() => setLoadedId(photo.id)}
-              className={`relative max-h-full max-w-full object-contain transition-opacity duration-300 ${loadedId === photo.id ? 'opacity-100' : 'opacity-0'}`}
-              draggable={false}
-            />
-          </div>
-          {hasNext && <Neighbour photo={photos[index + 1]} side={1} />}
+          {/* Slides keep their key (the photo id) as they move, so the photo that slid in stays on screen as it is:
+              no reload, no flicker. */}
+          {[-1, 0, 1].map((offset) => {
+            const p = photos[index + offset]
+            if (!p) return null
+            return (
+              <Slide
+                key={p.id}
+                photo={p}
+                offset={offset}
+                zoom={offset === 0 ? zoom : null}
+                imageRef={offset === 0 ? imageRef : null}
+                alt={offset === 0 ? `Photo ${index + 1} of ${count}` : ''}
+              />
+            )
+          })}
         </div>
         {hasPrev && (
           <button type="button" onClick={prev} aria-label="Previous photo" className="absolute top-1/2 left-2 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 hover:bg-black/50 sm:flex">
@@ -216,13 +210,38 @@ export function PhotoViewer({
   )
 }
 
-/** The previous (-1) or next (1) photo, one screen (plus a small gap) to the side. */
-function Neighbour({ photo, side }: { photo: PublicPhoto; side: -1 | 1 }) {
-  const style: CSSProperties = { transform: `translateX(calc(${side * 100}% + ${side * 16}px))` }
+/** One photo in the swipe track: the current one (offset 0, zoomable) or a neighbour one screen to the side. */
+function Slide({ photo, offset, zoom, imageRef, alt }: {
+  photo: PublicPhoto
+  offset: number
+  zoom: Zoom | null
+  imageRef: RefObject<HTMLImageElement | null> | null
+  alt: string
+}) {
+  const [loaded, setLoaded] = useState(false)
+  const position: CSSProperties = offset === 0 ? {} : { transform: `translateX(calc(${offset * 100}% + ${offset * 16}px))` }
+  const zoomStyle: CSSProperties = zoom
+    ? { transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.scale})`, transition: zoom.animate ? 'transform 200ms ease-out' : undefined }
+    : {}
+  // Already in the browser cache (e.g. preloaded as a neighbour): show it straight away, no fade.
+  const setImage = (el: HTMLImageElement | null) => {
+    if (imageRef) imageRef.current = el
+    if (el?.complete && el.naturalWidth > 0 && !loaded) setLoaded(true)
+  }
   return (
-    <div className="absolute inset-0 flex items-center justify-center" style={style} aria-hidden="true">
-      <img src={photo.thumbnailUrl} alt="" className="absolute max-h-full max-w-full object-contain" draggable={false} />
-      <img src={photo.webUrl} alt="" className="relative max-h-full max-w-full object-contain" draggable={false} />
+    <div className="absolute inset-0" style={position} aria-hidden={offset !== 0 || undefined}>
+      <div data-testid={offset === 0 ? 'viewer-zoom' : undefined} className="absolute inset-0 flex items-center justify-center" style={zoomStyle}>
+        {/* Thumbnail shows instantly (already cached); the sharp version fades in over it. */}
+        <img src={photo.thumbnailUrl} alt="" aria-hidden="true" className="absolute max-h-full max-w-full object-contain" draggable={false} />
+        <img
+          ref={setImage}
+          src={photo.webUrl}
+          alt={alt}
+          onLoad={() => setLoaded(true)}
+          className={`relative max-h-full max-w-full object-contain transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+          draggable={false}
+        />
+      </div>
     </div>
   )
 }

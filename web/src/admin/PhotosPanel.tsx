@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { MouseEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { PhotoViewer } from '../gallery/PhotoViewer'
 import { adminApi } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
@@ -75,8 +75,24 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
   const [facets, setFacets] = useState<PhotoFacets | null>(null)
   const [viewerId, setViewerId] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [menuId, setMenuId] = useState<string | null>(null)
   const [confirm, confirmDialog] = useConfirm()
   const loadingMore = useRef(false)
+
+  // The More menu closes on a click/tap anywhere outside it, or Escape.
+  useEffect(() => {
+    if (!menuId) return
+    const onDown = (e: PointerEvent) => {
+      if (!(e.target as Element).closest(`[data-menu="${menuId}"]`)) setMenuId(null)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuId(null)
+    document.addEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [menuId])
 
   const cameraName = useMemo(() => new Map(uploaders.map((u) => [u.id, u.name])), [uploaders])
 
@@ -128,6 +144,19 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
     loadFacets()
   }, [loadFacets])
 
+  // Load the next page automatically when the end of the list scrolls into view.
+  const sentinel = useRef<HTMLDivElement>(null)
+  const moreRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    const node = sentinel.current
+    if (!node || !hasMore) return
+    const observer = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && moreRef.current(), {
+      rootMargin: '800px 0px',
+    })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [hasMore, photos.length])
+
   useEffect(() => {
     if (!note) return
     const t = setTimeout(() => setNote(null), 2500)
@@ -149,6 +178,9 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
       loadingMore.current = false
     }
   }, [eventId, filters, hasMore, photos.length])
+  useEffect(() => {
+    moreRef.current = more
+  }, [more])
 
   const apply = (updated: AdminPhoto) =>
     setPhotos((list) => list.map((p) => (p.id === updated.id ? updated : p)).filter((p) => p.id !== updated.id || matches(p, filters)))
@@ -163,13 +195,20 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
     }
   }
 
+  // Optimistic: the dashboard changes at once; the (small, sometimes slow) server catches up in the background.
   const toggleHidden = async (p: AdminPhoto) => {
-    const updated = await adminApi.updatePhoto(p.id, { hidden: !p.hidden })
-    apply(updated)
-    setNote(updated.hidden ? 'Hidden from the guest gallery' : 'Back in the guest gallery')
-    loadFacets()
-    onPhotosChanged()
-    if (updated.hidden && p.id === coverPhotoId) onEventChanged()
+    const hidden = !p.hidden
+    apply({ ...p, hidden })
+    setNote(hidden ? 'Hidden from the guest gallery' : 'Back in the guest gallery')
+    try {
+      await adminApi.updatePhoto(p.id, { hidden })
+      loadFacets()
+      onPhotosChanged()
+      if (hidden && p.id === coverPhotoId) onEventChanged()
+    } catch {
+      apply(p)
+      setNote('Could not update the photo. Please try again.')
+    }
   }
 
   const remove = async (p: AdminPhoto) => {
@@ -180,15 +219,24 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
       danger: true,
     })
     if (!ok) return
-    await adminApi.deletePhoto(p.id)
+    const index = photos.findIndex((x) => x.id === p.id)
     setPhotos((list) => list.filter((x) => x.id !== p.id))
-    loadFacets()
-    onPhotosChanged()
-    if (p.id === coverPhotoId) onEventChanged()
+    setNote('Photo deleted')
+    try {
+      await adminApi.deletePhoto(p.id)
+      loadFacets()
+      onPhotosChanged()
+      if (p.id === coverPhotoId) onEventChanged()
+    } catch {
+      // Put it back where it was.
+      setPhotos((list) => (list.some((x) => x.id === p.id) ? list : [...list.slice(0, index), p, ...list.slice(index)]))
+      setNote('Could not delete the photo. Please try again.')
+    }
   }
 
   const download = async (p: AdminPhoto) => {
     if (!p.webUrl) return
+    setNote('Downloading…')
     const result = await downloadPhoto(p.webUrl, eventSlug, p.id)
     setNote(result === 'saved' || result === 'save-sheet' ? 'Downloaded' : 'Could not download this photo')
   }
@@ -309,23 +357,28 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
                 )}
                 <IconButton label="Delete" text="Delete" onClick={() => remove(p)} className="text-red-700 hover:bg-red-50"><TrashIcon /></IconButton>
                 {ready && (
-                  <details className="relative">
-                    <summary className="flex h-11 cursor-pointer list-none flex-col items-center justify-center gap-0.5 rounded-md text-[10px] hover:bg-stone-100" aria-label="More">
+                  <div className="relative" data-menu={p.id}>
+                    <button
+                      type="button"
+                      aria-label="More"
+                      aria-expanded={menuId === p.id}
+                      onClick={() => setMenuId((id) => (id === p.id ? null : p.id))}
+                      className="flex h-11 w-full flex-col items-center justify-center gap-0.5 rounded-md text-[10px] hover:bg-stone-100"
+                    >
                       <MoreIcon />
                       <span aria-hidden="true">More</span>
-                    </summary>
-                    <div className="absolute right-0 z-20 mt-1 w-48 rounded-lg border border-line bg-white p-1 text-sm shadow-lg">
-                      <MenuItem
-                        disabled={p.hidden || p.id === coverPhotoId}
-                        onClick={(e) => { closeMenu(e); makeCover(p) }}
-                      >
-                        <StarIcon />{p.id === coverPhotoId ? 'Gallery cover' : 'Make cover'}
-                      </MenuItem>
-                      {p.originalAvailable && (
-                        <MenuItem onClick={(e) => { closeMenu(e); original(p) }}><DownloadIcon />Download original</MenuItem>
-                      )}
-                    </div>
-                  </details>
+                    </button>
+                    {menuId === p.id && (
+                      <div role="menu" className="absolute right-0 z-20 mt-1 w-48 rounded-lg border border-line bg-white p-1 text-sm shadow-lg">
+                        <MenuItem disabled={p.hidden || p.id === coverPhotoId} onClick={() => { setMenuId(null); makeCover(p) }}>
+                          <StarIcon />{p.id === coverPhotoId ? 'Gallery cover' : 'Make cover'}
+                        </MenuItem>
+                        {p.originalAvailable && (
+                          <MenuItem onClick={() => { setMenuId(null); original(p) }}><DownloadIcon />Download original</MenuItem>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </li>
@@ -333,6 +386,7 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
         })}
       </ul>
       {confirmDialog}
+      <div ref={sentinel} aria-hidden="true" />
       {hasMore && (
         <div className="mt-4 text-center">
           <Button onClick={more}>Load more</Button>
@@ -382,10 +436,6 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
   )
 }
 
-function closeMenu(e: MouseEvent) {
-  e.currentTarget.closest('details')?.removeAttribute('open')
-}
-
 function IconButton({ label, text, onClick, children, className = 'hover:bg-stone-100' }: { label: string; text: string; onClick: () => void; children: ReactNode; className?: string }) {
   return (
     <button type="button" title={label} aria-label={label} onClick={onClick} className={`flex h-11 flex-col items-center justify-center gap-0.5 rounded-md text-[10px] ${className}`}>
@@ -395,9 +445,9 @@ function IconButton({ label, text, onClick, children, className = 'hover:bg-ston
   )
 }
 
-function MenuItem({ onClick, disabled, children }: { onClick: (e: MouseEvent) => void; disabled?: boolean; children: ReactNode }) {
+function MenuItem({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: ReactNode }) {
   return (
-    <button type="button" disabled={disabled} onClick={onClick} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left hover:bg-stone-50 disabled:opacity-40 disabled:hover:bg-transparent">
+    <button type="button" role="menuitem" disabled={disabled} onClick={onClick} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left hover:bg-stone-50 disabled:opacity-40 disabled:hover:bg-transparent">
       {children}
     </button>
   )
