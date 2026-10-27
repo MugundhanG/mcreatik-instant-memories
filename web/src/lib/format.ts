@@ -3,6 +3,16 @@ export function formatEventDate(isoDate: string): string {
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+/**
+ * Poster headline from the event name: "Gowtham & Sangeetha - Wedding_Reception" gives
+ * { names: "Gowtham & Sangeetha", occasion: "Wedding Reception" }. Without a " - " the whole name is the headline.
+ */
+export function splitEventName(name: string): { names: string; occasion: string } {
+  const clean = name.replace(/_/g, ' ').replace(/\s+/g, ' ').trim()
+  const match = /^(.+?)\s+[-–—|]\s+(.+)$/.exec(clean)
+  return match ? { names: match[1].trim(), occasion: match[2].trim() } : { names: clean, occasion: '' }
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   const units = ['KB', 'MB', 'GB', 'TB']

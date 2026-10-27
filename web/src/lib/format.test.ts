@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatBytes, timeAgo } from './format'
+import { formatBytes, splitEventName, timeAgo } from './format'
 
 describe('format', () => {
   it('formats storage sizes', () => {
@@ -14,5 +14,13 @@ describe('format', () => {
     expect(timeAgo('2026-10-10T17:59:55Z', now)).toBe('5 seconds ago')
     expect(timeAgo('2026-10-10T17:57:00Z', now)).toBe('3 minutes ago')
     expect(timeAgo(null, now)).toBe('never')
+  })
+
+  it('splits an event name into the poster names and occasion', () => {
+    expect(splitEventName('Gowtham & Sangeetha - Wedding_Reception'))
+      .toEqual({ names: 'Gowtham & Sangeetha', occasion: 'Wedding Reception' })
+    expect(splitEventName('Priya & Arun – Engagement')).toEqual({ names: 'Priya & Arun', occasion: 'Engagement' })
+    expect(splitEventName('Annual Day 2026')).toEqual({ names: 'Annual Day 2026', occasion: '' })
+    expect(splitEventName('Ravi-Kumar Wedding')).toEqual({ names: 'Ravi-Kumar Wedding', occasion: '' })
   })
 })

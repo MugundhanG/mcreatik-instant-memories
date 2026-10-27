@@ -49,3 +49,23 @@ body {
   .no-print { display: none !important; }
   body { background: white; }
 }
+
+/* Printed QR poster (PrintQrPage): ivory paper, gold foil accents. */
+.poster {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  background: radial-gradient(ellipse at 50% 35%, #fffdf8 0%, #fbf7ef 55%, #f3ead8 100%);
+}
+.poster-gold-text {
+  background: linear-gradient(135deg, #8a5a1c 0%, #c8913c 22%, #e9c47c 42%, #b37a2c 62%, #8a5a1c 82%, #c8913c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.poster-gold-bg {
+  background: linear-gradient(135deg, #8a5a1c 0%, #d9a94e 25%, #f6dc9b 45%, #c8913c 65%, #9a6420 85%, #e8c27a 100%);
+}
+
+@media print {
+  @page { size: A4; margin: 0; }
+}
