@@ -64,9 +64,37 @@ describe('Dashboard photos', () => {
     expect(within(tile).getByRole('button', { name: 'Download' })).toBeInTheDocument()
     expect(within(tile).getByRole('button', { name: 'Hide from gallery' })).toBeInTheDocument()
     expect(within(tile).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
-    await user.click(within(tile).getByLabelText('More'))
-    await user.click(within(tile).getByRole('button', { name: /Make cover/ }))
+    await user.click(within(tile).getByRole('button', { name: 'More' }))
+    await user.click(within(tile).getByRole('menuitem', { name: /Make cover/ }))
     expect(onCoverChange).toHaveBeenCalledWith('p1')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('closes the More menu when clicking outside it', async () => {
+    const user = userEvent.setup()
+    mockApi(() => ({ photos: [adminPhoto(1)], nextOffset: null }))
+    renderPanel()
+    await screen.findAllByRole('listitem')
+    await user.click(screen.getByRole('button', { name: 'More' }))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    await user.click(screen.getByText('Photos'))
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('hides at once, without waiting for the server', async () => {
+    const user = userEvent.setup()
+    let release: () => void = () => {}
+    mockApi(() => ({ photos: [adminPhoto(1)], nextOffset: null }))
+    const slow = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      if (init?.method === 'PATCH') await new Promise<void>((r) => (release = r))
+      return slow(input, init)
+    })
+    renderPanel()
+    await screen.findAllByRole('listitem')
+    await user.click(screen.getByRole('button', { name: 'Hide from gallery' }))
+    expect(screen.getByText('Hidden')).toBeInTheDocument() // before the server answered
+    release()
   })
 
   it('likes and hides photos', async () => {

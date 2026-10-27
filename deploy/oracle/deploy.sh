@@ -16,8 +16,22 @@ LIVE_PORT=${LIVE_PORT:-8081}
 TEST_PORT=${TEST_PORT:-18081}
 MEMORY=${GALLERY_MEMORY:-2g}
 CPUS=${GALLERY_CPUS:-2}
-# Fast servers answer in ~20 s; the 1 GB E2.1.Micro can need several minutes for a cold start.
-HEALTH_WAIT_SECONDS=${HEALTH_WAIT_SECONDS:-600}
+# Fast servers answer in ~20 s; the 1 GB E2.1.Micro can need over 10 minutes while two copies start side by side.
+HEALTH_WAIT_SECONDS=${HEALTH_WAIT_SECONDS:-1200}
+LOG=${DEPLOY_LOG:-$HOME/mcreatik-gallery/deploy.log}
+
+# The 1 GB server can stop answering SSH while a new version starts, and a dropped connection would kill the
+# script half-way through the switch. So it runs in the background and survives a disconnect; this window just
+# follows the log. Reconnect and run `tail -f ~/mcreatik-gallery/deploy.log` to keep watching.
+if [[ -z "${DEPLOY_DETACHED:-}" ]]; then
+  mkdir -p "$(dirname "$LOG")" && : >"$LOG"
+  DEPLOY_DETACHED=1 setsid nohup "$(readlink -f "$0")" "$@" >>"$LOG" 2>&1 </dev/null &
+  pid=$!
+  echo "==> Deploy running in the background, safe to disconnect (log: $LOG)"
+  tail -n +1 -f "$LOG" --pid="$pid" || true
+  wait "$pid"
+  exit $?
+fi
 
 cd "$(dirname "$0")/../.."
 [[ -r "$ENV_FILE" ]] || { echo "Missing $ENV_FILE (copy deploy/oracle/gallery.env.example and fill it in)"; exit 1; }
