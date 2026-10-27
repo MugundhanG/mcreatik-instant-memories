@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { formatCount } from '../lib/format'
 import { downloadPhoto, fetchPhoto, isIOS, sharePhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
@@ -16,13 +16,21 @@ interface Props {
   onIndexChange: (index: number) => void
   onClose: () => void
   onNearEnd: () => void
+  /** Extra buttons beside Download (the dashboard's like / hide / cover / delete). */
+  actions?: (photo: PublicPhoto) => ReactNode
+  /** Guests are invited to follow the studio after saving; not the photographer. */
+  promoteFollow?: boolean
+  /** Shown under the counter, e.g. the file name in the dashboard. */
+  caption?: (photo: PublicPhoto) => ReactNode
 }
 
 /** Share is hidden for now; flip to bring the button back. */
 const SHOW_SHARE = false
 const SAVE_HINT = 'Press and hold the photo, then tap “Save image”'
 
-export function PhotoViewer({ photos, index, total, eventSlug, eventName, onIndexChange, onClose, onNearEnd }: Props) {
+export function PhotoViewer({
+  photos, index, total, eventSlug, eventName, onIndexChange, onClose, onNearEnd, actions, promoteFollow = true, caption,
+}: Props) {
   const photo = photos[index]
   const count = Math.max(total, photos.length)
   const [loadedId, setLoadedId] = useState<string | null>(null)
@@ -92,8 +100,8 @@ export function PhotoViewer({ photos, index, total, eventSlug, eventName, onInde
     const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id, blob)
     setBusy(null)
     // Right after saving is when guests are happiest with the photos: ask them to follow.
-    if (result === 'saved') setToast({ text: 'Saved to your phone ✓', ms: 5000, follow: true })
-    if (result === 'save-sheet') setToast({ text: 'Love the photos?', ms: 5000, follow: true })
+    if (result === 'saved') setToast(promoteFollow ? { text: 'Saved to your phone ✓', ms: 5000, follow: true } : { text: 'Saved ✓', ms: 2500 })
+    if (result === 'save-sheet' && promoteFollow) setToast({ text: 'Love the photos?', ms: 5000, follow: true })
     if (result === 'hint') setToast({ text: SAVE_HINT, ms: 6000 })
     if (result === 'unavailable') setToast({ text: 'Downloads are turned off in this demo', ms: 2500 })
   }
@@ -121,9 +129,12 @@ export function PhotoViewer({ photos, index, total, eventSlug, eventName, onInde
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </button>
-        <span className="text-sm text-white/70 tabular-nums" data-testid="viewer-counter">
-          {formatCount(index + 1)} / {formatCount(count)}
-        </span>
+        <div className="min-w-0 text-center">
+          <span className="text-sm text-white/70 tabular-nums" data-testid="viewer-counter">
+            {formatCount(index + 1)} / {formatCount(count)}
+          </span>
+          {caption && <div className="truncate text-xs text-white/50">{caption(photo)}</div>}
+        </div>
         <span className="size-11" aria-hidden="true" />
       </div>
 
@@ -178,6 +189,7 @@ export function PhotoViewer({ photos, index, total, eventSlug, eventName, onInde
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" /></svg>
           {busy === 'download' ? 'Saving…' : 'Download'}
         </button>
+        {actions?.(photo)}
         {SHOW_SHARE && <button
           type="button"
           onClick={onShare}

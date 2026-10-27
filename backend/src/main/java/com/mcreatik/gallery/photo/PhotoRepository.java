@@ -20,31 +20,34 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID> {
 
     @Query("""
             select p from Photo p where p.eventId = ?1 and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
+              and p.hidden = false
             order by p.readyAt desc, p.id desc""")
     List<Photo> findLatestReady(UUID eventId, Limit limit);
 
     @Query("""
             select p from Photo p where p.eventId = ?1 and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
-              and (p.readyAt < ?2 or (p.readyAt = ?2 and p.id < ?3))
+              and p.hidden = false and (p.readyAt < ?2 or (p.readyAt = ?2 and p.id < ?3))
             order by p.readyAt desc, p.id desc""")
     List<Photo> findReadyBefore(UUID eventId, Instant readyAt, UUID id, Limit limit);
 
     /** Catch-up after an SSE reconnect: everything newer than the client's last cursor, oldest first. */
     @Query("""
             select p from Photo p where p.eventId = ?1 and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
-              and (p.readyAt > ?2 or (p.readyAt = ?2 and p.id > ?3))
+              and p.hidden = false and (p.readyAt > ?2 or (p.readyAt = ?2 and p.id > ?3))
             order by p.readyAt asc, p.id asc""")
     List<Photo> findReadyAfter(UUID eventId, Instant readyAt, UUID id, Limit limit);
 
-    // ---- Admin ----
+    /** What guests can see: ready and not hidden. */
+    @Query(value = "SELECT count(*) FROM photos WHERE event_id = ?1 AND status = 'READY' AND NOT hidden", nativeQuery = true)
+    long countVisible(UUID eventId);
 
-    @Query("select p from Photo p where p.eventId = ?1 order by p.createdAt desc, p.id desc")
-    List<Photo> findForAdmin(UUID eventId, Limit limit);
+    // ---- Admin (listing with filters and sorting: AdminPhotoSearch) ----
 
-    @Query("""
-            select p from Photo p where p.eventId = ?1 and (p.createdAt < ?2 or (p.createdAt = ?2 and p.id < ?3))
-            order by p.createdAt desc, p.id desc""")
-    List<Photo> findForAdminBefore(UUID eventId, Instant createdAt, UUID id, Limit limit);
+    /** [hidden ready photos, liked photos]. */
+    @Query(value = """
+            SELECT count(*) FILTER (WHERE hidden AND status = 'READY'), count(*) FILTER (WHERE liked)
+            FROM photos WHERE event_id = ?1""", nativeQuery = true)
+    List<Object[]> countHiddenAndLiked(UUID eventId);
 
     @Query(value = """
             SELECT status, count(*) AS photos,

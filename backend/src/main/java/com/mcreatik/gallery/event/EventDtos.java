@@ -54,7 +54,7 @@ public final class EventDtos {
 
     public record EventStats(long totalPhotos, long readyPhotos, long inProgressPhotos, long failedPhotos,
                              long storageBytes, int activeUploaders, PhotoDtos.AdminPhoto latestPhoto,
-                             List<UploaderStats> uploaders) {
+                             List<UploaderStats> uploaders, long hiddenPhotos, long likedPhotos) {
     }
 
     public record PublicEvent(String name, String slug, LocalDate eventDate, EventStatus status, boolean live,

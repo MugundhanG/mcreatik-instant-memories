@@ -92,7 +92,7 @@ export default function EventDashboardPage() {
       {stats && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" data-testid="event-stats">
           <Stat label="Total photos" value={formatCount(stats.totalPhotos)} />
-          <Stat label="In gallery" value={formatCount(stats.readyPhotos)} />
+          <Stat label="In gallery" value={formatCount(stats.readyPhotos - stats.hiddenPhotos)} />
           <Stat label="Processing" value={formatCount(stats.inProgressPhotos)} />
           <Stat label="Failed" value={formatCount(stats.failedPhotos)} tone={stats.failedPhotos > 0 ? 'danger' : undefined} />
           <Stat label="Active uploaders" value={`${stats.activeUploaders} / ${stats.uploaders.length}`} />
@@ -120,7 +120,17 @@ export default function EventDashboardPage() {
         <QrPanel eventId={event.id} eventSlug={event.slug} galleryUrl={event.galleryUrl} />
       </div>
 
-      <PhotosPanel eventId={event.id} coverPhotoId={event.coverPhotoId} refreshKey={(stats?.readyPhotos ?? 0) + (stats?.failedPhotos ?? 0)} onCoverChange={(id) => update({ coverPhotoId: id })} />
+      <PhotosPanel
+        eventId={event.id}
+        eventSlug={event.slug}
+        eventName={event.name}
+        coverPhotoId={event.coverPhotoId}
+        refreshKey={(stats?.readyPhotos ?? 0) + (stats?.failedPhotos ?? 0) + (stats?.inProgressPhotos ?? 0)}
+        uploaders={stats?.uploaders ?? []}
+        onCoverChange={(id) => update({ coverPhotoId: id })}
+        onEventChanged={() => adminApi.event(eventId).then(setEvent).catch(() => {})}
+        onPhotosChanged={loadStats}
+      />
 
       <Card title="Privacy & data">
         <div className="flex flex-wrap items-end justify-between gap-4">

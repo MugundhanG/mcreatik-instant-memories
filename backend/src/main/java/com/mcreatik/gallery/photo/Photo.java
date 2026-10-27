@@ -57,6 +57,14 @@ public class Photo {
     @Column(name = "media_bytes", nullable = false)
     private long mediaBytes;
 
+    /** Kept in the event but not shown to guests. */
+    @Column(nullable = false)
+    private boolean hidden;
+
+    /** The photographer's pick (dashboard only). */
+    @Column(nullable = false)
+    private boolean liked;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PhotoStatus status;
@@ -240,6 +248,24 @@ public class Photo {
 
     public long getMediaBytes() {
         return mediaBytes;
+    }
+
+    public boolean isHidden() {
+        return hidden;
+    }
+
+    public void setHidden(boolean hidden) {
+        this.hidden = hidden;
+        this.updatedAt = now();
+    }
+
+    public boolean isLiked() {
+        return liked;
+    }
+
+    public void setLiked(boolean liked) {
+        this.liked = liked;
+        this.updatedAt = now();
     }
 
     public boolean isOriginalStored() {
