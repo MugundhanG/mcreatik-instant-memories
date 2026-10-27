@@ -5,7 +5,7 @@ import { formatCount, formatEventDate, splitEventName } from '../lib/format'
 import type { PublicPhoto } from '../lib/types'
 import { StatusBadge } from './StatusBadge'
 import { PhotoGrid } from './PhotoGrid'
-import { STUDIO_NAME } from '../shared/StudioLogo'
+import { INSTAGRAM_HANDLE, InstagramIcon, InstagramLink, STUDIO_NAME } from '../shared/StudioLogo'
 import { PhotoViewer } from './PhotoViewer'
 import { useLiveGallery } from './useLiveGallery'
 
@@ -110,6 +110,10 @@ export default function GalleryPage() {
         <span className="shrink-0 text-xs whitespace-nowrap text-muted">
           {event.photoCount > 0 ? `${formatCount(event.photoCount)} photos` : 'Photos coming soon'}
         </span>
+        <InstagramLink className="-my-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[#b37a2c] hover:bg-stone-100">
+          <InstagramIcon className="size-[18px]" />
+          <span className="sr-only">Follow @{INSTAGRAM_HANDLE} on Instagram</span>
+        </InstagramLink>
       </div>
 
       {incoming.length > 0 && (
@@ -136,8 +140,20 @@ export default function GalleryPage() {
         {gallery.loadingMore && <p className="py-6 text-center text-xs text-muted">Loading more…</p>}
       </main>
 
-      <footer className="px-6 py-12 text-center text-xs text-muted">
-        Live gallery by <span className="font-medium text-ink">McreatiK Studios</span>
+      <footer className="px-4 pt-10 pb-12 text-center">
+        <div className="mx-auto flex max-w-md items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-[0_6px_24px_rgba(0,0,0,0.08)]">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(45deg,#f09433,#dc2743_50%,#bc1888)] text-white">
+            <InstagramIcon className="size-6" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-ink">Loved these photos?</p>
+            <p className="truncate text-xs text-muted">Follow @{INSTAGRAM_HANDLE} for more</p>
+          </div>
+          <InstagramLink className="shrink-0 rounded-full bg-ink px-4 py-2 text-sm font-medium text-white">Follow</InstagramLink>
+        </div>
+        <p className="mt-6 text-xs text-muted">
+          Live gallery by <span className="font-medium text-ink">{STUDIO_NAME}</span>
+        </p>
       </footer>
 
       {selectedIndex >= 0 && (
