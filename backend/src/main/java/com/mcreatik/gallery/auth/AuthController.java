@@ -41,13 +41,19 @@ public class AuthController {
         if (user == null || !matches) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid email or password");
         }
+        if (user.isDisabled()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_DISABLED",
+                    "This account is disabled. Please contact McreatiK.");
+        }
         JwtService.IssuedToken token = jwtService.issue(user);
-        return new LoginResponse(token.token(), token.expiresAt(), user.getEmail(), user.getDisplayName());
+        return new LoginResponse(token.token(), token.expiresAt(), user.getEmail(), user.getDisplayName(),
+                user.getRole(), user.isMustChangePassword());
     }
 
     public record LoginRequest(@NotBlank @Email String email, @NotBlank @Size(max = 200) String password) {
     }
 
-    public record LoginResponse(String token, Instant expiresAt, String email, String displayName) {
+    public record LoginResponse(String token, Instant expiresAt, String email, String displayName, AdminRole role,
+                                boolean mustChangePassword) {
     }
 }

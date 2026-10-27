@@ -1,5 +1,6 @@
 package com.mcreatik.gallery.auth;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -10,4 +11,6 @@ public interface AdminUserRepository extends JpaRepository<AdminUser, UUID> {
 
     @Query("select u from AdminUser u where lower(u.email) = lower(?1)")
     Optional<AdminUser> findByEmail(String email);
+
+    List<AdminUser> findAllByOrderByCreatedAtAsc();
 }

@@ -36,7 +36,7 @@ public class AdminBootstrap implements ApplicationRunner {
             log.warn("ADMIN_PASSWORD must be at least 10 characters; bootstrap admin not created");
             return;
         }
-        users.save(new AdminUser(email, passwordEncoder.encode(password), "McreatiK Admin"));
+        users.save(new AdminUser(email, passwordEncoder.encode(password), "McreatiK Studios", AdminRole.SUPER_ADMIN));
         log.info("Bootstrap admin created for {}", email);
     }
 }

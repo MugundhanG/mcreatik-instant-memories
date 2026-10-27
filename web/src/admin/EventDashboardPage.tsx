@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
 import { formatBytes, formatCount, formatEventDate, timeAgo } from '../lib/format'
 import type { EventDetail, EventStats, EventStatus } from '../lib/types'
+import { useSession } from './auth'
 import { PhotosPanel } from './PhotosPanel'
 import { QrPanel } from './QrPanel'
 import { Button, Card, ErrorText, EventStatusBadge, Field, inputClass, Stat } from './ui'
@@ -18,6 +19,7 @@ export default function EventDashboardPage() {
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [stats, setStats] = useState<EventStats | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const superAdmin = useSession()?.role === 'SUPER_ADMIN'
   const [confirm, confirmDialog] = useConfirm()
 
   const loadStats = useCallback(
@@ -74,6 +76,7 @@ export default function EventDashboardPage() {
             <EventStatusBadge status={event.status} />
           </div>
           <p className="mt-1 text-sm text-muted">
+            {superAdmin && event.ownerName && <span className="font-medium text-[#8a5a1c]">{event.ownerName} · </span>}
             {formatEventDate(event.eventDate)} ·{' '}
             <Link to={`/e/${event.slug}`} className="underline decoration-line underline-offset-4 hover:text-ink">
               {event.galleryUrl.replace(/^https?:\/\//, '')}

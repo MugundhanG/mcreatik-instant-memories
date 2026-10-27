@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
-import type { EventStatus } from '../lib/types'
+import type { EventStatus, Studio } from '../lib/types'
+import { useSession } from './auth'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
 
 export default function NewEventPage() {
@@ -12,13 +13,20 @@ export default function NewEventPage() {
   const [slug, setSlug] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // The super admin can create the event for a client studio.
+  const superAdmin = useSession()?.role === 'SUPER_ADMIN'
+  const [studios, setStudios] = useState<Studio[]>([])
+  const [ownerId, setOwnerId] = useState('')
+  useEffect(() => {
+    if (superAdmin) adminApi.studios().then((list) => setStudios(list.filter((s) => !s.disabled))).catch(() => {})
+  }, [superAdmin])
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true)
     setError(null)
     try {
-      const event = await adminApi.createEvent({ name, eventDate, status, slug: slug.trim() || undefined })
+      const event = await adminApi.createEvent({ name, eventDate, status, slug: slug.trim() || undefined, ownerId: ownerId || undefined })
       navigate(`/admin/events/${event.id}`, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not create the event')
@@ -31,6 +39,15 @@ export default function NewEventPage() {
       <Link to="/admin" className="text-sm text-muted hover:text-ink">← Events</Link>
       <Card title="New event">
         <form onSubmit={submit} className="space-y-5">
+          {superAdmin && studios.length > 1 && (
+            <Field label="Studio" hint="Whose event this is: they see it in their own dashboard">
+              <select className={inputClass} value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+                {studios.map((s) => (
+                  <option key={s.id} value={s.role === 'SUPER_ADMIN' ? '' : s.id}>{s.role === 'SUPER_ADMIN' ? `${s.name} (my own event)` : s.name}</option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Event name" hint="Shown to guests, e.g. “Arun & Priya Wedding”">
             <input className={inputClass} required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} />
           </Field>

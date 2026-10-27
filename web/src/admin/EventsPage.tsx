@@ -3,11 +3,13 @@ import { Link } from 'react-router'
 import { adminApi } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
 import type { EventSummary } from '../lib/types'
+import { useSession } from './auth'
 import { ErrorText, EventStatusBadge } from './ui'
 
 export default function EventsPage() {
   const [events, setEvents] = useState<EventSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const superAdmin = useSession()?.role === 'SUPER_ADMIN'
 
   useEffect(() => {
     adminApi.events().then(setEvents).catch((e: Error) => setError(e.message))
@@ -37,6 +39,7 @@ export default function EventsPage() {
                 <EventStatusBadge status={e.status} />
               </div>
               <p className="mt-1 text-sm text-muted">{formatEventDate(e.eventDate)}</p>
+              {superAdmin && e.ownerName && <p className="mt-1 text-xs font-medium text-[#8a5a1c]">{e.ownerName}</p>}
               <p className="mt-4 text-sm">
                 <span className="font-semibold tabular-nums">{formatCount(e.readyPhotos)}</span> <span className="text-muted">photos</span>
               </p>
