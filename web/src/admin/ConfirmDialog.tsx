@@ -21,7 +21,7 @@ export function ConfirmDialog({ options, onClose }: { options: ConfirmOptions; o
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => onClose(false)}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={() => onClose(false)}>
       <div
         role="alertdialog"
         aria-modal="true"

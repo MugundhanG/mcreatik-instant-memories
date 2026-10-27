@@ -1,5 +1,8 @@
 import type {
+  AdminPhoto,
   AdminPhotoPage,
+  PhotoFacets,
+  AdminPhotoQuery,
   EventDetail,
   EventStats,
   EventStatus,
@@ -104,8 +107,15 @@ export const adminApi = {
     request<EventDetail>(`/api/admin/events/${id}`, { method: 'PATCH', body: json(input) }, true),
   deleteEvent: (id: string) => request<void>(`/api/admin/events/${id}`, { method: 'DELETE' }, true),
   stats: (id: string) => request<EventStats>(`/api/admin/events/${id}/stats`, {}, true),
-  photos: (id: string, before?: string) =>
-    request<AdminPhotoPage>(`/api/admin/events/${id}/photos${before ? `?before=${encodeURIComponent(before)}` : ''}`, {}, true),
+  photos: (id: string, query: AdminPhotoQuery = {}) => {
+    const q = new URLSearchParams()
+    for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== '') q.set(k, String(v))
+    const qs = q.toString()
+    return request<AdminPhotoPage>(`/api/admin/events/${id}/photos${qs ? `?${qs}` : ''}`, {}, true)
+  },
+  photoFacets: (id: string) => request<PhotoFacets>(`/api/admin/events/${id}/photo-facets`, {}, true),
+  updatePhoto: (photoId: string, input: { hidden?: boolean; liked?: boolean }) =>
+    request<AdminPhoto>(`/api/admin/photos/${photoId}`, { method: 'PATCH', body: json(input) }, true),
   deletePhoto: (photoId: string) => request<void>(`/api/admin/photos/${photoId}`, { method: 'DELETE' }, true),
   originalUrl: (photoId: string) => request<{ url: string }>(`/api/admin/photos/${photoId}/original`, {}, true),
   createUploader: (eventId: string, name: string) =>

@@ -22,7 +22,8 @@ public class PhotoMapper {
         return new PhotoDtos.AdminPhoto(p.getId(), p.getUploaderId(), p.getOriginalFileName(), p.getStatus(),
                 p.getFailureReason(), p.getFileSize(), p.getWidth(), p.getHeight(),
                 readyUrl(p, p.getThumbnailStorageKey()), readyUrl(p, p.getOptimizedStorageKey()),
-                p.getCapturedAt(), p.getUploadedAt(), p.getReadyAt(), p.getCreatedAt(), p.isOriginalStored());
+                p.getCapturedAt(), p.getUploadedAt(), p.getReadyAt(), p.getCreatedAt(), p.isOriginalStored(),
+                p.isHidden(), p.isLiked());
     }
 
     /** Uploader-prepared photos know their media keys before the files arrive: only link them once READY. */

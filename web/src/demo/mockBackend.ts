@@ -30,6 +30,8 @@ interface DemoPhoto {
   height: number
   readyAt: string
   createdAt: string
+  hidden?: boolean
+  liked?: boolean
 }
 
 interface DemoEvent {
@@ -154,7 +156,7 @@ function toAdmin(p: DemoPhoto): AdminPhoto {
     id: p.id, uploaderId: p.uploaderId, originalFileName: p.originalFileName, status: 'READY', failureReason: null,
     fileSize: p.fileSize, width: p.width, height: p.height, thumbnailUrl: p.thumbnailUrl, webUrl: p.webUrl,
     capturedAt: p.readyAt, uploadedAt: p.readyAt, readyAt: p.readyAt, createdAt: p.createdAt,
-    originalAvailable: false,
+    originalAvailable: false, hidden: !!p.hidden, liked: !!p.liked,
   }
 }
 
@@ -268,6 +270,7 @@ function stats(e: DemoEvent) {
     totalPhotos: e.photos.length, readyPhotos: e.photos.length, inProgressPhotos: 0, failedPhotos: 0,
     storageBytes: e.photos.reduce((s, p) => s + Math.round(p.fileSize / 12), 0), activeUploaders: uploaders.filter((u) => u.status !== 'OFFLINE').length,
     latestPhoto: e.photos[0] ? toAdmin(e.photos[0]) : null, uploaders,
+    hiddenPhotos: e.photos.filter((p) => p.hidden).length, likedPhotos: e.photos.filter((p) => p.liked).length,
   }
 }
 
@@ -299,16 +302,17 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
     if (!e || e.status === 'DRAFT' || e.status === 'ARCHIVED') return notFound()
     if (!m[2]) {
       const cover = e.photos.find((p) => p.id === e.coverPhotoId)
-      return json({ name: e.name, slug: e.slug, eventDate: e.eventDate, status: e.status, live: e.status === 'LIVE', coverUrl: cover?.webUrl ?? null, photoCount: e.photos.length })
+      return json({ name: e.name, slug: e.slug, eventDate: e.eventDate, status: e.status, live: e.status === 'LIVE', coverUrl: cover?.webUrl ?? null, photoCount: e.photos.filter((p) => !p.hidden).length })
     }
+    const visible = e.photos.filter((p) => !p.hidden)
     const limit = Number(q.get('limit') ?? 40)
     if (q.get('after')) {
-      const idx = e.photos.findIndex((p) => p.id === q.get('after'))
-      const newer = (idx < 0 ? [] : e.photos.slice(0, idx)).reverse()
+      const idx = visible.findIndex((p) => p.id === q.get('after'))
+      const newer = (idx < 0 ? [] : visible.slice(0, idx)).reverse()
       return json({ photos: newer.map(toPublic), nextCursor: null })
     }
-    const start = q.get('before') ? e.photos.findIndex((p) => p.id === q.get('before')) + 1 : 0
-    const { slice, next } = page(e.photos, start, limit)
+    const start = q.get('before') ? visible.findIndex((p) => p.id === q.get('before')) + 1 : 0
+    const { slice, next } = page(visible, start, limit)
     return json({ photos: slice.map(toPublic), nextCursor: next ? slice[slice.length - 1].id : null })
   }
 
@@ -324,7 +328,7 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
     const e = addEvent(b.name, slug, b.status ?? 'UPCOMING', b.eventDate, [], 0)
     return json(detail(e), 201)
   }
-  if ((m = path.match(/^\/api\/admin\/events\/([^/]+)(\/stats|\/photos|\/uploaders)?$/))) {
+  if ((m = path.match(/^\/api\/admin\/events\/([^/]+)(\/stats|\/photos|\/photo-facets|\/uploaders)?$/))) {
     const e = events.find((x) => x.id === m![1])
     if (!e) return notFound()
     const sub = m[2]
@@ -348,9 +352,29 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
     }
     if (sub === '/stats') return json(stats(e))
     if (sub === '/photos') {
-      const start = q.get('before') ? e.photos.findIndex((p) => p.id === q.get('before')) + 1 : 0
-      const { slice, next } = page(e.photos, start, Number(q.get('limit') ?? 60))
-      return json({ photos: slice.map(toAdmin), nextCursor: next ? slice[slice.length - 1].id : null })
+      let list = e.photos.filter((p) =>
+        (!q.get('uploaderId') || p.uploaderId === q.get('uploaderId')) &&
+        (q.get('liked') === null || !!p.liked === (q.get('liked') === 'true')) &&
+        (q.get('hidden') === null || !!p.hidden === (q.get('hidden') === 'true')) &&
+        (!q.get('day') || p.createdAt.slice(0, 10) === q.get('day')))
+      const sort = q.get('sort') ?? 'NEWEST'
+      if (sort === 'OLDEST') list = [...list].reverse()
+      if (sort === 'CAMERA') {
+        const order = (id: string | null) => { const i = e.uploaders.findIndex((u) => u.id === id); return i < 0 ? 999 : i }
+        list = [...list].reverse().sort((a, b) => order(a.uploaderId) - order(b.uploaderId))
+      }
+      const offset = Number(q.get('offset') ?? 0)
+      const limit = Number(q.get('limit') ?? 60)
+      const { slice, next } = page(list, offset, limit)
+      return json({ photos: slice.map(toAdmin), nextOffset: next ? offset + limit : null })
+    }
+    if (sub === '/photo-facets') {
+      const days = new Map<string, number>()
+      for (const p of e.photos) days.set(p.createdAt.slice(0, 10), (days.get(p.createdAt.slice(0, 10)) ?? 0) + 1)
+      return json({
+        days: [...days].sort(([a], [b]) => a.localeCompare(b)).map(([day, photos]) => ({ day, photos })),
+        liked: e.photos.filter((p) => p.liked).length, hidden: e.photos.filter((p) => p.hidden).length,
+      })
     }
     if (sub === '/uploaders' && method === 'POST') {
       const u = makeUploaders([(body as { name: string }).name])[0]
@@ -375,6 +399,18 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
     const p = e?.photos.find((x) => x.id === m![1])
     if (!e || !p) return notFound()
     if (m[2]) return json({ url: p.webUrl })
+    if (method === 'PATCH') {
+      const b = body as { hidden?: boolean; liked?: boolean }
+      if (b.liked !== undefined) p.liked = b.liked
+      if (b.hidden !== undefined && b.hidden !== !!p.hidden) {
+        p.hidden = b.hidden
+        if (p.hidden && e.coverPhotoId === p.id) e.coverPhotoId = null
+        if (p.hidden) broadcast(e, 'PHOTO_REMOVED', { eventId: e.id, photoId: p.id })
+        else broadcast(e, 'PHOTO_READY', { eventId: e.id, photoId: p.id, ...toPublic(p) })
+      }
+      notify()
+      return json(toAdmin(p))
+    }
     if (method === 'DELETE') {
       e.photos.splice(e.photos.indexOf(p), 1)
       if (e.coverPhotoId === p.id) e.coverPhotoId = null

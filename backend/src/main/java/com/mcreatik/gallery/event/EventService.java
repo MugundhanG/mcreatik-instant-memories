@@ -114,8 +114,9 @@ public class EventService {
         }
         if (r.coverPhotoId() != null) {
             Photo cover = photos.findByIdAndEventId(r.coverPhotoId(), event.getId())
-                    .filter(p -> p.getStatus() == PhotoStatus.READY)
-                    .orElseThrow(() -> ApiException.badRequest("INVALID_COVER", "Cover must be a ready photo of this event"));
+                    .filter(p -> p.getStatus() == PhotoStatus.READY && !p.isHidden())
+                    .orElseThrow(() -> ApiException.badRequest("INVALID_COVER",
+                            "Cover must be a ready photo of this event that guests can see"));
             event.setCoverPhotoId(cover.getId());
         }
         if (Boolean.TRUE.equals(r.clearRetention())) {
@@ -186,7 +187,18 @@ public class EventService {
         var latest = photos.findByEventIdAndStatusOrderByReadyAtDesc(event.getId(), PhotoStatus.READY, Limit.of(1))
                 .stream().findFirst().map(photoMapper::toAdmin).orElse(null);
 
-        return new EventDtos.EventStats(total, ready, inProgress, failed, bytes, active, latest, uploaderStats);
+        Object[] flags = photos.countHiddenAndLiked(event.getId()).getFirst();
+        return new EventDtos.EventStats(total, ready, inProgress, failed, bytes, active, latest, uploaderStats,
+                ((Number) flags[0]).longValue(), ((Number) flags[1]).longValue());
+    }
+
+    /** A hidden photo cannot stay the cover guests see. */
+    @Transactional
+    public void clearCoverIf(UUID eventId, UUID photoId) {
+        events.findById(eventId).filter(e -> photoId.equals(e.getCoverPhotoId())).ifPresent(e -> {
+            e.setCoverPhotoId(null);
+            e.touch();
+        });
     }
 
     public Event owned(UUID ownerId, UUID eventId) {
@@ -204,8 +216,7 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public EventDtos.PublicEvent toPublic(Event event) {
-        long count = photos.countReadyByEvent(List.of(event.getId())).stream()
-                .findFirst().map(r -> ((Number) r[1]).longValue()).orElse(0L);
+        long count = photos.countVisible(event.getId());
         return new EventDtos.PublicEvent(event.getName(), event.getSlug(), event.getEventDate(), event.getStatus(),
                 event.getStatus() == EventStatus.LIVE, coverUrl(event), count);
     }

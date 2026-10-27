@@ -109,11 +109,35 @@ export interface AdminPhoto {
   createdAt: string
   /** False when the uploader prepared the web/thumbnail versions and the original stayed on the laptop. */
   originalAvailable: boolean
+  /** Kept in the dashboard but not shown to guests. */
+  hidden: boolean
+  /** The photographer's pick. */
+  liked: boolean
 }
 
 export interface AdminPhotoPage {
   photos: AdminPhoto[]
-  nextCursor: string | null
+  /** Pass back as `offset` for the next page; null when there are no more. */
+  nextOffset: number | null
+}
+
+export type AdminPhotoSort = 'NEWEST' | 'OLDEST' | 'CAMERA'
+
+export interface AdminPhotoQuery {
+  sort?: AdminPhotoSort
+  uploaderId?: string
+  liked?: boolean
+  hidden?: boolean
+  /** yyyy-mm-dd, the day the photo was taken */
+  day?: string
+  offset?: number
+  limit?: number
+}
+
+export interface PhotoFacets {
+  days: { day: string; photos: number }[]
+  liked: number
+  hidden: number
 }
 
 export interface EventStats {
@@ -125,6 +149,8 @@ export interface EventStats {
   activeUploaders: number
   latestPhoto: AdminPhoto | null
   uploaders: UploaderStats[]
+  hiddenPhotos: number
+  likedPhotos: number
 }
 
 export interface UploaderCredentials {
