@@ -52,6 +52,17 @@ describe('Photo viewer', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
+  it('counts against all photos in the event, not just the ones loaded so far', async () => {
+    mockFetch({
+      [base]: () => ({ ...liveEvent, photoCount: 2132 }),
+      [`${base}/photos`]: () => ({ photos: [photo(3), photo(2), photo(1)], nextCursor: 'more' }),
+    })
+    const user = userEvent.setup()
+    renderGallery()
+    await user.click(await screen.findByRole('button', { name: 'Open photo 2' }))
+    expect(screen.getByTestId('viewer-counter')).toHaveTextContent('2 / 2,132')
+  })
+
   it('opens directly from a shared photo link', async () => {
     renderGallery(`/e/${SLUG}?photo=${photo(2).id}`)
     expect(await screen.findByRole('dialog', { name: 'Photo viewer' })).toBeInTheDocument()

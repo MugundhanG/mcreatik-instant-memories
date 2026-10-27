@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
+import { formatCount } from '../lib/format'
 import { downloadPhoto, fetchPhoto, isIOS, sharePhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
 import { SLIDE_MS, useViewerGestures } from './useViewerGestures'
@@ -7,6 +8,8 @@ import { SLIDE_MS, useViewerGestures } from './useViewerGestures'
 interface Props {
   photos: PublicPhoto[]
   index: number
+  /** All photos in the event; only some may be loaded yet (more load while swiping). */
+  total: number
   eventSlug: string
   eventName: string
   onIndexChange: (index: number) => void
@@ -18,8 +21,9 @@ interface Props {
 const SHOW_SHARE = false
 const SAVE_HINT = 'Press and hold the photo, then tap “Save image”'
 
-export function PhotoViewer({ photos, index, eventSlug, eventName, onIndexChange, onClose, onNearEnd }: Props) {
+export function PhotoViewer({ photos, index, total, eventSlug, eventName, onIndexChange, onClose, onNearEnd }: Props) {
   const photo = photos[index]
+  const count = Math.max(total, photos.length)
   const [loadedId, setLoadedId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ text: string; ms: number } | null>(null)
   // iPhone: the photo must already be fetched when Download is tapped (see downloadPhoto).
@@ -115,7 +119,7 @@ export function PhotoViewer({ photos, index, eventSlug, eventName, onIndexChange
           </svg>
         </button>
         <span className="text-sm text-white/70 tabular-nums" data-testid="viewer-counter">
-          {index + 1} / {photos.length}
+          {formatCount(index + 1)} / {formatCount(count)}
         </span>
         <span className="size-11" aria-hidden="true" />
       </div>
@@ -141,7 +145,7 @@ export function PhotoViewer({ photos, index, eventSlug, eventName, onIndexChange
               ref={imageRef}
               key={photo.id}
               src={photo.webUrl}
-              alt={`Photo ${index + 1} of ${photos.length}`}
+              alt={`Photo ${index + 1} of ${count}`}
               onLoad={() => setLoadedId(photo.id)}
               className={`relative max-h-full max-w-full object-contain transition-opacity duration-300 ${loadedId === photo.id ? 'opacity-100' : 'opacity-0'}`}
               draggable={false}
