@@ -125,7 +125,7 @@ describe('Dashboard photos', () => {
       expect(within(viewer).getByRole('button', { name })).toBeInTheDocument()
     }
     await user.keyboard('{ArrowLeft}')
-    expect(within(viewer).getByTestId('viewer-counter')).toHaveTextContent('1 / 2')
+    await waitFor(() => expect(within(viewer).getByTestId('viewer-counter')).toHaveTextContent('1 / 2'))
   })
 
   it('sends camera, liked, day and sort filters to the server', async () => {

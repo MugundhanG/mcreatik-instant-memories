@@ -4,7 +4,7 @@ import { formatCount } from '../lib/format'
 import { downloadPhoto, fetchPhoto, isIOS, sharePhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
 import { INSTAGRAM_HANDLE, InstagramLink } from '../shared/StudioLogo'
-import { SLIDE_MS, useViewerGestures } from './useViewerGestures'
+import { SLIDE_EASE, SLIDE_GAP, SLIDE_MS, useViewerGestures } from './useViewerGestures'
 import type { Zoom } from './useViewerGestures'
 
 interface Props {
@@ -45,16 +45,22 @@ export function PhotoViewer({
   const hasNext = index < photos.length - 1
   const prev = () => hasPrev && onIndexChange(index - 1)
   const next = () => hasNext && onIndexChange(index + 1)
-  const { zoom, slide, handlers } = useViewerGestures({
+  const { zoom, slide, slideTo, handlers } = useViewerGestures({
     stageRef, imageRef, photoKey: photo?.id, canPrev: hasPrev, canNext: hasNext, onPrev: prev, onNext: next, onClose,
+  })
+
+  // Arrow keys slide like a swipe (latest slideTo: it changes every render).
+  const slideToRef = useRef(slideTo)
+  useEffect(() => {
+    slideToRef.current = slideTo
   })
 
   // Keyboard navigation + lock page scroll while open.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowLeft' && index > 0) onIndexChange(index - 1)
-      if (e.key === 'ArrowRight' && index < photos.length - 1) onIndexChange(index + 1)
+      if (e.key === 'ArrowLeft') slideToRef.current(-1)
+      if (e.key === 'ArrowRight') slideToRef.current(1)
     }
     window.addEventListener('keydown', onKey)
     const overflow = document.body.style.overflow
@@ -63,7 +69,7 @@ export function PhotoViewer({
       window.removeEventListener('keydown', onKey)
       document.body.style.overflow = overflow
     }
-  }, [index, photos.length, onClose, onIndexChange])
+  }, [onClose])
 
   // Preload neighbours so swiping feels instant; fetch more when close to the end.
   useEffect(() => {
@@ -142,7 +148,7 @@ export function PhotoViewer({
         {/* The neighbours sit beside the photo, so a swipe drags the next one in like a phone gallery. */}
         <div
           className="absolute inset-0"
-          style={{ transform: `translate3d(${slide.x}px, ${slide.y}px, 0)`, transition: slide.animate ? `transform ${SLIDE_MS}ms ease-out` : undefined }}
+          style={{ transform: `translate3d(${slide.x}px, ${slide.y}px, 0)`, transition: slide.animate ? `transform ${SLIDE_MS}ms ${SLIDE_EASE}` : undefined }}
         >
           {/* Slides keep their key (the photo id) as they move, so the photo that slid in stays on screen as it is:
               no reload, no flicker. */}
@@ -162,12 +168,12 @@ export function PhotoViewer({
           })}
         </div>
         {hasPrev && (
-          <button type="button" onClick={prev} aria-label="Previous photo" className="absolute top-1/2 left-2 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 hover:bg-black/50 sm:flex">
+          <button type="button" onClick={() => slideTo(-1)} aria-label="Previous photo" className="absolute top-1/2 left-2 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 hover:bg-black/50 sm:flex">
             <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
           </button>
         )}
         {hasNext && (
-          <button type="button" onClick={next} aria-label="Next photo" className="absolute top-1/2 right-2 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 hover:bg-black/50 sm:flex">
+          <button type="button" onClick={() => slideTo(1)} aria-label="Next photo" className="absolute top-1/2 right-2 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 hover:bg-black/50 sm:flex">
             <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
           </button>
         )}
@@ -219,7 +225,7 @@ function Slide({ photo, offset, zoom, imageRef, alt }: {
   alt: string
 }) {
   const [loaded, setLoaded] = useState(false)
-  const position: CSSProperties = offset === 0 ? {} : { transform: `translateX(calc(${offset * 100}% + ${offset * 16}px))` }
+  const position: CSSProperties = offset === 0 ? {} : { transform: `translateX(calc(${offset * 100}% + ${offset * SLIDE_GAP}px))` }
   const zoomStyle: CSSProperties = zoom
     ? { transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.scale})`, transition: zoom.animate ? 'transform 200ms ease-out' : undefined }
     : {}

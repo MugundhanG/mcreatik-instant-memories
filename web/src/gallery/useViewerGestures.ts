@@ -9,7 +9,11 @@ const FLICK_MS = 250
 const DISMISS_PX = 120
 const DOUBLE_TAP_MS = 300
 const TAP_SLOP_PX = 10
-export const SLIDE_MS = 220
+export const SLIDE_MS = 280
+/** Space between photos in the swipe track, px. */
+export const SLIDE_GAP = 16
+/** Fast start, soft landing: how phone galleries settle a swipe. */
+export const SLIDE_EASE = 'cubic-bezier(0.22, 0.61, 0.36, 1)'
 
 export interface Zoom {
   scale: number
@@ -197,8 +201,8 @@ export function useViewerGestures({ stageRef, imageRef, photoKey, canPrev, canNe
     } else if (g.mode === 'swipe') {
       const width = stageRef.current?.clientWidth ?? 0
       const flick = Math.abs(dx) > FLICK_PX && e.timeStamp - g.t < FLICK_MS
-      if ((dx < -SWIPE_PX || (flick && dx < 0)) && canNext) settle(-width, onNext)
-      else if ((dx > SWIPE_PX || (flick && dx > 0)) && canPrev) settle(width, onPrev)
+      if ((dx < -SWIPE_PX || (flick && dx < 0)) && canNext) settle(-(width + SLIDE_GAP), onNext)
+      else if ((dx > SWIPE_PX || (flick && dx > 0)) && canPrev) settle(width + SLIDE_GAP, onPrev)
       else settle(0)
     } else if (g.mode === 'dismiss') {
       if (dy > DISMISS_PX) onClose()
@@ -219,9 +223,17 @@ export function useViewerGestures({ stageRef, imageRef, photoKey, canPrev, canNe
     setZoom(zoomAround(z, z.scale * Math.exp(-e.deltaY * 0.002), local({ x: e.clientX, y: e.clientY })))
   }
 
+  /** Slide to the previous (-1) or next (1) photo exactly as a swipe would: arrow buttons and keys. */
+  const slideTo = (direction: -1 | 1) => {
+    if (settling.current || (direction < 0 ? !canPrev : !canNext)) return
+    const width = (stageRef.current?.clientWidth ?? 0) + SLIDE_GAP
+    settle(direction < 0 ? width : -width, direction < 0 ? onPrev : onNext)
+  }
+
   return {
     zoom,
     slide,
+    slideTo,
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onWheel },
   }
 }

@@ -44,9 +44,11 @@ describe('Photo viewer', () => {
     expect(screen.getByAltText('Photo 1 of 3')).toHaveAttribute('src', 'https://media.test/web/3.jpg')
 
     await user.keyboard('{ArrowRight}')
-    expect(screen.getByTestId('viewer-counter')).toHaveTextContent('2 / 3')
-    await user.keyboard('{ArrowLeft}')
+    // Slides first, like a swipe, then shows the next photo.
     expect(screen.getByTestId('viewer-counter')).toHaveTextContent('1 / 3')
+    await waitFor(() => expect(screen.getByTestId('viewer-counter')).toHaveTextContent('2 / 3'))
+    await user.keyboard('{ArrowLeft}')
+    await waitFor(() => expect(screen.getByTestId('viewer-counter')).toHaveTextContent('1 / 3'))
 
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -206,8 +208,18 @@ describe('Photo viewer', () => {
       tap(stage)
       tap(stage)
       await user.keyboard('{ArrowRight}')
-      expect(screen.getByTestId('viewer-counter')).toHaveTextContent('2 / 3')
+      await waitFor(() => expect(screen.getByTestId('viewer-counter')).toHaveTextContent('2 / 3'))
       expect(Number(scaleOf())).toBe(1)
+    })
+
+    it('the Next button slides the photo across instead of jumping', async () => {
+      const user = userEvent.setup()
+      await open()
+      await user.click(screen.getByRole('button', { name: 'Next photo' }))
+      const track = screen.getByTestId('viewer-zoom').parentElement!.parentElement!
+      expect(track.style.transition).toMatch(/transform/)
+      expect(track.style.transform).toMatch(/translate3d\(-\d+px/)
+      await waitFor(() => expect(screen.getByTestId('viewer-counter')).toHaveTextContent('2 / 3'))
     })
 
     it('swiping down closes the viewer', async () => {
