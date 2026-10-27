@@ -10,9 +10,9 @@ import { QrCode } from './QrPanel'
 
 /** Smaller headline for long names so it stays on one or two lines. */
 function namesSize(names: string) {
-  if (names.length <= 22) return 'text-[74px]'
-  if (names.length <= 34) return 'text-[60px]'
-  return 'text-[48px]'
+  if (names.length <= 22) return 'text-[58px]'
+  if (names.length <= 34) return 'text-[48px]'
+  return 'text-[40px]'
 }
 
 const CORNERS = [
