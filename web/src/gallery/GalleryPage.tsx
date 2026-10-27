@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import logoLightUrl from '../assets/mcreatik-studios-logo-light.webp'
 import { formatCount, formatEventDate, splitEventName } from '../lib/format'
 import type { PublicPhoto } from '../lib/types'
-import { LiveBadge } from './LiveBadge'
+import { StatusBadge } from './StatusBadge'
 import { PhotoGrid } from './PhotoGrid'
 import { STUDIO_NAME } from '../shared/StudioLogo'
 import { PhotoViewer } from './PhotoViewer'
@@ -106,8 +106,8 @@ export default function GalleryPage() {
       </header>
 
       <div className="relative z-10 mx-3 -mt-6 flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.12)] sm:mx-auto sm:max-w-xl">
-        <LiveBadge live={event.live} connection={connection} />
-        <span className="text-xs text-muted">
+        <StatusBadge status={event.status} connection={connection} />
+        <span className="shrink-0 text-xs whitespace-nowrap text-muted">
           {event.photoCount > 0 ? `${formatCount(event.photoCount)} photos` : 'Photos coming soon'}
         </span>
       </div>

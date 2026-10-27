@@ -177,7 +177,7 @@ describe('Live gallery', () => {
     expect(screen.getByTestId('gallery-cover')).toHaveAttribute('src', photo(2).webUrl)
   })
 
-  it('does not show the live indicator for completed events', async () => {
+  it('shows Completed with a tick instead of the live indicator after the event', async () => {
     mockFetch({
       [base]: () => ({ ...liveEvent, status: 'COMPLETED', live: false }),
       [`${base}/photos`]: () => ({ photos: [photo(1)], nextCursor: null }),
@@ -185,5 +185,18 @@ describe('Live gallery', () => {
     renderGallery()
     await screen.findByRole('heading', { name: liveEvent.name })
     expect(screen.queryByText('Live')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('live-dot')).not.toBeInTheDocument()
+    expect(within(screen.getByTestId('event-status')).getByText('Completed')).toBeInTheDocument()
+  })
+
+  it('shows Upcoming before the event starts', async () => {
+    mockFetch({
+      [base]: () => ({ ...liveEvent, status: 'UPCOMING', live: false, photoCount: 0 }),
+      [`${base}/photos`]: () => ({ photos: [], nextCursor: null }),
+    })
+    renderGallery()
+    await screen.findByRole('heading', { name: liveEvent.name })
+    expect(within(screen.getByTestId('event-status')).getByText('Upcoming')).toBeInTheDocument()
+    expect(screen.getByText('Event starts soon')).toBeInTheDocument()
   })
 })
