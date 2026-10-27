@@ -47,9 +47,6 @@ export default function PrintQrPage() {
         <div className="absolute inset-[70px] flex flex-col items-center">
           <img src={markUrl} alt="" className="mt-1 h-[84px] w-auto" />
           <p className="mt-3 font-display text-[32px] leading-none font-semibold tracking-[0.22em] text-[#7a4f17] uppercase">{STUDIO_NAME}</p>
-          <p className="mt-2.5 inline-flex items-center gap-1.5 text-[15px] font-medium tracking-wide text-[#7a4f17]">
-            <InstagramIcon className="size-4" />@{INSTAGRAM_HANDLE}
-          </p>
 
           <p className="mt-8 inline-flex items-center gap-2 rounded-full border border-[#d9a94e] px-[18px] py-[7px] text-[11px] font-semibold tracking-[0.3em] text-[#8a5a1c]">
             <span className="size-2 rounded-full bg-live" />
@@ -73,7 +70,12 @@ export default function PrintQrPage() {
             <span><b className="mr-1.5 text-[#b37a2c]">2</b>Watch live</span>
             <span><b className="mr-1.5 text-[#b37a2c]">3</b>Save</span>
           </div>
-          <p className="mt-auto text-[11px] tracking-[0.25em] text-[#8a7a66] uppercase">No app · No sign-up needed</p>
+          <div className="mt-auto flex w-full items-end justify-between">
+            <p className="text-[11px] tracking-[0.25em] text-[#8a7a66] uppercase">No app · No sign-up needed</p>
+            <p className="inline-flex items-center gap-2 text-[17px] font-medium tracking-wide text-[#7a4f17]">
+              <InstagramIcon className="size-6" />@{INSTAGRAM_HANDLE}
+            </p>
+          </div>
         </div>
       </div>
 
