@@ -25,6 +25,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -32,6 +33,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.mcreatik.gallery.auth.ActiveAdminFilter;
+import com.mcreatik.gallery.auth.AdminUserRepository;
 import com.mcreatik.gallery.auth.JwtService;
 import com.mcreatik.gallery.uploader.UploaderRepository;
 import com.mcreatik.gallery.uploader.UploaderTokenAuthenticationFilter;
@@ -58,7 +61,7 @@ public class SecurityConfig {
     /** Admin dashboard: stateless JWT. */
     @Bean
     @Order(2)
-    SecurityFilterChain adminChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain adminChain(HttpSecurity http, AdminUserRepository users) throws Exception {
         return http
                 .securityMatcher("/api/admin/**")
                 .csrf(c -> c.disable())
@@ -68,6 +71,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().hasAuthority("SCOPE_admin"))
                 .oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()))
+                .addFilterAfter(new ActiveAdminFilter(users), BearerTokenAuthenticationFilter.class)
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .build();
     }

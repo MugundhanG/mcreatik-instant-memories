@@ -11,6 +11,8 @@ import type {
   PublicEvent,
   PublicPhotoPage,
   UploaderCredentials,
+  Account,
+  Studio,
 } from './types'
 
 export const API_BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
@@ -84,6 +86,8 @@ export interface CreateEventInput {
   eventDate: string
   status?: EventStatus
   slug?: string
+  /** Super admin only: create the event for this studio. */
+  ownerId?: string
 }
 
 export interface UpdateEventInput {
@@ -122,5 +126,13 @@ export const adminApi = {
     request<UploaderCredentials>(`/api/admin/events/${eventId}/uploaders`, { method: 'POST', body: json({ name }) }, true),
   rotateUploader: (uploaderId: string) =>
     request<UploaderCredentials>(`/api/admin/uploaders/${uploaderId}/rotate-token`, { method: 'POST' }, true),
+  account: () => request<Account>('/api/admin/account', {}, true),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<void>('/api/admin/account/password', { method: 'POST', body: json({ currentPassword, newPassword }) }, true),
+  studios: () => request<Studio[]>('/api/admin/studios', {}, true),
+  createStudio: (input: { name: string; email: string; password: string }) =>
+    request<Studio>('/api/admin/studios', { method: 'POST', body: json(input) }, true),
+  updateStudio: (id: string, input: { name?: string; disabled?: boolean; newPassword?: string }) =>
+    request<Studio>(`/api/admin/studios/${id}`, { method: 'PATCH', body: json(input) }, true),
   deleteUploader: (uploaderId: string) => request<void>(`/api/admin/uploaders/${uploaderId}`, { method: 'DELETE' }, true),
 }

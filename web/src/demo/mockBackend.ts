@@ -251,7 +251,7 @@ function detail(e: DemoEvent) {
   const cover = e.photos.find((p) => p.id === e.coverPhotoId)
   return {
     id: e.id, name: e.name, slug: e.slug, eventDate: e.eventDate, startTime: null, endTime: null, status: e.status,
-    coverPhotoId: e.coverPhotoId, coverUrl: cover?.webUrl ?? null, galleryUrl: GALLERY_BASE + e.slug,
+    coverPhotoId: e.coverPhotoId, coverUrl: cover?.webUrl ?? null, galleryUrl: GALLERY_BASE + e.slug, ownerId: DEMO_OWNER, ownerName: 'Demo',
     retentionUntil: e.retentionUntil, createdAt: e.createdAt, updatedAt: e.createdAt,
   }
 }
@@ -286,6 +286,8 @@ function credentials(u: DemoUploader) {
   return { uploaderId: u.id, name: u.name, token, connectionCode: code }
 }
 
+const DEMO_OWNER = '00000000-0000-0000-0000-000000000001'
+
 async function handle(method: string, url: URL, body: unknown): Promise<Response> {
   const path = url.pathname
   const q = url.searchParams
@@ -293,7 +295,7 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
 
   if (method === 'POST' && path === '/api/auth/login') {
     const email = (body as { email?: string })?.email || 'demo@mcreatik.com'
-    return json({ token: 'demo', expiresAt: new Date(Date.now() + 12 * 3_600_000).toISOString(), email, displayName: 'Demo' })
+    return json({ token: 'demo', expiresAt: new Date(Date.now() + 12 * 3_600_000).toISOString(), email, displayName: 'Demo', role: 'SUPER_ADMIN', mustChangePassword: false })
   }
 
   // ---- public ----
@@ -317,8 +319,16 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
   }
 
   // ---- admin ----
+  if (path === '/api/admin/account' && method === 'GET') {
+    return json({ email: 'demo@mcreatik.com', displayName: 'Demo', role: 'SUPER_ADMIN', mustChangePassword: false })
+  }
+  if (path === '/api/admin/account/password' && method === 'POST') return new Response(null, { status: 204 })
+  if (path === '/api/admin/studios' && method === 'GET') {
+    const photos = events.reduce((n, e) => n + e.photos.length, 0)
+    return json([{ id: DEMO_OWNER, name: 'Demo', email: 'demo@mcreatik.com', role: 'SUPER_ADMIN', disabled: false, mustChangePassword: false, createdAt: '2026-01-01T00:00:00Z', events: events.length, photos, storageBytes: photos * 4_000_000 }])
+  }
   if (path === '/api/admin/events' && method === 'GET') {
-    return json(events.map((e) => ({ id: e.id, name: e.name, slug: e.slug, eventDate: e.eventDate, status: e.status, galleryUrl: GALLERY_BASE + e.slug, readyPhotos: e.photos.length, createdAt: e.createdAt })))
+    return json(events.map((e) => ({ id: e.id, name: e.name, slug: e.slug, eventDate: e.eventDate, status: e.status, galleryUrl: GALLERY_BASE + e.slug, readyPhotos: e.photos.length, createdAt: e.createdAt, ownerId: DEMO_OWNER, ownerName: 'Demo' })))
   }
   if (path === '/api/admin/events' && method === 'POST') {
     const b = body as { name: string; eventDate: string; status?: EventStatus; slug?: string }

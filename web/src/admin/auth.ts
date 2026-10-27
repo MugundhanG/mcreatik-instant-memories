@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { configureAuth } from '../lib/api'
-import type { LoginResponse } from '../lib/types'
+import type { AdminRole, LoginResponse } from '../lib/types'
 
 const KEY = 'mcreatik.admin.session'
 
@@ -9,6 +9,9 @@ export interface Session {
   expiresAt: string
   email: string
   displayName: string
+  /** Missing in sessions saved before studio accounts; refreshed from the server on load. */
+  role?: AdminRole
+  mustChangePassword?: boolean
 }
 
 const listeners = new Set<() => void>()
@@ -37,7 +40,10 @@ function set(session: Session | null) {
 }
 
 export const auth = {
-  signIn: (r: LoginResponse) => set({ token: r.token, expiresAt: r.expiresAt, email: r.email, displayName: r.displayName }),
+  signIn: (r: LoginResponse) =>
+    set({ token: r.token, expiresAt: r.expiresAt, email: r.email, displayName: r.displayName, role: r.role, mustChangePassword: r.mustChangePassword }),
+  /** Account details changed (refreshed from the server, password changed). */
+  update: (patch: Partial<Omit<Session, 'token' | 'expiresAt'>>) => current && set({ ...current, ...patch }),
   signOut: () => set(null),
   session: () => current,
 }

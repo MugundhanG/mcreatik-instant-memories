@@ -43,11 +43,37 @@ export interface PhotoReadyMessage {
 
 // ---- Admin ----
 
+export type AdminRole = 'SUPER_ADMIN' | 'STUDIO'
+
 export interface LoginResponse {
   token: string
   expiresAt: string
   email: string
   displayName: string
+  role: AdminRole
+  /** The super admin set this password: the studio must choose its own first. */
+  mustChangePassword: boolean
+}
+
+export interface Account {
+  email: string
+  displayName: string
+  role: AdminRole
+  mustChangePassword: boolean
+}
+
+/** A login on the super admin's Studios page (McreatiK itself is listed too, as SUPER_ADMIN). */
+export interface Studio {
+  id: string
+  name: string
+  email: string
+  role: AdminRole
+  disabled: boolean
+  mustChangePassword: boolean
+  createdAt: string
+  events: number
+  photos: number
+  storageBytes: number
 }
 
 export interface EventSummary {
@@ -59,6 +85,9 @@ export interface EventSummary {
   galleryUrl: string
   readyPhotos: number
   createdAt: string
+  ownerId: string
+  /** The studio that owns the event (shown to the super admin). */
+  ownerName: string | null
 }
 
 export interface EventDetail {
@@ -75,6 +104,8 @@ export interface EventDetail {
   retentionUntil: string | null
   createdAt: string
   updatedAt: string
+  ownerId: string
+  ownerName: string | null
 }
 
 export interface UploaderStats {

@@ -13,6 +13,8 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mcreatik.gallery.auth.AdminUser;
+import com.mcreatik.gallery.auth.AdminUserRepository;
 import com.mcreatik.gallery.common.ApiException;
 import com.mcreatik.gallery.config.GalleryProperties;
 import com.mcreatik.gallery.photo.Photo;
@@ -38,10 +40,11 @@ public class EventService {
     private final PhotoMapper photoMapper;
     private final GalleryBroadcaster broadcaster;
     private final GalleryProperties properties;
+    private final AdminUserRepository admins;
 
     public EventService(EventRepository events, PhotoRepository photos, UploaderRepository uploaders,
                         StorageService storage, PhotoMapper photoMapper, GalleryBroadcaster broadcaster,
-                        GalleryProperties properties) {
+                        GalleryProperties properties, AdminUserRepository admins) {
         this.events = events;
         this.photos = photos;
         this.uploaders = uploaders;
@@ -49,11 +52,15 @@ public class EventService {
         this.photoMapper = photoMapper;
         this.broadcaster = broadcaster;
         this.properties = properties;
+        this.admins = admins;
     }
 
     @Transactional(readOnly = true)
     public List<EventDtos.EventSummary> list(UUID ownerId) {
-        List<Event> owned = events.findByOwnerIdOrderByEventDateDescCreatedAtDesc(ownerId);
+        // The super admin sees every studio's events; a studio only its own.
+        List<Event> owned = isSuperAdmin(ownerId) ? events.findAllByOrderByEventDateDescCreatedAtDesc()
+                : events.findByOwnerIdOrderByEventDateDescCreatedAtDesc(ownerId);
+        Map<UUID, String> names = ownerNames();
         Map<UUID, Long> counts = new HashMap<>();
         if (!owned.isEmpty()) {
             for (Object[] row : photos.countReadyByEvent(owned.stream().map(Event::getId).toList())) {
@@ -62,7 +69,7 @@ public class EventService {
         }
         return owned.stream().map(e -> new EventDtos.EventSummary(e.getId(), e.getName(), e.getSlug(),
                 e.getEventDate(), e.getStatus(), properties.galleryUrl(e.getSlug()),
-                counts.getOrDefault(e.getId(), 0L), e.getCreatedAt())).toList();
+                counts.getOrDefault(e.getId(), 0L), e.getCreatedAt(), e.getOwnerId(), names.get(e.getOwnerId()))).toList();
     }
 
     @Transactional
@@ -70,7 +77,17 @@ public class EventService {
         String slug = request.slug() == null || request.slug().isBlank()
                 ? uniqueSlug(request.name())
                 : validatedSlug(request.slug(), null);
-        Event event = new Event(ownerId, request.name().trim(), slug, request.eventDate(),
+        UUID owner = ownerId;
+        if (request.ownerId() != null && !request.ownerId().equals(ownerId)) {
+            // Only the super admin creates events for a studio.
+            if (!isSuperAdmin(ownerId)) {
+                throw new ApiException(org.springframework.http.HttpStatus.FORBIDDEN, "FORBIDDEN",
+                        "You can only create events for your own studio");
+            }
+            owner = admins.findById(request.ownerId()).map(AdminUser::getId)
+                    .orElseThrow(() -> ApiException.badRequest("INVALID_STUDIO", "Unknown studio"));
+        }
+        Event event = new Event(owner, request.name().trim(), slug, request.eventDate(),
                 request.status() == null ? EventStatus.UPCOMING : request.status());
         event.setStartTime(request.startTime());
         event.setEndTime(request.endTime());
@@ -201,8 +218,21 @@ public class EventService {
         });
     }
 
+    /** The caller's event; the super admin can open any studio's event (support). */
     public Event owned(UUID ownerId, UUID eventId) {
-        return events.findByIdAndOwnerId(eventId, ownerId).orElseThrow(() -> ApiException.notFound("Event"));
+        return events.findByIdAndOwnerId(eventId, ownerId)
+                .or(() -> isSuperAdmin(ownerId) ? events.findById(eventId) : java.util.Optional.empty())
+                .orElseThrow(() -> ApiException.notFound("Event"));
+    }
+
+    private boolean isSuperAdmin(UUID adminId) {
+        return admins.findById(adminId).map(AdminUser::isSuperAdmin).orElse(false);
+    }
+
+    private Map<UUID, String> ownerNames() {
+        Map<UUID, String> names = new HashMap<>();
+        admins.findAll().forEach(a -> names.put(a.getId(), a.getDisplayName()));
+        return names;
     }
 
     // ---- Public ----
@@ -226,7 +256,8 @@ public class EventService {
     private EventDtos.EventDetail toDetail(Event e) {
         return new EventDtos.EventDetail(e.getId(), e.getName(), e.getSlug(), e.getEventDate(), e.getStartTime(),
                 e.getEndTime(), e.getStatus(), e.getCoverPhotoId(), coverUrl(e), properties.galleryUrl(e.getSlug()),
-                e.getRetentionUntil(), e.getCreatedAt(), e.getUpdatedAt());
+                e.getRetentionUntil(), e.getCreatedAt(), e.getUpdatedAt(), e.getOwnerId(),
+                admins.findById(e.getOwnerId()).map(AdminUser::getDisplayName).orElse(null));
     }
 
     private String coverUrl(Event e) {
