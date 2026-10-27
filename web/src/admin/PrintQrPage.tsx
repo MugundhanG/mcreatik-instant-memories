@@ -46,7 +46,7 @@ export default function PrintQrPage() {
 
         <div className="absolute inset-[70px] flex flex-col items-center">
           <img src={markUrl} alt="" className="mt-1 h-[84px] w-auto" />
-          <p className="poster-gold-text mt-3 font-display text-[21px] font-semibold tracking-[0.35em] uppercase">{STUDIO_NAME}</p>
+          <p className="mt-3 font-display text-[32px] leading-none font-semibold tracking-[0.22em] text-[#7a4f17] uppercase">{STUDIO_NAME}</p>
 
           <p className="mt-8 inline-flex items-center gap-2 rounded-full border border-[#d9a94e] px-[18px] py-[7px] text-[11px] font-semibold tracking-[0.3em] text-[#8a5a1c]">
             <span className="size-2 rounded-full bg-live" />
