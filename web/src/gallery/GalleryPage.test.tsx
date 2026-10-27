@@ -147,17 +147,34 @@ describe('Live gallery', () => {
     expect(await screen.findByText('The first photos will appear here soon')).toBeInTheDocument()
   })
 
-  it('uses a two-column mobile-first grid that widens on larger screens', async () => {
+  it('shows photos uncropped in two columns on a phone, newest first', async () => {
+    Object.defineProperty(window, 'innerWidth', { value: 412, configurable: true }) // phone width
+    const portrait = { ...photo(3), width: 1365, height: 2048 }
     mockFetch({
       [base]: () => liveEvent,
-      [`${base}/photos`]: () => ({ photos: [photo(1)], nextCursor: null }),
+      [`${base}/photos`]: () => ({ photos: [portrait, photo(2), photo(1)], nextCursor: null }),
     })
     renderGallery()
     await screen.findByRole('heading', { name: liveEvent.name })
     const grid = screen.getByTestId('photo-grid')
-    expect(grid).toHaveClass('grid-cols-2')
-    expect(grid.className).toMatch(/sm:grid-cols-3/)
-    expect(grid.className).toMatch(/lg:grid-cols-4/)
+    expect(grid).toHaveAttribute('data-columns', '2')
+    const columns = within(grid).getAllByRole('list')
+    expect(columns).toHaveLength(2)
+    // Newest at the top of the first column, next two fill the shorter (second) column.
+    expect(within(columns[0]).getAllByRole('listitem')).toHaveLength(1)
+    expect(within(columns[1]).getAllByRole('listitem')).toHaveLength(2)
+    expect(tiles()[0]).toHaveStyle({ aspectRatio: '1365 / 2048' })
+  })
+
+  it('uses the cover photo, else the newest photo, behind the event name', async () => {
+    mockFetch({
+      [base]: () => ({ ...liveEvent, name: 'Gowtham & Sangeetha - Wedding_Reception' }),
+      [`${base}/photos`]: () => ({ photos: [photo(2), photo(1)], nextCursor: null }),
+    })
+    renderGallery()
+    expect(await screen.findByRole('heading', { name: 'Gowtham & Sangeetha' })).toBeInTheDocument()
+    expect(screen.getByText(/^Wedding Reception · /)).toBeInTheDocument()
+    expect(screen.getByTestId('gallery-cover')).toHaveAttribute('src', photo(2).webUrl)
   })
 
   it('does not show the live indicator for completed events', async () => {

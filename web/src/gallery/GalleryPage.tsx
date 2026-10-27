@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { formatCount, formatEventDate } from '../lib/format'
+import logoLightUrl from '../assets/mcreatik-studios-logo-light.webp'
+import { formatCount, formatEventDate, splitEventName } from '../lib/format'
 import type { PublicPhoto } from '../lib/types'
 import { LiveBadge } from './LiveBadge'
 import { PhotoGrid } from './PhotoGrid'
-import { StudioLogo, StudioName } from '../shared/StudioLogo'
+import { STUDIO_NAME } from '../shared/StudioLogo'
 import { PhotoViewer } from './PhotoViewer'
 import { useLiveGallery } from './useLiveGallery'
 
@@ -81,22 +82,35 @@ export default function GalleryPage() {
     )
   }
 
+  const { names, occasion } = splitEventName(event.name)
+  const date = formatEventDate(event.eventDate)
+  // The photographer's chosen cover; until one is set, the newest photo.
+  const cover = event.coverUrl ?? photos[0]?.webUrl ?? null
+
   return (
     <div className="min-h-dvh">
-      <div className="px-4 pt-4 sm:px-6 sm:pt-5">
-        <StudioLogo className="h-14 sm:h-16" />
-      </div>
-      <header className="px-6 pt-2 pb-8 text-center sm:pt-4 sm:pb-10">
-        <StudioName className="text-2xl sm:text-3xl" />
-        <h1 className="mt-3 font-display text-4xl leading-tight font-medium text-balance sm:text-5xl">{event.name}</h1>
-        <p className="mt-2 text-sm text-muted">
-          {formatEventDate(event.eventDate)}
-          {event.photoCount > 0 && <> · {formatCount(event.photoCount)} photos</>}
-        </p>
-        <div className="mt-5 flex justify-center">
-          <LiveBadge live={event.live} connection={connection} />
+      <header className="relative h-[68svh] max-h-[640px] min-h-[420px] overflow-hidden bg-[#3a2a20] text-white">
+        {cover ? (
+          <img src={cover} alt="" data-testid="gallery-cover" className="absolute inset-0 size-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_35%,rgba(255,240,210,0.45),transparent_45%),linear-gradient(160deg,#c9a27a,#6d4a35_60%,#2e211a)]" />
+        )}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.45)_0%,transparent_28%,transparent_45%,rgba(0,0,0,0.8)_100%)]" />
+        {/* Watermark: transparent logo straight on the photo */}
+        <img src={logoLightUrl} alt={STUDIO_NAME} className="absolute top-4 left-4 h-14 w-auto opacity-90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)] sm:top-6 sm:left-6 sm:h-16" />
+        <div className="absolute inset-x-0 bottom-0 px-6 pb-12 sm:px-10 sm:pb-14">
+          <p className="text-[11px] font-semibold tracking-[0.35em] text-[#f3dfb4] uppercase">{STUDIO_NAME}</p>
+          <h1 className="mt-2 font-display text-[44px] leading-[1.02] font-medium text-balance sm:text-6xl">{names}</h1>
+          <p className="mt-2 text-sm text-white/85">{occasion ? `${occasion} · ${date}` : date}</p>
         </div>
       </header>
+
+      <div className="relative z-10 mx-3 -mt-6 flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.12)] sm:mx-auto sm:max-w-xl">
+        <LiveBadge live={event.live} connection={connection} />
+        <span className="text-xs text-muted">
+          {event.photoCount > 0 ? `${formatCount(event.photoCount)} photos` : 'Photos coming soon'}
+        </span>
+      </div>
 
       {incoming.length > 0 && (
         <div className="sticky top-3 z-30 flex justify-center">
@@ -110,7 +124,7 @@ export default function GalleryPage() {
         </div>
       )}
 
-      <main>
+      <main className="pt-4">
         {photos.length === 0 ? (
           <div className="px-8 py-24 text-center">
             <p className="font-display text-2xl">The first photos will appear here soon</p>
