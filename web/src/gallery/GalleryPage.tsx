@@ -144,6 +144,7 @@ export default function GalleryPage() {
         <PhotoViewer
           photos={photos}
           index={selectedIndex}
+          total={event.photoCount}
           eventSlug={event.slug}
           eventName={event.name}
           onIndexChange={changeIndex}
