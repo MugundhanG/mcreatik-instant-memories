@@ -1,3 +1,4 @@
+import type { PreparedPhoto } from '../admin/prepareUpload'
 import type {
   AdminPhoto,
   AdminPhotoPage,
@@ -39,7 +40,8 @@ export function configureAuth(provider: TokenProvider, unauthorized: () => void)
 
 async function request<T>(path: string, init: RequestInit = {}, auth = false): Promise<T> {
   const headers = new Headers(init.headers)
-  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  // JSON bodies are strings; FormData (photo uploads) sets its own multipart Content-Type.
+  if (typeof init.body === 'string' && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
   if (auth) {
     const token = tokenProvider()
     if (token) headers.set('Authorization', `Bearer ${token}`)
@@ -120,6 +122,20 @@ export const adminApi = {
   photoFacets: (id: string) => request<PhotoFacets>(`/api/admin/events/${id}/photo-facets`, {}, true),
   updatePhoto: (photoId: string, input: { hidden?: boolean; liked?: boolean }) =>
     request<AdminPhoto>(`/api/admin/photos/${photoId}`, { method: 'PATCH', body: json(input) }, true),
+  /** Dashboard upload: the browser-made gallery and thumbnail JPEGs plus the original's details. */
+  uploadPhoto: (eventId: string, file: File, p: PreparedPhoto) => {
+    const form = new FormData()
+    form.append('web', p.web, 'web.jpg')
+    form.append('thumbnail', p.thumbnail, 'thumb.jpg')
+    form.append('fileName', file.name)
+    form.append('fileSize', String(file.size))
+    form.append('mimeType', file.type)
+    form.append('checksumSha256', p.checksumSha256)
+    form.append('width', String(p.width))
+    form.append('height', String(p.height))
+    if (p.capturedAt) form.append('capturedAt', p.capturedAt)
+    return request<{ outcome: 'UPLOAD' | 'DUPLICATE'; photoId: string }>(`/api/admin/events/${eventId}/photos`, { method: 'POST', body: form }, true)
+  },
   deletePhoto: (photoId: string) => request<void>(`/api/admin/photos/${photoId}`, { method: 'DELETE' }, true),
   originalUrl: (photoId: string) => request<{ url: string }>(`/api/admin/photos/${photoId}/original`, {}, true),
   createUploader: (eventId: string, name: string) =>

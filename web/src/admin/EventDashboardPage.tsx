@@ -9,6 +9,7 @@ import { QrPanel } from './QrPanel'
 import { Button, Card, ErrorText, EventStatusBadge, Field, inputClass, Stat } from './ui'
 import { useConfirm } from './useConfirm'
 import { UploadersPanel } from './UploadersPanel'
+import { UploadPhotosPanel } from './UploadPhotosPanel'
 
 const STATUSES: EventStatus[] = ['DRAFT', 'UPCOMING', 'LIVE', 'COMPLETED', 'ARCHIVED']
 const POLL_MS = 5_000
@@ -105,6 +106,7 @@ export default function EventDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          <UploadPhotosPanel eventId={event.id} onUploaded={loadStats} />
           <UploadersPanel eventId={event.id} uploaders={stats?.uploaders ?? []} onChange={loadStats} />
           {stats?.latestPhoto && (
             <Card title="Latest photo">

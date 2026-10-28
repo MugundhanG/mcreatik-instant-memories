@@ -1,22 +1,28 @@
 package com.mcreatik.gallery.photo;
 
+import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.mcreatik.gallery.auth.CurrentAdmin;
 import com.mcreatik.gallery.common.ApiException;
@@ -35,10 +41,13 @@ public class AdminPhotoController {
     private final StorageService storage;
     private final GalleryBroadcaster broadcaster;
     private final AdminPhotoSearch search;
+    private final UploadService uploads;
 
     public AdminPhotoController(PhotoRepository photos, EventService events, PhotoMapper mapper,
-                                StorageService storage, GalleryBroadcaster broadcaster, AdminPhotoSearch search) {
+                                StorageService storage, GalleryBroadcaster broadcaster, AdminPhotoSearch search,
+                                UploadService uploads) {
         this.search = search;
+        this.uploads = uploads;
         this.photos = photos;
         this.events = events;
         this.mapper = mapper;
@@ -65,6 +74,24 @@ public class AdminPhotoController {
         boolean more = rows.size() > size;
         List<Photo> page = more ? rows.subList(0, size) : rows;
         return new PhotoDtos.AdminPhotoPage(page.stream().map(mapper::toAdmin).toList(), more ? from + size : null);
+    }
+
+    /**
+     * Manual upload from the dashboard. The browser sends the gallery (web) and thumbnail JPEGs it made from the
+     * photo plus the original's details; the original itself stays with the photographer.
+     */
+    @PostMapping(value = "/events/{eventId}/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public UploadService.AdminUploadResponse upload(Authentication auth, @PathVariable UUID eventId,
+                                                    @RequestPart("web") MultipartFile web,
+                                                    @RequestPart("thumbnail") MultipartFile thumbnail,
+                                                    @RequestParam String fileName, @RequestParam long fileSize,
+                                                    @RequestParam String mimeType, @RequestParam String checksumSha256,
+                                                    @RequestParam int width, @RequestParam int height,
+                                                    @RequestParam(required = false) Instant capturedAt)
+            throws IOException {
+        events.owned(CurrentAdmin.id(auth), eventId);
+        return uploads.adminUpload(eventId, new UploadService.AdminUpload(fileName, fileSize, mimeType,
+                checksumSha256, width, height, capturedAt), web.getBytes(), thumbnail.getBytes());
     }
 
     /** Counts for the dashboard's filters: days with photos, liked and hidden totals. */

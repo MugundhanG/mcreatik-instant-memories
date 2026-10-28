@@ -21,6 +21,11 @@ spring:
   mvc:
     async:
       request-timeout: -1
+  servlet:
+    multipart:
+      # Dashboard uploads: one browser-made gallery JPEG (<= 8 MB) + thumbnail (<= 2 MB) per request.
+      max-file-size: 10MB
+      max-request-size: 12MB
 
 server:
   port: ${PORT:8080}
