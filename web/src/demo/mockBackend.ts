@@ -327,6 +327,21 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
     const photos = events.reduce((n, e) => n + e.photos.length, 0)
     return json([{ id: DEMO_OWNER, name: 'Demo', email: 'demo@mcreatik.com', role: 'SUPER_ADMIN', disabled: false, mustChangePassword: false, createdAt: '2026-01-01T00:00:00Z', events: events.length, photos, storageBytes: photos * 4_000_000 }])
   }
+  if ((m = path.match(/^\/api\/admin\/events\/([^/]+)\/photos$/)) && method === 'POST' && body instanceof FormData) {
+    const e = events.find((x) => x.id === m![1])
+    if (!e) return notFound()
+    const web = URL.createObjectURL(body.get('web') as Blob)
+    const at = nowIso()
+    const photo: DemoPhoto = {
+      id: uid('photo'), uploaderId: null, originalFileName: String(body.get('fileName')), fileSize: Number(body.get('fileSize')),
+      thumbnailUrl: URL.createObjectURL(body.get('thumbnail') as Blob), webUrl: web,
+      width: Number(body.get('width')), height: Number(body.get('height')), readyAt: at, createdAt: at,
+    }
+    e.photos.unshift(photo)
+    broadcast(e, 'PHOTO_READY', { eventId: e.id, photoId: photo.id, ...toPublic(photo) })
+    notify()
+    return json({ outcome: 'UPLOAD', photoId: photo.id })
+  }
   if (path === '/api/admin/events' && method === 'GET') {
     return json(events.map((e) => ({ id: e.id, name: e.name, slug: e.slug, eventDate: e.eventDate, status: e.status, galleryUrl: GALLERY_BASE + e.slug, readyPhotos: e.photos.length, createdAt: e.createdAt, ownerId: DEMO_OWNER, ownerName: 'Demo' })))
   }
@@ -439,7 +454,7 @@ export function installDemoBackend() {
     const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
     if (!href.startsWith(API_BASE_URL)) return realFetch(input, init)
     const method = (init?.method ?? 'GET').toUpperCase()
-    const body = typeof init?.body === 'string' && init.body ? JSON.parse(init.body) : undefined
+    const body = init?.body instanceof FormData ? init.body : typeof init?.body === 'string' && init.body ? JSON.parse(init.body) : undefined
     await new Promise((r) => setTimeout(r, 120)) // feel of a real network
     return handle(method, new URL(href), body)
   }

@@ -202,6 +202,73 @@ public class UploadService {
         return outcome.response();
     }
 
+    /** A photo an admin uploaded from the dashboard: the browser already made the web and thumbnail JPEGs. */
+    public record AdminUpload(String fileName, long fileSize, String mimeType, String checksumSha256, int width,
+                              int height, Instant capturedAt) {
+    }
+
+    public record AdminUploadResponse(SessionOutcome outcome, UUID photoId) {
+    }
+
+    /**
+     * Stores a dashboard upload and makes it READY at once (no server processing, no original kept). The same file
+     * twice in one event is reported as DUPLICATE; one a camera left half-uploaded is completed with these versions.
+     * Unlike camera uploads this never switches the event to LIVE: delivery after the event is the common case.
+     */
+    public AdminUploadResponse adminUpload(UUID eventId, AdminUpload meta, byte[] web, byte[] thumbnail) {
+        String mimeType = validate(new UploadSessionRequest(meta.fileName(), meta.fileSize(), meta.mimeType(),
+                meta.checksumSha256(), new Prepared(web.length, thumbnail.length, meta.width(), meta.height(),
+                meta.capturedAt())));
+        if (!isJpeg(web) || !isJpeg(thumbnail)) {
+            throw ApiException.badRequest("INVALID_PREPARED", "Web and thumbnail versions must be JPEG");
+        }
+        String checksum = meta.checksumSha256().toLowerCase(Locale.ROOT);
+        String fileName = cleanFileName(meta.fileName());
+        Event event = events.findById(eventId).orElseThrow(() -> ApiException.notFound("Event"));
+        if (!event.getStatus().acceptsUploads()) {
+            throw ApiException.conflict("EVENT_CLOSED", "This event is archived and no longer accepts photos");
+        }
+
+        var existing = photos.findByEventIdAndChecksumSha256(eventId, checksum);
+        if (existing.isPresent() && existing.get().getStatus() != PhotoStatus.UPLOADING
+                && existing.get().getStatus() != PhotoStatus.FAILED) {
+            return new AdminUploadResponse(SessionOutcome.DUPLICATE, existing.get().getId());
+        }
+        UUID photoId = existing.map(Photo::getId).orElseGet(UUID::randomUUID);
+        String webKey = StorageKeys.optimized(eventId, photoId);
+        String thumbKey = StorageKeys.thumbnail(eventId, photoId);
+        // Files first: a row only ever turns READY once guests can load its images.
+        storage.write(StorageArea.MEDIA, webKey, web, "image/jpeg");
+        storage.write(StorageArea.MEDIA, thumbKey, thumbnail, "image/jpeg");
+        try {
+            tx.executeWithoutResult(s -> {
+                Photo photo = existing.isPresent()
+                        ? photos.findById(photoId).orElseThrow(() -> ApiException.notFound("Photo"))
+                        : new Photo(photoId, eventId, null, fileName, StorageKeys.original(eventId, photoId, mimeType),
+                                meta.fileSize(), mimeType, checksum);
+                if (existing.isPresent()) {
+                    photo.restartUpload(null, fileName, meta.fileSize());
+                }
+                photo.prepareOnUploader(meta.width(), meta.height(), meta.capturedAt(), webKey, thumbKey,
+                        web.length + (long) thumbnail.length);
+                photo.markReadyFromUploader();
+                photos.saveAndFlush(photo);
+            });
+        } catch (DataIntegrityViolationException race) {
+            // The same file arrived concurrently (two tabs, a camera): the other copy wins.
+            storage.delete(StorageArea.MEDIA, webKey);
+            storage.delete(StorageArea.MEDIA, thumbKey);
+            UUID winner = photos.findByEventIdAndChecksumSha256(eventId, checksum).orElseThrow(() -> race).getId();
+            return new AdminUploadResponse(SessionOutcome.DUPLICATE, winner);
+        }
+        publisher.publishEvent(new PhotoReadyEvent(eventId, photoId));
+        return new AdminUploadResponse(SessionOutcome.UPLOAD, photoId);
+    }
+
+    private static boolean isJpeg(byte[] data) {
+        return data.length > 3 && (data[0] & 0xFF) == 0xFF && (data[1] & 0xFF) == 0xD8;
+    }
+
     private String validate(UploadSessionRequest r) {
         if (r.fileName() == null || r.fileName().isBlank()) {
             throw ApiException.badRequest("INVALID_FILE_NAME", "fileName is required");
