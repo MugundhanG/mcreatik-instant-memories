@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import logoLightUrl from '../assets/mcreatik-studios-logo-light.webp'
 import { formatCount, formatEventDate, splitEventName } from '../lib/format'
 import type { PublicPhoto } from '../lib/types'
 import { StatusBadge } from './StatusBadge'
 import { PhotoGrid } from './PhotoGrid'
-import { INSTAGRAM_HANDLE, InstagramIcon, InstagramLink, STUDIO_NAME } from '../shared/StudioLogo'
+import { resolveBrand } from '../shared/brand'
+import { InstagramIcon, InstagramLink } from '../shared/StudioLogo'
 import { PhotoViewer } from './PhotoViewer'
 import { useLiveGallery } from './useLiveGallery'
 
@@ -84,6 +84,7 @@ export default function GalleryPage() {
 
   const { names, occasion } = splitEventName(event.name)
   const date = formatEventDate(event.eventDate)
+  const brand = resolveBrand(event.brand)
   // The photographer's chosen cover; until one is set, the newest photo.
   const cover = event.coverUrl ?? photos[0]?.webUrl ?? null
 
@@ -96,10 +97,16 @@ export default function GalleryPage() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_35%,rgba(255,240,210,0.45),transparent_45%),linear-gradient(160deg,#c9a27a,#6d4a35_60%,#2e211a)]" />
         )}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.45)_0%,transparent_28%,transparent_45%,rgba(0,0,0,0.8)_100%)]" />
-        {/* Watermark: transparent logo straight on the photo */}
-        <img src={logoLightUrl} alt={STUDIO_NAME} className="absolute top-4 left-4 h-14 w-auto opacity-90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)] sm:top-6 sm:left-6 sm:h-16" />
+        {/* McreatiK's light logo sits straight on the photo; a studio's logo (any colours) on a light card. */}
+        {brand.heroLogo && (brand.heroLogoOnCard ? (
+          <span className="absolute top-4 left-4 rounded-xl bg-white/90 p-2 shadow-[0_2px_10px_rgba(0,0,0,0.25)] sm:top-6 sm:left-6">
+            <img src={brand.heroLogo} alt={brand.name} data-testid="brand-logo" className="h-10 w-auto max-w-[160px] object-contain sm:h-12" />
+          </span>
+        ) : (
+          <img src={brand.heroLogo} alt={brand.name} data-testid="brand-logo" className="absolute top-4 left-4 h-14 w-auto opacity-90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)] sm:top-6 sm:left-6 sm:h-16" />
+        ))}
         <div className="absolute inset-x-0 bottom-0 px-6 pb-12 sm:px-10 sm:pb-14">
-          <p className="text-[11px] font-semibold tracking-[0.35em] text-[#f3dfb4] uppercase">{STUDIO_NAME}</p>
+          <p className="text-[11px] font-semibold tracking-[0.35em] text-[#f3dfb4] uppercase" data-testid="brand-name">{brand.name}</p>
           <h1 className="mt-2 font-display text-[44px] leading-[1.02] font-medium text-balance sm:text-6xl">{names}</h1>
           <p className="mt-2 text-sm text-white/85">{occasion ? `${occasion} · ${date}` : date}</p>
         </div>
@@ -110,10 +117,12 @@ export default function GalleryPage() {
         <span className="shrink-0 text-xs whitespace-nowrap text-muted">
           {event.photoCount > 0 ? `${formatCount(event.photoCount)} photos` : 'Photos coming soon'}
         </span>
-        <InstagramLink className="-my-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[#b37a2c] hover:bg-stone-100">
-          <InstagramIcon className="size-[18px]" />
-          <span className="sr-only">Follow @{INSTAGRAM_HANDLE} on Instagram</span>
-        </InstagramLink>
+        {brand.instagram && (
+          <InstagramLink handle={brand.instagram} className="-my-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[#b37a2c] hover:bg-stone-100">
+            <InstagramIcon className="size-[18px]" />
+            <span className="sr-only">Follow @{brand.instagram} on Instagram</span>
+          </InstagramLink>
+        )}
       </div>
 
       {incoming.length > 0 && (
@@ -141,19 +150,22 @@ export default function GalleryPage() {
       </main>
 
       <footer className="px-4 pt-10 pb-12 text-center">
-        <div className="mx-auto flex max-w-md items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-[0_6px_24px_rgba(0,0,0,0.08)]">
+        {brand.instagram && <div className="mx-auto mb-6 flex max-w-md items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-[0_6px_24px_rgba(0,0,0,0.08)]">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(45deg,#f09433,#dc2743_50%,#bc1888)] text-white">
             <InstagramIcon className="size-6" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-ink">Loved these photos?</p>
-            <p className="truncate text-xs text-muted">Follow @{INSTAGRAM_HANDLE} for more</p>
+            <p className="truncate text-xs text-muted">Follow @{brand.instagram} for more</p>
           </div>
-          <InstagramLink className="shrink-0 rounded-full bg-ink px-4 py-2 text-sm font-medium text-white">Follow</InstagramLink>
-        </div>
-        <p className="mt-6 text-xs text-muted">
-          Live gallery by <span className="font-medium text-ink">{STUDIO_NAME}</span>
+          <InstagramLink handle={brand.instagram} className="shrink-0 rounded-full bg-ink px-4 py-2 text-sm font-medium text-white">Follow</InstagramLink>
+        </div>}
+        <p className="text-xs text-muted">
+          Live gallery by <span className="font-medium text-ink">{brand.name}</span>
         </p>
+        {brand.poweredByMcreatik && (
+          <p className="mt-1 text-[11px] tracking-wide text-muted/80" data-testid="powered-by">Powered by McreatiK</p>
+        )}
       </footer>
 
       {selectedIndex >= 0 && (
@@ -166,6 +178,7 @@ export default function GalleryPage() {
           onIndexChange={changeIndex}
           onClose={close}
           onNearEnd={loadMore}
+          instagram={brand.instagram}
         />
       )}
     </div>

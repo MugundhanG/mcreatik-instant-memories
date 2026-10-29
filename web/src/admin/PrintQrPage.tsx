@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import markUrl from '../assets/mcreatik-mark.webp'
 import { IS_DEMO } from '../demo/isDemo'
 import { adminApi } from '../lib/api'
 import { formatEventDate, splitEventName } from '../lib/format'
 import type { EventDetail } from '../lib/types'
-import { INSTAGRAM_HANDLE, InstagramIcon, STUDIO_NAME } from '../shared/StudioLogo'
+import { resolveBrand } from '../shared/brand'
+import { InstagramIcon } from '../shared/StudioLogo'
 import { QrCode } from './QrPanel'
 
 /** Smaller headline for long names so it stays on one or two lines. */
@@ -34,6 +34,7 @@ export default function PrintQrPage() {
   if (!event) return null
   const { names, occasion } = splitEventName(event.name)
   const date = formatEventDate(event.eventDate)
+  const brand = resolveBrand(event.brand)
 
   return (
     <div className="flex min-h-dvh flex-col items-center gap-6 overflow-x-auto bg-stone-200 py-8 print:block print:bg-white print:p-0">
@@ -45,8 +46,10 @@ export default function PrintQrPage() {
         <div className="absolute top-[52%] left-1/2 size-[620px] -translate-1/2 rounded-full bg-[radial-gradient(circle,rgba(217,169,78,0.16),transparent_65%)]" />
 
         <div className="absolute inset-[70px] flex flex-col items-center">
-          <img src={markUrl} alt="" className="mt-1 h-[84px] w-auto" />
-          <p className="mt-3 font-display text-[32px] leading-none font-semibold tracking-[0.22em] text-[#7a4f17] uppercase">{STUDIO_NAME}</p>
+          {brand.posterLogo
+            ? <img src={brand.posterLogo} alt="" className="mt-1 h-[84px] w-auto max-w-[320px] object-contain" />
+            : <div className="h-[20px]" />}
+          <p className="mt-3 font-display text-[32px] leading-none font-semibold tracking-[0.22em] text-[#7a4f17] uppercase">{brand.name}</p>
 
           <p className="mt-8 inline-flex items-center gap-2 rounded-full border border-[#d9a94e] px-[18px] py-[7px] text-[11px] font-semibold tracking-[0.3em] text-[#8a5a1c]">
             <span className="size-2 rounded-full bg-live" />
@@ -71,10 +74,15 @@ export default function PrintQrPage() {
             <span><b className="mr-1.5 text-[#b37a2c]">3</b>Save</span>
           </div>
           <div className="mt-auto flex w-full items-end justify-between">
-            <p className="text-[11px] tracking-[0.25em] text-[#8a7a66] uppercase">No app · No sign-up needed</p>
-            <p className="inline-flex items-center gap-2 text-[17px] font-medium tracking-wide text-[#7a4f17]">
-              <InstagramIcon className="size-6" />@{INSTAGRAM_HANDLE}
-            </p>
+            <div className="text-left">
+              <p className="text-[11px] tracking-[0.25em] text-[#8a7a66] uppercase">No app · No sign-up needed</p>
+              {brand.poweredByMcreatik && <p className="mt-1.5 text-[10px] tracking-[0.2em] text-[#a8998a] uppercase">Powered by McreatiK</p>}
+            </div>
+            {brand.instagram && (
+              <p className="inline-flex items-center gap-2 text-[17px] font-medium tracking-wide text-[#7a4f17]">
+                <InstagramIcon className="size-6" />@{brand.instagram}
+              </p>
+            )}
           </div>
         </div>
       </div>

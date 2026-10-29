@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import com.mcreatik.gallery.auth.StudioBranding;
 import com.mcreatik.gallery.photo.PhotoDtos;
 import com.mcreatik.gallery.uploader.UploaderStatus;
 
@@ -49,7 +50,7 @@ public final class EventDtos {
     public record EventDetail(UUID id, String name, String slug, LocalDate eventDate, Instant startTime,
                               Instant endTime, EventStatus status, UUID coverPhotoId, String coverUrl,
                               String galleryUrl, LocalDate retentionUntil, Instant createdAt, Instant updatedAt,
-                              UUID ownerId, String ownerName) {
+                              UUID ownerId, String ownerName, StudioBranding.Brand brand) {
     }
 
     public record UploaderStats(UUID id, String name, UploaderStatus status, Instant lastSeenAt,
@@ -63,6 +64,6 @@ public final class EventDtos {
     }
 
     public record PublicEvent(String name, String slug, LocalDate eventDate, EventStatus status, boolean live,
-                              String coverUrl, long photoCount) {
+                              String coverUrl, long photoCount, StudioBranding.Brand brand) {
     }
 }

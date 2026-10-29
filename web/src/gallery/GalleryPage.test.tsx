@@ -56,6 +56,33 @@ describe('Live gallery', () => {
     expect(screen.getByText('Follow @mcreatik.studios for more')).toBeInTheDocument()
   })
 
+  it("shows a client studio's own name, logo and Instagram, powered by McreatiK", async () => {
+    mockFetch({
+      [base]: () => ({ ...liveEvent, brand: { name: 'Lens & Light', logoUrl: 'https://media.test/branding/logo.png', instagram: 'lenslight.in', mcreatik: false } }),
+      [`${base}/photos`]: () => ({ photos: [photo(1)], nextCursor: null }),
+    })
+    renderGallery()
+    await screen.findByRole('heading', { name: liveEvent.name })
+    expect(screen.getByTestId('brand-name')).toHaveTextContent('Lens & Light')
+    expect(screen.getByTestId('brand-logo')).toHaveAttribute('src', 'https://media.test/branding/logo.png')
+    for (const link of screen.getAllByRole('link', { name: /Follow/ })) {
+      expect(link).toHaveAttribute('href', 'https://www.instagram.com/lenslight.in/')
+    }
+    expect(screen.queryByText(/mcreatik\.studios/)).not.toBeInTheDocument()
+    expect(screen.getByTestId('powered-by')).toHaveTextContent('Powered by McreatiK')
+  })
+
+  it('hides the Instagram invites when the studio has no Instagram', async () => {
+    mockFetch({
+      [base]: () => ({ ...liveEvent, brand: { name: 'Lens & Light', logoUrl: null, instagram: null, mcreatik: false } }),
+      [`${base}/photos`]: () => ({ photos: [photo(1)], nextCursor: null }),
+    })
+    renderGallery()
+    await screen.findByRole('heading', { name: liveEvent.name })
+    expect(screen.queryByRole('link', { name: /Follow/ })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('brand-logo')).not.toBeInTheDocument()
+  })
+
   it('inserts a new photo in real time without a refresh', async () => {
     mockFetch({
       [base]: () => liveEvent,

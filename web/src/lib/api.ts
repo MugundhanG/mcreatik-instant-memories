@@ -142,6 +142,14 @@ export const adminApi = {
     request<UploaderCredentials>(`/api/admin/events/${eventId}/uploaders`, { method: 'POST', body: json({ name }) }, true),
   rotateUploader: (uploaderId: string) =>
     request<UploaderCredentials>(`/api/admin/uploaders/${uploaderId}/rotate-token`, { method: 'POST' }, true),
+  updateAccount: (input: { displayName?: string; instagram?: string }) =>
+    request<Account>('/api/admin/account', { method: 'PATCH', body: json(input) }, true),
+  uploadLogo: (png: Blob) => {
+    const form = new FormData()
+    form.append('logo', png, 'logo.png')
+    return request<Account>('/api/admin/account/logo', { method: 'POST', body: form }, true)
+  },
+  removeLogo: () => request<Account>('/api/admin/account/logo', { method: 'DELETE' }, true),
   account: () => request<Account>('/api/admin/account', {}, true),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<void>('/api/admin/account/password', { method: 'POST', body: json({ currentPassword, newPassword }) }, true),

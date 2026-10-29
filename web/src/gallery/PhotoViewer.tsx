@@ -21,6 +21,8 @@ interface Props {
   actions?: (photo: PublicPhoto) => ReactNode
   /** Guests are invited to follow the studio after saving; not the photographer. */
   promoteFollow?: boolean
+  /** Instagram the download toast invites guests to follow; null shows no invite. */
+  instagram?: string | null
   /** Shown under the counter, e.g. the file name in the dashboard. */
   caption?: (photo: PublicPhoto) => ReactNode
 }
@@ -30,7 +32,7 @@ const SHOW_SHARE = false
 const SAVE_HINT = 'Press and hold the photo, then tap “Save image”'
 
 export function PhotoViewer({
-  photos, index, total, eventSlug, eventName, onIndexChange, onClose, onNearEnd, actions, promoteFollow = true, caption,
+  photos, index, total, eventSlug, eventName, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE,
 }: Props) {
   const photo = photos[index]
   const count = Math.max(total, photos.length)
@@ -106,6 +108,8 @@ export function PhotoViewer({
     const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id, blob)
     setBusy(null)
     // Right after saving is when guests are happiest with the photos: ask them to follow.
+    // (Only when the studio has an Instagram to follow.)
+    const promoteFollow = promote && !!instagram
     if (result === 'saved') setToast(promoteFollow ? { text: 'Saved to your phone ✓', ms: 5000, follow: true } : { text: 'Saved ✓', ms: 2500 })
     if (result === 'save-sheet' && promoteFollow) setToast({ text: 'Love the photos?', ms: 5000, follow: true })
     if (result === 'hint') setToast({ text: SAVE_HINT, ms: 6000 })
@@ -207,8 +211,8 @@ export function PhotoViewer({
           className={`absolute bottom-24 left-1/2 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-white px-4 py-2 text-center text-sm text-ink shadow-lg ${toast.follow ? '' : 'pointer-events-none'}`}
         >
           {toast.text}
-          {toast.follow && (
-            <InstagramLink className="mt-0.5 block text-xs font-semibold text-[#b37a2c]">Follow @{INSTAGRAM_HANDLE} on Instagram →</InstagramLink>
+          {toast.follow && instagram && (
+            <InstagramLink handle={instagram} className="mt-0.5 block text-xs font-semibold text-[#b37a2c]">Follow @{instagram} on Instagram →</InstagramLink>
           )}
         </div>
       )}
