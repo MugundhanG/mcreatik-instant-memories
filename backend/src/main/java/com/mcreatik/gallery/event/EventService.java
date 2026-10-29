@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mcreatik.gallery.auth.AdminUser;
 import com.mcreatik.gallery.auth.AdminUserRepository;
+import com.mcreatik.gallery.auth.StudioBranding;
 import com.mcreatik.gallery.common.ApiException;
 import com.mcreatik.gallery.config.GalleryProperties;
 import com.mcreatik.gallery.photo.Photo;
@@ -41,10 +42,11 @@ public class EventService {
     private final GalleryBroadcaster broadcaster;
     private final GalleryProperties properties;
     private final AdminUserRepository admins;
+    private final StudioBranding branding;
 
     public EventService(EventRepository events, PhotoRepository photos, UploaderRepository uploaders,
                         StorageService storage, PhotoMapper photoMapper, GalleryBroadcaster broadcaster,
-                        GalleryProperties properties, AdminUserRepository admins) {
+                        GalleryProperties properties, AdminUserRepository admins, StudioBranding branding) {
         this.events = events;
         this.photos = photos;
         this.uploaders = uploaders;
@@ -53,6 +55,7 @@ public class EventService {
         this.broadcaster = broadcaster;
         this.properties = properties;
         this.admins = admins;
+        this.branding = branding;
     }
 
     @Transactional(readOnly = true)
@@ -248,7 +251,8 @@ public class EventService {
     public EventDtos.PublicEvent toPublic(Event event) {
         long count = photos.countVisible(event.getId());
         return new EventDtos.PublicEvent(event.getName(), event.getSlug(), event.getEventDate(), event.getStatus(),
-                event.getStatus() == EventStatus.LIVE, coverUrl(event), count);
+                event.getStatus() == EventStatus.LIVE, coverUrl(event), count,
+                branding.ofOwner(event.getOwnerId()));
     }
 
     // ---- helpers ----
@@ -257,7 +261,8 @@ public class EventService {
         return new EventDtos.EventDetail(e.getId(), e.getName(), e.getSlug(), e.getEventDate(), e.getStartTime(),
                 e.getEndTime(), e.getStatus(), e.getCoverPhotoId(), coverUrl(e), properties.galleryUrl(e.getSlug()),
                 e.getRetentionUntil(), e.getCreatedAt(), e.getUpdatedAt(), e.getOwnerId(),
-                admins.findById(e.getOwnerId()).map(AdminUser::getDisplayName).orElse(null));
+                admins.findById(e.getOwnerId()).map(AdminUser::getDisplayName).orElse(null),
+                branding.ofOwner(e.getOwnerId()));
     }
 
     private String coverUrl(Event e) {

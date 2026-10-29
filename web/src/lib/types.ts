@@ -4,6 +4,14 @@ export type UploaderStatus = 'ONLINE' | 'OFFLINE' | 'ERROR'
 
 // ---- Public (guest) ----
 
+/** Whose brand guests see on an event: McreatiK's built-in design, or the owning studio's name, logo and Instagram. */
+export interface Brand {
+  name: string
+  logoUrl: string | null
+  instagram: string | null
+  mcreatik: boolean
+}
+
 export interface PublicEvent {
   name: string
   slug: string
@@ -12,6 +20,7 @@ export interface PublicEvent {
   live: boolean
   coverUrl: string | null
   photoCount: number
+  brand?: Brand
 }
 
 export interface PublicPhoto {
@@ -60,6 +69,7 @@ export interface Account {
   displayName: string
   role: AdminRole
   mustChangePassword: boolean
+  brand?: Brand
 }
 
 /** A login on the super admin's Studios page (McreatiK itself is listed too, as SUPER_ADMIN). */
@@ -106,6 +116,7 @@ export interface EventDetail {
   updatedAt: string
   ownerId: string
   ownerName: string | null
+  brand?: Brand
 }
 
 export interface UploaderStats {

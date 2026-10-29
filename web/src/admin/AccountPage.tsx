@@ -1,7 +1,9 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
+import type { Account } from '../lib/types'
 import { auth, useSession } from './auth'
+import { BrandingCard } from './BrandingCard'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
 
 const MIN = 10
@@ -17,6 +19,10 @@ export default function AccountPage() {
   const [done, setDone] = useState(false)
   const [busy, setBusy] = useState(false)
   const forced = !!session?.mustChangePassword
+  const [account, setAccount] = useState<Account | null>(null)
+  useEffect(() => {
+    adminApi.account().then(setAccount).catch(() => {})
+  }, [])
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -44,6 +50,8 @@ export default function AccountPage() {
       <Card title="Your account">
         <p className="text-sm"><span className="font-medium">{session?.displayName}</span> · <span className="text-muted">{session?.email}</span></p>
       </Card>
+      {/* McreatiK's own events use the built-in McreatiK design; studios set their own. */}
+      {!forced && account && account.role === 'STUDIO' && <BrandingCard account={account} onChange={setAccount} />}
       <Card title={forced ? 'Choose your own password' : 'Change password'}>
         {forced && (
           <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">

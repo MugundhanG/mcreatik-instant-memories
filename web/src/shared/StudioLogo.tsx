@@ -14,7 +14,6 @@ export function StudioName({ className = '' }: { className?: string }) {
 }
 
 export const INSTAGRAM_HANDLE = 'mcreatik.studios'
-export const INSTAGRAM_URL = `https://www.instagram.com/${INSTAGRAM_HANDLE}/`
 
 export function InstagramIcon({ className = 'size-4' }: { className?: string }) {
   return (
@@ -27,9 +26,9 @@ export function InstagramIcon({ className = 'size-4' }: { className?: string }) 
 }
 
 /** Opens the studio's Instagram profile (the Instagram app when installed). */
-export function InstagramLink({ className = '', children }: { className?: string; children: React.ReactNode }) {
+export function InstagramLink({ handle = INSTAGRAM_HANDLE, className = '', children }: { handle?: string; className?: string; children: React.ReactNode }) {
   return (
-    <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className={className}>
+    <a href={`https://www.instagram.com/${handle}/`} target="_blank" rel="noopener noreferrer" className={className}>
       {children}
     </a>
   )

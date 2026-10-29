@@ -40,6 +40,12 @@ public class AdminUser {
     @Column(name = "must_change_password", nullable = false)
     private boolean mustChangePassword;
 
+    @Column(name = "instagram_handle")
+    private String instagramHandle;
+
+    @Column(name = "logo_key")
+    private String logoKey;
+
     protected AdminUser() {
     }
 
@@ -79,6 +85,24 @@ public class AdminUser {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    /** Instagram username shown on the studio's galleries and posters, without "@"; null hides it. */
+    public String getInstagramHandle() {
+        return instagramHandle;
+    }
+
+    public void setInstagramHandle(String instagramHandle) {
+        this.instagramHandle = instagramHandle;
+    }
+
+    /** Media-storage key of the studio's logo; null shows the studio name only. */
+    public String getLogoKey() {
+        return logoKey;
+    }
+
+    public void setLogoKey(String logoKey) {
+        this.logoKey = logoKey;
     }
 
     public void rename(String displayName) {
