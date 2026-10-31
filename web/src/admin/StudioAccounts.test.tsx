@@ -97,6 +97,7 @@ describe('Studio accounts', () => {
 
     await user.type(screen.getByLabelText(/^Studio name/), 'Lens & Light')
     await user.type(screen.getByLabelText('Login email'), 'owner@lenslight.in')
+    await user.type(screen.getByLabelText(/^WhatsApp number/), '98765 43210')
     const password = (screen.getByLabelText(/^Temporary password/) as HTMLInputElement).value
     expect(password).toMatch(/^[a-zA-Z2-9]{12}$/)
     await user.click(screen.getByRole('button', { name: 'Create studio login' }))
@@ -106,5 +107,12 @@ describe('Studio accounts', () => {
     expect(message).toHaveTextContent(`Temporary password: ${password}`)
     expect(calls.find((c) => c.method === 'POST' && c.path === '/api/admin/studios')?.body)
       .toEqual({ name: 'Lens & Light', email: 'owner@lenslight.in', password })
+
+    // Ready to send: WhatsApp opens the typed number's chat, email is addressed to the studio.
+    const whatsapp = screen.getByRole('link', { name: /Send on WhatsApp/ })
+    expect(whatsapp.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/919876543210\?text=/)
+    expect(decodeURIComponent(whatsapp.getAttribute('href')!.split('text=')[1])).toContain(`Temporary password: ${password}`)
+    const email = screen.getByRole('link', { name: /Send email/ })
+    expect(email.getAttribute('href')).toMatch(/^mailto:owner%40lenslight\.in\?subject=/)
   })
 })

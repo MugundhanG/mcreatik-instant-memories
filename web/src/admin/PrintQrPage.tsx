@@ -5,6 +5,8 @@ import { adminApi } from '../lib/api'
 import { formatEventDate, splitEventName } from '../lib/format'
 import type { EventDetail } from '../lib/types'
 import { resolveBrand } from '../shared/brand'
+import { scanUrl } from '../shared/qr'
+import { PageLoader } from '../shared/ShutterLoader'
 import { InstagramIcon } from '../shared/StudioLogo'
 import { QrCode } from './QrPanel'
 
@@ -31,7 +33,7 @@ export default function PrintQrPage() {
     adminApi.event(eventId).then(setEvent)
   }, [eventId])
 
-  if (!event) return null
+  if (!event) return <PageLoader label="Preparing poster" />
   const { names, occasion } = splitEventName(event.name)
   const date = formatEventDate(event.eventDate)
   const brand = resolveBrand(event.brand)
@@ -63,7 +65,7 @@ export default function PrintQrPage() {
 
           <div className="poster-gold-bg mt-9 rounded-[22px] p-[5px]">
             <div className="rounded-[18px] bg-white p-5">
-              <QrCode url={event.galleryUrl} className="size-[280px]" />
+              <QrCode url={scanUrl(event.galleryUrl)} className="size-[280px]" />
             </div>
           </div>
 

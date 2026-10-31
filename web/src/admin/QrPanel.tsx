@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { IS_DEMO } from '../demo/isDemo'
-import { qrPngBlob, qrSvg } from '../shared/qr'
+import { qrPngBlob, qrSvg, scanUrl } from '../shared/qr'
 import { saveBlob } from '../shared/saveBlob'
 import { Button, Card } from './ui'
 
@@ -35,7 +35,8 @@ export function QrPanel({ eventId, eventSlug, galleryUrl }: { eventId: string; e
       setNote('Downloads are turned off in this demo. They work in the live dashboard.')
       return
     }
-    const blob = kind === 'png' ? await qrPngBlob(galleryUrl) : new Blob([await qrSvg(galleryUrl)], { type: 'image/svg+xml' })
+    const qrUrl = scanUrl(galleryUrl)
+    const blob = kind === 'png' ? await qrPngBlob(qrUrl) : new Blob([await qrSvg(qrUrl)], { type: 'image/svg+xml' })
     saveBlob(blob, `${eventSlug}-qr.${kind}`)
   }
 
@@ -48,7 +49,7 @@ export function QrPanel({ eventId, eventSlug, galleryUrl }: { eventId: string; e
   return (
     <Card title="Guest QR code">
       <div className="mx-auto max-w-56 rounded-lg border border-line p-2">
-        <QrCode url={galleryUrl} />
+        <QrCode url={scanUrl(galleryUrl)} />
       </div>
       <p className="mt-3 text-center text-xs break-all text-muted">{galleryUrl}</p>
       <div className="mt-4 grid grid-cols-2 gap-2">

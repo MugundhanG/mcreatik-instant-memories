@@ -41,8 +41,27 @@ body {
   animation: photo-in 600ms ease-out both;
 }
 
+/* Camera-shutter loader (shared/ShutterLoader.tsx, and the static copy in index.html). */
+@keyframes shutter-close {
+  0%, 12% { transform: translateY(0); }
+  42%, 58% { transform: translateY(29px); }
+  88%, 100% { transform: translateY(0); }
+}
+@keyframes shutter-turn {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(60deg); }
+}
+.shutter-iris {
+  transform-origin: 50px 50px;
+  animation: shutter-turn 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.shutter-blade {
+  animation: shutter-close 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .live-dot, .photo-in { animation: none; }
+  .live-dot, .photo-in, .shutter-blade { animation: none; }
+  .shutter-iris { animation-duration: 4s; animation-timing-function: linear; }
 }
 
 @media print {

@@ -286,6 +286,21 @@ function credentials(u: DemoUploader) {
   return { uploaderId: u.id, name: u.name, token, connectionCode: code }
 }
 
+/** Plausible numbers for the demo dashboard (scaled to the event's photos). */
+function demoAnalytics(e: DemoEvent) {
+  const n = e.photos.length
+  if (n === 0) return { totals: { people: 0, qrScans: 0, visits: 0, photoViews: 0, downloads: 0, downloaders: 0, shares: 0, instagramClicks: 0 }, hours: [], topPhotos: [], lastActivityAt: null }
+  const people = Math.round(n * 2.4)
+  const curve = [0.05, 0.12, 0.22, 0.31, 0.27, 0.18, 0.1, 0.04]
+  const day = e.eventDate
+  return {
+    totals: { people, qrScans: Math.round(people * 0.78), visits: Math.round(people * 1.4), photoViews: people * 11, downloads: Math.round(people * 1.3), downloaders: Math.round(people * 0.42), shares: 0, instagramClicks: Math.round(people * 0.09) },
+    hours: curve.map((f, i) => ({ hour: `${day}T${String(16 + i).padStart(2, '0')}:00`, people: Math.round(people * f), photoViews: Math.round(people * f * 11), downloads: Math.round(people * f * 1.3) })),
+    topPhotos: e.photos.slice(0, 8).map((p, i) => ({ photoId: p.id, thumbnailUrl: p.thumbnailUrl, fileName: p.originalFileName, views: Math.round(people * (0.9 - i * 0.08)), downloads: Math.round(people * (0.3 - i * 0.03)) })),
+    lastActivityAt: nowIso(),
+  }
+}
+
 const DEMO_OWNER = '00000000-0000-0000-0000-000000000001'
 
 async function handle(method: string, url: URL, body: unknown): Promise<Response> {
@@ -341,6 +356,12 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
     broadcast(e, 'PHOTO_READY', { eventId: e.id, photoId: photo.id, ...toPublic(photo) })
     notify()
     return json({ outcome: 'UPLOAD', photoId: photo.id })
+  }
+  if ((m = path.match(/^\/api\/public\/events\/[^/]+\/activity$/)) && method === 'POST') return new Response(null, { status: 204 })
+  if ((m = path.match(/^\/api\/admin\/events\/([^/]+)\/analytics$/))) {
+    const e = events.find((x) => x.id === m![1])
+    if (!e) return notFound()
+    return json(demoAnalytics(e))
   }
   if (path === '/api/admin/events' && method === 'GET') {
     return json(events.map((e) => ({ id: e.id, name: e.name, slug: e.slug, eventDate: e.eventDate, status: e.status, galleryUrl: GALLERY_BASE + e.slug, readyPhotos: e.photos.length, createdAt: e.createdAt, ownerId: DEMO_OWNER, ownerName: 'Demo' })))

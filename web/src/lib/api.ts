@@ -1,20 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type {
-  AdminPhoto,
-  AdminPhotoPage,
-  PhotoFacets,
-  AdminPhotoQuery,
-  EventDetail,
-  EventStats,
-  EventStatus,
-  EventSummary,
-  LoginResponse,
-  PublicEvent,
-  PublicPhotoPage,
-  UploaderCredentials,
-  Account,
-  Studio,
-} from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, EventDetail, EventStats, EventStatus, EventSummary, GuestAnalytics, LoginResponse, PhotoFacets, PublicEvent, PublicPhotoPage, Studio, UploaderCredentials } from './types'
 
 export const API_BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
@@ -150,6 +135,7 @@ export const adminApi = {
     return request<Account>('/api/admin/account/logo', { method: 'POST', body: form }, true)
   },
   removeLogo: () => request<Account>('/api/admin/account/logo', { method: 'DELETE' }, true),
+  analytics: (eventId: string) => request<GuestAnalytics>(`/api/admin/events/${eventId}/analytics`, {}, true),
   account: () => request<Account>('/api/admin/account', {}, true),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<void>('/api/admin/account/password', { method: 'POST', body: json({ currentPassword, newPassword }) }, true),

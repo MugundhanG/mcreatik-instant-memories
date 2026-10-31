@@ -7,9 +7,19 @@
     <meta name="robots" content="noindex" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>McreatiK Live Gallery</title>
+    <style>
+      /* First paint, before the app's JS and CSS arrive: same shutter as shared/ShutterLoader.tsx. */
+      body { margin: 0; background: #faf9f7; }
+      .boot { display: flex; min-height: 100vh; align-items: center; justify-content: center; }
+      .boot .shutter-iris { transform-origin: 50px 50px; animation: boot-turn 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+      .boot .shutter-blade { animation: boot-close 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+      @keyframes boot-close { 0%, 12% { transform: translateY(0); } 42%, 58% { transform: translateY(29px); } 88%, 100% { transform: translateY(0); } }
+      @keyframes boot-turn { from { transform: rotate(0deg); } to { transform: rotate(60deg); } }
+      @media (prefers-reduced-motion: reduce) { .boot .shutter-blade { animation: none; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="boot" role="status" aria-label="Loading"><svg viewBox="0 0 100 100" width="56" height="56" aria-hidden="true"><defs><clipPath id="boot-lens"><circle cx="50" cy="50" r="44"/></clipPath></defs><g class="shutter-iris" clip-path="url(#boot-lens)"><g transform="rotate(0 50 50)"><rect class="shutter-blade" x="-30" y="-80" width="160" height="102" fill="#1c1917"/></g><g transform="rotate(60 50 50)"><rect class="shutter-blade" x="-30" y="-80" width="160" height="102" fill="#1c1917"/></g><g transform="rotate(120 50 50)"><rect class="shutter-blade" x="-30" y="-80" width="160" height="102" fill="#1c1917"/></g><g transform="rotate(180 50 50)"><rect class="shutter-blade" x="-30" y="-80" width="160" height="102" fill="#1c1917"/></g><g transform="rotate(240 50 50)"><rect class="shutter-blade" x="-30" y="-80" width="160" height="102" fill="#1c1917"/></g><g transform="rotate(300 50 50)"><rect class="shutter-blade" x="-30" y="-80" width="160" height="102" fill="#1c1917"/></g><g transform="rotate(0 50 50)"><line class="shutter-blade" x1="50" y1="22" x2="150" y2="22" stroke="#c9a35a" stroke-width="1.6"/></g><g transform="rotate(60 50 50)"><line class="shutter-blade" x1="50" y1="22" x2="150" y2="22" stroke="#c9a35a" stroke-width="1.6"/></g><g transform="rotate(120 50 50)"><line class="shutter-blade" x1="50" y1="22" x2="150" y2="22" stroke="#c9a35a" stroke-width="1.6"/></g><g transform="rotate(180 50 50)"><line class="shutter-blade" x1="50" y1="22" x2="150" y2="22" stroke="#c9a35a" stroke-width="1.6"/></g><g transform="rotate(240 50 50)"><line class="shutter-blade" x1="50" y1="22" x2="150" y2="22" stroke="#c9a35a" stroke-width="1.6"/></g><g transform="rotate(300 50 50)"><line class="shutter-blade" x1="50" y1="22" x2="150" y2="22" stroke="#c9a35a" stroke-width="1.6"/></g></g><circle cx="50" cy="50" r="45" fill="none" stroke="#b8873b" stroke-width="3"/></svg></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
