@@ -26,9 +26,9 @@ export function InstagramIcon({ className = 'size-4' }: { className?: string }) 
 }
 
 /** Opens the studio's Instagram profile (the Instagram app when installed). */
-export function InstagramLink({ handle = INSTAGRAM_HANDLE, className = '', children }: { handle?: string; className?: string; children: React.ReactNode }) {
+export function InstagramLink({ handle = INSTAGRAM_HANDLE, className = '', onClick, children }: { handle?: string; className?: string; onClick?: () => void; children: React.ReactNode }) {
   return (
-    <a href={`https://www.instagram.com/${handle}/`} target="_blank" rel="noopener noreferrer" className={className}>
+    <a href={`https://www.instagram.com/${handle}/`} target="_blank" rel="noopener noreferrer" className={className} onClick={onClick}>
       {children}
     </a>
   )

@@ -28,8 +28,9 @@ describe('Event QR code', () => {
         <QrPanel eventId="e1" eventSlug="arun-priya-7k3d" galleryUrl={URL_} />
       </MemoryRouter>,
     )
-    const qr = screen.getByRole('img', { name: `QR code for ${URL_}` })
-    expect(qr).toHaveAttribute('data-qr-url', URL_)
+    // The QR opens the gallery marked as a scan (?src=qr) so analytics can count scans; the link shown is plain.
+    const qr = screen.getByRole('img', { name: `QR code for ${URL_}?src=qr` })
+    expect(qr).toHaveAttribute('data-qr-url', `${URL_}?src=qr`)
     await waitFor(() => expect(qr.querySelector('svg')).not.toBeNull())
     expect(screen.getByText(URL_)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Download PNG' })).toBeInTheDocument()

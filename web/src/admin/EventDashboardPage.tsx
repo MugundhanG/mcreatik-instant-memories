@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
 import { formatBytes, formatCount, formatEventDate, timeAgo } from '../lib/format'
 import type { EventDetail, EventStats, EventStatus } from '../lib/types'
+import { ShutterLoader } from '../shared/ShutterLoader'
+import { AnalyticsPanel } from './AnalyticsPanel'
 import { useSession } from './auth'
 import { PhotosPanel } from './PhotosPanel'
 import { QrPanel } from './QrPanel'
@@ -63,7 +65,7 @@ export default function EventDashboardPage() {
     navigate('/admin', { replace: true })
   }
 
-  if (!event) return <ErrorText>{error}</ErrorText>
+  if (!event) return error ? <ErrorText>{error}</ErrorText> : <ShutterLoader label="Loading event" className="py-24" />
 
   return (
     <div className="space-y-6">
@@ -124,6 +126,8 @@ export default function EventDashboardPage() {
         </div>
         <QrPanel eventId={event.id} eventSlug={event.slug} galleryUrl={event.galleryUrl} />
       </div>
+
+      <AnalyticsPanel eventId={event.id} live={event.status === 'LIVE'} />
 
       <PhotosPanel
         eventId={event.id}

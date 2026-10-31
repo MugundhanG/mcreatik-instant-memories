@@ -201,3 +201,21 @@ export interface UploaderCredentials {
   token: string
   connectionCode: string
 }
+
+/** Anonymous guest activity on an event's gallery (dashboard analytics). */
+export interface GuestAnalytics {
+  totals: {
+    people: number
+    qrScans: number
+    visits: number
+    photoViews: number
+    downloads: number
+    downloaders: number
+    shares: number
+    instagramClicks: number
+  }
+  /** Hours with activity, India time, e.g. "2026-10-31T19:00". */
+  hours: { hour: string; people: number; photoViews: number; downloads: number }[]
+  topPhotos: { photoId: string; thumbnailUrl: string | null; fileName: string; views: number; downloads: number }[]
+  lastActivityAt: string | null
+}

@@ -32,3 +32,8 @@ export async function qrPngBlob(url: string, size = 2048): Promise<Blob> {
     URL.revokeObjectURL(svgUrl)
   }
 }
+
+/** What printed and downloaded QR codes open: the gallery, marked so analytics can count QR scans. */
+export function scanUrl(galleryUrl: string) {
+  return `${galleryUrl}${galleryUrl.includes('?') ? '&' : '?'}src=qr`
+}

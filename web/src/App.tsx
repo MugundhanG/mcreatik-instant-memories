@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { BrowserRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router'
 import GalleryPage from './gallery/GalleryPage'
+import { PageLoader } from './shared/ShutterLoader'
 
 // Guests never download admin code.
 const AdminApp = lazy(() => import('./admin/AdminApp'))
@@ -22,7 +23,7 @@ export default function App() {
         <Route
           path="/admin/*"
           element={
-            <Suspense fallback={null}>
+            <Suspense fallback={<PageLoader />}>
               <AdminApp />
             </Suspense>
           }
@@ -31,7 +32,7 @@ export default function App() {
           <Route
             path="/demo"
             element={
-              <Suspense fallback={null}>
+              <Suspense fallback={<PageLoader />}>
                 <DemoHome />
               </Suspense>
             }

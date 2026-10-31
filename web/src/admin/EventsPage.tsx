@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { adminApi } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
 import type { EventSummary } from '../lib/types'
+import { ShutterLoader } from '../shared/ShutterLoader'
 import { useSession } from './auth'
 import { ErrorText, EventStatusBadge } from './ui'
 
@@ -24,6 +25,7 @@ export default function EventsPage() {
         </Link>
       </div>
       <ErrorText>{error}</ErrorText>
+      {!events && !error && <ShutterLoader className="py-16" />}
       {events?.length === 0 && (
         <div className="rounded-xl border border-dashed border-line bg-white px-6 py-16 text-center">
           <p className="font-medium">No events yet</p>

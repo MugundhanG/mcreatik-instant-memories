@@ -23,6 +23,8 @@ interface Props {
   promoteFollow?: boolean
   /** Instagram the download toast invites guests to follow; null shows no invite. */
   instagram?: string | null
+  /** Guest analytics (the public gallery only): photo shown, downloaded, shared, Instagram tapped. */
+  onActivity?: (type: 'PHOTO_VIEW' | 'DOWNLOAD' | 'SHARE' | 'INSTAGRAM', photoId?: string) => void
   /** Shown under the counter, e.g. the file name in the dashboard. */
   caption?: (photo: PublicPhoto) => ReactNode
 }
@@ -32,7 +34,7 @@ const SHOW_SHARE = false
 const SAVE_HINT = 'Press and hold the photo, then tap “Save image”'
 
 export function PhotoViewer({
-  photos, index, total, eventSlug, eventName, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE,
+  photos, index, total, eventSlug, eventName, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity,
 }: Props) {
   const photo = photos[index]
   const count = Math.max(total, photos.length)
@@ -89,6 +91,14 @@ export function PhotoViewer({
 
   const currentId = photo?.id
   const currentWebUrl = photo?.webUrl
+  // Each photo a guest looks at counts once per showing (swiping back to it counts again).
+  const reportActivity = useRef(onActivity)
+  useEffect(() => {
+    reportActivity.current = onActivity
+  })
+  useEffect(() => {
+    if (currentId) reportActivity.current?.('PHOTO_VIEW', currentId)
+  }, [currentId])
   useEffect(() => {
     if (!currentId || !currentWebUrl || !isIOS()) return
     let active = true
@@ -107,6 +117,7 @@ export function PhotoViewer({
     const blob = prefetched?.id === photo.id ? prefetched.blob : null
     const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id, blob)
     setBusy(null)
+    if (result === 'saved' || result === 'save-sheet') onActivity?.('DOWNLOAD', photo.id)
     // Right after saving is when guests are happiest with the photos: ask them to follow.
     // (Only when the studio has an Instagram to follow.)
     const promoteFollow = promote && !!instagram
@@ -120,6 +131,7 @@ export function PhotoViewer({
     setBusy('share')
     const result = await sharePhoto({ url: photo.webUrl, eventSlug, eventName, photoId: photo.id })
     setBusy(null)
+    if (result !== 'unsupported' && result !== 'cancelled') onActivity?.('SHARE', photo.id)
     if (result === 'copied') setToast({ text: 'Link copied', ms: 2500 })
     if (result === 'unsupported') setToast({ text: 'Sharing is not available on this device', ms: 2500 })
   }
@@ -212,7 +224,7 @@ export function PhotoViewer({
         >
           {toast.text}
           {toast.follow && instagram && (
-            <InstagramLink handle={instagram} className="mt-0.5 block text-xs font-semibold text-[#b37a2c]">Follow @{instagram} on Instagram →</InstagramLink>
+            <InstagramLink handle={instagram} onClick={() => onActivity?.('INSTAGRAM')} className="mt-0.5 block text-xs font-semibold text-[#b37a2c]">Follow @{instagram} on Instagram →</InstagramLink>
           )}
         </div>
       )}

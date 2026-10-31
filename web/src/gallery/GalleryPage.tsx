@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
+import { track, trackVisit, type ActivityType } from '../lib/activity'
 import { formatCount, formatEventDate, splitEventName } from '../lib/format'
 import type { PublicPhoto } from '../lib/types'
 import { StatusBadge } from './StatusBadge'
 import { PhotoGrid } from './PhotoGrid'
 import { resolveBrand } from '../shared/brand'
+import { PageLoader, ShutterLoader } from '../shared/ShutterLoader'
 import { InstagramIcon, InstagramLink } from '../shared/StudioLogo'
 import { PhotoViewer } from './PhotoViewer'
 import { useLiveGallery } from './useLiveGallery'
@@ -27,6 +29,26 @@ export default function GalleryPage() {
   const shouldShowImmediately = useCallback(() => window.scrollY < AUTO_INSERT_SCROLL_PX && !viewerOpen.current, [])
   const gallery = useLiveGallery(slug, shouldShowImmediately)
   const { event, photos, incoming, status, connection, nextCursor, loadMore, showIncoming } = gallery
+
+  // Analytics: one visit per tab, marked as a QR scan when the poster's QR (…?src=qr) opened it.
+  const [source] = useState<'qr' | 'link'>(() => (params.get('src') === 'qr' ? 'qr' : 'link'))
+  const eventLoaded = !!event
+  useEffect(() => {
+    if (!eventLoaded) return
+    trackVisit(slug, source)
+    // Drop ?src=qr so reloads and links copied from the address bar are not counted as scans.
+    if (params.has('src')) {
+      setParams((p) => {
+        p.delete('src')
+        return p
+      }, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the gallery has loaded
+  }, [eventLoaded, slug, source])
+  const onActivity = useCallback(
+    (type: ActivityType, photoId?: string) => track(slug, { type, photoId }),
+    [slug],
+  )
 
   useEffect(() => {
     if (event) document.title = `${event.name} · Live Gallery`
@@ -58,9 +80,7 @@ export default function GalleryPage() {
 
   if (status === 'loading') {
     return (
-      <main className="flex min-h-dvh items-center justify-center">
-        <span className="text-sm tracking-[0.2em] text-muted uppercase">Loading gallery…</span>
-      </main>
+      <PageLoader label="Loading gallery" />
     )
   }
 
@@ -118,7 +138,7 @@ export default function GalleryPage() {
           {event.photoCount > 0 ? `${formatCount(event.photoCount)} photos` : 'Photos coming soon'}
         </span>
         {brand.instagram && (
-          <InstagramLink handle={brand.instagram} className="-my-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[#b37a2c] hover:bg-stone-100">
+          <InstagramLink handle={brand.instagram} onClick={() => onActivity('INSTAGRAM')} className="-my-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[#b37a2c] hover:bg-stone-100">
             <InstagramIcon className="size-[18px]" />
             <span className="sr-only">Follow @{brand.instagram} on Instagram</span>
           </InstagramLink>
@@ -146,7 +166,7 @@ export default function GalleryPage() {
         ) : (
           <PhotoGrid photos={photos} onOpen={open} onNearEnd={loadMore} hasMore={nextCursor !== null} />
         )}
-        {gallery.loadingMore && <p className="py-6 text-center text-xs text-muted">Loading more…</p>}
+        {gallery.loadingMore && <ShutterLoader label="Loading more" className="py-6 [&_svg]:size-8" />}
       </main>
 
       <footer className="px-4 pt-10 pb-12 text-center">
@@ -158,7 +178,7 @@ export default function GalleryPage() {
             <p className="text-sm font-semibold text-ink">Loved these photos?</p>
             <p className="truncate text-xs text-muted">Follow @{brand.instagram} for more</p>
           </div>
-          <InstagramLink handle={brand.instagram} className="shrink-0 rounded-full bg-ink px-4 py-2 text-sm font-medium text-white">Follow</InstagramLink>
+          <InstagramLink handle={brand.instagram} onClick={() => onActivity('INSTAGRAM')} className="shrink-0 rounded-full bg-ink px-4 py-2 text-sm font-medium text-white">Follow</InstagramLink>
         </div>}
         <p className="text-xs text-muted">
           Live gallery by <span className="font-medium text-ink">{brand.name}</span>
@@ -179,6 +199,7 @@ export default function GalleryPage() {
           onClose={close}
           onNearEnd={loadMore}
           instagram={brand.instagram}
+          onActivity={onActivity}
         />
       )}
     </div>
