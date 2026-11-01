@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { adminApi, ApiError } from '../lib/api'
 import { formatBytes, formatCount, formatEventDate } from '../lib/format'
-import type { Studio } from '../lib/types'
+import type { Plan, Studio, StudioBilling } from '../lib/types'
 import { ShutterLoader } from '../shared/ShutterLoader'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
+import { BillingSettingsCard, PaymentsToCheck, StudioPlan } from './BillingAdmin'
+import { PLAN_LABEL } from './plans'
 import { SendButtons } from './SendButtons'
 import { temporaryPassword, type Outgoing } from './sendLinks'
 import { useConfirm } from './useConfirm'
@@ -39,9 +41,14 @@ export default function StudiosPage() {
   const [password, setPassword] = useState(temporaryPassword)
   const [busy, setBusy] = useState(false)
   const [credentials, setCredentials] = useState<Credentials | null>(null)
+  const [plan, setPlan] = useState<Plan>('MONTHLY')
+  const [billing, setBilling] = useState<Map<string, StudioBilling>>(new Map())
   const [confirm, confirmDialog] = useConfirm()
 
-  const load = useCallback(() => adminApi.studios().then(setStudios).catch((e: Error) => setError(e.message)), [])
+  const load = useCallback(() => {
+    adminApi.studios().then(setStudios).catch((e: Error) => setError(e.message))
+    adminApi.studioBilling().then((list) => setBilling(new Map(list.map((b) => [b.studioId, b])))).catch(() => {})
+  }, [])
   useEffect(() => {
     load()
   }, [load])
@@ -51,7 +58,7 @@ export default function StudiosPage() {
     setBusy(true)
     setError(null)
     try {
-      await adminApi.createStudio({ name: name.trim(), email: email.trim(), password })
+      await adminApi.createStudio({ name: name.trim(), email: email.trim(), password, plan })
       setCredentials({ name: name.trim(), email: email.trim(), password, phone: phone.trim() })
       setName('')
       setEmail('')
@@ -116,6 +123,11 @@ export default function StudiosPage() {
           <Field label="WhatsApp number (optional)" hint="Only to open the right chat; not saved">
             <input className={inputClass} type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="98765 43210" />
           </Field>
+          <Field label="Plan" hint="Change it any time in the list below">
+            <select className={inputClass} value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
+              {(Object.keys(PLAN_LABEL) as Plan[]).map((p) => <option key={p} value={p}>{PLAN_LABEL[p]}</option>)}
+            </select>
+          </Field>
           <Field label="Temporary password" hint="They must change it when they first log in">
             <div className="flex gap-2">
               <input className={`${inputClass} font-mono`} required minLength={10} value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -128,6 +140,8 @@ export default function StudiosPage() {
         </form>
         <div className="mt-3"><ErrorText>{error}</ErrorText></div>
       </Card>
+
+      <PaymentsToCheck onChange={load} />
 
       <Card title="All logins">
         {!studios && !error && <ShutterLoader className="py-8" />}
@@ -156,11 +170,14 @@ export default function StudiosPage() {
                     <Button variant={s.disabled ? 'secondary' : 'danger'} onClick={() => toggleDisabled(s)}>{s.disabled ? 'Enable' : 'Disable'}</Button>
                   </div>
                 )}
+                {!me && billing.get(s.id) && <StudioPlan billing={billing.get(s.id)!} onChange={load} />}
               </li>
             )
           })}
         </ul>
       </Card>
+
+      <BillingSettingsCard />
     </div>
   )
 }

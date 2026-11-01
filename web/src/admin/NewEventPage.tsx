@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
-import type { EventStatus, Studio } from '../lib/types'
+import type { BillingSummary, EventStatus, Studio } from '../lib/types'
 import { useSession } from './auth'
+import { BuyEventsDialog } from './BuyEventsDialog'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
 
 export default function NewEventPage() {
@@ -13,6 +14,7 @@ export default function NewEventPage() {
   const [slug, setSlug] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [payment, setPayment] = useState<{ billing: BillingSummary; reason: string } | null>(null)
   // The super admin can create the event for a client studio.
   const superAdmin = useSession()?.role === 'SUPER_ADMIN'
   const [studios, setStudios] = useState<Studio[]>([])
@@ -25,17 +27,42 @@ export default function NewEventPage() {
     e.preventDefault()
     setBusy(true)
     setError(null)
+    await create()
+  }
+
+  const create = async () => {
     try {
       const event = await adminApi.createEvent({ name, eventDate, status, slug: slug.trim() || undefined, ownerId: ownerId || undefined })
       navigate(`/admin/events/${event.id}`, { replace: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create the event')
+      // Out of events for this month (or a per-event plan): offer to buy, then create it straight after.
+      if (err instanceof ApiError && err.code === 'EVENT_PAYMENT_REQUIRED' && !ownerId) {
+        try {
+          setPayment({ billing: await adminApi.billing(), reason: err.message })
+        } catch {
+          setError(err.message)
+        }
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not create the event')
+      }
       setBusy(false)
     }
   }
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
+      {payment && (
+        <BuyEventsDialog
+          billing={payment.billing}
+          reason={payment.reason}
+          onClose={() => setPayment(null)}
+          onPaid={() => {
+            setPayment(null)
+            setBusy(true)
+            void create()
+          }}
+        />
+      )}
       <Link to="/admin" className="text-sm text-muted hover:text-ink">← Events</Link>
       <Card title="New event">
         <form onSubmit={submit} className="space-y-5">

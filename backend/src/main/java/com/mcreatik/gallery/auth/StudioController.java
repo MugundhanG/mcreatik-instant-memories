@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.mcreatik.gallery.billing.BillingService;
 import com.mcreatik.gallery.common.ApiException;
 import com.mcreatik.gallery.event.EventRepository;
 
@@ -32,13 +33,16 @@ import com.mcreatik.gallery.event.EventRepository;
 @RequestMapping("/api/admin/studios")
 public class StudioController {
 
+    private final BillingService billing;
+
     private final AdminUserRepository users;
     private final AdminAccess access;
     private final PasswordEncoder passwordEncoder;
     private final EventRepository events;
 
     public StudioController(AdminUserRepository users, AdminAccess access, PasswordEncoder passwordEncoder,
-                            EventRepository events) {
+                            EventRepository events, BillingService billing) {
+        this.billing = billing;
         this.users = users;
         this.access = access;
         this.passwordEncoder = passwordEncoder;
@@ -66,7 +70,8 @@ public class StudioController {
     }
 
     public record CreateStudioRequest(@NotBlank @Size(max = 120) String name, @NotBlank @Email @Size(max = 320) String email,
-                                      @NotBlank @Size(min = AccountController.MIN_PASSWORD, max = 200) String password) {
+                                      @NotBlank @Size(min = AccountController.MIN_PASSWORD, max = 200) String password,
+                                      BillingService.Plan plan) {
     }
 
     /** The studio logs in with this email and temporary password, then must choose its own password. */
@@ -81,7 +86,10 @@ public class StudioController {
         AdminUser studio = new AdminUser(request.email(), passwordEncoder.encode(request.password()),
                 request.name().trim(), AdminRole.STUDIO);
         studio.setPassword(studio.getPasswordHash(), true);
-        users.save(studio);
+        users.saveAndFlush(studio);
+        if (request.plan() != null) {
+            billing.updateStudio(studio.getId(), request.plan(), null, null);
+        }
         return new Studio(studio.getId(), studio.getDisplayName(), studio.getEmail(), studio.getRole(), false, true,
                 studio.getCreatedAt(), 0, 0, 0);
     }

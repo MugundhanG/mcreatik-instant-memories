@@ -35,7 +35,7 @@ class StudioBrandingTest extends IntegrationTest {
         String email = "brand-" + UUID.randomUUID().toString().substring(0, 8) + "@client.test";
         mvc.perform(post("/api/admin/studios").header("Authorization", bearer(adminToken()))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Lens & Light\",\"email\":\"" + email + "\",\"password\":\"temporary-123\"}"))
+                        .content("{\"name\":\"Lens & Light\",\"email\":\"" + email + "\",\"password\":\"temporary-123\",\"plan\":\"MONTHLY\"}"))
                 .andExpect(status().isCreated());
         int n = IPS.incrementAndGet();
         studio = JsonPath.read(mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)

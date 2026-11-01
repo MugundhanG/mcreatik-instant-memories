@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { adminApi } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
-import type { EventSummary } from '../lib/types'
+import type { BillingSummary, EventSummary } from '../lib/types'
 import { ShutterLoader } from '../shared/ShutterLoader'
 import { useSession } from './auth'
+import { BuyEventsDialog } from './BuyEventsDialog'
 import { ErrorText, EventStatusBadge } from './ui'
 
 export default function EventsPage() {
@@ -12,8 +13,13 @@ export default function EventsPage() {
   const [error, setError] = useState<string | null>(null)
   const superAdmin = useSession()?.role === 'SUPER_ADMIN'
 
+  const [billing, setBilling] = useState<BillingSummary | null>(null)
+  const [buying, setBuying] = useState(false)
+  const loadBilling = () => adminApi.billing().then(setBilling).catch(() => {})
+
   useEffect(() => {
     adminApi.events().then(setEvents).catch((e: Error) => setError(e.message))
+    loadBilling()
   }, [])
 
   return (
@@ -24,6 +30,26 @@ export default function EventsPage() {
           New event
         </Link>
       </div>
+      {billing && !billing.free && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3" data-testid="plan-usage">
+          <p className="text-sm">
+            {billing.plan === 'MONTHLY'
+              ? <><b className="tabular-nums">{billing.usedThisMonth} of {billing.monthlyQuota}</b> events used this month</>
+              : <>Per-event plan</>}
+            {' · '}
+            <span className={billing.credits < 0 ? 'text-red-700' : 'text-muted'}>
+              {billing.credits < 0 ? `${-billing.credits} event${billing.credits === -1 ? '' : 's'} owed (payment not received)` : `${billing.credits} extra event${billing.credits === 1 ? '' : 's'} available`}
+            </span>
+          </p>
+          <button type="button" onClick={() => setBuying(true)} className="text-sm font-medium text-[#8a5a1c] hover:underline">Buy events</button>
+        </div>
+      )}
+      {buying && billing && (
+        <BuyEventsDialog billing={billing} onClose={() => setBuying(false)} onPaid={() => {
+          setBuying(false)
+          loadBilling()
+        }} />
+      )}
       <ErrorText>{error}</ErrorText>
       {!events && !error && <ShutterLoader className="py-16" />}
       {events?.length === 0 && (
