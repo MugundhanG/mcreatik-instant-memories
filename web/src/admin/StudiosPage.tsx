@@ -38,10 +38,17 @@ function whatsappLink(c: Credentials) {
   return `https://wa.me/${to}?text=${encodeURIComponent(loginMessage(c))}`
 }
 
-/** Opens the default mail app addressed to the studio. */
-function emailLink(c: Credentials) {
-  const subject = `Your McreatiK Live Gallery login for ${c.name}`
-  return `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(loginMessage(c))}`
+const emailSubject = (c: Credentials) => `Your McreatiK Live Gallery login for ${c.name}`
+
+/** Gmail's compose window in a new tab: works without a mail app installed on the computer. */
+function gmailLink(c: Credentials) {
+  const q = new URLSearchParams({ view: 'cm', fs: '1', to: c.email, su: emailSubject(c), body: loginMessage(c) })
+  return `https://mail.google.com/mail/?${q}`
+}
+
+/** The computer's own mail app (Outlook, Apple Mail…), when one is set up. */
+function mailAppLink(c: Credentials) {
+  return `mailto:${c.email}?subject=${encodeURIComponent(emailSubject(c))}&body=${encodeURIComponent(loginMessage(c))}`
 }
 
 /** Super admin: client studio logins, their usage, password resets and access. */
@@ -134,13 +141,17 @@ export default function StudiosPage() {
               className="inline-flex items-center gap-2 rounded-lg bg-[#25d366] px-4 py-2 text-sm font-medium text-white hover:bg-[#1ebe5b]">
               <WhatsAppIcon /> Send on WhatsApp
             </a>
-            <a href={emailLink(credentials)} className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2 text-sm font-medium hover:bg-stone-50">
+            <a href={gmailLink(credentials)} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2 text-sm font-medium hover:bg-stone-50">
               <MailIcon /> Send email
             </a>
             <Button onClick={copy}>{copied ? 'Copied ✓' : 'Copy message'}</Button>
             <Button variant="ghost" onClick={() => setCredentials(null)}>Done</Button>
           </div>
-          {!credentials.phone && <p className="mt-2 text-xs text-muted">WhatsApp will ask which chat to send it to.</p>}
+          <p className="mt-2 text-xs text-muted">
+            {!credentials.phone && 'WhatsApp will ask which chat to send it to. '}
+            Send email opens Gmail; using Outlook or another mail app? <a href={mailAppLink(credentials)} className="underline underline-offset-2 hover:text-ink">Open in mail app</a>
+          </p>
         </Card>
       )}
 
