@@ -27,9 +27,16 @@ public class AdminPhotoSearch {
         CAMERA
     }
 
-    public record Filter(UUID uploaderId, Boolean liked, Boolean hidden, LocalDate day) {
-        public static final Filter NONE = new Filter(null, null, null, null);
+    /** {@code category}: a category id, or {@link #UNSORTED} for photos not in any; {@code selected}: in the album. */
+    public record Filter(UUID uploaderId, Boolean liked, Boolean hidden, LocalDate day, String category, Boolean selected) {
+        public static final Filter NONE = new Filter(null, null, null, null, null, null);
+
+        public Filter(UUID uploaderId, Boolean liked, Boolean hidden, LocalDate day) {
+            this(uploaderId, liked, hidden, day, null, null);
+        }
     }
+
+    public static final String UNSORTED = "none";
 
     /** When the photo was taken: the camera's clock, else the upload time. */
     static final String TAKEN_AT = "coalesce(p.captured_at, p.created_at)";
@@ -98,6 +105,16 @@ public class AdminPhotoSearch {
         if (f.day() != null) {
             w.append(" AND ").append(DAY).append(" = :day");
             params.put("day", f.day());
+        }
+        if (UNSORTED.equals(f.category())) {
+            w.append(" AND p.category_id IS NULL");
+        } else if (f.category() != null && !f.category().isBlank()) {
+            w.append(" AND p.category_id = :category");
+            params.put("category", UUID.fromString(f.category()));
+        }
+        if (f.selected() != null) {
+            w.append(f.selected() ? " AND" : " AND NOT").append(
+                    " EXISTS (SELECT 1 FROM album_selections s WHERE s.event_id = p.event_id AND s.photo_id = p.id)");
         }
         return w.toString();
     }

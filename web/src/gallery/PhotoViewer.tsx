@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { formatCount } from '../lib/format'
 import { downloadPhoto, fetchPhoto, isIOS, sharePhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
-import { INSTAGRAM_HANDLE, InstagramLink } from '../shared/StudioLogo'
+import { INSTAGRAM_HANDLE, InstagramIcon, InstagramLink } from '../shared/StudioLogo'
 import { SLIDE_EASE, SLIDE_GAP, SLIDE_MS, useViewerGestures } from './useViewerGestures'
 import type { Zoom } from './useViewerGestures'
 
@@ -17,6 +17,8 @@ interface Props {
   onIndexChange: (index: number) => void
   onClose: () => void
   onNearEnd: () => void
+  /** The client portal brings its own download (originals): hide the built-in one. */
+  hideDownload?: boolean
   /** Extra buttons beside Download (the dashboard's like / hide / cover / delete). */
   actions?: (photo: PublicPhoto) => ReactNode
   /** Guests are invited to follow the studio after saving; not the photographer. */
@@ -32,13 +34,32 @@ interface Props {
 /** Share is hidden for now; flip to bring the button back. */
 const SHOW_SHARE = false
 const SAVE_HINT = 'Press and hold the photo, then tap “Save image”'
+const FOLLOW_SHOWN_KEY = 'mcreatik.follow-invite'
+
+/** The follow card shows on the first download of a visit only. */
+function followInviteShown() {
+  try {
+    return sessionStorage.getItem(FOLLOW_SHOWN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function markFollowInviteShown() {
+  try {
+    sessionStorage.setItem(FOLLOW_SHOWN_KEY, '1')
+  } catch {
+    // storage blocked: the card may show again, which is harmless
+  }
+}
 
 export function PhotoViewer({
-  photos, index, total, eventSlug, eventName, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity,
+  photos, index, total, eventSlug, eventName, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity, hideDownload = false,
 }: Props) {
   const photo = photos[index]
   const count = Math.max(total, photos.length)
-  const [toast, setToast] = useState<{ text: string; ms: number; follow?: boolean } | null>(null)
+  const [toast, setToast] = useState<{ text: string; ms: number } | null>(null)
+  const [followCard, setFollowCard] = useState<string | null>(null)
   // iPhone: the photo must already be fetched when Download is tapped (see downloadPhoto).
   const [prefetched, setPrefetched] = useState<{ id: string; blob: Blob } | null>(null)
   const [busy, setBusy] = useState<'download' | 'share' | null>(null)
@@ -118,13 +139,17 @@ export function PhotoViewer({
     const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id, blob)
     setBusy(null)
     if (result === 'saved' || result === 'save-sheet') onActivity?.('DOWNLOAD', photo.id)
-    // Right after saving is when guests are happiest with the photos: ask them to follow.
-    // (Only when the studio has an Instagram to follow.)
-    const promoteFollow = promote && !!instagram
-    if (result === 'saved') setToast(promoteFollow ? { text: 'Saved to your phone ✓', ms: 5000, follow: true } : { text: 'Saved ✓', ms: 2500 })
-    if (result === 'save-sheet' && promoteFollow) setToast({ text: 'Love the photos?', ms: 5000, follow: true })
-    if (result === 'hint') setToast({ text: SAVE_HINT, ms: 6000 })
-    if (result === 'unavailable') setToast({ text: 'Downloads are turned off in this demo', ms: 2500 })
+    if (result === 'unavailable') return setToast({ text: 'Downloads are turned off in this demo', ms: 2500 })
+    if (result === 'cancelled') return
+    const status = result === 'hint' ? SAVE_HINT : result === 'save-sheet' ? 'Love the photos?' : 'Saved to your phone ✓'
+    // Right after saving is when guests are happiest with the photos: invite them to follow the studio, with a
+    // card at the top (Chrome's own download bar covers the bottom of the screen). Once per visit, so it never nags.
+    if (promote && instagram && !followInviteShown()) {
+      markFollowInviteShown()
+      setToast(null)
+      return setFollowCard(status)
+    }
+    setToast({ text: result === 'saved' ? 'Saved ✓' : status, ms: result === 'hint' ? 6000 : 2500 })
   }
 
   const onShare = async () => {
@@ -196,7 +221,7 @@ export function PhotoViewer({
       </div>
 
       <div className="flex items-center justify-center gap-3 px-4 pt-3 pb-[max(env(safe-area-inset-bottom),1rem)]">
-        <button
+        {!hideDownload && <button
           type="button"
           onClick={onDownload}
           disabled={busy !== null}
@@ -204,7 +229,7 @@ export function PhotoViewer({
         >
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" /></svg>
           {busy === 'download' ? 'Saving…' : 'Download'}
-        </button>
+        </button>}
         {actions?.(photo)}
         {SHOW_SHARE && <button
           type="button"
@@ -220,12 +245,44 @@ export function PhotoViewer({
       {toast && (
         <div
           role="status"
-          className={`absolute bottom-24 left-1/2 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-white px-4 py-2 text-center text-sm text-ink shadow-lg ${toast.follow ? '' : 'pointer-events-none'}`}
+          className="pointer-events-none absolute top-16 left-1/2 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-white px-4 py-2 text-center text-sm text-ink shadow-lg"
         >
           {toast.text}
-          {toast.follow && instagram && (
-            <InstagramLink handle={instagram} onClick={() => onActivity?.('INSTAGRAM')} className="mt-0.5 block text-xs font-semibold text-[#b37a2c]">Follow @{instagram} on Instagram →</InstagramLink>
-          )}
+        </div>
+      )}
+
+      {followCard && instagram && (
+        <div
+          role="dialog"
+          aria-label="Follow on Instagram"
+          data-testid="follow-card"
+          className="absolute top-16 left-1/2 z-10 w-[min(22rem,calc(100%-2rem))] -translate-x-1/2 rounded-2xl bg-white p-4 text-ink shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+        >
+          <p role="status" className="text-center text-sm text-muted">{followCard}</p>
+          <div className="mt-3 flex items-center gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(45deg,#f09433,#dc2743_50%,#bc1888)] text-white">
+              <InstagramIcon className="size-6" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Enjoying the photos?</p>
+              <p className="truncate text-xs text-muted">Follow @{instagram} for more</p>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <InstagramLink
+              handle={instagram}
+              onClick={() => {
+                onActivity?.('INSTAGRAM')
+                setFollowCard(null)
+              }}
+              className="flex-1 rounded-full bg-ink px-4 py-2.5 text-center text-sm font-medium text-white"
+            >
+              Follow on Instagram
+            </InstagramLink>
+            <button type="button" onClick={() => setFollowCard(null)} className="rounded-full px-4 py-2.5 text-sm text-muted hover:bg-stone-100">
+              Not now
+            </button>
+          </div>
         </div>
       )}
     </div>

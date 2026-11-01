@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { exifCapturedAt, fit } from './prepareUpload'
@@ -73,5 +73,32 @@ describe('Upload photos panel', () => {
     await user.click(screen.getByRole('button', { name: 'Retry failed' }))
     await waitFor(() => expect(progress).toHaveTextContent('2 added to the gallery'))
     expect(progress).not.toHaveTextContent('failed')
+  })
+
+  it('original quality: puts the full file to storage, then adds the gallery versions', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    const calls: { url: string; method: string; body: unknown }[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      calls.push({ url, method: init?.method ?? 'GET', body: init?.body })
+      const json = (data: unknown) => new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      if (url.endsWith('/original-uploads')) {
+        return json({ outcome: 'UPLOAD', photoId: 'p1', needsVersions: true, upload: { url: 'https://storage.test/put', method: 'PUT', headers: { 'content-type': 'image/jpeg', 'content-length': '1' }, expiresAt: '' } })
+      }
+      if (url === 'https://storage.test/put') return new Response(null, { status: 200 })
+      return json({ outcome: 'UPLOAD', photoId: 'p1' })
+    }))
+    render(<UploadPhotosPanel eventId="e1" onUploaded={vi.fn()} />)
+    await user.click(within(screen.getByTestId('upload-original')).getByRole('button', { name: 'Choose photos' }))
+    await user.upload(screen.getByLabelText('Photos to upload'), [new File(['x'], 'final.jpg', { type: 'image/jpeg' })])
+
+    await waitFor(() => expect(screen.getByTestId('upload-progress')).toHaveTextContent('1 added to the gallery'))
+    expect(calls.map((c) => c.method + ' ' + c.url.replace(/^.*\/api/, '/api'))).toEqual([
+      'POST /api/admin/events/e1/original-uploads',
+      'PUT https://storage.test/put',
+      'POST /api/admin/events/e1/photos',
+    ])
+    expect(calls[1].body).toBeInstanceOf(File) // the full file, untouched
+    expect((calls[2].body as FormData).get('original')).toBe('true')
   })
 })

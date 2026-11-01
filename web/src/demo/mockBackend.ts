@@ -156,7 +156,7 @@ function toAdmin(p: DemoPhoto): AdminPhoto {
     id: p.id, uploaderId: p.uploaderId, originalFileName: p.originalFileName, status: 'READY', failureReason: null,
     fileSize: p.fileSize, width: p.width, height: p.height, thumbnailUrl: p.thumbnailUrl, webUrl: p.webUrl,
     capturedAt: p.readyAt, uploadedAt: p.readyAt, readyAt: p.readyAt, createdAt: p.createdAt,
-    originalAvailable: false, hidden: !!p.hidden, liked: !!p.liked,
+    originalAvailable: false, hidden: !!p.hidden, liked: !!p.liked, categoryId: null, selected: false,
   }
 }
 
@@ -358,6 +358,12 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
     return json({ outcome: 'UPLOAD', photoId: photo.id })
   }
   if ((m = path.match(/^\/api\/public\/events\/[^/]+\/activity$/)) && method === 'POST') return new Response(null, { status: 204 })
+  // Phase 2 screens in the demo: the default categories, no client logins, an empty album.
+  if ((m = path.match(/^\/api\/admin\/events\/[^/]+\/categories$/)) && method === 'GET') {
+    return json(['Couple', 'Family & Groups', 'Rituals', 'Cake cutting', 'Main event', 'Candid'].map((name, i) => ({ id: `cat-${i}`, name, position: i + 1, photos: 0 })))
+  }
+  if ((m = path.match(/^\/api\/admin\/events\/[^/]+\/clients$/)) && method === 'GET') return json([])
+  if ((m = path.match(/^\/api\/admin\/events\/[^/]+\/album$/)) && method === 'GET') return json({ limit: null, selected: [] })
   if ((m = path.match(/^\/api\/admin\/events\/([^/]+)\/analytics$/))) {
     const e = events.find((x) => x.id === m![1])
     if (!e) return notFound()

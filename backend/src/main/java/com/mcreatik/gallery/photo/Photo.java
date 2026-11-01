@@ -65,6 +65,10 @@ public class Photo {
     @Column(nullable = false)
     private boolean liked;
 
+    /** The studio's category for this photo (Couple, Cake cutting, ...); null = not sorted yet. */
+    @Column(name = "category_id")
+    private UUID categoryId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PhotoStatus status;
@@ -302,5 +306,9 @@ public class Photo {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public UUID getCategoryId() {
+        return categoryId;
     }
 }

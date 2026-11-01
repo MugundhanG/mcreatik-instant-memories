@@ -23,7 +23,15 @@ public class PhotoMapper {
                 p.getFailureReason(), p.getFileSize(), p.getWidth(), p.getHeight(),
                 readyUrl(p, p.getThumbnailStorageKey()), readyUrl(p, p.getOptimizedStorageKey()),
                 p.getCapturedAt(), p.getUploadedAt(), p.getReadyAt(), p.getCreatedAt(), p.isOriginalStored(),
-                p.isHidden(), p.isLiked());
+                p.isHidden(), p.isLiked(), p.getCategoryId(), false);
+    }
+
+    /** {@code selected}: the couple picked it for the album. */
+    public PhotoDtos.AdminPhoto toAdmin(Photo p, boolean selected) {
+        PhotoDtos.AdminPhoto a = toAdmin(p);
+        return new PhotoDtos.AdminPhoto(a.id(), a.uploaderId(), a.originalFileName(), a.status(), a.failureReason(),
+                a.fileSize(), a.width(), a.height(), a.thumbnailUrl(), a.webUrl(), a.capturedAt(), a.uploadedAt(),
+                a.readyAt(), a.createdAt(), a.originalAvailable(), a.hidden(), a.liked(), a.categoryId(), selected);
     }
 
     /** Uploader-prepared photos know their media keys before the files arrive: only link them once READY. */

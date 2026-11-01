@@ -216,6 +216,15 @@ public class UploadService {
      * Unlike camera uploads this never switches the event to LIVE: delivery after the event is the common case.
      */
     public AdminUploadResponse adminUpload(UUID eventId, AdminUpload meta, byte[] web, byte[] thumbnail) {
+        return adminUpload(eventId, meta, web, thumbnail, false);
+    }
+
+    /**
+     * {@code withOriginal}: the full-quality file was already PUT to storage after {@link #adminOriginalSession};
+     * it is checked and kept, so studios and clients can download the original.
+     */
+    public AdminUploadResponse adminUpload(UUID eventId, AdminUpload meta, byte[] web, byte[] thumbnail,
+                                           boolean withOriginal) {
         String mimeType = validate(new UploadSessionRequest(meta.fileName(), meta.fileSize(), meta.mimeType(),
                 meta.checksumSha256(), new Prepared(web.length, thumbnail.length, meta.width(), meta.height(),
                 meta.capturedAt())));
@@ -234,6 +243,9 @@ public class UploadService {
                 && existing.get().getStatus() != PhotoStatus.FAILED) {
             return new AdminUploadResponse(SessionOutcome.DUPLICATE, existing.get().getId());
         }
+        if (withOriginal && (existing.isEmpty() || !originalArrived(existing.get()))) {
+            throw ApiException.conflict("UPLOAD_NOT_FOUND", "The original has not reached storage yet");
+        }
         UUID photoId = existing.map(Photo::getId).orElseGet(UUID::randomUUID);
         String webKey = StorageKeys.optimized(eventId, photoId);
         String thumbKey = StorageKeys.thumbnail(eventId, photoId);
@@ -251,6 +263,9 @@ public class UploadService {
                 }
                 photo.prepareOnUploader(meta.width(), meta.height(), meta.capturedAt(), webKey, thumbKey,
                         web.length + (long) thumbnail.length);
+                if (withOriginal) {
+                    photo.expectOriginal();
+                }
                 photo.markReadyFromUploader();
                 photos.saveAndFlush(photo);
             });
@@ -263,6 +278,74 @@ public class UploadService {
         }
         publisher.publishEvent(new PhotoReadyEvent(eventId, photoId));
         return new AdminUploadResponse(SessionOutcome.UPLOAD, photoId);
+    }
+
+    /**
+     * {@code needsVersions}: the browser must still send the gallery and thumbnail versions (a new photo). When the
+     * photo is already in the gallery without its original (e.g. from the live camera), only the original is sent
+     * and {@link #attachOriginal} completes it.
+     */
+    public record OriginalSession(SessionOutcome outcome, UUID photoId, PresignedUpload upload, boolean needsVersions) {
+    }
+
+    /** Step 1 of a dashboard "original quality" upload: where to PUT the full-quality file. */
+    public OriginalSession adminOriginalSession(UUID eventId, String rawFileName, long fileSize, String rawMimeType,
+                                                String rawChecksum) {
+        String mimeType = validate(new UploadSessionRequest(rawFileName, fileSize, rawMimeType, rawChecksum));
+        String checksum = rawChecksum.toLowerCase(Locale.ROOT);
+        String fileName = cleanFileName(rawFileName);
+        Event event = events.findById(eventId).orElseThrow(() -> ApiException.notFound("Event"));
+        if (!event.getStatus().acceptsUploads()) {
+            throw ApiException.conflict("EVENT_CLOSED", "This event is archived and no longer accepts photos");
+        }
+        var ttl = properties.upload().presignTtl();
+        var existing = photos.findByEventIdAndChecksumSha256(eventId, checksum);
+        if (existing.isPresent()) {
+            Photo photo = existing.get();
+            if (photo.getStatus() == PhotoStatus.READY && !photo.isOriginalStored()) {
+                return new OriginalSession(SessionOutcome.UPLOAD, photo.getId(), storage.presignOriginalUpload(
+                        photo.getStorageKey(), photo.getMimeType(), photo.getFileSize(), ttl), false);
+            }
+            if (photo.getStatus() != PhotoStatus.UPLOADING && photo.getStatus() != PhotoStatus.FAILED) {
+                return new OriginalSession(SessionOutcome.DUPLICATE, photo.getId(), null, false);
+            }
+            Photo restarted = tx.execute(s -> {
+                Photo p = photos.findById(photo.getId()).orElseThrow(() -> ApiException.notFound("Photo"));
+                p.restartUpload(null, fileName, fileSize);
+                return p;
+            });
+            return new OriginalSession(SessionOutcome.UPLOAD, restarted.getId(), storage.presignOriginalUpload(
+                    restarted.getStorageKey(), restarted.getMimeType(), fileSize, ttl), true);
+        }
+        UUID photoId = UUID.randomUUID();
+        Photo photo = new Photo(photoId, eventId, null, fileName, StorageKeys.original(eventId, photoId, mimeType),
+                fileSize, mimeType, checksum);
+        try {
+            tx.executeWithoutResult(s -> photos.saveAndFlush(photo));
+        } catch (DataIntegrityViolationException race) {
+            UUID winner = photos.findByEventIdAndChecksumSha256(eventId, checksum).orElseThrow(() -> race).getId();
+            return new OriginalSession(SessionOutcome.DUPLICATE, winner, null, false);
+        }
+        return new OriginalSession(SessionOutcome.UPLOAD, photoId,
+                storage.presignOriginalUpload(photo.getStorageKey(), mimeType, fileSize, ttl), true);
+    }
+
+    /** Last step when an existing gallery photo only needed its original: keep it once it is in storage. */
+    public void attachOriginal(UUID eventId, UUID photoId) {
+        tx.executeWithoutResult(s -> {
+            Photo photo = photos.findByIdAndEventId(photoId, eventId).orElseThrow(() -> ApiException.notFound("Photo"));
+            if (photo.isOriginalStored()) {
+                return; // idempotent
+            }
+            if (!originalArrived(photo)) {
+                throw ApiException.conflict("UPLOAD_NOT_FOUND", "The original has not reached storage yet");
+            }
+            photo.expectOriginal();
+        });
+    }
+
+    private boolean originalArrived(Photo photo) {
+        return storage.size(StorageArea.ORIGINALS, photo.getStorageKey()).map(n -> n == photo.getFileSize()).orElse(false);
     }
 
     private static boolean isJpeg(byte[] data) {

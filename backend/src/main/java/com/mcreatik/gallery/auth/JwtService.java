@@ -40,6 +40,24 @@ public class JwtService {
         return new IssuedToken(token, expiresAt);
     }
 
+    /** The couple's login: scope "client", limited to their one event. */
+    public IssuedToken issueClient(java.util.UUID clientId, java.util.UUID eventId, String email) {
+        Instant now = Instant.now();
+        Instant expiresAt = now.plus(properties.security().jwtTtl());
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer(ISSUER)
+                .subject(clientId.toString())
+                .issuedAt(now)
+                .expiresAt(expiresAt)
+                .claim("email", email)
+                .claim("event", eventId.toString())
+                .claim("scope", "client")
+                .build();
+        String token = encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+                .getTokenValue();
+        return new IssuedToken(token, expiresAt);
+    }
+
     public record IssuedToken(String token, Instant expiresAt) {
     }
 }

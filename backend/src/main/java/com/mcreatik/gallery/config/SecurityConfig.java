@@ -76,9 +76,27 @@ public class SecurityConfig {
                 .build();
     }
 
-    /** Everything else is public: login, guest gallery, SSE stream, health, local dev storage. */
+    /** The couple's portal: stateless JWT with scope "client"; only its login is open. */
     @Bean
     @Order(3)
+    SecurityFilterChain clientChain(HttpSecurity http) throws Exception {
+        return http
+                .securityMatcher("/api/client/**")
+                .csrf(c -> c.disable())
+                .cors(Customizer.withDefaults())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(a -> a
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/api/client/auth/login").permitAll()
+                        .anyRequest().hasAuthority("SCOPE_client"))
+                .oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()))
+                .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                .build();
+    }
+
+    /** Everything else is public: login, guest gallery, SSE stream, health, local dev storage. */
+    @Bean
+    @Order(4)
     SecurityFilterChain publicChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(c -> c.disable())

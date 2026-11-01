@@ -155,6 +155,10 @@ export interface AdminPhoto {
   hidden: boolean
   /** The photographer's pick. */
   liked: boolean
+  /** The studio's category (Couple, Cake cutting…); null = not sorted. */
+  categoryId: string | null
+  /** The couple selected it for the album. */
+  selected: boolean
 }
 
 export interface AdminPhotoPage {
@@ -172,6 +176,10 @@ export interface AdminPhotoQuery {
   hidden?: boolean
   /** yyyy-mm-dd, the day the photo was taken */
   day?: string
+  /** A category id, or "none" for photos not sorted yet. */
+  category?: string
+  /** Only photos the couple selected for the album. */
+  selected?: boolean
   offset?: number
   limit?: number
 }
@@ -218,4 +226,38 @@ export interface GuestAnalytics {
   hours: { hour: string; people: number; photoViews: number; downloads: number }[]
   topPhotos: { photoId: string; thumbnailUrl: string | null; fileName: string; views: number; downloads: number }[]
   lastActivityAt: string | null
+}
+
+/** Where the browser PUTs a full-quality original (see adminApi.originalUpload). */
+export interface OriginalUploadSession {
+  outcome: 'UPLOAD' | 'DUPLICATE'
+  photoId: string
+  upload: { url: string; method: string; headers: Record<string, string>; expiresAt: string } | null
+  /** False when the photo is already in the gallery and only needs its original. */
+  needsVersions: boolean
+}
+
+/** A photo category of an event (Couple, Family & Groups, …), with how many photos it holds. */
+export interface Category {
+  id: string
+  name: string
+  position: number
+  photos: number
+}
+
+/** The couple's login to their event's photos. */
+export interface EventClient {
+  id: string
+  name: string
+  email: string
+  mustChangePassword: boolean
+  disabled: boolean
+  createdAt: string
+  lastLoginAt: string | null
+}
+
+export interface AlbumSelection {
+  /** Max photos the couple may select; null = no limit. */
+  limit: number | null
+  selected: { photoId: string; fileName: string; thumbnailUrl: string | null; selectedAt: string; selectedBy: string | null; categoryId: string | null }[]
 }

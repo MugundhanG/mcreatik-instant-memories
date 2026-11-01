@@ -13,6 +13,7 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mcreatik.gallery.album.AlbumService;
 import com.mcreatik.gallery.auth.AdminUser;
 import com.mcreatik.gallery.auth.AdminUserRepository;
 import com.mcreatik.gallery.auth.StudioBranding;
@@ -43,10 +44,12 @@ public class EventService {
     private final GalleryProperties properties;
     private final AdminUserRepository admins;
     private final StudioBranding branding;
+    private final AlbumService album;
 
     public EventService(EventRepository events, PhotoRepository photos, UploaderRepository uploaders,
                         StorageService storage, PhotoMapper photoMapper, GalleryBroadcaster broadcaster,
-                        GalleryProperties properties, AdminUserRepository admins, StudioBranding branding) {
+                        GalleryProperties properties, AdminUserRepository admins, StudioBranding branding,
+                        AlbumService album) {
         this.events = events;
         this.photos = photos;
         this.uploaders = uploaders;
@@ -56,6 +59,7 @@ public class EventService {
         this.properties = properties;
         this.admins = admins;
         this.branding = branding;
+        this.album = album;
     }
 
     @Transactional(readOnly = true)
@@ -98,6 +102,8 @@ public class EventService {
         event.setRetentionUntil(request.retentionUntil() != null ? request.retentionUntil()
                 : request.eventDate().plusDays(properties.retention().defaultDays()));
         events.save(event);
+        events.flush();
+        album.createDefaultCategories(event.getId());
         return toDetail(event);
     }
 

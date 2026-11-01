@@ -5,6 +5,8 @@ import { PageLoader } from './shared/ShutterLoader'
 
 // Guests never download admin code.
 const AdminApp = lazy(() => import('./admin/AdminApp'))
+// The couple's portal (their own login): separate chunk too.
+const ClientApp = lazy(() => import('./client/ClientApp'))
 // Demo build only (see src/demo). Inlined env check so production builds drop these chunks entirely.
 const IS_DEMO = import.meta.env.VITE_DEMO === '1'
 const DemoHome = IS_DEMO ? lazy(() => import('./demo/DemoHome')) : null
@@ -25,6 +27,14 @@ export default function App() {
           element={
             <Suspense fallback={<PageLoader />}>
               <AdminApp />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/client/*"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <ClientApp />
             </Suspense>
           }
         />

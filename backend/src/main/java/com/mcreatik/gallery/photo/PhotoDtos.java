@@ -21,7 +21,7 @@ public final class PhotoDtos {
                              String failureReason, long fileSize, Integer width, Integer height,
                              String thumbnailUrl, String webUrl, Instant capturedAt, Instant uploadedAt,
                              Instant readyAt, Instant createdAt, boolean originalAvailable, boolean hidden,
-                             boolean liked) {
+                             boolean liked, UUID categoryId, boolean selected) {
     }
 
     /** {@code nextOffset}: pass back as {@code offset} for the next page; null when there are no more. */

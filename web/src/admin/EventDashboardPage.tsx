@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
 import { formatBytes, formatCount, formatEventDate, timeAgo } from '../lib/format'
-import type { EventDetail, EventStats, EventStatus } from '../lib/types'
+import type { Category, EventDetail, EventStats, EventStatus } from '../lib/types'
 import { ShutterLoader } from '../shared/ShutterLoader'
 import { AnalyticsPanel } from './AnalyticsPanel'
+import { CategoriesCard } from './CategoriesCard'
+import { ClientsCard } from './ClientsCard'
 import { useSession } from './auth'
 import { PhotosPanel } from './PhotosPanel'
 import { QrPanel } from './QrPanel'
@@ -24,6 +26,12 @@ export default function EventDashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const superAdmin = useSession()?.role === 'SUPER_ADMIN'
   const [confirm, confirmDialog] = useConfirm()
+
+  const [categories, setCategories] = useState<Category[]>([])
+  const loadCategories = useCallback(() => adminApi.categories(eventId).then(setCategories).catch(() => {}), [eventId])
+  useEffect(() => {
+    loadCategories()
+  }, [loadCategories])
 
   const loadStats = useCallback(
     () =>
@@ -108,7 +116,14 @@ export default function EventDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <UploadPhotosPanel eventId={event.id} onUploaded={loadStats} />
+          <UploadPhotosPanel
+            eventId={event.id}
+            categories={categories}
+            onUploaded={() => {
+              loadStats()
+              loadCategories()
+            }}
+          />
           <UploadersPanel eventId={event.id} uploaders={stats?.uploaders ?? []} onChange={loadStats} />
           {stats?.latestPhoto && (
             <Card title="Latest photo">
@@ -129,6 +144,11 @@ export default function EventDashboardPage() {
 
       <AnalyticsPanel eventId={event.id} live={event.status === 'LIVE'} />
 
+      <div className="grid gap-6 lg:grid-cols-2">
+        <CategoriesCard eventId={event.id} categories={categories} onChange={loadCategories} />
+        <ClientsCard eventId={event.id} eventName={event.name} refreshKey={stats?.readyPhotos ?? 0} />
+      </div>
+
       <PhotosPanel
         eventId={event.id}
         eventSlug={event.slug}
@@ -136,6 +156,8 @@ export default function EventDashboardPage() {
         coverPhotoId={event.coverPhotoId}
         refreshKey={(stats?.readyPhotos ?? 0) + (stats?.failedPhotos ?? 0) + (stats?.inProgressPhotos ?? 0)}
         uploaders={stats?.uploaders ?? []}
+        categories={categories}
+        onCategoriesChanged={loadCategories}
         onCoverChange={(id) => update({ coverPhotoId: id })}
         onEventChanged={() => adminApi.event(eventId).then(setEvent).catch(() => {})}
         onPhotosChanged={loadStats}
