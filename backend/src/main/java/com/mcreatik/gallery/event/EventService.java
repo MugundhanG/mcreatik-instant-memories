@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mcreatik.gallery.album.AlbumService;
 import com.mcreatik.gallery.auth.AdminUser;
+import com.mcreatik.gallery.billing.BillingService;
 import com.mcreatik.gallery.auth.AdminUserRepository;
 import com.mcreatik.gallery.auth.StudioBranding;
 import com.mcreatik.gallery.common.ApiException;
@@ -45,11 +46,12 @@ public class EventService {
     private final AdminUserRepository admins;
     private final StudioBranding branding;
     private final AlbumService album;
+    private final BillingService billing;
 
     public EventService(EventRepository events, PhotoRepository photos, UploaderRepository uploaders,
                         StorageService storage, PhotoMapper photoMapper, GalleryBroadcaster broadcaster,
                         GalleryProperties properties, AdminUserRepository admins, StudioBranding branding,
-                        AlbumService album) {
+                        AlbumService album, BillingService billing) {
         this.events = events;
         this.photos = photos;
         this.uploaders = uploaders;
@@ -60,6 +62,7 @@ public class EventService {
         this.admins = admins;
         this.branding = branding;
         this.album = album;
+        this.billing = billing;
     }
 
     @Transactional(readOnly = true)
@@ -94,6 +97,8 @@ public class EventService {
             owner = admins.findById(request.ownerId()).map(AdminUser::getId)
                     .orElseThrow(() -> ApiException.badRequest("INVALID_STUDIO", "Unknown studio"));
         }
+        // Plans: the monthly allowance, then bought events; otherwise 402 and the dashboard offers to pay.
+        String charge = billing.reserveEvent(owner);
         Event event = new Event(owner, request.name().trim(), slug, request.eventDate(),
                 request.status() == null ? EventStatus.UPCOMING : request.status());
         event.setStartTime(request.startTime());
@@ -103,6 +108,7 @@ public class EventService {
                 : request.eventDate().plusDays(properties.retention().defaultDays()));
         events.save(event);
         events.flush();
+        billing.recordCharge(owner, event.getId(), charge);
         album.createDefaultCategories(event.getId());
         return toDetail(event);
     }

@@ -106,7 +106,7 @@ describe('Studio accounts', () => {
     expect(message).toHaveTextContent('owner@lenslight.in')
     expect(message).toHaveTextContent(`Temporary password: ${password}`)
     expect(calls.find((c) => c.method === 'POST' && c.path === '/api/admin/studios')?.body)
-      .toEqual({ name: 'Lens & Light', email: 'owner@lenslight.in', password })
+      .toEqual({ name: 'Lens & Light', email: 'owner@lenslight.in', password, plan: 'MONTHLY' })
 
     // Ready to send: WhatsApp opens the typed number's chat, email is addressed to the studio.
     const whatsapp = screen.getByRole('link', { name: /Send on WhatsApp/ })

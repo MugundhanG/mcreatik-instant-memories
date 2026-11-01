@@ -1,8 +1,8 @@
 import QRCode from 'qrcode'
 
 /**
- * QR codes only ever contain the public gallery URL (e.g. https://instant-memories.mcreatik.com/e/arun-priya-7k3d):
- * no tokens, ids or anything else sensitive.
+ * QR codes only ever contain public data: the gallery URL (e.g. https://live.mcreatik.com/e/arun-priya-7k3d) or a
+ * UPI payment link (upi://pay?pa=…&am=…); no tokens, ids or anything else sensitive.
  */
 export function qrSvg(url: string): Promise<string> {
   return QRCode.toString(url, { type: 'svg', errorCorrectionLevel: 'M', margin: 2, color: { dark: '#1c1917', light: '#ffffff' } })

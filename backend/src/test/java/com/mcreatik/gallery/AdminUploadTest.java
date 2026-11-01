@@ -77,7 +77,7 @@ class AdminUploadTest extends IntegrationTest {
         String eventId = eventId(createEvent("McreatiK only", "LIVE"));
         mvc.perform(post("/api/admin/studios").header("Authorization", bearer(adminToken()))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Other\",\"email\":\"other-upload@client.test\",\"password\":\"temporary-123\"}"))
+                        .content("{\"name\":\"Other\",\"email\":\"other-upload@client.test\",\"password\":\"temporary-123\",\"plan\":\"MONTHLY\"}"))
                 .andExpect(status().isCreated());
         String studio = login("other-upload@client.test", "temporary-123");
         upload(studio, eventId, "x.jpg", jpeg(100, 100), jpeg(100, 100), jpeg(64, 64))

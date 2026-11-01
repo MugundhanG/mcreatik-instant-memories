@@ -28,7 +28,7 @@ class StudioAccountsTest extends IntegrationTest {
         email = "studio-" + UUID.randomUUID().toString().substring(0, 8) + "@client.test";
         String body = mvc.perform(post("/api/admin/studios").header("Authorization", bearer(adminToken()))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Lens & Light\",\"email\":\"" + email + "\",\"password\":\"temporary-123\"}"))
+                        .content("{\"name\":\"Lens & Light\",\"email\":\"" + email + "\",\"password\":\"temporary-123\",\"plan\":\"MONTHLY\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role").value("STUDIO"))
                 .andExpect(jsonPath("$.mustChangePassword").value(true))
@@ -106,7 +106,7 @@ class StudioAccountsTest extends IntegrationTest {
         mvc.perform(get("/api/admin/studios").header("Authorization", bearer(studio))).andExpect(status().isForbidden());
         mvc.perform(post("/api/admin/studios").header("Authorization", bearer(studio))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"X\",\"email\":\"x@client.test\",\"password\":\"temporary-123\"}"))
+                        .content("{\"name\":\"X\",\"email\":\"x@client.test\",\"password\":\"temporary-123\",\"plan\":\"MONTHLY\"}"))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/admin/studios").header("Authorization", bearer(adminToken())))
                 .andExpect(status().isOk())

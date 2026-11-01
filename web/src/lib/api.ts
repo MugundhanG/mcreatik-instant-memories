@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, Category, EventClient, EventDetail, EventStats, EventStatus, EventSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, PublicEvent, PublicPhotoPage, Studio, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PublicEvent, PublicPhotoPage, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export const API_BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
@@ -167,11 +167,26 @@ export const adminApi = {
   },
   removeLogo: () => request<Account>('/api/admin/account/logo', { method: 'DELETE' }, true),
   analytics: (eventId: string) => request<GuestAnalytics>(`/api/admin/events/${eventId}/analytics`, {}, true),
+  billing: () => request<BillingSummary>('/api/admin/billing', {}, true),
+  /** The studio paid by UPI: the events are usable at once, McreatiK checks the transaction later. */
+  payForEvents: (events: number, utr: string) =>
+    request<EventPayment>('/api/admin/billing/payments', { method: 'POST', body: json({ events, utr }) }, true),
+  payments: (status?: EventPayment['status']) =>
+    request<EventPayment[]>(`/api/admin/billing/payments${status ? `?status=${status}` : ''}`, {}, true),
+  approvePayment: (id: string) => request<void>(`/api/admin/billing/payments/${id}/approve`, { method: 'POST' }, true),
+  rejectPayment: (id: string, note?: string) =>
+    request<void>(`/api/admin/billing/payments/${id}/reject`, { method: 'POST', body: json({ note: note ?? null }) }, true),
+  studioBilling: () => request<StudioBilling[]>('/api/admin/billing/studios', {}, true),
+  updateStudioBilling: (studioId: string, input: { plan?: Plan; monthlyQuota?: number; addCredits?: number }) =>
+    request<StudioBilling>(`/api/admin/billing/studios/${studioId}`, { method: 'PATCH', body: json(input) }, true),
+  billingSettings: () => request<BillingSettings>('/api/admin/billing/settings', {}, true),
+  updateBillingSettings: (s: BillingSettings) =>
+    request<BillingSettings>('/api/admin/billing/settings', { method: 'PUT', body: json(s) }, true),
   account: () => request<Account>('/api/admin/account', {}, true),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<void>('/api/admin/account/password', { method: 'POST', body: json({ currentPassword, newPassword }) }, true),
   studios: () => request<Studio[]>('/api/admin/studios', {}, true),
-  createStudio: (input: { name: string; email: string; password: string }) =>
+  createStudio: (input: { name: string; email: string; password: string; plan?: Plan }) =>
     request<Studio>('/api/admin/studios', { method: 'POST', body: json(input) }, true),
   updateStudio: (id: string, input: { name?: string; disabled?: boolean; newPassword?: string }) =>
     request<Studio>(`/api/admin/studios/${id}`, { method: 'PATCH', body: json(input) }, true),

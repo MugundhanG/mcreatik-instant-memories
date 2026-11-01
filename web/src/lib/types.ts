@@ -261,3 +261,53 @@ export interface AlbumSelection {
   limit: number | null
   selected: { photoId: string; fileName: string; thumbnailUrl: string | null; selectedAt: string; selectedBy: string | null; categoryId: string | null }[]
 }
+
+export type Plan = 'MONTHLY' | 'PER_EVENT' | 'UNLIMITED'
+
+export interface EventPayment {
+  id: string
+  studioId: string
+  studioName: string
+  events: number
+  unitPrice: number
+  amount: number
+  /** UPI transaction ID (UTR) the studio reported. */
+  utr: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  note: string | null
+  createdAt: string
+  reviewedAt: string | null
+}
+
+/** The logged-in studio's plan and allowance. */
+export interface BillingSummary {
+  plan: Plan
+  /** McreatiK itself or an unlimited studio: never asked to pay. */
+  free: boolean
+  monthlyQuota: number
+  usedThisMonth: number
+  /** Bought (or given) events left; carry over month to month. */
+  credits: number
+  /** What one more event costs on this plan. */
+  unitPrice: number
+  monthlyPrice: number
+  upiId: string | null
+  payeeName: string | null
+  payments: EventPayment[]
+}
+
+export interface StudioBilling {
+  studioId: string
+  plan: Plan
+  monthlyQuota: number
+  usedThisMonth: number
+  credits: number
+}
+
+export interface BillingSettings {
+  upiId: string | null
+  payeeName: string | null
+  perEventPrice: number
+  extraEventPrice: number
+  monthlyPrice: number
+}
