@@ -1,5 +1,5 @@
-/** Where guests send privacy questions and photo removal requests (a Google Workspace alias of mcreatik.com). */
-export const PRIVACY_EMAIL = 'privacy@mcreatik.com'
+/** Where guests send privacy questions and photo removal requests (McreatiK's Google Workspace inbox). */
+export const PRIVACY_EMAIL = 'connect@mcreatik.com'
 
 /** Prefilled email asking to take one photo down: names the gallery and the photo so it can be found at once. */
 export function removalRequestLink(eventName: string, photoId?: string) {
