@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, EventDetail, EventStats, EventStatus, EventSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, PublicEvent, PublicPhotoPage, Studio, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, Category, EventClient, EventDetail, EventStats, EventStatus, EventSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, PublicEvent, PublicPhotoPage, Studio, UploaderCredentials } from './types'
 
 export const API_BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
@@ -108,7 +108,7 @@ export const adminApi = {
   updatePhoto: (photoId: string, input: { hidden?: boolean; liked?: boolean }) =>
     request<AdminPhoto>(`/api/admin/photos/${photoId}`, { method: 'PATCH', body: json(input) }, true),
   /** Dashboard upload: the browser-made gallery and thumbnail JPEGs plus the original's details. */
-  uploadPhoto: (eventId: string, file: File, p: PreparedPhoto, withOriginal = false) => {
+  uploadPhoto: (eventId: string, file: File, p: PreparedPhoto, withOriginal = false, categoryId?: string) => {
     const form = new FormData()
     form.append('web', p.web, 'web.jpg')
     form.append('thumbnail', p.thumbnail, 'thumb.jpg')
@@ -120,17 +120,38 @@ export const adminApi = {
     form.append('height', String(p.height))
     if (p.capturedAt) form.append('capturedAt', p.capturedAt)
     if (withOriginal) form.append('original', 'true')
+    if (categoryId) form.append('categoryId', categoryId)
     return request<{ outcome: 'UPLOAD' | 'DUPLICATE'; photoId: string }>(`/api/admin/events/${eventId}/photos`, { method: 'POST', body: form }, true)
   },
   /** Original-quality upload, step 1: where to PUT the full file (straight to storage, not through the server). */
-  originalUpload: (eventId: string, file: File, checksumSha256: string) =>
+  originalUpload: (eventId: string, file: File, checksumSha256: string, categoryId?: string) =>
     request<OriginalUploadSession>(`/api/admin/events/${eventId}/original-uploads`, {
       method: 'POST',
-      body: json({ fileName: file.name, fileSize: file.size, mimeType: file.type, checksumSha256 }),
+      body: json({ fileName: file.name, fileSize: file.size, mimeType: file.type, checksumSha256, categoryId: categoryId ?? null }),
     }, true),
   /** For a photo already in the gallery: keep the original that was just PUT. */
   attachOriginal: (eventId: string, photoId: string) =>
     request<void>(`/api/admin/events/${eventId}/photos/${photoId}/original`, { method: 'POST' }, true),
+  categories: (eventId: string) => request<Category[]>(`/api/admin/events/${eventId}/categories`, {}, true),
+  createCategory: (eventId: string, name: string) =>
+    request<Category>(`/api/admin/events/${eventId}/categories`, { method: 'POST', body: json({ name }) }, true),
+  renameCategory: (eventId: string, categoryId: string, name: string) =>
+    request<void>(`/api/admin/events/${eventId}/categories/${categoryId}`, { method: 'PATCH', body: json({ name }) }, true),
+  deleteCategory: (eventId: string, categoryId: string) =>
+    request<void>(`/api/admin/events/${eventId}/categories/${categoryId}`, { method: 'DELETE' }, true),
+  /** categoryId null: back to "not sorted". */
+  assignCategory: (eventId: string, photoIds: string[], categoryId: string | null) =>
+    request<{ moved: number }>(`/api/admin/events/${eventId}/photos/category`, { method: 'POST', body: json({ photoIds, categoryId }) }, true),
+  clients: (eventId: string) => request<EventClient[]>(`/api/admin/events/${eventId}/clients`, {}, true),
+  createClient: (eventId: string, input: { name: string; email: string; password: string }) =>
+    request<EventClient>(`/api/admin/events/${eventId}/clients`, { method: 'POST', body: json(input) }, true),
+  updateClient: (eventId: string, clientId: string, input: { newPassword?: string; disabled?: boolean }) =>
+    request<void>(`/api/admin/events/${eventId}/clients/${clientId}`, { method: 'PATCH', body: json(input) }, true),
+  deleteClient: (eventId: string, clientId: string) =>
+    request<void>(`/api/admin/events/${eventId}/clients/${clientId}`, { method: 'DELETE' }, true),
+  album: (eventId: string) => request<AlbumSelection>(`/api/admin/events/${eventId}/album`, {}, true),
+  setAlbumLimit: (eventId: string, limit: number | null) =>
+    request<void>(`/api/admin/events/${eventId}/album`, { method: 'PUT', body: json({ limit }) }, true),
   deletePhoto: (photoId: string) => request<void>(`/api/admin/photos/${photoId}`, { method: 'DELETE' }, true),
   originalUrl: (photoId: string) => request<{ url: string }>(`/api/admin/photos/${photoId}/original`, {}, true),
   createUploader: (eventId: string, name: string) =>

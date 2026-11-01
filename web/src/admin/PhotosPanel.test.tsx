@@ -9,7 +9,7 @@ function adminPhoto(n: number, extra: Partial<AdminPhoto> = {}): AdminPhoto {
     id: `p${n}`, uploaderId: 'cam-a', originalFileName: `IMG_${n}.JPG`, status: 'READY', failureReason: null,
     fileSize: 1000, width: 2048, height: 1365, thumbnailUrl: `https://media.test/thumb/${n}.jpg`,
     webUrl: `https://media.test/web/${n}.jpg`, capturedAt: null, uploadedAt: null, readyAt: '2026-10-24T10:00:00Z',
-    createdAt: '2026-10-24T10:00:00Z', originalAvailable: false, hidden: false, liked: false, ...extra,
+    createdAt: '2026-10-24T10:00:00Z', originalAvailable: false, hidden: false, liked: false, categoryId: null, selected: false, ...extra,
   }
 }
 
@@ -40,13 +40,18 @@ function mockApi(pages: (q: URLSearchParams) => { photos: AdminPhoto[]; nextOffs
 }
 
 function renderPanel(props: Partial<Parameters<typeof PhotosPanel>[0]> = {}) {
-  const callbacks = { onCoverChange: vi.fn(), onEventChanged: vi.fn(), onPhotosChanged: vi.fn() }
+  const callbacks = { onCoverChange: vi.fn(), onEventChanged: vi.fn(), onPhotosChanged: vi.fn(), onCategoriesChanged: vi.fn() }
   const view = render(
     <PhotosPanel eventId="e1" eventSlug="gowtham-sangeetha" eventName="Gowtham & Sangeetha" coverPhotoId={null}
-      refreshKey={0} uploaders={uploaders} {...callbacks} {...props} />,
+      refreshKey={0} uploaders={uploaders} categories={categories} {...callbacks} {...props} />,
   )
   return { ...view, ...callbacks }
 }
+
+const categories = [
+  { id: 'c1', name: 'Couple', position: 1, photos: 0 },
+  { id: 'c2', name: 'Cake cutting', position: 2, photos: 0 },
+]
 
 const tiles = () => within(screen.getByTestId('admin-photos')).getAllByRole('listitem')
 
@@ -161,7 +166,7 @@ describe('Dashboard photos', () => {
     await waitFor(() => expect(tiles()).toHaveLength(3))
     // The stats poll changes refreshKey: the list is merged, not reset to the first page.
     rerender(<PhotosPanel eventId="e1" eventSlug="gowtham-sangeetha" eventName="x" coverPhotoId={null} refreshKey={1}
-      uploaders={uploaders} onCoverChange={onCoverChange} onEventChanged={onEventChanged} onPhotosChanged={onPhotosChanged} />)
+      uploaders={uploaders} categories={categories} onCategoriesChanged={vi.fn()} onCoverChange={onCoverChange} onEventChanged={onEventChanged} onPhotosChanged={onPhotosChanged} />)
     await waitFor(() => expect(api.listings()).toHaveLength(3))
     expect(tiles()).toHaveLength(3)
     expect(tiles().map((t) => t.querySelector('img')!.getAttribute('src'))).toEqual([

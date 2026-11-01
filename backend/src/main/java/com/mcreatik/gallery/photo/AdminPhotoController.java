@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.mcreatik.gallery.album.AlbumService;
 import com.mcreatik.gallery.auth.CurrentAdmin;
 import com.mcreatik.gallery.common.ApiException;
 import com.mcreatik.gallery.event.EventService;
@@ -42,12 +43,14 @@ public class AdminPhotoController {
     private final GalleryBroadcaster broadcaster;
     private final AdminPhotoSearch search;
     private final UploadService uploads;
+    private final AlbumService album;
 
     public AdminPhotoController(PhotoRepository photos, EventService events, PhotoMapper mapper,
                                 StorageService storage, GalleryBroadcaster broadcaster, AdminPhotoSearch search,
-                                UploadService uploads) {
+                                UploadService uploads, AlbumService album) {
         this.search = search;
         this.uploads = uploads;
+        this.album = album;
         this.photos = photos;
         this.events = events;
         this.mapper = mapper;
@@ -63,17 +66,28 @@ public class AdminPhotoController {
                                          @RequestParam(required = false) Boolean liked,
                                          @RequestParam(required = false) Boolean hidden,
                                          @RequestParam(required = false) LocalDate day,
+                                         @RequestParam(required = false) String category,
+                                         @RequestParam(required = false) Boolean selected,
                                          @RequestParam(defaultValue = "0") int offset,
                                          @RequestParam(defaultValue = "60") int limit) {
         events.owned(CurrentAdmin.id(auth), eventId);
         int size = Math.clamp(limit, 1, 200);
         int from = Math.max(0, offset);
         // One extra row tells whether another page exists.
-        List<Photo> rows = search.find(eventId, new AdminPhotoSearch.Filter(uploaderId, liked, hidden, day), sort,
-                from, size + 1);
+        if (category != null && !category.isBlank() && !AdminPhotoSearch.UNSORTED.equals(category)) {
+            try {
+                UUID.fromString(category);
+            } catch (IllegalArgumentException e) {
+                throw ApiException.badRequest("INVALID_CATEGORY", "Unknown category");
+            }
+        }
+        List<Photo> rows = search.find(eventId,
+                new AdminPhotoSearch.Filter(uploaderId, liked, hidden, day, category, selected), sort, from, size + 1);
         boolean more = rows.size() > size;
         List<Photo> page = more ? rows.subList(0, size) : rows;
-        return new PhotoDtos.AdminPhotoPage(page.stream().map(mapper::toAdmin).toList(), more ? from + size : null);
+        List<UUID> chosen = album.selectedIds(eventId, page.stream().map(Photo::getId).toList());
+        return new PhotoDtos.AdminPhotoPage(page.stream().map(p -> mapper.toAdmin(p, chosen.contains(p.getId()))).toList(),
+                more ? from + size : null);
     }
 
     /**
@@ -88,14 +102,26 @@ public class AdminPhotoController {
                                                     @RequestParam String mimeType, @RequestParam String checksumSha256,
                                                     @RequestParam int width, @RequestParam int height,
                                                     @RequestParam(required = false) Instant capturedAt,
-                                                    @RequestParam(defaultValue = "false") boolean original)
+                                                    @RequestParam(defaultValue = "false") boolean original,
+                                                    @RequestParam(required = false) UUID categoryId)
             throws IOException {
         events.owned(CurrentAdmin.id(auth), eventId);
-        return uploads.adminUpload(eventId, new UploadService.AdminUpload(fileName, fileSize, mimeType,
+        album.requireCategory(eventId, categoryId);
+        var res = uploads.adminUpload(eventId, new UploadService.AdminUpload(fileName, fileSize, mimeType,
                 checksumSha256, width, height, capturedAt), web.getBytes(), thumbnail.getBytes(), original);
+        intoCategory(eventId, res.photoId(), categoryId);
+        return res;
     }
 
-    public record OriginalUploadRequest(String fileName, long fileSize, String mimeType, String checksumSha256) {
+    /** Uploading "into" a category (e.g. the Cake cutting folder) files the photo there, new or already present. */
+    private void intoCategory(UUID eventId, UUID photoId, UUID categoryId) {
+        if (categoryId != null) {
+            album.assign(eventId, List.of(photoId), categoryId);
+        }
+    }
+
+    public record OriginalUploadRequest(String fileName, long fileSize, String mimeType, String checksumSha256,
+                                        UUID categoryId) {
     }
 
     /**
@@ -107,8 +133,13 @@ public class AdminPhotoController {
     public UploadService.OriginalSession originalUpload(Authentication auth, @PathVariable UUID eventId,
                                                         @RequestBody OriginalUploadRequest request) {
         events.owned(CurrentAdmin.id(auth), eventId);
-        return uploads.adminOriginalSession(eventId, request.fileName(), request.fileSize(), request.mimeType(),
+        album.requireCategory(eventId, request.categoryId());
+        var session = uploads.adminOriginalSession(eventId, request.fileName(), request.fileSize(), request.mimeType(),
                 request.checksumSha256());
+        if (session.outcome() == UploadService.SessionOutcome.DUPLICATE || !session.needsVersions()) {
+            intoCategory(eventId, session.photoId(), request.categoryId());
+        }
+        return session;
     }
 
     @PostMapping("/events/{eventId}/photos/{photoId}/original")

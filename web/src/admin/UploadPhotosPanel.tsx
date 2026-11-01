@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import { adminApi, ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
+import type { Category } from '../lib/types'
 import { ACCEPTED_TYPES, preparePhoto } from './prepareUpload'
 import { Button, Card } from './ui'
 
@@ -16,6 +17,8 @@ type Mode = 'compressed' | 'original'
 interface Item {
   file: File
   mode: Mode
+  /** Upload "into" this category (e.g. the Cake cutting folder). */
+  categoryId?: string
   status: Status
   error?: string
 }
@@ -36,13 +39,13 @@ async function putOriginal(file: File, upload: { url: string; method: string; he
 async function uploadOne(eventId: string, item: Item): Promise<'done' | 'duplicate'> {
   const prepared = await preparePhoto(item.file)
   if (item.mode === 'compressed') {
-    const res = await adminApi.uploadPhoto(eventId, item.file, prepared)
+    const res = await adminApi.uploadPhoto(eventId, item.file, prepared, false, item.categoryId)
     return res.outcome === 'DUPLICATE' ? 'duplicate' : 'done'
   }
-  const session = await adminApi.originalUpload(eventId, item.file, prepared.checksumSha256)
+  const session = await adminApi.originalUpload(eventId, item.file, prepared.checksumSha256, item.categoryId)
   if (session.outcome === 'DUPLICATE' || !session.upload) return 'duplicate'
   await putOriginal(item.file, session.upload)
-  if (session.needsVersions) await adminApi.uploadPhoto(eventId, item.file, prepared, true)
+  if (session.needsVersions) await adminApi.uploadPhoto(eventId, item.file, prepared, true, item.categoryId)
   else await adminApi.attachOriginal(eventId, session.photoId)
   return 'done'
 }
@@ -74,8 +77,9 @@ function reason(err: unknown) {
  * Manual upload: the admin adds photos from their computer (edited photos after the event, extra shots).
  * Each photo is compressed in the browser and appears in the guest gallery at once, behind the same QR.
  */
-export function UploadPhotosPanel({ eventId, onUploaded }: { eventId: string; onUploaded: () => void }) {
+export function UploadPhotosPanel({ eventId, onUploaded, categories = [] }: { eventId: string; onUploaded: () => void; categories?: Category[] }) {
   const [items, setItems] = useState<Item[]>([])
+  const [categoryId, setCategoryId] = useState('')
   const queue = useRef<Item[]>([])
   const active = useRef(0)
   const sinceRefresh = useRef(0)
@@ -140,7 +144,7 @@ export function UploadPhotosPanel({ eventId, onUploaded }: { eventId: string; on
     stopped.current = false
     const fresh = photos
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-      .map((file): Item => ({ file, mode, status: 'waiting' }))
+      .map((file): Item => ({ file, mode, categoryId: categoryId || undefined, status: 'waiting' }))
     // A new batch starts a new summary once the previous one is complete.
     setItems((list) => (list.some((i) => i.status === 'waiting' || i.status === 'working') ? [...list, ...fresh] : fresh))
     queue.current.push(...fresh)
@@ -178,6 +182,17 @@ export function UploadPhotosPanel({ eventId, onUploaded }: { eventId: string; on
   const failures = items.filter((i) => i.status === 'failed')
   return (
     <Card title="Upload photos">
+      {categories.length > 0 && (
+        <label className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted">Upload into category</span>
+          <select aria-label="Upload into category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}
+            className="h-9 rounded-lg border border-line bg-white px-2.5 text-sm outline-none focus:border-ink">
+            <option value="">Not sorted (sort later)</option>
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <span className="text-xs text-muted">e.g. pick “Cake cutting”, then choose that folder</span>
+        </label>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         {(['compressed', 'original'] as const).map((mode) => (
           <div

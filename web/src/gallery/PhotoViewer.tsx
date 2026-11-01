@@ -17,6 +17,8 @@ interface Props {
   onIndexChange: (index: number) => void
   onClose: () => void
   onNearEnd: () => void
+  /** The client portal brings its own download (originals): hide the built-in one. */
+  hideDownload?: boolean
   /** Extra buttons beside Download (the dashboard's like / hide / cover / delete). */
   actions?: (photo: PublicPhoto) => ReactNode
   /** Guests are invited to follow the studio after saving; not the photographer. */
@@ -52,7 +54,7 @@ function markFollowInviteShown() {
 }
 
 export function PhotoViewer({
-  photos, index, total, eventSlug, eventName, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity,
+  photos, index, total, eventSlug, eventName, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity, hideDownload = false,
 }: Props) {
   const photo = photos[index]
   const count = Math.max(total, photos.length)
@@ -219,7 +221,7 @@ export function PhotoViewer({
       </div>
 
       <div className="flex items-center justify-center gap-3 px-4 pt-3 pb-[max(env(safe-area-inset-bottom),1rem)]">
-        <button
+        {!hideDownload && <button
           type="button"
           onClick={onDownload}
           disabled={busy !== null}
@@ -227,7 +229,7 @@ export function PhotoViewer({
         >
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" /></svg>
           {busy === 'download' ? 'Saving…' : 'Download'}
-        </button>
+        </button>}
         {actions?.(photo)}
         {SHOW_SHARE && <button
           type="button"

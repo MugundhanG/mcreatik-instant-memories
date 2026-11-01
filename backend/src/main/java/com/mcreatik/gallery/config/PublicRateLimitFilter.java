@@ -37,14 +37,14 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return !(path.startsWith("/api/public/") || path.equals("/api/auth/login"));
+        return !(path.startsWith("/api/public/") || isLogin(path));
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String ip = request.getRemoteAddr();
-        boolean login = request.getRequestURI().equals("/api/auth/login");
+        boolean login = isLogin(request.getRequestURI());
         Bucket bucket = login
                 ? loginBuckets.computeIfAbsent(ip, k -> new Bucket(LOGIN_CAPACITY, LOGIN_REFILL_PER_SECOND))
                 : publicBuckets.computeIfAbsent(ip, k -> new Bucket(capacity, refillPerSecond));
@@ -56,6 +56,11 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
             return;
         }
         chain.doFilter(request, response);
+    }
+
+    /** Studio and client logins share the strict brute-force limit. */
+    private static boolean isLogin(String path) {
+        return path.equals("/api/auth/login") || path.equals("/api/client/auth/login");
     }
 
     @Scheduled(fixedDelay = 300_000)

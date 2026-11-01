@@ -4,7 +4,7 @@ import { PhotoViewer } from '../gallery/PhotoViewer'
 import { adminApi } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
 import { downloadPhoto } from '../lib/photoActions'
-import type { AdminPhoto, AdminPhotoQuery, AdminPhotoSort, PhotoFacets, PublicPhoto, UploaderStats } from '../lib/types'
+import type { AdminPhoto, AdminPhotoQuery, AdminPhotoSort, Category, PhotoFacets, PublicPhoto, UploaderStats } from '../lib/types'
 import { DownloadIcon, EyeIcon, HeartIcon, MoreIcon, StarIcon, TrashIcon } from './icons'
 import { Button, Card } from './ui'
 import { useConfirm } from './useConfirm'
@@ -22,16 +22,18 @@ const PAGE = 60
 
 const selectClass = 'h-9 rounded-lg border border-line bg-white px-2.5 text-sm outline-none focus:border-ink focus:ring-1 focus:ring-ink'
 
-type Show = 'all' | 'liked' | 'hidden'
+type Show = 'all' | 'liked' | 'hidden' | 'selected'
 
 interface Filters {
   uploaderId: string
   show: Show
   day: string
+  /** '' all, a category id, or 'none' for photos not sorted yet */
+  category: string
   sort: AdminPhotoSort
 }
 
-const NO_FILTERS: Filters = { uploaderId: '', show: 'all', day: '', sort: 'NEWEST' }
+const NO_FILTERS: Filters = { uploaderId: '', show: 'all', day: '', category: '', sort: 'NEWEST' }
 
 function toQuery(f: Filters): AdminPhotoQuery {
   return {
@@ -40,12 +42,15 @@ function toQuery(f: Filters): AdminPhotoQuery {
     liked: f.show === 'liked' ? true : undefined,
     hidden: f.show === 'hidden' ? true : undefined,
     day: f.day || undefined,
+    category: f.category || undefined,
+    selected: f.show === 'selected' ? true : undefined,
   }
 }
 
 /** Whether a photo still belongs in the list after it was liked or hidden. */
 function matches(p: AdminPhoto, f: Filters) {
-  return (f.show !== 'liked' || p.liked) && (f.show !== 'hidden' || p.hidden)
+  const category = f.category === '' || (f.category === 'none' ? p.categoryId === null : p.categoryId === f.category)
+  return (f.show !== 'liked' || p.liked) && (f.show !== 'hidden' || p.hidden) && category
 }
 
 function toViewer(p: AdminPhoto): PublicPhoto {
@@ -60,6 +65,10 @@ interface Props {
   /** Changes when photos finish uploading: new ones are merged in without moving the list. */
   refreshKey: number
   uploaders: UploaderStats[]
+  /** The event's categories, for the filter, labels and "Move to". */
+  categories: Category[]
+  /** Photos moved between categories: refresh the counts. */
+  onCategoriesChanged: () => void
   onCoverChange: (id: string) => void
   /** The event changed on the server (e.g. hiding the cover photo cleared the cover). */
   onEventChanged: () => void
@@ -67,7 +76,7 @@ interface Props {
   onPhotosChanged: () => void
 }
 
-export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refreshKey, uploaders, onCoverChange, onEventChanged, onPhotosChanged }: Props) {
+export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refreshKey, uploaders, categories, onCategoriesChanged, onCoverChange, onEventChanged, onPhotosChanged }: Props) {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
   const [photos, setPhotos] = useState<AdminPhoto[]>([])
   const [hasMore, setHasMore] = useState(false)
@@ -78,6 +87,10 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
   const [menuId, setMenuId] = useState<string | null>(null)
   const [confirm, confirmDialog] = useConfirm()
   const loadingMore = useRef(false)
+  // Select mode: tick photos, then move them to a category in one go.
+  const [selecting, setSelecting] = useState(false)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const categoryName = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories])
 
   // The More menu closes on a click/tap anywhere outside it, or Escape.
   useEffect(() => {
@@ -256,7 +269,36 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
   const viewerPhotos = useMemo(() => viewable.map(toViewer), [viewable])
   const viewerIndex = viewerId ? viewable.findIndex((p) => p.id === viewerId) : -1
   const byId = useMemo(() => new Map(photos.map((p) => [p.id, p])), [photos])
-  const filtered = filters.uploaderId !== '' || filters.show !== 'all' || filters.day !== ''
+  const filtered = filters.uploaderId !== '' || filters.show !== 'all' || filters.day !== '' || filters.category !== ''
+
+  const togglePick = (id: string) =>
+    setPicked((s) => {
+      const next = new Set(s)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const stopSelecting = () => {
+    setSelecting(false)
+    setPicked(new Set())
+  }
+
+  /** Optimistic: labels change at once, the server follows. */
+  const moveTo = async (categoryId: string | null) => {
+    const ids = [...picked]
+    if (ids.length === 0) return
+    const before = photos
+    setPhotos((list) => list.map((p) => (picked.has(p.id) ? { ...p, categoryId } : p)).filter((p) => matches(p, filters)))
+    stopSelecting()
+    setNote(`Moved ${formatCount(ids.length)} ${ids.length === 1 ? 'photo' : 'photos'} to ${categoryId ? categoryName.get(categoryId) : 'Not sorted'}`)
+    try {
+      await adminApi.assignCategory(eventId, ids, categoryId)
+      onCategoriesChanged()
+    } catch {
+      setPhotos(before)
+      setNote('Could not move the photos. Please try again.')
+    }
+  }
 
   const removeFromViewer = async (p: AdminPhoto) => {
     const i = viewable.findIndex((x) => x.id === p.id)
@@ -288,12 +330,20 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
           <option value="all">All photos</option>
           <option value="liked">♥ Liked ({formatCount(facets?.liked ?? 0)})</option>
           <option value="hidden">Hidden from guests ({formatCount(facets?.hidden ?? 0)})</option>
+          <option value="selected">✓ Couple's album selection</option>
         </select>
         <select aria-label="Day" className={selectClass} value={filters.day} onChange={(e) => set({ day: e.target.value })}>
           <option value="">All days</option>
           {days.map((d) => (
             <option key={d.day} value={d.day}>{formatEventDate(d.day)} ({formatCount(d.photos)})</option>
           ))}
+        </select>
+        <select aria-label="Category" className={selectClass} value={filters.category} onChange={(e) => set({ category: e.target.value })}>
+          <option value="">All categories</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name} ({formatCount(c.photos)})</option>
+          ))}
+          <option value="none">Not sorted yet</option>
         </select>
         <select aria-label="Sort" className={selectClass} value={filters.sort} onChange={(e) => set({ sort: e.target.value as AdminPhotoSort })}>
           <option value="NEWEST">Newest first</option>
@@ -303,7 +353,28 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
         {filtered && (
           <Button variant="ghost" onClick={() => set({ ...NO_FILTERS, sort: filters.sort })}>Clear filters</Button>
         )}
+        <span className="flex-1" />
+        {!selecting && photos.length > 0 && <Button onClick={() => setSelecting(true)}>Select</Button>}
       </div>
+
+      {selecting && (
+        <div className="sticky top-2 z-20 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white p-2.5 shadow-md" data-testid="select-bar">
+          <span className="px-1 text-sm font-medium tabular-nums">{formatCount(picked.size)} selected</span>
+          <select
+            aria-label="Move to category"
+            className={selectClass}
+            value=""
+            disabled={picked.size === 0}
+            onChange={(e) => e.target.value && moveTo(e.target.value === 'none' ? null : e.target.value)}
+          >
+            <option value="">Move to category…</option>
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <option value="none">Not sorted</option>
+          </select>
+          <Button variant="ghost" onClick={() => setPicked(new Set(photos.map((p) => p.id)))}>Select all shown</Button>
+          <Button variant="ghost" onClick={stopSelecting}>Done</Button>
+        </div>
+      )}
 
       {!loading && photos.length === 0 && <p className="text-sm text-muted">{filtered ? 'No photos match these filters.' : 'No photos yet.'}</p>}
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" data-testid="admin-photos">
@@ -313,13 +384,24 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
             <li key={p.id} className="min-w-0">
               <div className="relative aspect-square overflow-hidden rounded-lg bg-stone-100">
                 {p.thumbnailUrl ? (
-                  <button type="button" className="block size-full" onClick={() => ready && setViewerId(p.id)} aria-label={`View ${p.originalFileName}`}>
-                    <img src={p.thumbnailUrl} alt="" loading="lazy" className={`size-full object-cover ${p.hidden ? 'opacity-45' : ''}`} />
+                  <button
+                    type="button"
+                    className="block size-full"
+                    onClick={() => (selecting ? togglePick(p.id) : ready && setViewerId(p.id))}
+                    aria-label={selecting ? `${picked.has(p.id) ? 'Unselect' : 'Select'} ${p.originalFileName}` : `View ${p.originalFileName}`}
+                    aria-pressed={selecting ? picked.has(p.id) : undefined}
+                  >
+                    <img src={p.thumbnailUrl} alt="" loading="lazy" className={`size-full object-cover ${p.hidden ? 'opacity-45' : ''} ${selecting && picked.has(p.id) ? 'scale-90 rounded-md' : ''} transition-transform`} />
+                    {selecting && (
+                      <span className={`absolute top-1.5 left-1.5 flex size-6 items-center justify-center rounded-full border-2 text-xs text-white ${picked.has(p.id) ? 'border-ink bg-ink' : 'border-white bg-black/20'}`}>
+                        {picked.has(p.id) ? '✓' : ''}
+                      </span>
+                    )}
                   </button>
                 ) : (
                   <div className="flex size-full items-center justify-center text-xs text-muted">{statusLabel[p.status]}</div>
                 )}
-                <div className="pointer-events-none absolute top-1.5 left-1.5 flex flex-col items-start gap-1">
+                <div className={`pointer-events-none absolute top-1.5 left-1.5 flex flex-col items-start gap-1 ${selecting ? 'hidden' : ''}`}>
                   {p.id === coverPhotoId && <span className="rounded bg-ink px-1.5 py-0.5 text-[10px] text-white">Cover</span>}
                   {p.hidden && <span className="inline-flex items-center gap-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px]"><EyeIcon off className="size-3" />Hidden</span>}
                 </div>
@@ -334,6 +416,12 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
                     <HeartIcon filled={p.liked} />
                   </button>
                 )}
+                <div className="pointer-events-none absolute bottom-1.5 left-1.5 flex max-w-[calc(100%-0.75rem)] flex-wrap gap-1">
+                  {p.selected && <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] text-white">✓ Album</span>}
+                  {p.categoryId && categoryName.get(p.categoryId) && (
+                    <span className="truncate rounded bg-white/90 px-1.5 py-0.5 text-[10px]">{categoryName.get(p.categoryId)}</span>
+                  )}
+                </div>
                 {p.status !== 'READY' && (
                   <span className={`absolute right-1.5 bottom-1.5 rounded px-1.5 py-0.5 text-[10px] ${p.status === 'FAILED' ? 'bg-red-600 text-white' : 'bg-white/90'}`}>
                     {statusLabel[p.status]}
