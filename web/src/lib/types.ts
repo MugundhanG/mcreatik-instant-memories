@@ -219,3 +219,12 @@ export interface GuestAnalytics {
   topPhotos: { photoId: string; thumbnailUrl: string | null; fileName: string; views: number; downloads: number }[]
   lastActivityAt: string | null
 }
+
+/** Where the browser PUTs a full-quality original (see adminApi.originalUpload). */
+export interface OriginalUploadSession {
+  outcome: 'UPLOAD' | 'DUPLICATE'
+  photoId: string
+  upload: { url: string; method: string; headers: Record<string, string>; expiresAt: string } | null
+  /** False when the photo is already in the gallery and only needs its original. */
+  needsVersions: boolean
+}

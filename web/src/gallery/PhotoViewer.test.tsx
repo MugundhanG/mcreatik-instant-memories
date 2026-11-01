@@ -28,6 +28,7 @@ describe('Photo viewer', () => {
     })
   })
   afterEach(() => {
+    sessionStorage.clear()
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
     for (const key of ['share', 'canShare'] as const) Reflect.deleteProperty(navigator, key)
@@ -83,9 +84,16 @@ describe('Photo viewer', () => {
 
     await user.click(screen.getByRole('button', { name: 'Download' }))
     await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
-    const saved = await screen.findByText(/Saved to your phone/)
-    // Right after saving, the toast invites the guest to follow the studio.
-    expect(within(saved).getByRole('link', { name: /Follow @mcreatik.studios/ })).toHaveAttribute('href', 'https://www.instagram.com/mcreatik.studios/')
+    // Right after saving, a card at the top invites the guest to follow the studio (first download of the visit).
+    const card = await screen.findByRole('dialog', { name: 'Follow on Instagram' })
+    expect(card).toHaveTextContent('Saved to your phone')
+    expect(within(card).getByRole('link', { name: 'Follow on Instagram' })).toHaveAttribute('href', 'https://www.instagram.com/mcreatik.studios/')
+    await user.click(within(card).getByRole('button', { name: 'Not now' }))
+    expect(screen.queryByRole('dialog', { name: 'Follow on Instagram' })).not.toBeInTheDocument()
+    // Later downloads only confirm the save.
+    await user.click(screen.getByRole('button', { name: 'Download' }))
+    expect(await screen.findByText('Saved ✓')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Follow on Instagram' })).not.toBeInTheDocument()
     expect(open).not.toHaveBeenCalled()
     // Bypasses the cached non-CORS copy the <img> loaded, which would make the CORS fetch fail.
     const call = vi.mocked(fetch).mock.calls.find(([input]) => String(input).endsWith('/web/3.jpg'))

@@ -5,16 +5,61 @@ import { ACCEPTED_TYPES, preparePhoto } from './prepareUpload'
 import { Button, Card } from './ui'
 
 /** Photos prepared and sent at the same time: keeps the browser responsive and the server unhurried. */
-const PARALLEL = 3
+const PARALLEL = { compressed: 3, original: 2 }
 /** Refresh the dashboard counts and photo list every this many uploads. */
 const REFRESH_EVERY = 10
 
 type Status = 'waiting' | 'working' | 'done' | 'duplicate' | 'failed'
+/** compressed: gallery versions only. original: the full camera file is kept too (client delivery, albums). */
+type Mode = 'compressed' | 'original'
 
 interface Item {
   file: File
+  mode: Mode
   status: Status
   error?: string
+}
+
+/** PUTs the full-quality file straight to storage with the signed headers (never through the small server). */
+async function putOriginal(file: File, upload: { url: string; method: string; headers: Record<string, string> }) {
+  const headers = Object.fromEntries(Object.entries(upload.headers).filter(([k]) => !/^(host|content-length)$/i.test(k)))
+  let res: Response
+  try {
+    res = await fetch(upload.url, { method: upload.method, headers, body: file })
+  } catch {
+    throw new Error('Could not reach photo storage (check the storage CORS setting)')
+  }
+  if (!res.ok) throw new Error(`Photo storage refused the original (${res.status})`)
+}
+
+/** One photo: compressed → gallery versions; original → full file to storage, then the gallery versions. */
+async function uploadOne(eventId: string, item: Item): Promise<'done' | 'duplicate'> {
+  const prepared = await preparePhoto(item.file)
+  if (item.mode === 'compressed') {
+    const res = await adminApi.uploadPhoto(eventId, item.file, prepared)
+    return res.outcome === 'DUPLICATE' ? 'duplicate' : 'done'
+  }
+  const session = await adminApi.originalUpload(eventId, item.file, prepared.checksumSha256)
+  if (session.outcome === 'DUPLICATE' || !session.upload) return 'duplicate'
+  await putOriginal(item.file, session.upload)
+  if (session.needsVersions) await adminApi.uploadPhoto(eventId, item.file, prepared, true)
+  else await adminApi.attachOriginal(eventId, session.photoId)
+  return 'done'
+}
+
+const MODES: Record<Mode, { title: string; badge: string; use: string; detail: string }> = {
+  compressed: {
+    title: 'Upload compressed photos',
+    badge: 'Fast',
+    use: 'For the guest gallery: live events, quick sharing, extra shots.',
+    detail: 'Sends a 2048 px copy (about 1 MB per photo), so even 2,000 photos upload in minutes. Guests view and download this quality: perfect for phones and WhatsApp.',
+  },
+  original: {
+    title: 'Upload original photos',
+    badge: 'Full quality',
+    use: 'For client delivery: edited finals, album selection, print-quality downloads.',
+    detail: 'Also keeps the full camera file (about 8–15 MB per photo, so slower). Photos already in the gallery just get their original added, never duplicated.',
+  },
 }
 
 function reason(err: unknown) {
@@ -31,13 +76,14 @@ function reason(err: unknown) {
  */
 export function UploadPhotosPanel({ eventId, onUploaded }: { eventId: string; onUploaded: () => void }) {
   const [items, setItems] = useState<Item[]>([])
-  const [dragging, setDragging] = useState(false)
   const queue = useRef<Item[]>([])
   const active = useRef(0)
   const sinceRefresh = useRef(0)
   const stopped = useRef(false)
   const fileInput = useRef<HTMLInputElement>(null)
   const folderInput = useRef<HTMLInputElement>(null)
+  const pickMode = useRef<Mode>('compressed')
+  const [dragging, setDraggingMode] = useState<Mode | null>(null)
 
   const running = items.some((i) => i.status === 'waiting' || i.status === 'working')
   const count = (s: Status) => items.filter((i) => i.status === s).length
@@ -62,16 +108,15 @@ export function UploadPhotosPanel({ eventId, onUploaded }: { eventId: string; on
   }
 
   const pump = () => {
-    while (!stopped.current && active.current < PARALLEL && queue.current.length > 0) {
+    while (!stopped.current && queue.current.length > 0 && active.current < PARALLEL[queue.current[0].mode]) {
       const item = queue.current.shift()!
       active.current++
       set(item, 'working')
       void (async () => {
         try {
-          const prepared = await preparePhoto(item.file)
-          const res = await adminApi.uploadPhoto(eventId, item.file, prepared)
-          set(item, res.outcome === 'DUPLICATE' ? 'duplicate' : 'done')
-          if (res.outcome === 'UPLOAD' && ++sinceRefresh.current >= REFRESH_EVERY) {
+          const outcome = await uploadOne(eventId, item)
+          set(item, outcome)
+          if (outcome === 'done' && ++sinceRefresh.current >= REFRESH_EVERY) {
             sinceRefresh.current = 0
             onUploaded()
           }
@@ -89,13 +134,13 @@ export function UploadPhotosPanel({ eventId, onUploaded }: { eventId: string; on
     }
   }
 
-  const add = (files: FileList | File[] | null) => {
+  const add = (files: FileList | File[] | null, mode: Mode) => {
     const photos = Array.from(files ?? []).filter((f) => ACCEPTED_TYPES.includes(f.type))
     if (photos.length === 0) return
     stopped.current = false
     const fresh = photos
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
-      .map((file): Item => ({ file, status: 'waiting' }))
+      .map((file): Item => ({ file, mode, status: 'waiting' }))
     // A new batch starts a new summary once the previous one is complete.
     setItems((list) => (list.some((i) => i.status === 'waiting' || i.status === 'working') ? [...list, ...fresh] : fresh))
     queue.current.push(...fresh)
@@ -103,14 +148,19 @@ export function UploadPhotosPanel({ eventId, onUploaded }: { eventId: string; on
   }
 
   const onPick = (e: ChangeEvent<HTMLInputElement>) => {
-    add(e.target.files)
+    add(e.target.files, pickMode.current)
     e.target.value = '' // the same files can be picked again
   }
 
-  const onDrop = (e: DragEvent) => {
+  const pick = (mode: Mode, input: HTMLInputElement | null) => {
+    pickMode.current = mode
+    input?.click()
+  }
+
+  const onDrop = (e: DragEvent, mode: Mode) => {
     e.preventDefault()
-    setDragging(false)
-    add(e.dataTransfer.files)
+    setDraggingMode(null)
+    add(e.dataTransfer.files, mode)
   }
 
   const retryFailed = () => {
@@ -128,35 +178,43 @@ export function UploadPhotosPanel({ eventId, onUploaded }: { eventId: string; on
   const failures = items.filter((i) => i.status === 'failed')
   return (
     <Card title="Upload photos">
-      <div
-        onDragOver={(e) => {
-          e.preventDefault()
-          setDragging(true)
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
-        className={`rounded-xl border-2 border-dashed p-5 text-center transition-colors ${dragging ? 'border-ink bg-stone-50' : 'border-line'}`}
-        data-testid="upload-drop"
-      >
-        <p className="text-sm text-muted">
-          Add photos from your computer (edited photos after the event, extra shots). They are compressed here and appear in the gallery at once, behind the same QR code.
-        </p>
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <Button variant="primary" onClick={() => fileInput.current?.click()}>Choose photos</Button>
-          <Button onClick={() => folderInput.current?.click()}>Choose a folder</Button>
-        </div>
-        <p className="mt-3 text-xs text-muted">JPEG or PNG · or drag photos here</p>
-        <input ref={fileInput} type="file" multiple accept={ACCEPTED_TYPES.join(',')} className="hidden" onChange={onPick} aria-label="Photos to upload" />
-        <input
-          ref={folderInput}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={onPick}
-          aria-label="Folder to upload"
-          {...({ webkitdirectory: '' } as Record<string, string>)}
-        />
+      <div className="grid gap-3 sm:grid-cols-2">
+        {(['compressed', 'original'] as const).map((mode) => (
+          <div
+            key={mode}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setDraggingMode(mode)
+            }}
+            onDragLeave={() => setDraggingMode(null)}
+            onDrop={(e) => onDrop(e, mode)}
+            className={`flex flex-col rounded-xl border-2 border-dashed p-4 transition-colors ${dragging === mode ? 'border-ink bg-stone-50' : 'border-line'}`}
+            data-testid={`upload-${mode}`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium">{MODES[mode].title}</p>
+              <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-muted">{MODES[mode].badge}</span>
+            </div>
+            <p className="mt-2 text-sm text-ink">{MODES[mode].use}</p>
+            <p className="mt-1 text-xs text-muted">{MODES[mode].detail}</p>
+            <div className="mt-auto flex flex-wrap gap-2 pt-4">
+              <Button variant={mode === 'compressed' ? 'primary' : 'secondary'} onClick={() => pick(mode, fileInput.current)}>Choose photos</Button>
+              <Button variant="ghost" onClick={() => pick(mode, folderInput.current)}>Choose a folder</Button>
+            </div>
+          </div>
+        ))}
       </div>
+      <p className="mt-2 text-xs text-muted">JPEG or PNG · or drag photos onto either box</p>
+      <input ref={fileInput} type="file" multiple accept={ACCEPTED_TYPES.join(',')} className="hidden" onChange={onPick} aria-label="Photos to upload" />
+      <input
+        ref={folderInput}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={onPick}
+        aria-label="Folder to upload"
+        {...({ webkitdirectory: '' } as Record<string, string>)}
+      />
 
       {items.length > 0 && (
         <div className="mt-4 space-y-2" data-testid="upload-progress">

@@ -87,11 +87,35 @@ public class AdminPhotoController {
                                                     @RequestParam String fileName, @RequestParam long fileSize,
                                                     @RequestParam String mimeType, @RequestParam String checksumSha256,
                                                     @RequestParam int width, @RequestParam int height,
-                                                    @RequestParam(required = false) Instant capturedAt)
+                                                    @RequestParam(required = false) Instant capturedAt,
+                                                    @RequestParam(defaultValue = "false") boolean original)
             throws IOException {
         events.owned(CurrentAdmin.id(auth), eventId);
         return uploads.adminUpload(eventId, new UploadService.AdminUpload(fileName, fileSize, mimeType,
-                checksumSha256, width, height, capturedAt), web.getBytes(), thumbnail.getBytes());
+                checksumSha256, width, height, capturedAt), web.getBytes(), thumbnail.getBytes(), original);
+    }
+
+    public record OriginalUploadRequest(String fileName, long fileSize, String mimeType, String checksumSha256) {
+    }
+
+    /**
+     * "Original quality" upload from the dashboard: the browser PUTs the full-quality file straight to storage
+     * (never through this server), then sends the gallery versions (or, for a photo already in the gallery, just
+     * confirms with {@code /original}).
+     */
+    @PostMapping("/events/{eventId}/original-uploads")
+    public UploadService.OriginalSession originalUpload(Authentication auth, @PathVariable UUID eventId,
+                                                        @RequestBody OriginalUploadRequest request) {
+        events.owned(CurrentAdmin.id(auth), eventId);
+        return uploads.adminOriginalSession(eventId, request.fileName(), request.fileSize(), request.mimeType(),
+                request.checksumSha256());
+    }
+
+    @PostMapping("/events/{eventId}/photos/{photoId}/original")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void attachOriginal(Authentication auth, @PathVariable UUID eventId, @PathVariable UUID photoId) {
+        events.owned(CurrentAdmin.id(auth), eventId);
+        uploads.attachOriginal(eventId, photoId);
     }
 
     /** Counts for the dashboard's filters: days with photos, liked and hidden totals. */

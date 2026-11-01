@@ -23,12 +23,18 @@ class AdminUploadTest extends IntegrationTest {
 
     private ResultActions upload(String token, String eventId, String fileName, byte[] original, byte[] web,
                                  byte[] thumb) throws Exception {
+        return upload(token, eventId, fileName, original, web, thumb, false);
+    }
+
+    private ResultActions upload(String token, String eventId, String fileName, byte[] original, byte[] web,
+                                 byte[] thumb, boolean withOriginal) throws Exception {
         return mvc.perform(multipart("/api/admin/events/" + eventId + "/photos")
                 .file(new MockMultipartFile("web", "web.jpg", "image/jpeg", web))
                 .file(new MockMultipartFile("thumbnail", "thumb.jpg", "image/jpeg", thumb))
                 .param("fileName", fileName).param("fileSize", String.valueOf(original.length))
                 .param("mimeType", "image/jpeg").param("checksumSha256", Tokens.sha256Hex(original))
                 .param("width", "6000").param("height", "4000").param("capturedAt", "2026-10-10T08:15:00Z")
+                .param("original", String.valueOf(withOriginal))
                 .header("Authorization", bearer(token)));
     }
 
@@ -76,5 +82,57 @@ class AdminUploadTest extends IntegrationTest {
         String studio = login("other-upload@client.test", "temporary-123");
         upload(studio, eventId, "x.jpg", jpeg(100, 100), jpeg(100, 100), jpeg(64, 64))
                 .andExpect(status().isNotFound());
+    }
+
+    private String originalSession(String eventId, byte[] original) throws Exception {
+        return mvc.perform(post("/api/admin/events/" + eventId + "/original-uploads")
+                        .header("Authorization", bearer(adminToken())).contentType(MediaType.APPLICATION_JSON)
+                        .content(uploadRequestJson("IMG_9000.JPG", original)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+    }
+
+    private String originalAvailable(String eventId) throws Exception {
+        return mvc.perform(get("/api/admin/events/" + eventId + "/photos").header("Authorization", bearer(adminToken())))
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    @Test
+    void originalQualityUploadKeepsTheFullFile() throws Exception {
+        String eventId = eventId(createEvent("Originals", "COMPLETED"));
+        byte[] original = jpeg(1600, 1067);
+        String session = originalSession(eventId, original);
+        assertThat(JsonPath.<Boolean>read(session, "$.needsVersions")).isTrue();
+        // The gallery versions alone are refused until the original is really in storage.
+        upload(adminToken(), eventId, "IMG_9000.JPG", original, jpeg(1024, 683), jpeg(640, 427), true)
+                .andExpect(status().isConflict());
+        putToStorage(JsonPath.read(session, "$.upload.url"), original);
+        upload(adminToken(), eventId, "IMG_9000.JPG", original, jpeg(1024, 683), jpeg(640, 427), true)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("UPLOAD"));
+        String list = originalAvailable(eventId);
+        assertThat(JsonPath.<Boolean>read(list, "$.photos[0].originalAvailable")).isTrue();
+        assertThat(JsonPath.<String>read(list, "$.photos[0].status")).isEqualTo("READY");
+        // Uploading the same original again changes nothing.
+        assertThat(JsonPath.<String>read(originalSession(eventId, original), "$.outcome")).isEqualTo("DUPLICATE");
+    }
+
+    @Test
+    void addsTheOriginalToAPhotoAlreadyInTheGallery() throws Exception {
+        String eventId = eventId(createEvent("Attach", "LIVE"));
+        byte[] original = jpeg(1600, 1067);
+        // First the compressed version only (e.g. during the event)...
+        upload(adminToken(), eventId, "IMG_9000.JPG", original, jpeg(1024, 683), jpeg(640, 427)).andExpect(status().isOk());
+        assertThat(JsonPath.<Boolean>read(originalAvailable(eventId), "$.photos[0].originalAvailable")).isFalse();
+        // ...then the original for delivery: no second photo, the same one gains its original.
+        String session = originalSession(eventId, original);
+        assertThat(JsonPath.<Boolean>read(session, "$.needsVersions")).isFalse();
+        String photoId = JsonPath.read(session, "$.photoId");
+        putToStorage(JsonPath.read(session, "$.upload.url"), original);
+        mvc.perform(post("/api/admin/events/" + eventId + "/photos/" + photoId + "/original")
+                        .header("Authorization", bearer(adminToken())))
+                .andExpect(status().isNoContent());
+        String list = originalAvailable(eventId);
+        assertThat(JsonPath.<List<Object>>read(list, "$.photos")).hasSize(1);
+        assertThat(JsonPath.<Boolean>read(list, "$.photos[0].originalAvailable")).isTrue();
     }
 }
