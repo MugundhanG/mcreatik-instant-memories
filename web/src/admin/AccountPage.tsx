@@ -51,7 +51,20 @@ export default function AccountPage() {
         <p className="text-sm"><span className="font-medium">{session?.displayName}</span> · <span className="text-muted">{session?.email}</span></p>
       </Card>
       {/* McreatiK's own events use the built-in McreatiK design; studios set their own. */}
-      {!forced && account && account.role === 'STUDIO' && <BrandingCard account={account} onChange={setAccount} />}
+      {!forced && account?.brand && account.role === 'STUDIO' && (
+        <BrandingCard
+          brand={account.brand}
+          actions={{
+            update: async (input) => (await adminApi.updateAccount(input)).brand!,
+            upload: async (png) => (await adminApi.uploadLogo(png)).brand!,
+            remove: async () => (await adminApi.removeLogo()).brand!,
+          }}
+          onSaved={(brand) => {
+            setAccount({ ...account, displayName: brand.name, brand })
+            auth.update({ displayName: brand.name })
+          }}
+        />
+      )}
       <Card title={forced ? 'Choose your own password' : 'Change password'}>
         {forced && (
           <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
