@@ -254,10 +254,19 @@ export interface EventClient {
   id: string
   name: string
   email: string
+  /** WhatsApp number, to send the login again. */
+  phone?: string | null
   mustChangePassword: boolean
   disabled: boolean
   createdAt: string
   lastLoginAt: string | null
+}
+
+/** A ZIP of several photos, ready to open (the link works for 30 minutes). */
+export interface PreparedZip {
+  path: string
+  photos: number
+  fileName: string
 }
 
 export interface AlbumSelection {

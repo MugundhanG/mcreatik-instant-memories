@@ -126,12 +126,14 @@ public class AlbumService {
 
     public List<AlbumDtos.Client> clients(UUID eventId) {
         return jdbc.query("""
-                SELECT id, name, email, must_change_password, disabled, created_at, last_login_at
+                SELECT id, name, email, phone, must_change_password, disabled, created_at, last_login_at
                 FROM event_clients WHERE event_id = ? ORDER BY created_at""", (rs, n) -> new AlbumDtos.Client(
-                rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getBoolean(4), rs.getBoolean(5),
-                instant(rs.getTimestamp(6)), instant(rs.getTimestamp(7))), eventId);
+                rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4), rs.getBoolean(5),
+                rs.getBoolean(6), instant(rs.getTimestamp(7)), instant(rs.getTimestamp(8))), eventId);
     }
 
+    /** One login per event: the couple shares it (both see the same photos and album). */
+    @Transactional
     public AlbumDtos.Client createClient(UUID eventId, AlbumDtos.CreateClientRequest request) {
         String name = request.name() == null ? "" : request.name().trim();
         String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
@@ -142,10 +144,17 @@ public class AlbumService {
             throw ApiException.badRequest("INVALID_EMAIL", "Enter a valid email address");
         }
         password(request.password());
+        String phone = phone(request.phone());
+        // Serialise per event so two clicks cannot create two logins.
+        jdbc.queryForObject("SELECT id FROM events WHERE id = ? FOR UPDATE", UUID.class, eventId);
+        if (jdbc.queryForObject("SELECT count(*) FROM event_clients WHERE event_id = ?", Long.class, eventId) > 0) {
+            throw ApiException.conflict("CLIENT_EXISTS",
+                    "This event already has a client login. Reset its password or delete it to create a new one.");
+        }
         UUID id = UUID.randomUUID();
         try {
-            jdbc.update("INSERT INTO event_clients (id, event_id, name, email, password_hash) VALUES (?, ?, ?, ?, ?)",
-                    id, eventId, name, email, passwordEncoder.encode(request.password()));
+            jdbc.update("INSERT INTO event_clients (id, event_id, name, email, password_hash, phone) VALUES (?, ?, ?, ?, ?, ?)",
+                    id, eventId, name, email, passwordEncoder.encode(request.password()), phone);
         } catch (DuplicateKeyException e) {
             throw ApiException.conflict("EMAIL_TAKEN", "This email already has a client login");
         }
@@ -162,6 +171,21 @@ public class AlbumService {
         if (request.disabled() != null) {
             jdbc.update("UPDATE event_clients SET disabled = ? WHERE id = ?", request.disabled(), clientId);
         }
+        if (request.phone() != null) {
+            jdbc.update("UPDATE event_clients SET phone = ? WHERE id = ?", phone(request.phone()), clientId);
+        }
+    }
+
+    /** Digits, spaces, +, - and brackets only; empty means none. */
+    static String phone(String raw) {
+        String phone = raw == null ? "" : raw.trim();
+        if (phone.isEmpty()) {
+            return null;
+        }
+        if (phone.length() > 20 || !phone.matches("^[0-9+()\\s-]+$")) {
+            throw ApiException.badRequest("INVALID_PHONE", "Enter a valid WhatsApp number");
+        }
+        return phone;
     }
 
     public void deleteClient(UUID eventId, UUID clientId) {
@@ -210,6 +234,14 @@ public class AlbumService {
 
     public long selectedCount(UUID eventId) {
         return jdbc.queryForObject("SELECT count(*) FROM album_selections WHERE event_id = ?", Long.class, eventId);
+    }
+
+    /** The whole album selection, in the order the day happened. */
+    public List<UUID> selectedPhotoIds(UUID eventId) {
+        return jdbc.query("""
+                SELECT p.id FROM album_selections s JOIN photos p ON p.id = s.photo_id
+                WHERE s.event_id = ? ORDER BY coalesce(p.captured_at, p.created_at), p.id""",
+                (rs, n) -> rs.getObject(1, UUID.class), eventId);
     }
 
     public List<UUID> selectedIds(UUID eventId, List<UUID> photoIds) {

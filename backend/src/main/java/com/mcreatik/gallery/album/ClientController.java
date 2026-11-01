@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.mcreatik.gallery.auth.JwtService;
 import com.mcreatik.gallery.auth.StudioBranding;
 import com.mcreatik.gallery.common.ApiException;
+import com.mcreatik.gallery.download.ZipDownloads;
 import com.mcreatik.gallery.event.Event;
 import com.mcreatik.gallery.event.EventRepository;
 import com.mcreatik.gallery.event.EventService;
@@ -57,10 +58,13 @@ public class ClientController {
     private final StorageService storage;
     private final StudioBranding branding;
     private final EntityManager em;
+    private final ZipDownloads downloads;
 
     public ClientController(JdbcTemplate jdbc, PasswordEncoder passwordEncoder, JwtService jwt, AlbumService album,
                             EventRepository events, EventService eventService, PhotoRepository photos,
-                            PhotoMapper mapper, StorageService storage, StudioBranding branding, EntityManager em) {
+                            PhotoMapper mapper, StorageService storage, StudioBranding branding, EntityManager em,
+                            ZipDownloads downloads) {
+        this.downloads = downloads;
         this.jdbc = jdbc;
         this.passwordEncoder = passwordEncoder;
         this.jwt = jwt;
@@ -232,6 +236,46 @@ public class ClientController {
                     p.getOriginalFileName()), true);
         }
         return new DownloadUrl(mapper.url(p.getOptimizedStorageKey()), false);
+    }
+
+    /**
+     * Several photos as one ZIP: {@code album} true for the album selection, else {@code photoIds}, else a whole
+     * {@code category} (an id, "none" for not sorted, or "all").
+     */
+    public record ZipRequest(Boolean album, List<UUID> photoIds, String category) {
+    }
+
+    @PostMapping("/downloads")
+    public ZipDownloads.Prepared zip(Authentication auth, @RequestBody ZipRequest request) {
+        ClientRow c = current(auth);
+        Event e = event(c);
+        List<UUID> ids;
+        String name = e.getName();
+        if (Boolean.TRUE.equals(request.album())) {
+            ids = album.selectedPhotoIds(e.getId());
+            name += " album";
+        } else if (request.photoIds() != null && !request.photoIds().isEmpty()) {
+            ids = request.photoIds();
+        } else {
+            ids = categoryIds(e.getId(), request.category());
+        }
+        return downloads.prepare(e.getId(), ids, false, name);
+    }
+
+    private List<UUID> categoryIds(UUID eventId, String category) {
+        String base = "SELECT id FROM photos WHERE event_id = ? AND status = 'READY' AND NOT hidden";
+        if (category == null || category.isBlank() || "all".equals(category)) {
+            return jdbc.query(base, (rs, n) -> rs.getObject(1, UUID.class), eventId);
+        }
+        if ("none".equals(category)) {
+            return jdbc.query(base + " AND category_id IS NULL", (rs, n) -> rs.getObject(1, UUID.class), eventId);
+        }
+        try {
+            return jdbc.query(base + " AND category_id = ?", (rs, n) -> rs.getObject(1, UUID.class), eventId,
+                    UUID.fromString(category));
+        } catch (IllegalArgumentException bad) {
+            throw ApiException.badRequest("INVALID_CATEGORY", "Unknown category");
+        }
     }
 
     public record ChangePasswordRequest(String currentPassword, String newPassword) {

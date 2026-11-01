@@ -19,14 +19,19 @@ public final class AlbumDtos {
     public record AssignRequest(List<UUID> photoIds, UUID categoryId) {
     }
 
-    public record Client(UUID id, String name, String email, boolean mustChangePassword, boolean disabled,
-                         Instant createdAt, Instant lastLoginAt) {
+    public record Client(UUID id, String name, String email, String phone, boolean mustChangePassword,
+                         boolean disabled, Instant createdAt, Instant lastLoginAt) {
     }
 
-    public record CreateClientRequest(String name, String email, String password) {
+    public record CreateClientRequest(String name, String email, String password, String phone) {
     }
 
-    public record UpdateClientRequest(String newPassword, Boolean disabled) {
+    /** {@code phone}: the couple's WhatsApp number, kept so the studio can send the login again. */
+    public record UpdateClientRequest(String newPassword, Boolean disabled, String phone) {
+    }
+
+    /** {@code album} true: the whole album selection; else the listed photos. */
+    public record DownloadRequest(List<UUID> photoIds, Boolean album) {
     }
 
     public record SelectedPhoto(UUID photoId, String fileName, String thumbnailUrl, Instant selectedAt,
