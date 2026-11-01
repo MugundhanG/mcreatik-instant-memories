@@ -90,7 +90,7 @@ export default function NewEventPage() {
               </select>
             </Field>
           </div>
-          <Field label="Gallery address (optional)" hint="Leave empty to generate a hard-to-guess address like arun-priya-7k3d">
+          <Field label="Gallery address (optional)" hint="Leave empty for a hard-to-guess address like arun-priya-7k3dqx9mzp. A custom address is easier for strangers to guess.">
             <input className={inputClass} value={slug} placeholder="auto" onChange={(e) => setSlug(e.target.value.toLowerCase())} />
           </Field>
           <ErrorText>{error}</ErrorText>

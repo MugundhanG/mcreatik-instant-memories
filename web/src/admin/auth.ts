@@ -43,7 +43,7 @@ export const auth = {
   signIn: (r: LoginResponse) =>
     set({ token: r.token, expiresAt: r.expiresAt, email: r.email, displayName: r.displayName, role: r.role, mustChangePassword: r.mustChangePassword }),
   /** Account details changed (refreshed from the server, password changed). */
-  update: (patch: Partial<Omit<Session, 'token' | 'expiresAt'>>) => current && set({ ...current, ...patch }),
+  update: (patch: Partial<Session>) => current && set({ ...current, ...patch }),
   signOut: () => set(null),
   session: () => current,
 }

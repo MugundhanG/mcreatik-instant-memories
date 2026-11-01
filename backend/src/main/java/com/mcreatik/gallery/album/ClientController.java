@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -79,22 +80,23 @@ public class ClientController {
     }
 
     record ClientRow(UUID id, UUID eventId, String name, String email, String passwordHash, boolean mustChange,
-                     boolean disabled) {
+                     boolean disabled, int tokenVersion) {
     }
 
     private ClientRow row(String where, Object arg) {
         List<ClientRow> rows = jdbc.query("""
-                SELECT id, event_id, name, email, password_hash, must_change_password, disabled
+                SELECT id, event_id, name, email, password_hash, must_change_password, disabled, token_version
                 FROM event_clients WHERE %s""".formatted(where), (rs, n) -> new ClientRow(
                 rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getString(3), rs.getString(4),
-                rs.getString(5), rs.getBoolean(6), rs.getBoolean(7)), arg);
+                rs.getString(5), rs.getBoolean(6), rs.getBoolean(7), rs.getInt(8)), arg);
         return rows.isEmpty() ? null : rows.getFirst();
     }
 
-    /** The logged-in client; a deleted or disabled login stops working at once. */
+    /** The logged-in client; a deleted or disabled login, or a changed password, stops older tokens at once. */
     private ClientRow current(Authentication auth) {
         ClientRow c = row("id = ?", UUID.fromString(auth.getName()));
-        if (c == null || c.disabled()) {
+        int version = auth instanceof JwtAuthenticationToken t ? JwtService.version(t.getToken()) : -1;
+        if (c == null || c.disabled() || c.tokenVersion() != version) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Please log in again");
         }
         return c;
@@ -125,7 +127,7 @@ public class ClientController {
             throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_DISABLED", "This login has been turned off by the studio");
         }
         jdbc.update("UPDATE event_clients SET last_login_at = now() WHERE id = ?", c.id());
-        JwtService.IssuedToken token = jwt.issueClient(c.id(), c.eventId(), c.email());
+        JwtService.IssuedToken token = jwt.issueClient(c.id(), c.eventId(), c.email(), c.tokenVersion());
         return new LoginResponse(token.token(), token.expiresAt(), c.name(), c.mustChange());
     }
 
@@ -281,9 +283,12 @@ public class ClientController {
     public record ChangePasswordRequest(String currentPassword, String newPassword) {
     }
 
+    public record PasswordChanged(String token, Instant expiresAt) {
+    }
+
+    /** Returns a fresh login for this device; other devices are logged out. */
     @PostMapping("/password")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void changePassword(Authentication auth, @RequestBody ChangePasswordRequest request) {
+    public PasswordChanged changePassword(Authentication auth, @RequestBody ChangePasswordRequest request) {
         ClientRow c = current(auth);
         if (request.currentPassword() == null || !passwordEncoder.matches(request.currentPassword(), c.passwordHash())) {
             throw ApiException.badRequest("WRONG_PASSWORD", "The current password is not correct");
@@ -292,7 +297,10 @@ public class ClientController {
         if (request.currentPassword().equals(request.newPassword())) {
             throw ApiException.badRequest("SAME_PASSWORD", "Choose a new password, different from the current one");
         }
-        jdbc.update("UPDATE event_clients SET password_hash = ?, must_change_password = false WHERE id = ?",
-                passwordEncoder.encode(request.newPassword()), c.id());
+        jdbc.update("""
+                UPDATE event_clients SET password_hash = ?, must_change_password = false, token_version = token_version + 1
+                WHERE id = ?""", passwordEncoder.encode(request.newPassword()), c.id());
+        JwtService.IssuedToken token = jwt.issueClient(c.id(), c.eventId(), c.email(), c.tokenVersion() + 1);
+        return new PasswordChanged(token.token(), token.expiresAt());
     }
 }

@@ -31,8 +31,8 @@ export default function AccountPage() {
     if (next !== repeat) return setError('The two new passwords do not match')
     setBusy(true)
     try {
-      await adminApi.changePassword(current, next)
-      auth.update({ mustChangePassword: false })
+      const fresh = await adminApi.changePassword(current, next)
+      auth.update({ ...(fresh ?? {}), mustChangePassword: false })
       setDone(true)
       setCurrent('')
       setNext('')

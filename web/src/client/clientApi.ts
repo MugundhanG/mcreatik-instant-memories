@@ -117,8 +117,9 @@ export const clientApi = {
   prepareZip: (input: { album?: boolean; photoIds?: string[]; category?: string }) =>
     request<PreparedZip>('/api/client/downloads', { method: 'POST', body: json(input) }),
   download: (photoId: string) => request<{ url: string; original: boolean }>(`/api/client/photos/${photoId}/download`),
+  /** Returns a fresh login for this device: the change logs out every other device. */
   changePassword: (currentPassword: string, newPassword: string) =>
-    request<void>('/api/client/password', { method: 'POST', body: json({ currentPassword, newPassword }) }),
+    request<{ token: string; expiresAt: string } | undefined>('/api/client/password', { method: 'POST', body: json({ currentPassword, newPassword }) }),
 }
 
 export function useClientSession() {

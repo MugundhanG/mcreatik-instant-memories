@@ -122,10 +122,15 @@ class StudioAccountsTest extends IntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"currentPassword\":\"wrong-password\",\"newPassword\":\"my-own-password\"}"))
                 .andExpect(status().isBadRequest());
-        mvc.perform(post("/api/admin/account/password").header("Authorization", bearer(studio))
-                        .contentType(MediaType.APPLICATION_JSON)
+        String otherDevice = studioLogin("temporary-123");
+        String fresh = com.jayway.jsonpath.JsonPath.read(mvc.perform(post("/api/admin/account/password")
+                        .header("Authorization", bearer(studio)).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"currentPassword\":\"temporary-123\",\"newPassword\":\"my-own-password\"}"))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), "$.token");
+        // The password change logs out every other session; this device continues with the fresh token.
+        mvc.perform(get("/api/admin/account").header("Authorization", bearer(otherDevice))).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/admin/account").header("Authorization", bearer(studio))).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/admin/account").header("Authorization", bearer(fresh))).andExpect(status().isOk());
         mvc.perform(loginRequest(email, "my-own-password"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("STUDIO"))

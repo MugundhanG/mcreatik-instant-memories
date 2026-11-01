@@ -24,7 +24,10 @@ function mockApi(account: Account, studios: Studio[] = [superStudio]) {
     const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
     calls.push({ method, path: url.pathname, body })
     if (url.pathname === '/api/admin/account') return ok(account)
-    if (url.pathname === '/api/admin/account/password') return new Response(null, { status: 204 })
+    if (url.pathname === '/api/admin/account/password') {
+      account = { ...account, mustChangePassword: false }
+      return ok({ token: 'fresh-token', expiresAt: new Date(Date.now() + 3_600_000).toISOString() })
+    }
     if (url.pathname === '/api/admin/events') return ok([])
     if (url.pathname === '/api/admin/studios' && method === 'GET') return ok(studios)
     if (url.pathname === '/api/admin/studios' && method === 'POST') {
@@ -84,6 +87,8 @@ describe('Studio accounts', () => {
     await user.click(screen.getByRole('button', { name: /password/i }))
 
     await waitFor(() => expect(auth.session()?.mustChangePassword).toBe(false))
+    // The change logs out other devices; this one keeps working with the fresh login.
+    expect(auth.session()?.token).toBe('fresh-token')
     expect(calls.find((c) => c.path === '/api/admin/account/password')?.body)
       .toEqual({ currentPassword: 'temporary-123', newPassword: 'my-own-password' })
   })

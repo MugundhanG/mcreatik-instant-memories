@@ -28,8 +28,10 @@ public class ActiveAdminFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         if (SecurityContextHolder.getContext().getAuthentication() instanceof JwtAuthenticationToken jwt) {
+            // Turned off, deleted, or the password changed since this token was issued: log in again.
             boolean active = users.findById(UUID.fromString(jwt.getToken().getSubject()))
-                    .map(u -> !u.isDisabled()).orElse(false);
+                    .map(u -> !u.isDisabled() && u.getTokenVersion() == JwtService.version(jwt.getToken()))
+                    .orElse(false);
             if (!active) {
                 SecurityContextHolder.clearContext();
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
