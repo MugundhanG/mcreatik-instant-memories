@@ -265,8 +265,18 @@ export interface EventClient {
 /** A ZIP of several photos, ready to open (the link works for 30 minutes). */
 export interface PreparedZip {
   path: string
+  /** Polled for the percentage shown in the app. */
+  progressPath: string
   photos: number
   fileName: string
+}
+
+/** WAITING: link not opened yet; QUEUED: other downloads first; RUNNING; DONE; FAILED (stopped). */
+export interface ZipProgress {
+  state: 'WAITING' | 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED'
+  done: number
+  total: number
+  percent: number
 }
 
 export interface AlbumSelection {

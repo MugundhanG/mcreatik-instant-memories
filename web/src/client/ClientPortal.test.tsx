@@ -16,7 +16,10 @@ const photo = (n: number, selected = false) => ({
   originalAvailable: true, selected, categoryId: n < 3 ? 'cake' : null,
 })
 
+let progressPolls = 0
+
 function mockApi() {
+  progressPolls = 0
   const calls: { method: string; url: URL; body: unknown }[] = []
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input))
@@ -30,7 +33,11 @@ function mockApi() {
       return ok({ photos: cat ? all.filter((p) => p.categoryId === cat) : all, nextOffset: null })
     }
     if (method === 'PUT') return ok({ selectedCount: 2, albumLimit: 2 })
-    if (url.pathname === '/api/client/downloads') return ok({ path: '/api/public/downloads/zip_abc', photos: 2, fileName: 'Wedding.zip' })
+    if (url.pathname === '/api/client/downloads') return ok({ path: '/api/public/downloads/zip_abc', progressPath: '/api/public/downloads/zip_abc/progress', photos: 2, fileName: 'Wedding.zip' })
+    if (url.pathname === '/api/public/downloads/zip_abc/progress') {
+      progressPolls++
+      return ok(progressPolls === 1 ? { state: 'RUNNING', done: 1, total: 2, percent: 50 } : { state: 'DONE', done: 2, total: 2, percent: 100 })
+    }
     return new Response('{}', { status: 404 })
   }))
   return calls
@@ -91,6 +98,11 @@ describe('Client portal', () => {
     await user.click(await screen.findByRole('button', { name: 'Download my album (1)' }))
     await waitFor(() => expect(assign).toHaveBeenCalledWith('http://localhost:8080/api/public/downloads/zip_abc'))
     expect(calls.find((c) => c.url.pathname === '/api/client/downloads')?.body).toEqual({ album: true })
+    // The app shows how far the ZIP is, then that it is done.
+    expect(await screen.findByText('Downloading 50%', {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(screen.getByTestId('zip-progress')).toHaveTextContent('1 of 2 photos')
+    expect(await screen.findByText('Download complete ✓', {}, { timeout: 3000 })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Close' }))
 
     await user.click(within(screen.getByRole('navigation', { name: 'Categories' })).getByRole('button', { name: /^All/ }))
     await user.click(await screen.findByRole('button', { name: 'Select photos to download' }))

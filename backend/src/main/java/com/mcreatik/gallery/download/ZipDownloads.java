@@ -12,6 +12,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -34,6 +36,9 @@ import com.mcreatik.gallery.storage.StorageService;
  * A logged-in request prepares a short-lived link; opening the link streams the ZIP straight from storage, one photo
  * at a time, so memory stays flat however big the album is and phones get a single file. Originals are included
  * when the studio kept them, else the gallery version. Links live in memory (single server) for 30 minutes.
+ * <p>
+ * The app shows a percentage: the ZIP is built while it streams, so the browser cannot know its size, but the
+ * server counts the photos it has written and the app reads that from the progress endpoint every second.
  */
 @Service
 public class ZipDownloads {
@@ -42,16 +47,46 @@ public class ZipDownloads {
     static final Duration TTL = Duration.ofMinutes(30);
     /** ZIPs streaming at the same time: keeps bandwidth for the live galleries. */
     static final int MAX_STREAMS = 3;
+    /** A download beyond {@link #MAX_STREAMS} waits its turn this long (the app shows "waiting") before giving up. */
+    static final Duration QUEUE_WAIT = Duration.ofMinutes(10);
 
     private static final Logger log = LoggerFactory.getLogger(ZipDownloads.class);
 
-    record Job(UUID eventId, List<UUID> photoIds, boolean includeHidden, String fileName, Instant expiresAt) {
+    /** WAITING: link not opened yet; QUEUED: waiting for a free slot; RUNNING; DONE; FAILED (stopped or broken). */
+    public enum State { WAITING, QUEUED, RUNNING, DONE, FAILED }
+
+    static final class Job {
+        final UUID eventId;
+        final List<UUID> photoIds;
+        final boolean includeHidden;
+        final String fileName;
+        final Instant expiresAt;
+        final AtomicInteger done = new AtomicInteger();
+        volatile int total;
+        volatile State state = State.WAITING;
+
+        Job(UUID eventId, List<UUID> photoIds, boolean includeHidden, String fileName, Instant expiresAt, int total) {
+            this.eventId = eventId;
+            this.photoIds = photoIds;
+            this.includeHidden = includeHidden;
+            this.fileName = fileName;
+            this.expiresAt = expiresAt;
+            this.total = total;
+        }
+
+        String fileName() {
+            return fileName;
+        }
+    }
+
+    /** {@code percent} counts photos written into the ZIP. */
+    public record Progress(State state, int done, int total, int percent) {
     }
 
     record Item(String fileName, String storageKey, String webKey, boolean originalStored) {
     }
 
-    public record Prepared(String path, int photos, String fileName) {
+    public record Prepared(String path, String progressPath, int photos, String fileName) {
     }
 
     private final Map<String, Job> jobs = new ConcurrentHashMap<>();
@@ -80,24 +115,46 @@ public class ZipDownloads {
         }
         String fileName = fileName(name);
         String token = Tokens.randomToken("zip_");
-        jobs.put(token, new Job(eventId, ids, includeHidden, fileName, Instant.now().plus(TTL)));
-        return new Prepared("/api/public/downloads/" + token, found, fileName);
+        jobs.put(token, new Job(eventId, ids, includeHidden, fileName, Instant.now().plus(TTL), found));
+        String path = "/api/public/downloads/" + token;
+        return new Prepared(path, path + "/progress", found, fileName);
     }
 
     Job job(String token) {
         Job job = token == null ? null : jobs.get(token);
-        if (job == null || job.expiresAt().isBefore(Instant.now())) {
+        if (job == null || job.expiresAt.isBefore(Instant.now())) {
             throw new ApiException(HttpStatus.GONE, "LINK_EXPIRED", "This download link has expired. Start the download again.");
         }
         return job;
     }
 
-    /** Takes one of the few streaming slots, or tells the browser to try again shortly. */
-    void acquire() {
-        if (!streams.tryAcquire()) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "BUSY",
-                    "Other downloads are running. Please try again in a minute.");
+    public Progress progress(String token) {
+        Job job = job(token);
+        int total = job.total;
+        int done = Math.min(job.done.get(), total);
+        int percent = job.state == State.DONE ? 100 : total == 0 ? 0 : (int) Math.floor(done * 100.0 / total);
+        return new Progress(job.state, done, total, percent);
+    }
+
+    /**
+     * Takes one of the few streaming slots, waiting its turn when they are all busy: the browser has already
+     * opened the link, so an error here would replace the app with an error page.
+     */
+    void acquire(Job job) {
+        if (streams.tryAcquire()) {
+            return;
         }
+        job.state = State.QUEUED;
+        try {
+            if (streams.tryAcquire(QUEUE_WAIT.toMillis(), TimeUnit.MILLISECONDS)) {
+                return;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        job.state = State.FAILED;
+        throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "BUSY",
+                "Other downloads are running. Please try again in a few minutes.");
     }
 
     void release() {
@@ -119,7 +176,21 @@ public class ZipDownloads {
     }
 
     void write(Job job, OutputStream out) throws IOException {
-        List<Item> items = items(job.eventId(), job.photoIds(), job.includeHidden());
+        job.state = State.RUNNING;
+        job.done.set(0);
+        try {
+            writeZip(job, out);
+            job.state = State.DONE;
+        } catch (IOException | RuntimeException e) {
+            // Usually the person cancelled the download or lost the connection.
+            job.state = State.FAILED;
+            throw e;
+        }
+    }
+
+    private void writeZip(Job job, OutputStream out) throws IOException {
+        List<Item> items = items(job.eventId, job.photoIds, job.includeHidden);
+        job.total = items.size();
         Set<String> used = new HashSet<>();
         int missing = 0;
         try (ZipOutputStream zip = new ZipOutputStream(out)) {
@@ -137,11 +208,13 @@ public class ZipDownloads {
                 }
                 if (data == null) {
                     missing++;
+                    job.done.incrementAndGet();
                     continue;
                 }
                 zip.putNextEntry(new ZipEntry(unique(entryName(item.fileName(), original), used)));
                 zip.write(data);
                 zip.closeEntry();
+                job.done.incrementAndGet();
             }
             if (missing > 0) {
                 zip.putNextEntry(new ZipEntry("NOTE.txt"));
@@ -196,6 +269,6 @@ public class ZipDownloads {
     @Scheduled(fixedDelay = 600_000)
     public void evictExpired() {
         Instant now = Instant.now();
-        jobs.values().removeIf(j -> j.expiresAt().isBefore(now));
+        jobs.values().removeIf(j -> j.expiresAt.isBefore(now));
     }
 }
