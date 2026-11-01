@@ -20,7 +20,7 @@ class EventApiTest extends IntegrationTest {
     void createEventGeneratesUnguessableSlugGalleryUrlAndRetention() throws Exception {
         String json = createEvent("Arun & Priya Wedding", "UPCOMING");
         String slug = slug(json);
-        assertThat(slug).matches("arun-priya-wedding-[a-z0-9]{4}");
+        assertThat(slug).matches("arun-priya-wedding-[a-z0-9]{10}");
         assertThat((String) JsonPath.read(json, "$.galleryUrl")).isEqualTo("https://gallery.mcreatik.test/e/" + slug);
         assertThat((String) JsonPath.read(json, "$.status")).isEqualTo("UPCOMING");
         assertThat((String) JsonPath.read(json, "$.retentionUntil")).isEqualTo("2027-01-08");

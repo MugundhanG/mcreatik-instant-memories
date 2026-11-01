@@ -70,6 +70,11 @@ describe('Live gallery', () => {
     }
     expect(screen.queryByText(/mcreatik\.studios/)).not.toBeInTheDocument()
     expect(screen.getByTestId('powered-by')).toHaveTextContent('Powered by McreatiK')
+    // Guests can read the privacy notice and ask for a photo to be taken down.
+    expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy')
+    const removal = decodeURIComponent(screen.getByRole('link', { name: 'Request a photo removal' }).getAttribute('href')!)
+    expect(removal).toMatch(/^mailto:connect@mcreatik\.com\?subject=Photo removal request: /)
+    expect(removal).toContain('Gallery: ')
   })
 
   it('hides the Instagram invites when the studio has no Instagram', async () => {

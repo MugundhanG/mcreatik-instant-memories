@@ -165,7 +165,10 @@ public class AlbumService {
         requireClient(eventId, clientId);
         if (request.newPassword() != null) {
             password(request.newPassword());
-            jdbc.update("UPDATE event_clients SET password_hash = ?, must_change_password = true WHERE id = ?",
+            // A reset by the studio also logs the client out everywhere.
+            jdbc.update("""
+                    UPDATE event_clients SET password_hash = ?, must_change_password = true, token_version = token_version + 1
+                    WHERE id = ?""",
                     passwordEncoder.encode(request.newPassword()), clientId);
         }
         if (request.disabled() != null) {

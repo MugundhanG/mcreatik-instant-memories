@@ -146,6 +146,18 @@ class AlbumAndClientsTest extends IntegrationTest {
         mvc.perform(get("/api/admin/events").header("Authorization", bearer(client))).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/client/me").header("Authorization", bearer(adminToken()))).andExpect(status().isForbidden());
 
+        // Changing the password logs out other devices; a reset by the studio logs out every device.
+        String otherDevice = clientLogin(email, "temporary-123");
+        String fresh = JsonPath.read(json(post("/api/client/password").header("Authorization", bearer(client))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPassword\":\"temporary-123\",\"newPassword\":\"our-own-password\"}")), "$.token");
+        mvc.perform(get("/api/client/me").header("Authorization", bearer(otherDevice))).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/client/me").header("Authorization", bearer(fresh))).andExpect(status().isOk());
+        mvc.perform(admin(patch("/api/admin/events/" + mine.eventId() + "/clients/" + clientId)).content("{\"newPassword\":\"studio-reset-123\"}"))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/client/me").header("Authorization", bearer(fresh))).andExpect(status().isUnauthorized());
+        client = clientLogin(email, "studio-reset-123");
+
         // Turning the login off locks the couple out at once.
         mvc.perform(admin(patch("/api/admin/events/" + mine.eventId() + "/clients/" + clientId)).content("{\"disabled\":true}"))
                 .andExpect(status().isNoContent());

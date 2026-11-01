@@ -200,8 +200,9 @@ export const adminApi = {
   updateBillingSettings: (s: BillingSettings) =>
     request<BillingSettings>('/api/admin/billing/settings', { method: 'PUT', body: json(s) }, true),
   account: () => request<Account>('/api/admin/account', {}, true),
+  /** Returns a fresh login for this device: the change logs out every other device. */
   changePassword: (currentPassword: string, newPassword: string) =>
-    request<void>('/api/admin/account/password', { method: 'POST', body: json({ currentPassword, newPassword }) }, true),
+    request<{ token: string; expiresAt: string } | undefined>('/api/admin/account/password', { method: 'POST', body: json({ currentPassword, newPassword }) }, true),
   studios: () => request<Studio[]>('/api/admin/studios', {}, true),
   createStudio: (input: { name: string; email: string; password: string; plan?: Plan }) =>
     request<Studio>('/api/admin/studios', { method: 'POST', body: json(input) }, true),

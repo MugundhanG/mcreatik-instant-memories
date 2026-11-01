@@ -8,6 +8,7 @@ import { PhotoGrid } from './PhotoGrid'
 import { resolveBrand } from '../shared/brand'
 import { PageLoader, ShutterLoader } from '../shared/ShutterLoader'
 import { InstagramIcon, InstagramLink } from '../shared/StudioLogo'
+import { removalRequestLink } from '../shared/privacy'
 import { PhotoViewer } from './PhotoViewer'
 import { useLiveGallery } from './useLiveGallery'
 
@@ -186,6 +187,11 @@ export default function GalleryPage() {
         {brand.poweredByMcreatik && (
           <p className="mt-1 text-[11px] tracking-wide text-muted/80" data-testid="powered-by">Powered by McreatiK</p>
         )}
+        <p className="mt-3 text-[11px] text-muted/80">
+          <a href="/privacy" className="underline underline-offset-2 hover:text-ink">Privacy</a>
+          {' · '}
+          <a href={removalRequestLink(event.name)} className="underline underline-offset-2 hover:text-ink">Request a photo removal</a>
+        </p>
       </footer>
 
       {selectedIndex >= 0 && (
@@ -200,6 +206,12 @@ export default function GalleryPage() {
           onNearEnd={loadMore}
           instagram={brand.instagram}
           onActivity={onActivity}
+          actions={(p) => (
+            <a href={removalRequestLink(event.name, p.id)}
+              className="inline-flex h-12 items-center justify-center rounded-full px-4 text-xs text-white/70 underline-offset-4 hover:text-white hover:underline">
+              Request removal
+            </a>
+          )}
         />
       )}
     </div>

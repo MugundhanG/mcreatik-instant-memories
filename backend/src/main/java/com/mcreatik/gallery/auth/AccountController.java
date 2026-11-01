@@ -34,8 +34,11 @@ public class AccountController {
     private final AdminAccess access;
     private final PasswordEncoder passwordEncoder;
     private final StudioBranding branding;
+    private final JwtService jwt;
 
-    public AccountController(AdminAccess access, PasswordEncoder passwordEncoder, StudioBranding branding) {
+    public AccountController(AdminAccess access, PasswordEncoder passwordEncoder, StudioBranding branding,
+                             JwtService jwt) {
+        this.jwt = jwt;
         this.access = access;
         this.passwordEncoder = passwordEncoder;
         this.branding = branding;
@@ -88,10 +91,13 @@ public class AccountController {
                                         @NotBlank @Size(min = MIN_PASSWORD, max = 200) String newPassword) {
     }
 
+    /** A fresh login for this device: every other device is logged out by the password change. */
+    public record PasswordChanged(String token, java.time.Instant expiresAt) {
+    }
+
     @PostMapping("/password")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Transactional
-    public void changePassword(Authentication auth, @Valid @RequestBody ChangePasswordRequest request) {
+    public PasswordChanged changePassword(Authentication auth, @Valid @RequestBody ChangePasswordRequest request) {
         AdminUser user = access.current(auth);
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
             throw ApiException.badRequest("WRONG_PASSWORD", "The current password is not correct");
@@ -100,5 +106,7 @@ public class AccountController {
             throw ApiException.badRequest("SAME_PASSWORD", "Choose a new password, different from the current one");
         }
         user.setPassword(passwordEncoder.encode(request.newPassword()), false);
+        JwtService.IssuedToken token = jwt.issue(user);
+        return new PasswordChanged(token.token(), token.expiresAt());
     }
 }

@@ -26,6 +26,10 @@ public class AdminUser {
     @Column(name = "display_name", nullable = false)
     private String displayName;
 
+    /** Goes up on every password change or reset; older tokens stop working. */
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -125,6 +129,11 @@ public class AdminUser {
     public void setPassword(String passwordHash, boolean temporary) {
         this.passwordHash = passwordHash;
         this.mustChangePassword = temporary;
+        this.tokenVersion++;
+    }
+
+    public int getTokenVersion() {
+        return tokenVersion;
     }
 
     public UUID getId() {

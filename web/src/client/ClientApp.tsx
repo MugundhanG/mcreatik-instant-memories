@@ -13,6 +13,7 @@ function Shell({ title, subtitle, children }: { title: string; subtitle: string;
         <p className="font-display text-3xl font-medium">{title}</p>
         <p className="mt-1 text-sm text-muted">{subtitle}</p>
         <div className="mt-6">{children}</div>
+        <p className="mt-6 text-center text-xs text-muted"><a href="/privacy" className="underline underline-offset-2 hover:text-ink">Privacy &amp; security</a></p>
       </div>
     </main>
   )
@@ -67,8 +68,8 @@ function PasswordPage() {
     e.preventDefault()
     if (next.length < 10) return setError('Use at least 10 characters')
     try {
-      await clientApi.changePassword(current, next)
-      clientSession.update({ mustChangePassword: false })
+      const fresh = await clientApi.changePassword(current, next)
+      clientSession.update({ ...(fresh ?? {}), mustChangePassword: false })
       navigate('/client', { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not change the password')

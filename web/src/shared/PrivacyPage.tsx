@@ -1,0 +1,78 @@
+import type { ReactNode } from 'react'
+import { PRIVACY_EMAIL } from './privacy'
+
+const UPDATED = '1 November 2026'
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="mt-8">
+      <h2 className="text-lg font-semibold text-ink">{title}</h2>
+      <div className="mt-2 space-y-2 text-[15px] leading-relaxed text-ink/85">{children}</div>
+    </section>
+  )
+}
+
+/** Plain-language privacy notice for guests, couples and studios. Every statement here must stay true. */
+export default function PrivacyPage() {
+  return (
+    <div className="min-h-dvh bg-paper">
+      <main className="mx-auto max-w-2xl px-5 py-12">
+        <p className="text-xs font-semibold tracking-[0.3em] text-[#8a5a1c] uppercase">McreatiK Live Gallery</p>
+        <h1 className="mt-2 font-display text-4xl font-medium text-ink">Privacy &amp; your photos</h1>
+        <p className="mt-2 text-sm text-muted">Last updated {UPDATED}</p>
+
+        <Section title="Who we are">
+          <p>
+            McreatiK Live Gallery shares event photos from photography studios with their clients and guests. The studio that
+            photographed the event decides which photos are shared and for how long; McreatiK runs the gallery for them.
+          </p>
+        </Section>
+
+        <Section title="Guests: what we collect">
+          <p>Nothing that identifies you. You don't sign up, and we never ask for your name, phone number or email.</p>
+          <p>
+            To show the studio how many people viewed and saved photos, your browser keeps a random number. We store that
+            number with what was viewed or saved, never your name, contacts or location.
+          </p>
+          <p>
+            Like any website, our servers keep short-lived technical logs (which include IP addresses) to block abuse.
+          </p>
+        </Section>
+
+        <Section title="How photos are protected">
+          <ul className="list-disc space-y-1.5 pl-5">
+            <li>Location (GPS) and camera details are removed from every photo shown in the gallery. Only the full-quality originals the couple downloads keep the camera's details.</li>
+            <li>A gallery can only be opened with its link or QR code. Addresses are hard to guess, and galleries are hidden from Google and other search engines.</li>
+            <li>Full-quality originals are kept private. Only the couple and the studio can download them, after logging in, through private links that expire within 30 minutes.</li>
+            <li>Everything travels over encrypted HTTPS connections. Photos are stored with Cloudflare and data with Supabase, which encrypt stored data.</li>
+            <li>Passwords are stored only in scrambled (hashed) form. Changing a password logs out every other device.</li>
+            <li>Each studio sees only its own events, and each couple sees only their own event.</li>
+          </ul>
+        </Section>
+
+        <Section title="How long photos are kept">
+          <p>
+            Until the studio deletes the event or the delete date it chose. Deleting an event permanently removes its photos,
+            files and activity data from our storage. Copies held by our delivery network can stay reachable for a while,
+            but only by someone who already has that exact photo's link.
+          </p>
+        </Section>
+
+        <Section title="Want a photo removed?">
+          <p>
+            Open the photo in the gallery and tap <b>Request removal</b>, or email{' '}
+            <a className="underline underline-offset-4" href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a> with the gallery link.
+            We pass every request to the studio and aim to take the photo down within 3 working days.
+          </p>
+        </Section>
+
+        <Section title="Questions or complaints">
+          <p>
+            Email <a className="underline underline-offset-4" href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a>. You can also
+            contact the studio that photographed your event.
+          </p>
+        </Section>
+      </main>
+    </div>
+  )
+}

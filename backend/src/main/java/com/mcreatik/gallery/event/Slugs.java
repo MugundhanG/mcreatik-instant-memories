@@ -13,7 +13,10 @@ public final class Slugs {
     private Slugs() {
     }
 
-    /** "Arun & Priya Wedding" → "arun-priya-wedding-7k3d". The suffix makes galleries hard to guess. */
+    /** Random characters after the name: 31^10 ≈ 800 trillion addresses, so a gallery cannot be found by guessing. */
+    static final int SUFFIX_LENGTH = 10;
+
+    /** "Arun & Priya Wedding" → "arun-priya-wedding-7k3dqx9mzp". */
     public static String generate(String name) {
         String base = Normalizer.normalize(name, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "")
@@ -26,7 +29,7 @@ public final class Slugs {
         if (base.isEmpty()) {
             base = "event";
         }
-        return base + "-" + Tokens.randomSuffix(4);
+        return base + "-" + Tokens.randomSuffix(SUFFIX_LENGTH);
     }
 
     public static boolean isValid(String slug) {
