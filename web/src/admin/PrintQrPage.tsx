@@ -49,7 +49,8 @@ export default function PrintQrPage() {
 
         <div className="absolute inset-[70px] flex flex-col items-center">
           {brand.posterLogo
-            ? <img src={brand.posterLogo} alt="" className="mt-1 h-[84px] w-auto max-w-[320px] object-contain" />
+            ? <img src={brand.posterLogo} alt="" className="mt-1 w-auto object-contain" data-testid="poster-logo"
+                style={{ height: 84 * brand.posterLogoScale / 100, maxWidth: 320 * brand.posterLogoScale / 100 }} />
             : <div className="h-[20px]" />}
           <p className="mt-3 font-display text-[32px] leading-none font-semibold tracking-[0.22em] text-[#7a4f17] uppercase">{brand.name}</p>
 

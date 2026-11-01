@@ -1,7 +1,6 @@
 package com.mcreatik.gallery.auth;
 
 import java.io.IOException;
-import java.util.UUID;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -24,8 +23,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.mcreatik.gallery.common.ApiException;
-import com.mcreatik.gallery.storage.StorageArea;
-import com.mcreatik.gallery.storage.StorageService;
 
 /** The logged-in studio's (or super admin's) own account. */
 @RestController
@@ -33,20 +30,15 @@ import com.mcreatik.gallery.storage.StorageService;
 public class AccountController {
 
     static final int MIN_PASSWORD = 10;
-    /** The dashboard sends a resized PNG (<= 800 px); generous room for a JPEG/WebP logo too. */
-    static final int MAX_LOGO_BYTES = 1024 * 1024;
 
     private final AdminAccess access;
     private final PasswordEncoder passwordEncoder;
     private final StudioBranding branding;
-    private final StorageService storage;
 
-    public AccountController(AdminAccess access, PasswordEncoder passwordEncoder, StudioBranding branding,
-                             StorageService storage) {
+    public AccountController(AdminAccess access, PasswordEncoder passwordEncoder, StudioBranding branding) {
         this.access = access;
         this.passwordEncoder = passwordEncoder;
         this.branding = branding;
-        this.storage = storage;
     }
 
     /** {@code brand} is what guests see on this studio's galleries and posters. */
@@ -64,22 +56,15 @@ public class AccountController {
     }
 
     /** Studio name and Instagram (blank Instagram removes it). Fields left out stay as they are. */
-    public record UpdateAccountRequest(@Size(min = 1, max = 120) String displayName, @Size(max = 200) String instagram) {
+    public record UpdateAccountRequest(@Size(min = 1, max = 120) String displayName, @Size(max = 200) String instagram,
+                                       Integer logoScale) {
     }
 
     @PatchMapping
     @Transactional
     public Account update(Authentication auth, @Valid @RequestBody UpdateAccountRequest request) {
         AdminUser user = access.current(auth);
-        if (request.displayName() != null) {
-            if (request.displayName().isBlank()) {
-                throw ApiException.badRequest("INVALID_NAME", "Enter the studio name");
-            }
-            user.rename(request.displayName().trim());
-        }
-        if (request.instagram() != null) {
-            user.setInstagramHandle(StudioBranding.normalizeInstagram(request.instagram()));
-        }
+        branding.edit(user, request.displayName(), request.instagram(), request.logoScale());
         return account(user);
     }
 
@@ -87,22 +72,7 @@ public class AccountController {
     @Transactional
     public Account uploadLogo(Authentication auth, @RequestPart("logo") MultipartFile logo) throws IOException {
         AdminUser user = access.current(auth);
-        byte[] data = logo.getBytes();
-        String type = imageType(data);
-        if (type == null) {
-            throw ApiException.badRequest("UNSUPPORTED_TYPE", "The logo must be a PNG, JPEG or WebP image");
-        }
-        if (data.length > MAX_LOGO_BYTES) {
-            throw ApiException.badRequest("FILE_TOO_LARGE", "The logo must be under 1 MB");
-        }
-        // A new key each time: browsers and the CDN never show a cached old logo.
-        String key = "branding/" + user.getId() + "/logo-" + UUID.randomUUID() + "." + type.substring(6);
-        storage.write(StorageArea.MEDIA, key, data, type);
-        String previous = user.getLogoKey();
-        user.setLogoKey(key);
-        if (previous != null) {
-            storage.delete(StorageArea.MEDIA, previous);
-        }
+        branding.uploadLogo(user, logo.getBytes());
         return account(user);
     }
 
@@ -110,26 +80,8 @@ public class AccountController {
     @Transactional
     public Account removeLogo(Authentication auth) {
         AdminUser user = access.current(auth);
-        if (user.getLogoKey() != null) {
-            storage.delete(StorageArea.MEDIA, user.getLogoKey());
-            user.setLogoKey(null);
-        }
+        branding.removeLogo(user);
         return account(user);
-    }
-
-    /** Content type from the file's first bytes (never trust the declared type). */
-    static String imageType(byte[] d) {
-        if (d.length > 8 && (d[0] & 0xFF) == 0x89 && d[1] == 'P' && d[2] == 'N' && d[3] == 'G') {
-            return "image/png";
-        }
-        if (d.length > 3 && (d[0] & 0xFF) == 0xFF && (d[1] & 0xFF) == 0xD8) {
-            return "image/jpeg";
-        }
-        if (d.length > 12 && d[0] == 'R' && d[1] == 'I' && d[2] == 'F' && d[3] == 'F'
-                && d[8] == 'W' && d[9] == 'E' && d[10] == 'B' && d[11] == 'P') {
-            return "image/webp";
-        }
-        return null;
     }
 
     public record ChangePasswordRequest(@NotBlank @Size(max = 200) String currentPassword,

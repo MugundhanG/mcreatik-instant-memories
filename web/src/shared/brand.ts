@@ -12,6 +12,8 @@ export interface ResolvedBrand {
   /** Studio logo of unknown colours: shown on a light card so it is always readable. */
   heroLogoOnCard: boolean
   posterLogo: string | null
+  /** Poster logo size, percent of the standard 84 px height. */
+  posterLogoScale: number
   /** Client studios' galleries credit McreatiK, which runs the service. */
   poweredByMcreatik: boolean
 }
@@ -22,6 +24,7 @@ export const MCREATIK_BRAND: ResolvedBrand = {
   heroLogo: logoLightUrl,
   heroLogoOnCard: false,
   posterLogo: markUrl,
+  posterLogoScale: 100,
   poweredByMcreatik: false,
 }
 
@@ -33,6 +36,7 @@ export function resolveBrand(brand: Brand | undefined): ResolvedBrand {
     heroLogo: brand.logoUrl,
     heroLogoOnCard: true,
     posterLogo: brand.logoUrl,
+    posterLogoScale: brand.logoScale ?? 100,
     poweredByMcreatik: true,
   }
 }

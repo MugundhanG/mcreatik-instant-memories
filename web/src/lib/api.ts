@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PublicEvent, PublicPhotoPage, Studio, StudioBilling, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PublicEvent, PublicPhotoPage, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export const API_BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
@@ -158,7 +158,7 @@ export const adminApi = {
     request<UploaderCredentials>(`/api/admin/events/${eventId}/uploaders`, { method: 'POST', body: json({ name }) }, true),
   rotateUploader: (uploaderId: string) =>
     request<UploaderCredentials>(`/api/admin/uploaders/${uploaderId}/rotate-token`, { method: 'POST' }, true),
-  updateAccount: (input: { displayName?: string; instagram?: string }) =>
+  updateAccount: (input: { displayName?: string; instagram?: string; logoScale?: number }) =>
     request<Account>('/api/admin/account', { method: 'PATCH', body: json(input) }, true),
   uploadLogo: (png: Blob) => {
     const form = new FormData()
@@ -167,6 +167,15 @@ export const adminApi = {
   },
   removeLogo: () => request<Account>('/api/admin/account/logo', { method: 'DELETE' }, true),
   analytics: (eventId: string) => request<GuestAnalytics>(`/api/admin/events/${eventId}/analytics`, {}, true),
+  /** McreatiK sets up a studio's branding (onboarding). */
+  updateStudioBranding: (studioId: string, input: { displayName?: string; instagram?: string; logoScale?: number }) =>
+    request<Brand>(`/api/admin/studios/${studioId}/branding`, { method: 'PATCH', body: json(input) }, true),
+  uploadStudioLogo: (studioId: string, png: Blob) => {
+    const form = new FormData()
+    form.append('logo', png, 'logo.png')
+    return request<Brand>(`/api/admin/studios/${studioId}/logo`, { method: 'POST', body: form }, true)
+  },
+  removeStudioLogo: (studioId: string) => request<Brand>(`/api/admin/studios/${studioId}/logo`, { method: 'DELETE' }, true),
   billing: () => request<BillingSummary>('/api/admin/billing', {}, true),
   /** The studio paid by UPI: the events are usable at once, McreatiK checks the transaction later. */
   payForEvents: (events: number, utr: string) =>

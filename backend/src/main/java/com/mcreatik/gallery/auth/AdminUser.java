@@ -46,6 +46,10 @@ public class AdminUser {
     @Column(name = "logo_key")
     private String logoKey;
 
+    /** Poster logo size, percent of the standard size (50 to 200). */
+    @Column(name = "logo_scale", nullable = false)
+    private int logoScale = 100;
+
     protected AdminUser() {
     }
 
@@ -103,6 +107,14 @@ public class AdminUser {
 
     public void setLogoKey(String logoKey) {
         this.logoKey = logoKey;
+    }
+
+    public int getLogoScale() {
+        return logoScale;
+    }
+
+    public void setLogoScale(int logoScale) {
+        this.logoScale = logoScale;
     }
 
     public void rename(String displayName) {

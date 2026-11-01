@@ -29,14 +29,15 @@ class StudioBrandingTest extends IntegrationTest {
 
     private static final AtomicInteger IPS = new AtomicInteger();
     private String studio;
+    private String studioId;
 
     @BeforeEach
     void studioLogin() throws Exception {
         String email = "brand-" + UUID.randomUUID().toString().substring(0, 8) + "@client.test";
-        mvc.perform(post("/api/admin/studios").header("Authorization", bearer(adminToken()))
+        studioId = JsonPath.read(mvc.perform(post("/api/admin/studios").header("Authorization", bearer(adminToken()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Lens & Light\",\"email\":\"" + email + "\",\"password\":\"temporary-123\",\"plan\":\"MONTHLY\"}"))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
         int n = IPS.incrementAndGet();
         studio = JsonPath.read(mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\",\"password\":\"temporary-123\"}")
@@ -108,5 +109,39 @@ class StudioBrandingTest extends IntegrationTest {
                         .header("Authorization", bearer(studio)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("UNSUPPORTED_TYPE"));
+    }
+
+    @Test
+    void studiosSizeThePosterLogoAndMcreatikSetsUpBrandingForThem() throws Exception {
+        // The studio makes its poster logo bigger.
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"logoScale\":150}"))
+                .andExpect(jsonPath("$.brand.logoScale").value(150));
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"logoScale\":500}"))
+                .andExpect(status().isBadRequest());
+
+        // McreatiK edits the studio's branding during onboarding; guests see it.
+        mvc.perform(patch("/api/admin/studios/" + studioId + "/branding").header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"Lens & Light Studio\",\"instagram\":\"@lenslight.in\",\"logoScale\":80}"))
+                .andExpect(jsonPath("$.name").value("Lens & Light Studio"))
+                .andExpect(jsonPath("$.instagram").value("lenslight.in"))
+                .andExpect(jsonPath("$.logoScale").value(80));
+        mvc.perform(multipart("/api/admin/studios/" + studioId + "/logo")
+                        .file(new MockMultipartFile("logo", "logo.png", "image/png", png()))
+                        .header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.logoUrl").isNotEmpty());
+        mvc.perform(get("/api/public/events/" + studioEventSlug()))
+                .andExpect(jsonPath("$.brand.name").value("Lens & Light Studio"))
+                .andExpect(jsonPath("$.brand.logoScale").value(80))
+                .andExpect(jsonPath("$.brand.logoUrl").isNotEmpty());
+        mvc.perform(get("/api/admin/studios").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$[?(@.id == '" + studioId + "')].brand.instagram").value("lenslight.in"));
+
+        // Studios cannot edit other studios' branding.
+        mvc.perform(patch("/api/admin/studios/" + studioId + "/branding").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"instagram\":\"x\"}"))
+                .andExpect(status().isForbidden());
     }
 }

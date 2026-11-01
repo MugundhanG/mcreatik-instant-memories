@@ -6,6 +6,7 @@ import { ShutterLoader } from '../shared/ShutterLoader'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
 import { BillingSettingsCard, PaymentsToCheck, StudioPlan } from './BillingAdmin'
 import { PLAN_LABEL } from './plans'
+import { BrandingCard } from './BrandingCard'
 import { SendButtons } from './SendButtons'
 import { temporaryPassword, type Outgoing } from './sendLinks'
 import { useConfirm } from './useConfirm'
@@ -43,6 +44,7 @@ export default function StudiosPage() {
   const [credentials, setCredentials] = useState<Credentials | null>(null)
   const [plan, setPlan] = useState<Plan>('MONTHLY')
   const [billing, setBilling] = useState<Map<string, StudioBilling>>(new Map())
+  const [brandingFor, setBrandingFor] = useState<string | null>(null)
   const [confirm, confirmDialog] = useConfirm()
 
   const load = useCallback(() => {
@@ -166,11 +168,26 @@ export default function StudiosPage() {
                 </div>
                 {!me && (
                   <div className="flex gap-2">
+                    <Button onClick={() => setBrandingFor((id) => (id === s.id ? null : s.id))} aria-expanded={brandingFor === s.id}>Edit branding</Button>
                     <Button onClick={() => resetPassword(s)}>Reset password</Button>
                     <Button variant={s.disabled ? 'secondary' : 'danger'} onClick={() => toggleDisabled(s)}>{s.disabled ? 'Enable' : 'Disable'}</Button>
                   </div>
                 )}
                 {!me && billing.get(s.id) && <StudioPlan billing={billing.get(s.id)!} onChange={load} />}
+                {!me && brandingFor === s.id && s.brand && (
+                  <div className="w-full rounded-xl border border-line p-4">
+                    <BrandingCard
+                      embedded
+                      brand={s.brand}
+                      actions={{
+                        update: (input) => adminApi.updateStudioBranding(s.id, input),
+                        upload: (png) => adminApi.uploadStudioLogo(s.id, png),
+                        remove: () => adminApi.removeStudioLogo(s.id),
+                      }}
+                      onSaved={() => load()}
+                    />
+                  </div>
+                )}
               </li>
             )
           })}

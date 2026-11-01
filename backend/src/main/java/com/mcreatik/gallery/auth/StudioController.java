@@ -1,5 +1,6 @@
 package com.mcreatik.gallery.auth;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -12,17 +13,21 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.mcreatik.gallery.billing.BillingService;
 import com.mcreatik.gallery.common.ApiException;
@@ -34,6 +39,7 @@ import com.mcreatik.gallery.event.EventRepository;
 public class StudioController {
 
     private final BillingService billing;
+    private final StudioBranding branding;
 
     private final AdminUserRepository users;
     private final AdminAccess access;
@@ -41,8 +47,9 @@ public class StudioController {
     private final EventRepository events;
 
     public StudioController(AdminUserRepository users, AdminAccess access, PasswordEncoder passwordEncoder,
-                            EventRepository events, BillingService billing) {
+                            EventRepository events, BillingService billing, StudioBranding branding) {
         this.billing = billing;
+        this.branding = branding;
         this.users = users;
         this.access = access;
         this.passwordEncoder = passwordEncoder;
@@ -50,7 +57,8 @@ public class StudioController {
     }
 
     public record Studio(UUID id, String name, String email, AdminRole role, boolean disabled,
-                         boolean mustChangePassword, Instant createdAt, long events, long photos, long storageBytes) {
+                         boolean mustChangePassword, Instant createdAt, long events, long photos, long storageBytes,
+                         StudioBranding.Brand brand) {
     }
 
     @GetMapping
@@ -65,7 +73,7 @@ public class StudioController {
         return users.findAllByOrderByCreatedAtAsc().stream().map(u -> {
             long[] n = usage.getOrDefault(u.getId(), new long[3]);
             return new Studio(u.getId(), u.getDisplayName(), u.getEmail(), u.getRole(), u.isDisabled(),
-                    u.isMustChangePassword(), u.getCreatedAt(), n[0], n[1], n[2]);
+                    u.isMustChangePassword(), u.getCreatedAt(), n[0], n[1], n[2], branding.of(u));
         }).toList();
     }
 
@@ -91,7 +99,7 @@ public class StudioController {
             billing.updateStudio(studio.getId(), request.plan(), null, null);
         }
         return new Studio(studio.getId(), studio.getDisplayName(), studio.getEmail(), studio.getRole(), false, true,
-                studio.getCreatedAt(), 0, 0, 0);
+                studio.getCreatedAt(), 0, 0, 0, branding.of(studio));
     }
 
     /** Only the fields present change. {@code newPassword}: a new temporary password (forgotten password). */
@@ -117,6 +125,42 @@ public class StudioController {
             studio.setPassword(passwordEncoder.encode(request.newPassword()), true);
         }
         return new Studio(studio.getId(), studio.getDisplayName(), studio.getEmail(), studio.getRole(),
-                studio.isDisabled(), studio.isMustChangePassword(), studio.getCreatedAt(), 0, 0, 0);
+                studio.isDisabled(), studio.isMustChangePassword(), studio.getCreatedAt(), 0, 0, 0, branding.of(studio));
+    }
+
+    // ---- McreatiK sets up a studio's branding (logo, name, Instagram, poster logo size) during onboarding ----
+
+    public record BrandingRequest(String displayName, String instagram, Integer logoScale) {
+    }
+
+    @PatchMapping("/{studioId}/branding")
+    @Transactional
+    public StudioBranding.Brand editBranding(Authentication auth, @PathVariable UUID studioId,
+                                             @RequestBody BrandingRequest request) {
+        AdminUser studio = studio(auth, studioId);
+        branding.edit(studio, request.displayName(), request.instagram(), request.logoScale());
+        return branding.of(studio);
+    }
+
+    @PostMapping(value = "/{studioId}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Transactional
+    public StudioBranding.Brand uploadLogo(Authentication auth, @PathVariable UUID studioId,
+                                           @RequestPart("logo") MultipartFile logo) throws IOException {
+        AdminUser studio = studio(auth, studioId);
+        branding.uploadLogo(studio, logo.getBytes());
+        return branding.of(studio);
+    }
+
+    @DeleteMapping("/{studioId}/logo")
+    @Transactional
+    public StudioBranding.Brand removeLogo(Authentication auth, @PathVariable UUID studioId) {
+        AdminUser studio = studio(auth, studioId);
+        branding.removeLogo(studio);
+        return branding.of(studio);
+    }
+
+    private AdminUser studio(Authentication auth, UUID studioId) {
+        access.requireSuperAdmin(auth);
+        return users.findById(studioId).orElseThrow(() -> ApiException.notFound("Studio"));
     }
 }

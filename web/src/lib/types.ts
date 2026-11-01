@@ -10,6 +10,8 @@ export interface Brand {
   logoUrl: string | null
   instagram: string | null
   mcreatik: boolean
+  /** Poster logo size in percent of the standard size (50–200). */
+  logoScale?: number
 }
 
 export interface PublicEvent {
@@ -84,6 +86,8 @@ export interface Studio {
   events: number
   photos: number
   storageBytes: number
+  /** What guests see on this studio's galleries and posters. */
+  brand?: Brand
 }
 
 export interface EventSummary {
