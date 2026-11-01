@@ -1,7 +1,12 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PublicEvent, PublicPhotoPage, Studio, StudioBilling, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export const API_BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
+
+/** Starts a prepared ZIP download; the server sends it as a file, so this page stays open. */
+export function openZip(zip: { path: string }) {
+  window.location.assign(`${API_BASE_URL}${zip.path}`)
+}
 
 export class ApiError extends Error {
   readonly status: number
@@ -143,12 +148,15 @@ export const adminApi = {
   assignCategory: (eventId: string, photoIds: string[], categoryId: string | null) =>
     request<{ moved: number }>(`/api/admin/events/${eventId}/photos/category`, { method: 'POST', body: json({ photoIds, categoryId }) }, true),
   clients: (eventId: string) => request<EventClient[]>(`/api/admin/events/${eventId}/clients`, {}, true),
-  createClient: (eventId: string, input: { name: string; email: string; password: string }) =>
+  createClient: (eventId: string, input: { name: string; email: string; password: string; phone?: string }) =>
     request<EventClient>(`/api/admin/events/${eventId}/clients`, { method: 'POST', body: json(input) }, true),
-  updateClient: (eventId: string, clientId: string, input: { newPassword?: string; disabled?: boolean }) =>
+  updateClient: (eventId: string, clientId: string, input: { newPassword?: string; disabled?: boolean; phone?: string }) =>
     request<void>(`/api/admin/events/${eventId}/clients/${clientId}`, { method: 'PATCH', body: json(input) }, true),
   deleteClient: (eventId: string, clientId: string) =>
     request<void>(`/api/admin/events/${eventId}/clients/${clientId}`, { method: 'DELETE' }, true),
+  /** Several photos (or the couple's whole album selection) as one ZIP; open it with {@link openZip}. */
+  prepareZip: (eventId: string, input: { photoIds?: string[]; album?: boolean }) =>
+    request<PreparedZip>(`/api/admin/events/${eventId}/downloads`, { method: 'POST', body: json(input) }, true),
   album: (eventId: string) => request<AlbumSelection>(`/api/admin/events/${eventId}/album`, {}, true),
   setAlbumLimit: (eventId: string, limit: number | null) =>
     request<void>(`/api/admin/events/${eventId}/album`, { method: 'PUT', body: json({ limit }) }, true),

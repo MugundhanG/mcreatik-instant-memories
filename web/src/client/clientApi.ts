@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { API_BASE_URL, ApiError } from '../lib/api'
-import type { Brand, Category } from '../lib/types'
+import type { Brand, Category, PreparedZip } from '../lib/types'
 
 /** The couple's portal API (/api/client), with its own login, separate from the studio dashboard. */
 const KEY = 'mcreatik.client.session'
@@ -113,6 +113,9 @@ export const clientApi = {
   },
   select: (photoId: string, selected: boolean) =>
     request<{ selectedCount: number; albumLimit: number | null }>(`/api/client/photos/${photoId}/selected`, { method: 'PUT', body: json({ selected }) }),
+  /** album: the selection; photoIds: these photos; category: an id, 'none' or 'all'. */
+  prepareZip: (input: { album?: boolean; photoIds?: string[]; category?: string }) =>
+    request<PreparedZip>('/api/client/downloads', { method: 'POST', body: json(input) }),
   download: (photoId: string) => request<{ url: string; original: boolean }>(`/api/client/photos/${photoId}/download`),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<void>('/api/client/password', { method: 'POST', body: json({ currentPassword, newPassword }) }),

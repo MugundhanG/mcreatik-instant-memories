@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { PhotoViewer } from '../gallery/PhotoViewer'
-import { adminApi } from '../lib/api'
+import { adminApi, ApiError, openZip } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
 import { downloadPhoto } from '../lib/photoActions'
 import type { AdminPhoto, AdminPhotoQuery, AdminPhotoSort, Category, PhotoFacets, PublicPhoto, UploaderStats } from '../lib/types'
@@ -87,7 +87,7 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
   const [menuId, setMenuId] = useState<string | null>(null)
   const [confirm, confirmDialog] = useConfirm()
   const loadingMore = useRef(false)
-  // Select mode: tick photos, then move them to a category in one go.
+  // Select mode: tick photos, then move them to a category or download them in one go.
   const [selecting, setSelecting] = useState(false)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const categoryName = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories])
@@ -283,6 +283,23 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
     setPicked(new Set())
   }
 
+  /** The ticked photos as one ZIP (originals where kept). */
+  const [zipping, setZipping] = useState(false)
+  const downloadPicked = async () => {
+    const ids = [...picked]
+    if (ids.length === 0) return
+    setZipping(true)
+    try {
+      const zip = await adminApi.prepareZip(eventId, { photoIds: ids })
+      openZip(zip)
+      setNote(`Downloading ${formatCount(zip.photos)} ${zip.photos === 1 ? 'photo' : 'photos'} as ${zip.fileName}`)
+    } catch (err) {
+      setNote(err instanceof ApiError ? err.message : 'Could not start the download. Please try again.')
+    } finally {
+      setZipping(false)
+    }
+  }
+
   /** Optimistic: labels change at once, the server follows. */
   const moveTo = async (categoryId: string | null) => {
     const ids = [...picked]
@@ -371,6 +388,9 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             <option value="none">Not sorted</option>
           </select>
+          <Button onClick={downloadPicked} disabled={picked.size === 0 || zipping}>
+            <DownloadIcon /> {zipping ? 'Preparing…' : 'Download (.zip)'}
+          </Button>
           <Button variant="ghost" onClick={() => setPicked(new Set(photos.map((p) => p.id)))}>Select all shown</Button>
           <Button variant="ghost" onClick={stopSelecting}>Done</Button>
         </div>

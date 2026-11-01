@@ -364,6 +364,9 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
   }
   if ((m = path.match(/^\/api\/admin\/events\/[^/]+\/clients$/)) && method === 'GET') return json([])
   if ((m = path.match(/^\/api\/admin\/events\/[^/]+\/album$/)) && method === 'GET') return json({ limit: null, selected: [] })
+  if ((m = path.match(/^\/api\/admin\/events\/[^/]+\/downloads$/)) && method === 'POST') {
+    return json({ code: 'DEMO', message: 'ZIP downloads work in the real app (not in this demo).' }, 400)
+  }
   if ((m = path.match(/^\/api\/admin\/events\/([^/]+)\/analytics$/))) {
     const e = events.find((x) => x.id === m![1])
     if (!e) return notFound()

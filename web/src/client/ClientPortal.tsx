@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PhotoViewer } from '../gallery/PhotoViewer'
-import { ApiError } from '../lib/api'
+import { ApiError, openZip } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
 import { downloadPhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
@@ -9,6 +9,8 @@ import { PageLoader, ShutterLoader } from '../shared/ShutterLoader'
 import { clientApi, clientSession, type ClientMe, type ClientPhoto } from './clientApi'
 
 const PAGE = 60
+/** The server's limit for one ZIP. */
+const MAX_ZIP = 1000
 /** 'all' | a category id | 'none' (not sorted) | 'album' (the couple's selection) */
 type Tab = string
 
@@ -34,6 +36,10 @@ export default function ClientPortal() {
   const [viewerId, setViewerId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const loadingMore = useRef(false)
+  // Select mode: tick several photos, then download them as one ZIP.
+  const [picking, setPicking] = useState(false)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [zipping, setZipping] = useState(false)
 
   const loadMe = useCallback(() => clientApi.me().then(setMe).catch(() => {}), [])
   useEffect(() => {
@@ -88,6 +94,33 @@ export default function ClientPortal() {
     return () => io.disconnect()
   }, [nextOffset, photos.length])
 
+  const stopPicking = () => {
+    setPicking(false)
+    setPicked(new Set())
+  }
+  const togglePick = (id: string) => setPicked((set) => {
+    const next = new Set(set)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return next
+  })
+
+  /** Several photos as one ZIP file (originals where the studio kept them). */
+  const downloadZip = async (input: { album?: boolean; photoIds?: string[]; category?: string }) => {
+    setZipping(true)
+    setToast('Preparing your download…')
+    try {
+      const zip = await clientApi.prepareZip(input)
+      openZip(zip)
+      setToast(`Downloading ${formatCount(zip.photos)} ${zip.photos === 1 ? 'photo' : 'photos'} as one ZIP file…`)
+      stopPicking()
+    } catch (err) {
+      setToast(err instanceof ApiError ? err.message : 'Could not start the download. Please try again.')
+    } finally {
+      setZipping(false)
+    }
+  }
+
   const changeTab = (t: Tab) => {
     if (t === tab) return
     setLoading(true)
@@ -140,6 +173,8 @@ export default function ClientPortal() {
     { id: 'album', label: '✓ My album', count: me.selectedCount },
   ]
   const full = me.albumLimit !== null && me.selectedCount >= me.albumLimit
+  const current = tabs.find((t) => t.id === tab) ?? tabs[0]
+  const downloadTab = () => downloadZip(tab === 'album' ? { album: true } : { category: tab })
 
   return (
     <div className="min-h-dvh bg-paper">
@@ -181,6 +216,30 @@ export default function ClientPortal() {
       </div>
 
       <main className="mx-auto max-w-6xl px-3 py-4">
+        {!loading && photos.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2" data-testid="download-bar">
+            {picking ? (
+              <>
+                <span className="px-1 text-sm font-medium tabular-nums">{formatCount(picked.size)} picked</span>
+                <button type="button" onClick={() => downloadZip({ photoIds: [...picked] })} disabled={picked.size === 0 || zipping}
+                  className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-40">
+                  Download {picked.size > 0 ? formatCount(picked.size) : ''} (.zip)
+                </button>
+                <button type="button" onClick={() => setPicked(new Set(photos.map((p) => p.id)))} className="rounded-full border border-line bg-white px-4 py-2 text-sm">Pick all shown</button>
+                <button type="button" onClick={stopPicking} className="rounded-full px-3 py-2 text-sm text-muted hover:text-ink">Cancel</button>
+              </>
+            ) : (
+              <>
+                <button type="button" onClick={downloadTab} disabled={zipping || current.count > MAX_ZIP}
+                  className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-40">
+                  {tab === 'album' ? `Download my album (${formatCount(current.count)})` : `Download all ${formatCount(current.count)}${tab === 'all' ? '' : ` in ${current.label}`}`}
+                </button>
+                <button type="button" onClick={() => setPicking(true)} className="rounded-full border border-line bg-white px-4 py-2 text-sm">Select photos to download</button>
+                {current.count > MAX_ZIP && <span className="text-xs text-muted">Too many for one file: download by category.</span>}
+              </>
+            )}
+          </div>
+        )}
         {loading && <ShutterLoader className="py-20" />}
         {!loading && photos.length === 0 && (
           <p className="py-20 text-center text-muted">{tab === 'album' ? 'No photos selected yet. Tap the + on photos you love.' : 'No photos here yet.'}</p>
@@ -188,10 +247,16 @@ export default function ClientPortal() {
         <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-6" data-testid="client-photos">
           {photos.map((p) => (
             <li key={p.id} className="relative aspect-square overflow-hidden rounded-md bg-stone-100">
-              <button type="button" className="block size-full" onClick={() => setViewerId(p.id)} aria-label="Open photo">
-                <img src={p.thumbnailUrl} alt="" loading="lazy" className="size-full object-cover" />
+              <button type="button" className="block size-full" onClick={() => (picking ? togglePick(p.id) : setViewerId(p.id))}
+                aria-label={picking ? (picked.has(p.id) ? 'Unpick photo' : 'Pick photo') : 'Open photo'} aria-pressed={picking ? picked.has(p.id) : undefined}>
+                <img src={p.thumbnailUrl} alt="" loading="lazy" className={`size-full object-cover transition-transform ${picking && picked.has(p.id) ? 'scale-90 rounded-md' : ''}`} />
               </button>
-              <button
+              {picking && (
+                <span className={`pointer-events-none absolute top-1.5 left-1.5 flex size-6 items-center justify-center rounded-full border-2 ${picked.has(p.id) ? 'border-ink bg-ink text-white' : 'border-white bg-black/20'}`} aria-hidden="true">
+                  {picked.has(p.id) && <Check on />}
+                </span>
+              )}
+              {!picking && <button
                 type="button"
                 onClick={() => toggle(p)}
                 aria-pressed={p.selected}
@@ -200,7 +265,7 @@ export default function ClientPortal() {
                 className={`absolute right-1.5 bottom-1.5 flex size-8 items-center justify-center rounded-full shadow-md transition-colors disabled:opacity-40 ${p.selected ? 'bg-emerald-600 text-white' : 'bg-white/90 text-ink'}`}
               >
                 <Check on={p.selected} />
-              </button>
+              </button>}
             </li>
           ))}
         </ul>

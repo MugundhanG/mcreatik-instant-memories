@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mcreatik.gallery.auth.CurrentAdmin;
+import com.mcreatik.gallery.download.ZipDownloads;
+import com.mcreatik.gallery.event.Event;
 import com.mcreatik.gallery.event.EventService;
 
 /** The studio's side: categories, sorting photos into them, client logins and the couple's album selection. */
@@ -27,14 +29,16 @@ public class AlbumAdminController {
 
     private final AlbumService album;
     private final EventService events;
+    private final ZipDownloads downloads;
 
-    public AlbumAdminController(AlbumService album, EventService events) {
+    public AlbumAdminController(AlbumService album, EventService events, ZipDownloads downloads) {
         this.album = album;
         this.events = events;
+        this.downloads = downloads;
     }
 
-    private void owned(Authentication auth, UUID eventId) {
-        events.owned(CurrentAdmin.id(auth), eventId);
+    private Event owned(Authentication auth, UUID eventId) {
+        return events.owned(CurrentAdmin.id(auth), eventId);
     }
 
     @GetMapping("/categories")
@@ -113,5 +117,15 @@ public class AlbumAdminController {
     public void setLimit(Authentication auth, @PathVariable UUID eventId, @RequestBody AlbumDtos.AlbumLimitRequest request) {
         owned(auth, eventId);
         album.setAlbumLimit(eventId, request.limit());
+    }
+
+    /** Selected photos (or the couple's whole album selection) as one ZIP, originals where kept. */
+    @PostMapping("/downloads")
+    public ZipDownloads.Prepared download(Authentication auth, @PathVariable UUID eventId,
+                                          @RequestBody AlbumDtos.DownloadRequest request) {
+        Event event = owned(auth, eventId);
+        boolean wholeAlbum = Boolean.TRUE.equals(request.album());
+        List<UUID> ids = wholeAlbum ? album.selectedPhotoIds(eventId) : request.photoIds();
+        return downloads.prepare(eventId, ids, true, event.getName() + (wholeAlbum ? " album selection" : " photos"));
     }
 }

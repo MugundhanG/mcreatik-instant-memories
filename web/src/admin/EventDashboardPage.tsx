@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
 import { formatBytes, formatCount, formatEventDate, timeAgo } from '../lib/format'
-import type { Category, EventDetail, EventStats, EventStatus } from '../lib/types'
+import type { Category, EventClient, EventDetail, EventStats, EventStatus } from '../lib/types'
 import { ShutterLoader } from '../shared/ShutterLoader'
 import { AnalyticsPanel } from './AnalyticsPanel'
 import { CategoriesCard } from './CategoriesCard'
@@ -28,6 +28,7 @@ export default function EventDashboardPage() {
   const [confirm, confirmDialog] = useConfirm()
 
   const [categories, setCategories] = useState<Category[]>([])
+  const [eventClients, setEventClients] = useState<EventClient[] | null>(null)
   const loadCategories = useCallback(() => adminApi.categories(eventId).then(setCategories).catch(() => {}), [eventId])
   useEffect(() => {
     loadCategories()
@@ -93,6 +94,13 @@ export default function EventDashboardPage() {
               {event.galleryUrl.replace(/^https?:\/\//, '')}
             </Link>
           </p>
+          {eventClients && (
+            <a href="#client-login" className="mt-2 inline-flex flex-wrap items-center gap-x-1.5 rounded-full border border-line bg-white px-3 py-1 text-xs hover:bg-stone-50" data-testid="client-login-chip">
+              {eventClients.length > 0
+                ? <><span className="text-muted">Client login:</span> <b className="font-medium">{eventClients[0].name}</b> · {eventClients[0].email}{eventClients[0].disabled ? ' · turned off' : eventClients[0].lastLoginAt ? ' · active' : ' · not logged in yet'}</>
+                : <span className="text-muted">No client login yet · create one</span>}
+            </a>
+          )}
         </div>
         <label className="flex items-center gap-2 text-sm">
           <span className="text-muted">Status</span>
@@ -146,7 +154,7 @@ export default function EventDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <CategoriesCard eventId={event.id} categories={categories} onChange={loadCategories} />
-        <ClientsCard eventId={event.id} eventName={event.name} refreshKey={stats?.readyPhotos ?? 0} />
+        <ClientsCard eventId={event.id} eventName={event.name} refreshKey={stats?.readyPhotos ?? 0} onClients={setEventClients} />
       </div>
 
       <PhotosPanel

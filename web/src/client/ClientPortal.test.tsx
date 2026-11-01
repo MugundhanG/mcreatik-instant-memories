@@ -30,6 +30,7 @@ function mockApi() {
       return ok({ photos: cat ? all.filter((p) => p.categoryId === cat) : all, nextOffset: null })
     }
     if (method === 'PUT') return ok({ selectedCount: 2, albumLimit: 2 })
+    if (url.pathname === '/api/client/downloads') return ok({ path: '/api/public/downloads/zip_abc', photos: 2, fileName: 'Wedding.zip' })
     return new Response('{}', { status: 404 })
   }))
   return calls
@@ -75,5 +76,28 @@ describe('Client portal', () => {
     expect(calls.find((c) => c.method === 'PUT')?.body).toEqual({ selected: true })
     // The album is full: no more photos can be added until one is removed.
     expect(screen.queryAllByRole('button', { name: 'Add to album' }).every((b) => (b as HTMLButtonElement).disabled)).toBe(true)
+  })
+
+  it('downloads the album, or picked photos, as one ZIP file', async () => {
+    const user = userEvent.setup()
+    const calls = mockApi()
+    const assign = vi.fn()
+    vi.stubGlobal('location', { ...window.location, assign, origin: window.location.origin })
+    clientSession.set({ token: 't', expiresAt: new Date(Date.now() + 3_600_000).toISOString(), name: 'Arun & Priya', mustChangePassword: false })
+    renderPortal()
+    await waitFor(() => expect(within(screen.getByTestId('client-photos')).getAllByRole('listitem')).toHaveLength(3))
+
+    await user.click(within(screen.getByRole('navigation', { name: 'Categories' })).getByRole('button', { name: /My album/ }))
+    await user.click(await screen.findByRole('button', { name: 'Download my album (1)' }))
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('http://localhost:8080/api/public/downloads/zip_abc'))
+    expect(calls.find((c) => c.url.pathname === '/api/client/downloads')?.body).toEqual({ album: true })
+
+    await user.click(within(screen.getByRole('navigation', { name: 'Categories' })).getByRole('button', { name: /^All/ }))
+    await user.click(await screen.findByRole('button', { name: 'Select photos to download' }))
+    const picks = await screen.findAllByRole('button', { name: 'Pick photo' })
+    await user.click(picks[0])
+    await user.click(picks[2])
+    await user.click(screen.getByRole('button', { name: 'Download 2 (.zip)' }))
+    await waitFor(() => expect(calls.filter((c) => c.url.pathname === '/api/client/downloads').at(-1)?.body).toEqual({ photoIds: ['p1', 'p3'] }))
   })
 })
