@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { adminApi, ApiError, openZip } from '../lib/api'
+import { adminApi, ApiError } from '../lib/api'
 import { formatCount, timeAgo } from '../lib/format'
 import type { AlbumSelection, EventClient } from '../lib/types'
 import { saveBlob } from '../shared/saveBlob'
+import { useZipDownload } from '../shared/zipDownload'
+import { ZipProgressCard } from '../shared/ZipProgressCard'
 import { SendButtons } from './SendButtons'
 import { temporaryPassword, type Outgoing } from './sendLinks'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
@@ -42,7 +44,8 @@ export function ClientsCard({ eventId, eventName, refreshKey, onClients }: {
   const [credentials, setCredentials] = useState<Credentials | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
-  const [zipping, setZipping] = useState(false)
+  const zip = useZipDownload()
+  const zipping = zip.busy
   const [confirm, confirmDialog] = useConfirm()
 
   const load = useCallback(() => {
@@ -121,18 +124,10 @@ export function ClientsCard({ eventId, eventName, refreshKey, onClients }: {
     setNote('File names copied: paste them into Lightroom or your album software')
   }
 
-  const downloadAlbum = async () => {
+  /** The couple's whole selection as one ZIP, with a live percentage. */
+  const downloadAlbum = () => {
     setError(null)
-    setZipping(true)
-    try {
-      const zip = await adminApi.prepareZip(eventId, { album: true })
-      openZip(zip)
-      setNote(`Downloading ${formatCount(zip.photos)} photos as ${zip.fileName}`)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start the download')
-    } finally {
-      setZipping(false)
-    }
+    void zip.start(() => adminApi.prepareZip(eventId, { album: true }))
   }
 
   const copyLink = async () => {
@@ -145,6 +140,7 @@ export function ClientsCard({ eventId, eventName, refreshKey, onClients }: {
     <section id="client-login" className="scroll-mt-6">
       <Card title="Client login & album">
         {confirmDialog}
+        <ZipProgressCard status={zip.status} onClose={zip.dismiss} />
 
         {credentials && (
           <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
@@ -246,7 +242,7 @@ export function ClientsCard({ eventId, eventName, refreshKey, onClients }: {
               </ul>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button variant="primary" onClick={downloadAlbum} disabled={zipping}>
-                  {zipping ? 'Preparing…' : `Download all ${formatCount(selectedCount)} (.zip)`}
+                  {zipping ? 'Downloading…' : `Download all ${formatCount(selectedCount)} (.zip)`}
                 </Button>
                 <Button onClick={copyNames}>Copy file names</Button>
                 <Button onClick={() => saveBlob(new Blob([fileNames() + '\n'], { type: 'text/plain' }), `${eventName.replace(/[^\w-]+/g, '-')}-album-selection.txt`)}>

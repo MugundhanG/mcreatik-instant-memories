@@ -76,7 +76,13 @@ class ZipDownloadTest extends IntegrationTest {
                 .content("{\"photoIds\":[\"" + photos.get(0) + "\",\"" + photos.get(1) + "\"]}"));
         assertThat(JsonPath.<Integer>read(prepared, "$.photos")).isEqualTo(2);
         assertThat(JsonPath.<String>read(prepared, "$.fileName")).isEqualTo("Arun-Priya-Wedding-photos.zip");
+        // The app shows a percentage: waiting until the link opens, 100% when every photo is in the ZIP.
+        String progress = JsonPath.read(prepared, "$.progressPath");
+        mvc.perform(get(progress)).andExpect(jsonPath("$.state").value("WAITING"))
+                .andExpect(jsonPath("$.total").value(2)).andExpect(jsonPath("$.percent").value(0));
         assertThat(zipEntries(JsonPath.read(prepared, "$.path"))).containsExactly("IMG_1.JPG", "IMG_1 (2).JPG");
+        mvc.perform(get(progress)).andExpect(jsonPath("$.state").value("DONE"))
+                .andExpect(jsonPath("$.done").value(2)).andExpect(jsonPath("$.percent").value(100));
 
         // The couple selects two photos and downloads their album; the studio can download the same selection.
         String client = JsonPath.read(mvc.perform(post("/api/client/auth/login").contentType(MediaType.APPLICATION_JSON)
@@ -112,6 +118,7 @@ class ZipDownloadTest extends IntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"photoIds\":[\"" + otherPhoto + "\"]}"))
                 .andExpect(status().isNotFound());
         mvc.perform(get("/api/public/downloads/zip_nope")).andExpect(status().isGone());
+        mvc.perform(get("/api/public/downloads/zip_nope/progress")).andExpect(status().isGone());
         mvc.perform(admin(post("/api/admin/events/" + eventId + "/downloads")).content("{\"photoIds\":[]}"))
                 .andExpect(status().isBadRequest());
     }

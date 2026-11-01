@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PhotoViewer } from '../gallery/PhotoViewer'
-import { ApiError, openZip } from '../lib/api'
+import { ApiError } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
 import { downloadPhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
 import { resolveBrand } from '../shared/brand'
 import { PageLoader, ShutterLoader } from '../shared/ShutterLoader'
+import { useZipDownload } from '../shared/zipDownload'
+import { ZipProgressCard } from '../shared/ZipProgressCard'
 import { clientApi, clientSession, type ClientMe, type ClientPhoto } from './clientApi'
 
 const PAGE = 60
@@ -39,7 +41,8 @@ export default function ClientPortal() {
   // Select mode: tick several photos, then download them as one ZIP.
   const [picking, setPicking] = useState(false)
   const [picked, setPicked] = useState<Set<string>>(new Set())
-  const [zipping, setZipping] = useState(false)
+  const zip = useZipDownload()
+  const zipping = zip.busy
 
   const loadMe = useCallback(() => clientApi.me().then(setMe).catch(() => {}), [])
   useEffect(() => {
@@ -105,20 +108,10 @@ export default function ClientPortal() {
     return next
   })
 
-  /** Several photos as one ZIP file (originals where the studio kept them). */
-  const downloadZip = async (input: { album?: boolean; photoIds?: string[]; category?: string }) => {
-    setZipping(true)
-    setToast('Preparing your download…')
-    try {
-      const zip = await clientApi.prepareZip(input)
-      openZip(zip)
-      setToast(`Downloading ${formatCount(zip.photos)} ${zip.photos === 1 ? 'photo' : 'photos'} as one ZIP file…`)
-      stopPicking()
-    } catch (err) {
-      setToast(err instanceof ApiError ? err.message : 'Could not start the download. Please try again.')
-    } finally {
-      setZipping(false)
-    }
+  /** Several photos as one ZIP file (originals where the studio kept them), with a live percentage. */
+  const downloadZip = (input: { album?: boolean; photoIds?: string[]; category?: string }) => {
+    stopPicking()
+    void zip.start(() => clientApi.prepareZip(input))
   }
 
   const changeTab = (t: Tab) => {
@@ -273,7 +266,8 @@ export default function ClientPortal() {
         {nextOffset !== null && !loading && <ShutterLoader label="Loading more" className="py-6 [&_svg]:size-8" />}
       </main>
 
-      {toast && (
+      <ZipProgressCard status={zip.status} onClose={zip.dismiss} />
+      {toast && !zip.status && (
         <div role="status" className="fixed bottom-6 left-1/2 z-[70] w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-ink px-4 py-2.5 text-center text-sm text-white shadow-lg">{toast}</div>
       )}
 

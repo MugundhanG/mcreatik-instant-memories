@@ -23,7 +23,7 @@ public class ZipDownloadController {
     @GetMapping("/api/public/downloads/{token}")
     public void download(@PathVariable String token, HttpServletResponse response) throws IOException {
         ZipDownloads.Job job = downloads.job(token);
-        downloads.acquire();
+        downloads.acquire(job);
         try {
             response.setContentType("application/zip");
             response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
@@ -33,5 +33,11 @@ public class ZipDownloadController {
         } finally {
             downloads.release();
         }
+    }
+
+    /** How far the ZIP is, for the percentage in the app (polled about once a second). */
+    @GetMapping("/api/public/downloads/{token}/progress")
+    public ZipDownloads.Progress progress(@PathVariable String token) {
+        return downloads.progress(token);
     }
 }

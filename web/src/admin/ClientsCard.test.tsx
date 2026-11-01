@@ -21,7 +21,8 @@ function mockApi(clients: EventClient[]) {
     if (url.pathname.endsWith('/clients') && method === 'GET') return ok(clients)
     if (url.pathname.endsWith('/clients') && method === 'POST') return ok(couple, 201)
     if (url.pathname.endsWith('/album')) return ok({ limit: null, selected: [{ photoId: 'p1', fileName: 'IMG_1.JPG', thumbnailUrl: null, selectedAt: '', selectedBy: 'Arun & Priya', categoryId: null }] })
-    if (url.pathname.endsWith('/downloads')) return ok({ path: '/api/public/downloads/zip_x', photos: 1, fileName: 'W-album.zip' })
+    if (url.pathname.endsWith('/downloads')) return ok({ path: '/api/public/downloads/zip_x', progressPath: '/api/public/downloads/zip_x/progress', photos: 1, fileName: 'W-album.zip' })
+    if (url.pathname.endsWith('/progress')) return ok({ state: 'DONE', done: 1, total: 1, percent: 100 })
     return new Response(null, { status: 204 })
   }))
   return calls
@@ -64,5 +65,6 @@ describe('Client login card', () => {
     await user.click(screen.getByRole('button', { name: 'Download all 1 (.zip)' }))
     await waitFor(() => expect(assign).toHaveBeenCalledWith('http://localhost:8080/api/public/downloads/zip_x'))
     expect(calls.find((c) => c.path.endsWith('/downloads'))?.body).toEqual({ album: true })
+    expect(await screen.findByText('Download complete ✓', {}, { timeout: 3000 })).toBeInTheDocument()
   })
 })

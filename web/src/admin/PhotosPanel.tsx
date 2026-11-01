@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { PhotoViewer } from '../gallery/PhotoViewer'
-import { adminApi, ApiError, openZip } from '../lib/api'
+import { adminApi } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
 import { downloadPhoto } from '../lib/photoActions'
 import type { AdminPhoto, AdminPhotoQuery, AdminPhotoSort, Category, PhotoFacets, PublicPhoto, UploaderStats } from '../lib/types'
 import { DownloadIcon, EyeIcon, HeartIcon, MoreIcon, StarIcon, TrashIcon } from './icons'
 import { Button, Card } from './ui'
+import { useZipDownload } from '../shared/zipDownload'
+import { ZipProgressCard } from '../shared/ZipProgressCard'
 import { useConfirm } from './useConfirm'
 
 const statusLabel: Record<AdminPhoto['status'], string> = {
@@ -283,21 +285,13 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
     setPicked(new Set())
   }
 
-  /** The ticked photos as one ZIP (originals where kept). */
-  const [zipping, setZipping] = useState(false)
-  const downloadPicked = async () => {
+  /** The ticked photos as one ZIP (originals where kept), with a live percentage. */
+  const zip = useZipDownload()
+  const zipping = zip.busy
+  const downloadPicked = () => {
     const ids = [...picked]
     if (ids.length === 0) return
-    setZipping(true)
-    try {
-      const zip = await adminApi.prepareZip(eventId, { photoIds: ids })
-      openZip(zip)
-      setNote(`Downloading ${formatCount(zip.photos)} ${zip.photos === 1 ? 'photo' : 'photos'} as ${zip.fileName}`)
-    } catch (err) {
-      setNote(err instanceof ApiError ? err.message : 'Could not start the download. Please try again.')
-    } finally {
-      setZipping(false)
-    }
+    void zip.start(() => adminApi.prepareZip(eventId, { photoIds: ids }))
   }
 
   /** Optimistic: labels change at once, the server follows. */
@@ -374,6 +368,7 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
         {!selecting && photos.length > 0 && <Button onClick={() => setSelecting(true)}>Select</Button>}
       </div>
 
+      <ZipProgressCard status={zip.status} onClose={zip.dismiss} />
       {selecting && (
         <div className="sticky top-2 z-20 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white p-2.5 shadow-md" data-testid="select-bar">
           <span className="px-1 text-sm font-medium tabular-nums">{formatCount(picked.size)} selected</span>
@@ -389,7 +384,7 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
             <option value="none">Not sorted</option>
           </select>
           <Button onClick={downloadPicked} disabled={picked.size === 0 || zipping}>
-            <DownloadIcon /> {zipping ? 'Preparing…' : 'Download (.zip)'}
+            <DownloadIcon /> {zipping ? 'Downloading…' : 'Download (.zip)'}
           </Button>
           <Button variant="ghost" onClick={() => setPicked(new Set(photos.map((p) => p.id)))}>Select all shown</Button>
           <Button variant="ghost" onClick={stopSelecting}>Done</Button>
