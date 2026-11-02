@@ -8,6 +8,7 @@ import { PhotoGrid } from './PhotoGrid'
 import { resolveBrand } from '../shared/brand'
 import { PageLoader, ShutterLoader } from '../shared/ShutterLoader'
 import { InstagramIcon, InstagramLink } from '../shared/StudioLogo'
+import { GalleryUnavailable } from '../shared/GalleryUnavailable'
 import { removalRequestLink } from '../shared/privacy'
 import { PhotoViewer } from './PhotoViewer'
 import { useLiveGallery } from './useLiveGallery'
@@ -83,6 +84,10 @@ export default function GalleryPage() {
     return (
       <PageLoader label="Loading gallery" />
     )
+  }
+
+  if (status === 'unavailable') {
+    return <GalleryUnavailable message={gallery.unavailableMessage ?? 'Please contact your photographer.'} />
   }
 
   if (status === 'not-found' || status === 'error' || !event) {

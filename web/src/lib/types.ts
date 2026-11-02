@@ -121,6 +121,9 @@ export interface EventDetail {
   ownerId: string
   ownerName: string | null
   brand?: Brand
+  /** McreatiK (super admin) can turn these off; the studio only sees them. */
+  liveGalleryEnabled?: boolean
+  clientGalleryEnabled?: boolean
 }
 
 export interface UploaderStats {

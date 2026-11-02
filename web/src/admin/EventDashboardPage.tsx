@@ -7,6 +7,7 @@ import { ShutterLoader } from '../shared/ShutterLoader'
 import { AnalyticsPanel } from './AnalyticsPanel'
 import { CategoriesCard } from './CategoriesCard'
 import { ClientsCard } from './ClientsCard'
+import { GalleryAccessCard, GalleryAccessNotice } from './GalleryAccessCard'
 import { useSession } from './auth'
 import { PhotosPanel } from './PhotosPanel'
 import { QrPanel } from './QrPanel'
@@ -110,6 +111,7 @@ export default function EventDashboardPage() {
         </label>
       </div>
       <ErrorText>{error}</ErrorText>
+      {superAdmin ? <GalleryAccessCard event={event} onChange={setEvent} /> : <GalleryAccessNotice event={event} />}
 
       {stats && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" data-testid="event-stats">

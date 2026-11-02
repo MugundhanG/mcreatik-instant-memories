@@ -58,9 +58,10 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    /** Studio and client logins share the strict brute-force limit. */
+    /** Studio and client logins (and their "forgot password") share the strict brute-force limit. */
     private static boolean isLogin(String path) {
-        return path.equals("/api/auth/login") || path.equals("/api/client/auth/login");
+        return path.equals("/api/auth/login") || path.equals("/api/client/auth/login")
+                || path.equals("/api/auth/forgot-password") || path.equals("/api/client/auth/forgot-password");
     }
 
     @Scheduled(fixedDelay = 300_000)

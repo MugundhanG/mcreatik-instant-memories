@@ -50,7 +50,12 @@ public final class EventDtos {
     public record EventDetail(UUID id, String name, String slug, LocalDate eventDate, Instant startTime,
                               Instant endTime, EventStatus status, UUID coverPhotoId, String coverUrl,
                               String galleryUrl, LocalDate retentionUntil, Instant createdAt, Instant updatedAt,
-                              UUID ownerId, String ownerName, StudioBranding.Brand brand) {
+                              UUID ownerId, String ownerName, StudioBranding.Brand brand,
+                              boolean liveGalleryEnabled, boolean clientGalleryEnabled) {
+    }
+
+    /** McreatiK only: turn the guests' gallery and/or the couple's gallery on or off. Null leaves it as is. */
+    public record GalleryAccessRequest(Boolean liveGallery, Boolean clientGallery) {
     }
 
     public record UploaderStats(UUID id, String name, UploaderStatus status, Instant lastSeenAt,

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router'
 import { ApiError } from '../lib/api'
+import { ForgotPassword } from '../shared/ForgotPassword'
 import { clientApi, clientSession, useClientSession } from './clientApi'
 import ClientPortal from './ClientPortal'
 
@@ -26,7 +27,15 @@ function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [forgot, setForgot] = useState(false)
   if (session) return <Navigate to="/client" replace />
+  if (forgot) {
+    return (
+      <Shell title="Forgot password" subtitle="We'll email you a temporary password.">
+        <ForgotPassword request={clientApi.forgotPassword} initialEmail={email} onBack={() => setForgot(false)} />
+      </Shell>
+    )
+  }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -53,6 +62,9 @@ function LoginPage() {
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         <button type="submit" disabled={busy} className="h-11 w-full rounded-xl bg-ink text-sm font-medium text-white disabled:opacity-60">
           {busy ? 'Logging in…' : 'Log in'}
+        </button>
+        <button type="button" onClick={() => setForgot(true)} className="w-full text-center text-sm text-muted underline underline-offset-2 hover:text-ink">
+          Forgot password?
         </button>
       </form>
     </Shell>

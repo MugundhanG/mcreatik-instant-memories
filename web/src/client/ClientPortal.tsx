@@ -5,6 +5,7 @@ import { formatCount, formatEventDate } from '../lib/format'
 import { downloadPhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
 import { resolveBrand } from '../shared/brand'
+import { GalleryUnavailable } from '../shared/GalleryUnavailable'
 import { PageLoader, ShutterLoader } from '../shared/ShutterLoader'
 import { useZipDownload } from '../shared/zipDownload'
 import { ZipProgressCard } from '../shared/ZipProgressCard'
@@ -44,7 +45,11 @@ export default function ClientPortal() {
   const zip = useZipDownload()
   const zipping = zip.busy
 
-  const loadMe = useCallback(() => clientApi.me().then(setMe).catch(() => {}), [])
+  // McreatiK may have turned this gallery off: show why instead of loading forever.
+  const [closed, setClosed] = useState<string | null>(null)
+  const loadMe = useCallback(() => clientApi.me().then(setMe).catch((err) => {
+    if (err instanceof ApiError && err.code === 'GALLERY_UNAVAILABLE') setClosed(err.message)
+  }), [])
   useEffect(() => {
     loadMe()
   }, [loadMe])
@@ -157,6 +162,13 @@ export default function ClientPortal() {
   const viewerIndex = viewerId ? photos.findIndex((p) => p.id === viewerId) : -1
   const byId = useMemo(() => new Map(photos.map((p) => [p.id, p])), [photos])
 
+  if (closed) {
+    return (
+      <GalleryUnavailable message={closed}>
+        <button type="button" onClick={clientSession.signOut} className="mt-6 rounded-full border border-ink px-5 py-2 text-sm">Log out</button>
+      </GalleryUnavailable>
+    )
+  }
   if (!me) return <PageLoader label="Loading your photos" />
   const brand = resolveBrand(me.event.brand)
   const tabs: { id: Tab; label: string; count: number }[] = [

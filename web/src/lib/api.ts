@@ -93,6 +93,12 @@ export interface UpdateEventInput {
 }
 
 export const adminApi = {
+  /** Emails a temporary password if the account exists; the answer is the same either way. */
+  forgotPassword: (email: string) =>
+    request<void>('/api/auth/forgot-password', { method: 'POST', body: json({ email }) }),
+  /** McreatiK only: turn the guests' gallery and the couple's gallery on or off. */
+  setGalleryAccess: (eventId: string, access: { liveGallery?: boolean; clientGallery?: boolean }) =>
+    request<EventDetail>(`/api/admin/events/${eventId}/access`, { method: 'PATCH', body: json(access) }, true),
   login: (email: string, password: string) =>
     request<LoginResponse>('/api/auth/login', { method: 'POST', body: json({ email, password }) }),
   events: () => request<EventSummary[]>('/api/admin/events', {}, true),

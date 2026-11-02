@@ -60,12 +60,17 @@ public class ClientController {
     private final StudioBranding branding;
     private final EntityManager em;
     private final ZipDownloads downloads;
+    private final com.mcreatik.gallery.auth.PasswordResets resets;
+    /** Used to keep login timing similar whether or not the email exists. */
+    private final String dummyHash;
 
     public ClientController(JdbcTemplate jdbc, PasswordEncoder passwordEncoder, JwtService jwt, AlbumService album,
                             EventRepository events, EventService eventService, PhotoRepository photos,
                             PhotoMapper mapper, StorageService storage, StudioBranding branding, EntityManager em,
-                            ZipDownloads downloads) {
+                            ZipDownloads downloads, com.mcreatik.gallery.auth.PasswordResets resets) {
         this.downloads = downloads;
+        this.resets = resets;
+        this.dummyHash = passwordEncoder.encode("timing-equaliser");
         this.jdbc = jdbc;
         this.passwordEncoder = passwordEncoder;
         this.jwt = jwt;
@@ -80,15 +85,22 @@ public class ClientController {
     }
 
     record ClientRow(UUID id, UUID eventId, String name, String email, String passwordHash, boolean mustChange,
-                     boolean disabled, int tokenVersion) {
+                     boolean disabled, int tokenVersion, String resetHash, Instant resetExpiresAt) {
+
+        /** The emailed temporary password's hash while it is still valid, else null. */
+        String validResetHash(Instant now) {
+            return resetHash != null && resetExpiresAt != null && resetExpiresAt.isAfter(now) ? resetHash : null;
+        }
     }
 
     private ClientRow row(String where, Object arg) {
         List<ClientRow> rows = jdbc.query("""
-                SELECT id, event_id, name, email, password_hash, must_change_password, disabled, token_version
+                SELECT id, event_id, name, email, password_hash, must_change_password, disabled, token_version,
+                       reset_password_hash, reset_expires_at
                 FROM event_clients WHERE %s""".formatted(where), (rs, n) -> new ClientRow(
                 rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getString(3), rs.getString(4),
-                rs.getString(5), rs.getBoolean(6), rs.getBoolean(7), rs.getInt(8)), arg);
+                rs.getString(5), rs.getBoolean(6), rs.getBoolean(7), rs.getInt(8), rs.getString(9),
+                rs.getTimestamp(10) == null ? null : rs.getTimestamp(10).toInstant()), arg);
         return rows.isEmpty() ? null : rows.getFirst();
     }
 
@@ -107,6 +119,9 @@ public class ClientController {
         if (e.getStatus() == com.mcreatik.gallery.event.EventStatus.ARCHIVED) {
             throw ApiException.notFound("Event");
         }
+        if (!e.isClientGalleryEnabled()) {
+            throw eventService.galleryUnavailable(e);
+        }
         return e;
     }
 
@@ -120,15 +135,46 @@ public class ClientController {
     public LoginResponse login(@RequestBody LoginRequest request) {
         String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
         ClientRow c = row("email = ?", email);
-        if (c == null || request.password() == null || !passwordEncoder.matches(request.password(), c.passwordHash())) {
+        String password = request.password() == null ? "" : request.password();
+        boolean matches = passwordEncoder.matches(password, c != null ? c.passwordHash() : dummyHash);
+        // "Forgot password": the emailed temporary password works too, until it expires.
+        String resetHash = c == null || matches ? null : c.validResetHash(Instant.now());
+        boolean temporary = resetHash != null && passwordEncoder.matches(password, resetHash);
+        if (c == null || !(matches || temporary)) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Email or password is not correct");
         }
         if (c.disabled()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_DISABLED", "This login has been turned off by the studio");
         }
+        event(c); // McreatiK may have turned this event's client gallery off
+        int version = c.tokenVersion();
+        boolean mustChange = c.mustChange();
+        if (temporary) {
+            // The temporary password becomes the password (other devices are logged out) and must be replaced now.
+            jdbc.update("""
+                    UPDATE event_clients SET password_hash = reset_password_hash, must_change_password = true,
+                        token_version = token_version + 1, reset_password_hash = NULL, reset_expires_at = NULL
+                    WHERE id = ?""", c.id());
+            version++;
+            mustChange = true;
+        } else if (c.resetHash() != null) {
+            jdbc.update("UPDATE event_clients SET reset_password_hash = NULL, reset_expires_at = NULL WHERE id = ?", c.id());
+        }
         jdbc.update("UPDATE event_clients SET last_login_at = now() WHERE id = ?", c.id());
-        JwtService.IssuedToken token = jwt.issueClient(c.id(), c.eventId(), c.email(), c.tokenVersion());
-        return new LoginResponse(token.token(), token.expiresAt(), c.name(), c.mustChange());
+        JwtService.IssuedToken token = jwt.issueClient(c.id(), c.eventId(), c.email(), version);
+        return new LoginResponse(token.token(), token.expiresAt(), c.name(), mustChange);
+    }
+
+    public record ForgotPasswordRequest(String email) {
+    }
+
+    /** "Forgot password": always 204, whether or not the email has a login. */
+    @PostMapping("/auth/forgot-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        if (request.email() != null && request.email().length() <= 255) {
+            resets.requestForClient(request.email());
+        }
     }
 
     public record EventInfo(String name, java.time.LocalDate eventDate, String coverUrl, StudioBranding.Brand brand) {

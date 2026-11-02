@@ -89,3 +89,10 @@ gallery:
       originals-bucket: ${R2_ORIGINALS_BUCKET:mcreatik-instant-memories-originals}
       media-bucket: ${R2_MEDIA_BUCKET:mcreatik-instant-memories-media}
       media-public-base-url: ${R2_MEDIA_PUBLIC_BASE_URL:}
+  mail:
+    # Gmail / Google Workspace SMTP for "Forgot password" emails, sent from connect@mcreatik.com (app password).
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    from: ${MAIL_FROM:McreatiK <connect@mcreatik.com>}

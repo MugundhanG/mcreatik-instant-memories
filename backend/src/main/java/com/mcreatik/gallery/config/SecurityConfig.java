@@ -87,7 +87,7 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/client/auth/login").permitAll()
+                        .requestMatchers("/api/client/auth/login", "/api/client/auth/forgot-password").permitAll()
                         .anyRequest().hasAuthority("SCOPE_client"))
                 .oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()))
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))

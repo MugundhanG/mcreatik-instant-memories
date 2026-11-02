@@ -337,6 +337,7 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
   if (path === '/api/admin/account' && method === 'GET') {
     return json({ email: 'demo@mcreatik.com', displayName: 'Demo', role: 'SUPER_ADMIN', mustChangePassword: false })
   }
+  if ((path === '/api/auth/forgot-password' || path === '/api/client/auth/forgot-password') && method === 'POST') return new Response(null, { status: 204 })
   if (path === '/api/admin/account/password' && method === 'POST') return new Response(null, { status: 204 })
   if (path === '/api/admin/studios' && method === 'GET') {
     const photos = events.reduce((n, e) => n + e.photos.length, 0)

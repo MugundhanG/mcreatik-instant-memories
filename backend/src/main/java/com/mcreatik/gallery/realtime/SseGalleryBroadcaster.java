@@ -82,6 +82,26 @@ public class SseGalleryBroadcaster implements GalleryBroadcaster {
     }
 
     @Override
+    public void galleryClosed(UUID eventId, String message) {
+        Set<SseEmitter> set = subscribers.remove(eventId);
+        if (set == null) {
+            return;
+        }
+        var data = SseEmitter.event().name("GALLERY_CLOSED").data(Map.of("message", message), MediaType.APPLICATION_JSON).build();
+        for (SseEmitter emitter : set) {
+            // Each stream ends only after its "closed" message has gone out.
+            sender.execute(() -> {
+                try {
+                    emitter.send(data);
+                    emitter.complete();
+                } catch (IOException | IllegalStateException e) {
+                    emitter.completeWithError(e);
+                }
+            });
+        }
+    }
+
+    @Override
     public int subscriberCount(UUID eventId) {
         Set<SseEmitter> set = subscribers.get(eventId);
         return set == null ? 0 : set.size();
