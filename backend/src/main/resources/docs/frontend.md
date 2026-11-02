@@ -102,7 +102,7 @@ flowchart LR
 | `NewEventPage` | Create event; a 402 opens `BuyEventsDialog` (UPI) |
 | `EventDashboardPage` | Hub for one event: header (status menu, Copy link, QR) and tabs Overview / Photos / Guests / Couple / Settings kept in `?tab=`. Every tab stays mounted (only hidden) so uploads and ZIPs keep going. Refreshes stats on a timer and passes `refreshKey` down |
 | `UploadPhotosPanel` + `prepareUpload.ts` | Browser upload queue; resizes to 2048 / 640 px, reads the EXIF date |
-| `PhotosPanel` | Filters, select mode, move, ZIP. Each tile shows Like and Hide; Download, Make cover, Download original and Delete sit under More |
+| `PhotosPanel` | Filters and photo tiles (Like and Hide on the tile; Download, Make cover, Download original and Delete under More). Select mode: select all / clear, move to category, Like or Unlike, Hide or Show, Download ZIP, Delete, each one request (`adminApi.bulkPhotos`) |
 | `ClientsCard` | The couple's single login, album limit, picks, album ZIP |
 | `AnalyticsPanel` | Guest numbers and an hourly chart; refreshes every 30 s while live |
 | `GalleryAccessCard` | McreatiK-only guest and couple gallery switches |
@@ -123,6 +123,7 @@ flowchart LR
 
 - **Forms:** controlled inputs with native rules (`required`, `type="email"`, `minLength`) plus a few code checks. The server re-checks everything; its message is shown through `ApiError`.
 - **Errors:** inline `ErrorText`; full-screen states for not found, unavailable and error with retry; `ShutterLoader` and `PageLoader` while loading.
+- **Motion:** short CSS animations in `index.css` (`anim-fade-in`, `anim-pop-in/out`, `anim-dialog-in/out`, `anim-sheet-up`, `anim-drop-in/out`, `lift`), off under `prefers-reduced-motion`. `shared/usePresence.ts` keeps a closing menu or dialog on screen for its exit animation.
 - **Styling:** Tailwind CSS 4 with tokens in `index.css` `@theme` (`paper`, `ink`, `muted`, `line`, `live`). Mobile first with `sm:` and `lg:` breakpoints; `resolveBrand()` switches between the McreatiK and studio look.
 
 ## Tests

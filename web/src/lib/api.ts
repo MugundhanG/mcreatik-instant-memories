@@ -1,6 +1,8 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
 import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, DocPage, DocPageSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Studio, StudioBilling, UploaderCredentials } from './types'
 
+export type BulkPhotoAction = 'LIKE' | 'UNLIKE' | 'HIDE' | 'SHOW' | 'DELETE'
+
 export const API_BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
 /** Starts a prepared ZIP download; the server sends it as a file, so this page stays open. */
@@ -156,6 +158,9 @@ export const adminApi = {
   /** categoryId null: back to "not sorted". */
   assignCategory: (eventId: string, photoIds: string[], categoryId: string | null) =>
     request<{ moved: number }>(`/api/admin/events/${eventId}/photos/category`, { method: 'POST', body: json({ photoIds, categoryId }) }, true),
+  /** Like, hide or delete many photos of one event at once (Select mode). */
+  bulkPhotos: (eventId: string, photoIds: string[], action: BulkPhotoAction) =>
+    request<{ changed: number }>(`/api/admin/events/${eventId}/photos/bulk`, { method: 'POST', body: json({ photoIds, action }) }, true),
   clients: (eventId: string) => request<EventClient[]>(`/api/admin/events/${eventId}/clients`, {}, true),
   createClient: (eventId: string, input: { name: string; email: string; password: string; phone?: string }) =>
     request<EventClient>(`/api/admin/events/${eventId}/clients`, { method: 'POST', body: json(input) }, true),

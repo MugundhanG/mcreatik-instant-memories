@@ -35,4 +35,9 @@ public interface StorageService {
     void delete(StorageArea area, String key);
 
     void deletePrefix(StorageArea area, String prefix);
+
+    /** Deletes many objects; implementations may batch (R2 removes up to 1,000 per call). */
+    default void deleteAll(StorageArea area, java.util.Collection<String> keys) {
+        keys.forEach(k -> delete(area, k));
+    }
 }

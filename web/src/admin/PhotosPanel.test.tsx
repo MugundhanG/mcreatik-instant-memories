@@ -30,6 +30,7 @@ function mockApi(pages: (q: URLSearchParams) => { photos: AdminPhoto[]; nextOffs
     calls.push({ method, url, body })
     const ok = (data: unknown) => new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } })
     if (url.pathname.endsWith('/photo-facets')) return ok({ days: [{ day: '2026-10-24', photos: 3 }], liked: 0, hidden: 0 })
+    if (url.pathname.endsWith('/photos/bulk')) return ok({ changed: (body as { photoIds: string[] }).photoIds.length })
     if (url.pathname.endsWith('/photos')) return ok(pages(url.searchParams))
     if (method === 'PATCH') return ok({ ...adminPhoto(Number(url.pathname.split('/p').pop())), ...(body as object) })
     if (method === 'DELETE') return new Response(null, { status: 204 })
@@ -178,5 +179,60 @@ describe('Dashboard photos', () => {
 
     await user.click(screen.getByRole('button', { name: 'Load more' }))
     await waitFor(() => expect(api.listings().at(-1)!.url.searchParams.get('offset')).toBe('3'))
+  })
+
+  describe('Select mode', () => {
+    const three = () => ({ photos: [adminPhoto(1), adminPhoto(2, { liked: true }), adminPhoto(3, { liked: true })], nextOffset: null })
+    const bar = () => screen.getByTestId('select-bar')
+
+    it('selects all shown and clears the selection again', async () => {
+      const user = userEvent.setup()
+      mockApi(three)
+      renderPanel()
+      await screen.findAllByRole('listitem')
+      await user.click(screen.getByRole('button', { name: 'Select' }))
+      expect(within(bar()).queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument()
+      await user.click(within(bar()).getByRole('button', { name: 'Select all' }))
+      expect(bar()).toHaveTextContent('3 selected')
+      expect(within(bar()).queryByRole('button', { name: 'Select all' })).not.toBeInTheDocument()
+      await user.click(within(bar()).getByRole('button', { name: 'Clear' }))
+      expect(bar()).toHaveTextContent('0 selected')
+      expect(within(bar()).getByRole('button', { name: /Delete/ })).toBeDisabled()
+    })
+
+    it('likes the picked photos in one request, and offers Unlike when all are liked', async () => {
+      const user = userEvent.setup()
+      const api = mockApi(three)
+      renderPanel()
+      await screen.findAllByRole('listitem')
+      await user.click(screen.getByRole('button', { name: 'Select' }))
+      await user.click(screen.getByRole('button', { name: 'Select IMG_2.JPG' }))
+      await user.click(screen.getByRole('button', { name: 'Select IMG_3.JPG' }))
+      // Both picked photos are already liked.
+      await user.click(within(bar()).getByRole('button', { name: /Unlike/ }))
+      await user.click(screen.getByRole('button', { name: 'Select IMG_1.JPG' }))
+      await user.click(within(bar()).getByRole('button', { name: /^Like$/ }))
+      await waitFor(() => expect(api.calls.filter((c) => c.url.pathname.endsWith('/bulk')).map((c) => c.body)).toEqual([
+        { photoIds: ['p2', 'p3'], action: 'UNLIKE' },
+        { photoIds: ['p2', 'p3', 'p1'], action: 'LIKE' },
+      ]))
+      expect(within(screen.getByTestId('admin-photos')).getAllByRole('button', { name: 'Unlike' })).toHaveLength(3) // every tile shows it liked
+      expect(within(bar()).getByRole('button', { name: /Unlike/ })).toBeInTheDocument()
+    })
+
+    it('deletes the picked photos after confirming', async () => {
+      const user = userEvent.setup()
+      const api = mockApi(three)
+      const { onPhotosChanged } = renderPanel()
+      await screen.findAllByRole('listitem')
+      await user.click(screen.getByRole('button', { name: 'Select' }))
+      await user.click(screen.getByRole('button', { name: 'Select IMG_1.JPG' }))
+      await user.click(screen.getByRole('button', { name: 'Select IMG_3.JPG' }))
+      await user.click(within(bar()).getByRole('button', { name: /Delete/ }))
+      await user.click(await screen.findByRole('button', { name: 'Delete 2 photos' }))
+      await waitFor(() => expect(tiles()).toHaveLength(1))
+      expect(api.calls.find((c) => c.url.pathname.endsWith('/bulk'))?.body).toEqual({ photoIds: ['p1', 'p3'], action: 'DELETE' })
+      await waitFor(() => expect(onPhotosChanged).toHaveBeenCalled())
+    })
   })
 })

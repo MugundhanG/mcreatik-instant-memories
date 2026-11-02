@@ -71,6 +71,7 @@ There is no delete endpoint for studios; they are only disabled.
 | POST | `/api/admin/events/{eventId}/photos` | Admin | Multipart web + thumbnail + metadata (12 MB max) |
 | POST | `/api/admin/events/{eventId}/original-uploads` | Admin | Presigned PUT for an original |
 | POST | `/api/admin/events/{eventId}/photos/{photoId}/original` | Admin | Confirm original arrived |
+| POST | `/api/admin/events/{eventId}/photos/bulk` | Admin | `{photoIds[] (max 1,000), action: LIKE \| UNLIKE \| HIDE \| SHOW \| DELETE}` → `{changed}`; only this event's photos; files removed in batches after commit |
 | PATCH | `/api/admin/photos/{photoId}` | Admin | `{hidden?, liked?}` |
 | GET | `/api/admin/photos/{photoId}/original` | Admin | `{url}` valid 5 minutes |
 | DELETE | `/api/admin/photos/{photoId}` | Admin | Also sends `PHOTO_REMOVED` |

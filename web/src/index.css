@@ -104,3 +104,41 @@ select:focus-visible {
   outline-offset: 1px;
   box-shadow: none;
 }
+
+/*
+ * Open/close motion for menus, dialogs, sheets and panels. Short (≤ 220 ms) and eased, so the app feels smooth
+ * without making anyone wait. Exit classes are used with shared/usePresence.ts, which keeps an element on screen
+ * just long enough to play them.
+ * Entrances use fill-mode `backwards`: once finished they leave no style behind. (`both` would keep the element a
+ * stacking context, trapping full-screen dialogs inside it under the sticky tab bar.)
+ */
+:root {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes anim-fade-in { from { opacity: 0; } }
+@keyframes anim-fade-out { to { opacity: 0; } }
+@keyframes anim-pop-in { from { opacity: 0; transform: translateY(-4px) scale(0.97); } }
+@keyframes anim-pop-out { to { opacity: 0; transform: translateY(-4px) scale(0.97); } }
+@keyframes anim-dialog-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } }
+@keyframes anim-dialog-out { to { opacity: 0; transform: translateY(6px) scale(0.98); } }
+@keyframes anim-rise-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes anim-drop-in { from { opacity: 0; transform: translateY(-8px); } }
+@keyframes anim-drop-out { to { opacity: 0; transform: translateY(-8px); } }
+
+.anim-fade-in { animation: anim-fade-in 200ms var(--ease-out) backwards; }
+.anim-fade-out { animation: anim-fade-out 160ms ease-in both; }
+.anim-pop-in { animation: anim-pop-in 160ms var(--ease-out) backwards; transform-origin: top; }
+.anim-pop-out { animation: anim-pop-out 130ms ease-in both; transform-origin: top; }
+.anim-dialog-in { animation: anim-dialog-in 200ms var(--ease-out) backwards; }
+.anim-dialog-out { animation: anim-dialog-out 150ms ease-in both; }
+.anim-sheet-up { animation: anim-rise-in 220ms var(--ease-out) backwards; }
+.anim-drop-in { animation: anim-drop-in 200ms var(--ease-out) backwards; }
+.anim-drop-out { animation: anim-drop-out 150ms ease-in both; }
+/* Gentle lift for clickable cards. */
+.lift { transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out); }
+.lift:hover { transform: translateY(-2px); box-shadow: 0 6px 20px -8px rgb(28 25 23 / 0.18); }
+
+@media (prefers-reduced-motion: reduce) {
+  [class*="anim-"] { animation: none !important; }
+  .lift, .lift:hover { transition: none; transform: none; }
+}

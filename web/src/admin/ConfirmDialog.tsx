@@ -10,23 +10,26 @@ export interface ConfirmOptions {
   requireText?: string
 }
 
-export function ConfirmDialog({ options, onClose }: { options: ConfirmOptions; onClose: (ok: boolean) => void }) {
+/** `closing`: playing its exit animation (see useConfirm); it no longer takes clicks or keys. */
+export function ConfirmDialog({ options, onClose, closing = false }: { options: ConfirmOptions; onClose: (ok: boolean) => void; closing?: boolean }) {
   const [typed, setTyped] = useState('')
   const ready = !options.requireText || typed === options.requireText
 
   useEffect(() => {
+    if (closing) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose(false)
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, closing])
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={() => onClose(false)}>
+    <div className={`fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 ${closing ? 'anim-fade-out pointer-events-none' : 'anim-fade-in'}`}
+      aria-hidden={closing || undefined} onClick={() => onClose(false)}>
       <div
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+        className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ${closing ? 'anim-dialog-out' : 'anim-dialog-in'}`}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 id="confirm-title" className="text-lg font-semibold">{options.title}</h3>

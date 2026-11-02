@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -41,6 +41,7 @@ describe('Events page', () => {
     expect(within(menu).getAllByRole('link').map((a) => a.textContent)).toEqual(['Events', 'Studios', 'Docs', 'Account · Lens & Light'])
     expect(within(menu).getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
     await user.click(within(menu).getByRole('link', { name: 'Studios' }))
-    expect(document.getElementById('phone-menu')).toBeNull()
+    // It fades out, then is gone.
+    await waitFor(() => expect(document.getElementById('phone-menu')).toBeNull())
   })
 })

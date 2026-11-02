@@ -36,7 +36,7 @@ export function ZipProgressCard({ status, onClose }: { status: ZipDownloadStatus
       role="status"
       aria-live="polite"
       data-testid="zip-progress"
-      className="fixed bottom-4 left-1/2 z-[80] w-[min(26rem,calc(100%-2rem))] -translate-x-1/2 rounded-2xl bg-[#1c1917] p-4 text-white shadow-2xl"
+      className="anim-sheet-up fixed bottom-4 left-1/2 z-[80] w-[min(26rem,calc(100%-2rem))] -translate-x-1/2 rounded-2xl bg-[#1c1917] p-4 text-white shadow-2xl"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

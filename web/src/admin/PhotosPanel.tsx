@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { PhotoViewer } from '../gallery/PhotoViewer'
-import { adminApi } from '../lib/api'
+import { adminApi, type BulkPhotoAction } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
 import { downloadPhoto } from '../lib/photoActions'
 import type { AdminPhoto, AdminPhotoQuery, AdminPhotoSort, Category, PhotoFacets, PublicPhoto, UploaderStats } from '../lib/types'
@@ -10,6 +10,7 @@ import { Button, Card } from './ui'
 import { useZipDownload } from '../shared/zipDownload'
 import { ZipProgressCard } from '../shared/ZipProgressCard'
 import { useConfirm } from './useConfirm'
+import { usePresence } from '../shared/usePresence'
 
 const statusLabel: Record<AdminPhoto['status'], string> = {
   QUEUED: 'Queued',
@@ -87,6 +88,11 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
   const [viewerId, setViewerId] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [menuId, setMenuId] = useState<string | null>(null)
+  // The menu that was last open stays for its fade-out after closing.
+  const [lastMenuId, setLastMenuId] = useState<string | null>(null)
+  if (menuId && menuId !== lastMenuId) setLastMenuId(menuId)
+  const menu = usePresence(menuId !== null, 130)
+  const shownMenuId = menu.mounted ? (menuId ?? lastMenuId) : null
   const [confirm, confirmDialog] = useConfirm()
   const loadingMore = useRef(false)
   // Select mode: tick photos, then move them to a category or download them in one go.
@@ -311,6 +317,47 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
     }
   }
 
+  const pickedPhotos = photos.filter((p) => picked.has(p.id))
+  const allLiked = pickedPhotos.length > 0 && pickedPhotos.every((p) => p.liked)
+  const allHidden = pickedPhotos.length > 0 && pickedPhotos.every((p) => p.hidden)
+  const allShownPicked = photos.length > 0 && photos.every((p) => picked.has(p.id))
+  const plural = (n: number) => `${formatCount(n)} ${n === 1 ? 'photo' : 'photos'}`
+
+  /** Like / unlike, hide / show or delete every ticked photo in one request. Optimistic, like single changes. */
+  const bulk = async (action: BulkPhotoAction) => {
+    const ids = [...picked]
+    if (ids.length === 0) return
+    if (action === 'DELETE') {
+      const ok = await confirm({
+        title: `Delete ${plural(ids.length)}?`,
+        body: "They are removed from the gallery, including from guests' open screens. This cannot be undone.",
+        confirmLabel: `Delete ${plural(ids.length)}`,
+        danger: true,
+      })
+      if (!ok) return
+    }
+    const before = photos
+    const change = (p: AdminPhoto): AdminPhoto =>
+      action === 'LIKE' || action === 'UNLIKE' ? { ...p, liked: action === 'LIKE' } : { ...p, hidden: action === 'HIDE' }
+    setPhotos((list) => (action === 'DELETE'
+      ? list.filter((p) => !picked.has(p.id))
+      : list.map((p) => (picked.has(p.id) ? change(p) : p)).filter((p) => matches(p, filters))))
+    const done = { LIKE: 'Liked', UNLIKE: 'Unliked', HIDE: 'Hidden from the guest gallery:', SHOW: 'Back in the guest gallery:', DELETE: 'Deleted' }[action]
+    setNote(`${done} ${plural(ids.length)}`)
+    if (action === 'DELETE') stopSelecting()
+    try {
+      await adminApi.bulkPhotos(eventId, ids, action)
+      loadFacets()
+      if (action !== 'LIKE' && action !== 'UNLIKE') {
+        onPhotosChanged()
+        if (coverPhotoId && ids.includes(coverPhotoId)) onEventChanged()
+      }
+    } catch {
+      setPhotos(before)
+      setNote('Could not change the photos. Please try again.')
+    }
+  }
+
   const removeFromViewer = async (p: AdminPhoto) => {
     const i = viewable.findIndex((x) => x.id === p.id)
     await remove(p)
@@ -370,8 +417,11 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
 
       <ZipProgressCard status={zip.status} onClose={zip.dismiss} />
       {selecting && (
-        <div className="sticky top-2 z-20 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white p-2.5 shadow-md" data-testid="select-bar">
+        <div className="anim-sheet-up sticky top-14 z-20 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white p-2.5 shadow-md" data-testid="select-bar">
           <span className="px-1 text-sm font-medium tabular-nums">{formatCount(picked.size)} selected</span>
+          {!allShownPicked && <Button variant="ghost" onClick={() => setPicked(new Set(photos.map((p) => p.id)))}>Select all</Button>}
+          {picked.size > 0 && <Button variant="ghost" onClick={() => setPicked(new Set())}>Clear</Button>}
+          <span className="hidden h-6 w-px bg-line sm:block" aria-hidden="true" />
           <select
             aria-label="Move to category"
             className={selectClass}
@@ -383,11 +433,20 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             <option value="none">Not sorted</option>
           </select>
-          <Button onClick={downloadPicked} disabled={picked.size === 0 || zipping}>
-            <DownloadIcon /> {zipping ? 'Downloading…' : 'Download (.zip)'}
+          <Button onClick={() => bulk(allLiked ? 'UNLIKE' : 'LIKE')} disabled={picked.size === 0}>
+            <HeartIcon filled={allLiked} /> {allLiked ? 'Unlike' : 'Like'}
           </Button>
-          <Button variant="ghost" onClick={() => setPicked(new Set(photos.map((p) => p.id)))}>Select all shown</Button>
-          <Button variant="ghost" onClick={stopSelecting}>Done</Button>
+          <Button onClick={() => bulk(allHidden ? 'SHOW' : 'HIDE')} disabled={picked.size === 0}>
+            <EyeIcon off={!allHidden} /> {allHidden ? 'Show' : 'Hide'}
+          </Button>
+          <Button onClick={downloadPicked} disabled={picked.size === 0 || zipping} title="Download as one ZIP file">
+            <DownloadIcon /> {zipping ? 'Downloading…' : 'Download'}
+          </Button>
+          <Button variant="danger" onClick={() => bulk('DELETE')} disabled={picked.size === 0}>
+            <TrashIcon /> Delete
+          </Button>
+          <span className="flex-1" />
+          <Button variant="primary" onClick={stopSelecting}>Done</Button>
         </div>
       )}
 
@@ -457,8 +516,9 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
                   <IconButton label="More" expanded={menuId === p.id} onClick={() => setMenuId((id) => (id === p.id ? null : p.id))}>
                     <MoreIcon />
                   </IconButton>
-                  {menuId === p.id && (
-                    <div role="menu" className="absolute right-0 z-20 mt-1 w-52 rounded-lg border border-line bg-white p-1 text-sm shadow-lg">
+                  {shownMenuId === p.id && (
+                    <div role="menu" aria-hidden={menu.closing || undefined} inert={menu.closing}
+                      className={`absolute right-0 z-20 mt-1 w-52 rounded-lg border border-line bg-white p-1 text-sm shadow-lg ${menu.closing ? 'anim-pop-out' : 'anim-pop-in'}`}>
                       {ready && (
                         <>
                           <MenuItem onClick={() => { setMenuId(null); download(p) }}><DownloadIcon />Download</MenuItem>

@@ -3,6 +3,7 @@ import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'rea
 import { adminApi } from '../lib/api'
 import mkLogo from '../assets/mk-logo.webp'
 import { PageLoader } from '../shared/ShutterLoader'
+import { usePresence } from '../shared/usePresence'
 import AccountPage from './AccountPage'
 import { auth, useSession } from './auth'
 import EventDashboardPage from './EventDashboardPage'
@@ -37,6 +38,7 @@ function Layout({ wide = false }: { wide?: boolean }) {
   const session = useSession()
   const superAdmin = session?.role === 'SUPER_ADMIN'
   const [menuOpen, setMenuOpen] = useState(false)
+  const sheet = usePresence(menuOpen, 150)
   const phoneLinks = [
     { to: '/admin', label: 'Events' },
     ...(superAdmin ? [{ to: '/admin/studios', label: 'Studios' }, { to: '/admin/docs', label: 'Docs' }] : []),
@@ -69,8 +71,9 @@ function Layout({ wide = false }: { wide?: boolean }) {
             </svg>
           </button>
         </div>
-        {menuOpen && (
-          <nav id="phone-menu" aria-label="Main" className="border-t border-line px-4 py-2 sm:hidden">
+        {sheet.mounted && (
+          <nav id="phone-menu" aria-label="Main" aria-hidden={sheet.closing || undefined} inert={sheet.closing}
+            className={`border-t border-line px-4 py-2 sm:hidden ${sheet.closing ? 'anim-drop-out' : 'anim-drop-in'}`}>
             {phoneLinks.map((l) => (
               <NavLink key={l.to} to={l.to} end={l.to === '/admin'} onClick={() => setMenuOpen(false)}
                 className={({ isActive }) => `block rounded-lg px-3 py-3 text-base ${isActive ? 'bg-stone-100 font-medium text-ink' : 'text-stone-700'}`}>

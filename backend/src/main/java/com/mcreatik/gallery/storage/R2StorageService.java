@@ -155,6 +155,22 @@ public class R2StorageService implements StorageService {
         }
     }
 
+    @Override
+    public void deleteAll(StorageArea area, java.util.Collection<String> keys) {
+        String bucket = bucket(area);
+        List<ObjectIdentifier> batch = new ArrayList<>();
+        for (String key : keys) {
+            batch.add(ObjectIdentifier.builder().key(key).build());
+            if (batch.size() == 1000) {
+                deleteBatch(bucket, batch);
+                batch = new ArrayList<>();
+            }
+        }
+        if (!batch.isEmpty()) {
+            deleteBatch(bucket, batch);
+        }
+    }
+
     private void deleteBatch(String bucket, List<ObjectIdentifier> keys) {
         s3.deleteObjects(r -> r.bucket(bucket).delete(Delete.builder().objects(keys).quiet(true).build()));
     }
