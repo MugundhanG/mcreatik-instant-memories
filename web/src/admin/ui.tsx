@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, KeyboardEvent, ReactNode } from 'react'
 import type { EventStatus, UploaderStatus } from '../lib/types'
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost'
@@ -86,4 +86,36 @@ export const inputClass =
 export function ErrorText({ children }: { children: ReactNode }) {
   if (!children) return null
   return <p role="alert" className="text-sm text-red-700">{children}</p>
+}
+
+/** Page tabs (Linear-style underline). Arrow keys move between tabs. */
+export function Tabs<T extends string>({ tabs, current, onChange, label }: {
+  tabs: { id: T; label: string; badge?: ReactNode }[]
+  current: T
+  onChange: (id: T) => void
+  label: string
+}) {
+  const move = (e: KeyboardEvent, i: number) => {
+    const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
+    if (!step) return
+    e.preventDefault()
+    const next = tabs[(i + step + tabs.length) % tabs.length]
+    onChange(next.id)
+    document.getElementById(`tab-${next.id}`)?.focus()
+  }
+  return (
+    <div role="tablist" aria-label={label} className="flex gap-0 overflow-x-auto sm:gap-1 border-b border-line [scrollbar-width:none]">
+      {tabs.map((t, i) => {
+        const selected = t.id === current
+        return (
+          <button key={t.id} id={`tab-${t.id}`} type="button" role="tab" aria-selected={selected} aria-controls={`panel-${t.id}`}
+            tabIndex={selected ? 0 : -1} onClick={() => onChange(t.id)} onKeyDown={(e) => move(e, i)}
+            className={`-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-1.5 py-2.5 sm:px-3 text-sm whitespace-nowrap transition-colors ${selected ? 'border-ink font-medium text-ink' : 'border-transparent text-muted hover:text-ink'}`}>
+            {t.label}
+            {t.badge !== undefined && t.badge !== null && <span className="rounded-full bg-stone-100 px-1.5 text-xs text-muted tabular-nums">{t.badge}</span>}
+          </button>
+        )
+      })}
+    </div>
+  )
 }

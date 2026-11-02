@@ -417,8 +417,8 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
                   <div className="flex size-full items-center justify-center text-xs text-muted">{statusLabel[p.status]}</div>
                 )}
                 <div className={`pointer-events-none absolute top-1.5 left-1.5 flex flex-col items-start gap-1 ${selecting ? 'hidden' : ''}`}>
-                  {p.id === coverPhotoId && <span className="rounded bg-ink px-1.5 py-0.5 text-[10px] text-white">Cover</span>}
-                  {p.hidden && <span className="inline-flex items-center gap-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px]"><EyeIcon off className="size-3" />Hidden</span>}
+                  {p.id === coverPhotoId && <span className="rounded bg-ink px-1.5 py-0.5 text-[11px] text-white">Cover</span>}
+                  {p.hidden && <span className="inline-flex items-center gap-1 rounded bg-white/90 px-1.5 py-0.5 text-[11px]"><EyeIcon off className="size-3" />Hidden</span>}
                 </div>
                 {ready && (
                   <button
@@ -432,57 +432,49 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
                   </button>
                 )}
                 <div className="pointer-events-none absolute bottom-1.5 left-1.5 flex max-w-[calc(100%-0.75rem)] flex-wrap gap-1">
-                  {p.selected && <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] text-white">✓ Album</span>}
+                  {p.selected && <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[11px] text-white">✓ Album</span>}
                   {p.categoryId && categoryName.get(p.categoryId) && (
-                    <span className="truncate rounded bg-white/90 px-1.5 py-0.5 text-[10px]">{categoryName.get(p.categoryId)}</span>
+                    <span className="truncate rounded bg-white/90 px-1.5 py-0.5 text-[11px]">{categoryName.get(p.categoryId)}</span>
                   )}
                 </div>
                 {p.status !== 'READY' && (
-                  <span className={`absolute right-1.5 bottom-1.5 rounded px-1.5 py-0.5 text-[10px] ${p.status === 'FAILED' ? 'bg-red-600 text-white' : 'bg-white/90'}`}>
+                  <span className={`absolute right-1.5 bottom-1.5 rounded px-1.5 py-0.5 text-[11px] ${p.status === 'FAILED' ? 'bg-red-600 text-white' : 'bg-white/90'}`}>
                     {statusLabel[p.status]}
                   </span>
                 )}
               </div>
-              <p className="mt-1 truncate text-xs text-muted" title={p.failureReason ?? p.originalFileName}>
-                {p.status === 'FAILED' ? p.failureReason : p.originalFileName}
-                {p.uploaderId && cameraName.get(p.uploaderId) ? ` · ${cameraName.get(p.uploaderId)}` : ''}
-              </p>
-              <div className="mt-1 grid grid-cols-4 text-stone-700">
-                {ready ? (
-                  <>
-                    <IconButton label="Download" text="Download" onClick={() => download(p)}><DownloadIcon /></IconButton>
-                    <IconButton label={p.hidden ? 'Show in gallery' : 'Hide from gallery'} text={p.hidden ? 'Show' : 'Hide'} onClick={() => toggleHidden(p)}>
-                      <EyeIcon off={!p.hidden} />
-                    </IconButton>
-                  </>
-                ) : (
-                  <span className="col-span-2" />
-                )}
-                <IconButton label="Delete" text="Delete" onClick={() => remove(p)} className="text-red-700 hover:bg-red-50"><TrashIcon /></IconButton>
+              <div className="mt-1 flex items-center gap-1">
+                <p className="min-w-0 flex-1 truncate text-xs text-muted" title={p.failureReason ?? p.originalFileName}>
+                  {p.status === 'FAILED' ? p.failureReason : p.originalFileName}
+                  {p.uploaderId && cameraName.get(p.uploaderId) ? ` · ${cameraName.get(p.uploaderId)}` : ''}
+                </p>
                 {ready && (
-                  <div className="relative" data-menu={p.id}>
-                    <button
-                      type="button"
-                      aria-label="More"
-                      aria-expanded={menuId === p.id}
-                      onClick={() => setMenuId((id) => (id === p.id ? null : p.id))}
-                      className="flex h-11 w-full flex-col items-center justify-center gap-0.5 rounded-md text-[10px] hover:bg-stone-100"
-                    >
-                      <MoreIcon />
-                      <span aria-hidden="true">More</span>
-                    </button>
-                    {menuId === p.id && (
-                      <div role="menu" className="absolute right-0 z-20 mt-1 w-48 rounded-lg border border-line bg-white p-1 text-sm shadow-lg">
-                        <MenuItem disabled={p.hidden || p.id === coverPhotoId} onClick={() => { setMenuId(null); makeCover(p) }}>
-                          <StarIcon />{p.id === coverPhotoId ? 'Gallery cover' : 'Make cover'}
-                        </MenuItem>
-                        {p.originalAvailable && (
-                          <MenuItem onClick={() => { setMenuId(null); original(p) }}><DownloadIcon />Download original</MenuItem>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <IconButton label={p.hidden ? 'Show in gallery' : 'Hide from gallery'} onClick={() => toggleHidden(p)}>
+                    <EyeIcon off={!p.hidden} />
+                  </IconButton>
                 )}
+                <div className="relative" data-menu={p.id}>
+                  <IconButton label="More" expanded={menuId === p.id} onClick={() => setMenuId((id) => (id === p.id ? null : p.id))}>
+                    <MoreIcon />
+                  </IconButton>
+                  {menuId === p.id && (
+                    <div role="menu" className="absolute right-0 z-20 mt-1 w-52 rounded-lg border border-line bg-white p-1 text-sm shadow-lg">
+                      {ready && (
+                        <>
+                          <MenuItem onClick={() => { setMenuId(null); download(p) }}><DownloadIcon />Download</MenuItem>
+                          {p.originalAvailable && (
+                            <MenuItem onClick={() => { setMenuId(null); original(p) }}><DownloadIcon />Download original</MenuItem>
+                          )}
+                          <MenuItem disabled={p.hidden || p.id === coverPhotoId} onClick={() => { setMenuId(null); makeCover(p) }}>
+                            <StarIcon />{p.id === coverPhotoId ? 'Gallery cover' : 'Make cover'}
+                          </MenuItem>
+                          <div className="my-1 border-t border-line" />
+                        </>
+                      )}
+                      <MenuItem danger onClick={() => { setMenuId(null); remove(p) }}><TrashIcon />Delete</MenuItem>
+                    </div>
+                  )}
+                </div>
               </div>
             </li>
           )
@@ -539,18 +531,19 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
   )
 }
 
-function IconButton({ label, text, onClick, children, className = 'hover:bg-stone-100' }: { label: string; text: string; onClick: () => void; children: ReactNode; className?: string }) {
+/** A small icon-only button under a photo; the label is read out and shown on hover. */
+function IconButton({ label, onClick, children, expanded }: { label: string; onClick: () => void; children: ReactNode; expanded?: boolean }) {
   return (
-    <button type="button" title={label} aria-label={label} onClick={onClick} className={`flex h-11 flex-col items-center justify-center gap-0.5 rounded-md text-[10px] ${className}`}>
+    <button type="button" title={label} aria-label={label} aria-expanded={expanded} onClick={onClick}
+      className="flex size-9 shrink-0 items-center justify-center rounded-md text-stone-600 hover:bg-stone-100 hover:text-ink">
       {children}
-      <span aria-hidden="true">{text}</span>
     </button>
   )
 }
 
-function MenuItem({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: ReactNode }) {
+function MenuItem({ onClick, disabled, danger, children }: { onClick: () => void; disabled?: boolean; danger?: boolean; children: ReactNode }) {
   return (
-    <button type="button" role="menuitem" disabled={disabled} onClick={onClick} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left hover:bg-stone-50 disabled:opacity-40 disabled:hover:bg-transparent">
+    <button type="button" role="menuitem" disabled={disabled} onClick={onClick} className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left disabled:opacity-40 disabled:hover:bg-transparent ${danger ? 'text-red-700 hover:bg-red-50' : 'hover:bg-stone-50'}`}>
       {children}
     </button>
   )

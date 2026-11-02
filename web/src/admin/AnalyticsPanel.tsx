@@ -125,7 +125,7 @@ export function AnalyticsPanel({ eventId, live }: { eventId: string; live: boole
                   {p.thumbnailUrl
                     ? <img src={p.thumbnailUrl} alt={p.fileName} loading="lazy" className="aspect-square w-full rounded-lg object-cover" />
                     : <div className="aspect-square w-full rounded-lg bg-stone-100" />}
-                  <p className="mt-1 text-[11px] leading-tight text-muted tabular-nums">
+                  <p className="mt-1 text-xs leading-tight text-muted tabular-nums">
                     {plural(p.views, 'view')}<br />{plural(p.downloads, 'save')}
                   </p>
                 </li>
@@ -183,7 +183,7 @@ function ActivityChart({ hours }: { hours: GuestAnalytics['hours'] }) {
         </div>
         <div className="mt-1 flex gap-[2px]">
           {items.map((b, i) => (
-            <span key={b.key} className="min-w-0 flex-1 text-center text-[10px] whitespace-nowrap text-muted">
+            <span key={b.key} className="min-w-0 flex-1 text-center text-[11px] whitespace-nowrap text-muted">
               {i % every === 0 ? b.label : ''}
             </span>
           ))}

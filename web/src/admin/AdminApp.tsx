@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router'
 import { adminApi } from '../lib/api'
 import mkLogo from '../assets/mk-logo.webp'
@@ -35,28 +35,53 @@ const navClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'text-ink 
 /** `wide`: the documentation uses the full width for its sidebars. */
 function Layout({ wide = false }: { wide?: boolean }) {
   const session = useSession()
+  const superAdmin = session?.role === 'SUPER_ADMIN'
+  const [menuOpen, setMenuOpen] = useState(false)
+  const phoneLinks = [
+    { to: '/admin', label: 'Events' },
+    ...(superAdmin ? [{ to: '/admin/studios', label: 'Studios' }, { to: '/admin/docs', label: 'Docs' }] : []),
+    { to: '/admin/account', label: session?.displayName ? `Account · ${session.displayName}` : 'Account' },
+  ]
   return (
     <div className="min-h-dvh bg-stone-50">
       <header className="no-print border-b border-line bg-white">
         <div className={`mx-auto flex h-14 ${wide ? 'max-w-[90rem]' : 'max-w-6xl'} items-center justify-between px-4 sm:px-6`}>
           <Link to="/admin" className="flex items-center gap-2">
             <img src={mkLogo} alt="" className="h-7 w-auto" width={44} height={28} />
-            <span className="hidden font-display text-xl font-semibold min-[440px]:inline">McreatiK</span>
+            <span className="font-display text-xl font-semibold">McreatiK</span>
             <span className="hidden text-xs tracking-[0.2em] text-muted uppercase sm:inline">Live Gallery</span>
           </Link>
-          <nav className="flex items-center gap-3 text-sm whitespace-nowrap sm:gap-4">
+          <nav aria-label="Main" className="hidden items-center gap-4 text-sm whitespace-nowrap sm:flex">
             <NavLink to="/admin" end className={navClass}>Events</NavLink>
-            {session?.role === 'SUPER_ADMIN' && <NavLink to="/admin/studios" className={navClass}>Studios</NavLink>}
-            {session?.role === 'SUPER_ADMIN' && <NavLink to="/admin/docs" className={navClass}>Docs</NavLink>}
-            <NavLink to="/admin/account" className={navClass} title={session?.email}>
-              <span className="hidden sm:inline">{session?.displayName}</span>
-              <span className="sm:hidden">Account</span>
-            </NavLink>
+            {superAdmin && <NavLink to="/admin/studios" className={navClass}>Studios</NavLink>}
+            {superAdmin && <NavLink to="/admin/docs" className={navClass}>Docs</NavLink>}
+            <NavLink to="/admin/account" className={navClass} title={session?.email}>{session?.displayName}</NavLink>
             <button type="button" onClick={auth.signOut} className="text-muted hover:text-ink">
               Sign out
             </button>
           </nav>
+          {/* Phones: one Menu button instead of five links squeezed into the bar. */}
+          <button type="button" onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-controls="phone-menu"
+            className="flex h-9 items-center gap-2 rounded-lg border border-line px-3 text-sm sm:hidden">
+            Menu
+            <svg viewBox="0 0 16 16" className="size-4" aria-hidden="true">
+              <path d={menuOpen ? 'M4 4l8 8M12 4l-8 8' : 'M2.5 4.5h11M2.5 8h11M2.5 11.5h11'} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
         </div>
+        {menuOpen && (
+          <nav id="phone-menu" aria-label="Main" className="border-t border-line px-4 py-2 sm:hidden">
+            {phoneLinks.map((l) => (
+              <NavLink key={l.to} to={l.to} end={l.to === '/admin'} onClick={() => setMenuOpen(false)}
+                className={({ isActive }) => `block rounded-lg px-3 py-3 text-base ${isActive ? 'bg-stone-100 font-medium text-ink' : 'text-stone-700'}`}>
+                {l.label}
+              </NavLink>
+            ))}
+            <button type="button" onClick={auth.signOut} className="block w-full rounded-lg px-3 py-3 text-left text-base text-stone-700">
+              Sign out
+            </button>
+          </nav>
+        )}
       </header>
       {wide ? (
         <Suspense fallback={<PageLoader />}>

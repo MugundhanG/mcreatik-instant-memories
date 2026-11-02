@@ -157,10 +157,10 @@ export function ClientsCard({ eventId, eventName, refreshKey, onClients }: {
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium">{c.name}</p>
                   {c.disabled
-                    ? <span className="rounded bg-red-50 px-1.5 py-0.5 text-[11px] text-red-700">Turned off</span>
+                    ? <span className="rounded bg-red-50 px-1.5 py-0.5 text-xs text-red-700">Turned off</span>
                     : c.lastLoginAt
-                      ? <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] text-emerald-800">Active · last seen {timeAgo(c.lastLoginAt)}</span>
-                      : <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-800">Not logged in yet</span>}
+                      ? <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-xs text-emerald-800">Active · last seen {timeAgo(c.lastLoginAt)}</span>
+                      : <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-800">Not logged in yet</span>}
                 </div>
                 <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                   <div><dt className="text-xs text-muted">Login email</dt><dd className="break-all">{c.email}</dd></div>

@@ -190,9 +190,9 @@ export default function GalleryPage() {
           Live gallery by <span className="font-medium text-ink">{brand.name}</span>
         </p>
         {brand.poweredByMcreatik && (
-          <p className="mt-1 text-[11px] tracking-wide text-muted/80" data-testid="powered-by">Powered by McreatiK</p>
+          <p className="mt-1 text-xs tracking-wide text-muted" data-testid="powered-by">Powered by McreatiK</p>
         )}
-        <p className="mt-3 text-[11px] text-muted/80">
+        <p className="mt-3 text-xs text-muted">
           <a href="/privacy" className="underline underline-offset-2 hover:text-ink">Privacy</a>
           {' · '}
           <a href={removalRequestLink(event.name)} className="underline underline-offset-2 hover:text-ink">Request a photo removal</a>

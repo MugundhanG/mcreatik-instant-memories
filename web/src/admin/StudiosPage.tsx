@@ -46,6 +46,10 @@ export default function StudiosPage() {
   const [billing, setBilling] = useState<Map<string, StudioBilling>>(new Map())
   const [brandingFor, setBrandingFor] = useState<string | null>(null)
   const [confirm, confirmDialog] = useConfirm()
+  const [adding, setAdding] = useState(false)
+  const clientStudios = studios?.filter((s) => s.role !== 'SUPER_ADMIN') ?? []
+  // The form is for occasional use: hidden behind "Add studio", but open while there are no studios yet.
+  const showForm = adding || (studios !== null && clientStudios.length === 0)
 
   const load = useCallback(() => {
     adminApi.studios().then(setStudios).catch((e: Error) => setError(e.message))
@@ -66,6 +70,7 @@ export default function StudiosPage() {
       setEmail('')
       setPhone('')
       setPassword(temporaryPassword())
+      setAdding(false)
       load()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not create the studio')
@@ -104,7 +109,13 @@ export default function StudiosPage() {
   return (
     <div className="space-y-6">
       {confirmDialog}
-      <h1 className="text-xl font-semibold">Studios</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">Studios</h1>
+          {studios && <p className="text-sm text-muted">{formatCount(clientStudios.length)} {clientStudios.length === 1 ? 'studio' : 'studios'}</p>}
+        </div>
+        {!showForm && <Button variant="primary" onClick={() => setAdding(true)}>Add studio</Button>}
+      </div>
 
       {credentials && (
         <Card title={`Login for ${credentials.name}`} className="border-emerald-200">
@@ -114,34 +125,36 @@ export default function StudiosPage() {
         </Card>
       )}
 
-      <Card title="Add a studio">
-        <form onSubmit={create} className="grid gap-4 sm:grid-cols-2">
-          <Field label="Studio name" hint="Shown on their dashboard">
-            <input className={inputClass} required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Lens & Light Studio" />
-          </Field>
-          <Field label="Login email">
-            <input className={inputClass} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="owner@studio.com" />
-          </Field>
-          <Field label="WhatsApp number (optional)" hint="Only to open the right chat; not saved">
-            <input className={inputClass} type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="98765 43210" />
-          </Field>
-          <Field label="Plan" hint="Change it any time in the list below">
-            <select className={inputClass} value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
-              {(Object.keys(PLAN_LABEL) as Plan[]).map((p) => <option key={p} value={p}>{PLAN_LABEL[p]}</option>)}
-            </select>
-          </Field>
-          <Field label="Temporary password" hint="They must change it when they first log in">
-            <div className="flex gap-2">
-              <input className={`${inputClass} font-mono`} required minLength={10} value={password} onChange={(e) => setPassword(e.target.value)} />
-              <Button onClick={() => setPassword(temporaryPassword())}>New</Button>
+      {showForm && (
+        <Card title="Add a studio" action={clientStudios.length > 0 && <button type="button" onClick={() => setAdding(false)} className="text-sm text-muted hover:text-ink">Cancel</button>}>
+          <form onSubmit={create} className="grid gap-4 sm:grid-cols-2">
+            <Field label="Studio name" hint="Shown on their dashboard">
+              <input className={inputClass} required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Lens & Light Studio" />
+            </Field>
+            <Field label="Login email">
+              <input className={inputClass} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="owner@studio.com" />
+            </Field>
+            <Field label="WhatsApp number (optional)" hint="Only to open the right chat; not saved">
+              <input className={inputClass} type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="98765 43210" />
+            </Field>
+            <Field label="Plan" hint="Change it any time in the studio list">
+              <select className={inputClass} value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
+                {(Object.keys(PLAN_LABEL) as Plan[]).map((p) => <option key={p} value={p}>{PLAN_LABEL[p]}</option>)}
+              </select>
+            </Field>
+            <Field label="Temporary password" hint="They must change it when they first log in">
+              <div className="flex gap-2">
+                <input className={`${inputClass} font-mono`} required minLength={10} value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Button onClick={() => setPassword(temporaryPassword())}>New</Button>
+              </div>
+            </Field>
+            <div className="flex items-end justify-end">
+              <Button type="submit" variant="primary" disabled={busy}>{busy ? 'Creating…' : 'Create studio login'}</Button>
             </div>
-          </Field>
-          <div className="flex items-end justify-end">
-            <Button type="submit" variant="primary" disabled={busy}>{busy ? 'Creating…' : 'Create studio login'}</Button>
-          </div>
-        </form>
-        <div className="mt-3"><ErrorText>{error}</ErrorText></div>
-      </Card>
+          </form>
+          <div className="mt-3"><ErrorText>{error}</ErrorText></div>
+        </Card>
+      )}
 
       <PaymentsToCheck onChange={load} />
 
@@ -155,9 +168,9 @@ export default function StudiosPage() {
                 <div className="min-w-48 flex-1">
                   <p className="font-medium">
                     {s.name}
-                    {me && <span className="ml-2 rounded bg-ink px-1.5 py-0.5 text-[10px] text-white">McreatiK · super admin</span>}
-                    {s.disabled && <span className="ml-2 rounded bg-red-50 px-1.5 py-0.5 text-[10px] text-red-700">Disabled</span>}
-                    {!s.disabled && s.mustChangePassword && <span className="ml-2 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800">Not logged in yet</span>}
+                    {me && <span className="ml-2 rounded bg-ink px-1.5 py-0.5 text-xs text-white">McreatiK · super admin</span>}
+                    {s.disabled && <span className="ml-2 rounded bg-red-50 px-1.5 py-0.5 text-xs text-red-700">Disabled</span>}
+                    {!s.disabled && s.mustChangePassword && <span className="ml-2 rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-800">Not logged in yet</span>}
                   </p>
                   <p className="text-xs text-muted">{s.email} · since {formatEventDate(s.createdAt.slice(0, 10))}</p>
                 </div>
