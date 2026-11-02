@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router'
 import { adminApi } from '../lib/api'
+import mkLogo from '../assets/mk-logo.webp'
 import AccountPage from './AccountPage'
 import { auth, useSession } from './auth'
 import EventDashboardPage from './EventDashboardPage'
@@ -33,7 +34,8 @@ function Layout() {
     <div className="min-h-dvh bg-stone-50">
       <header className="no-print border-b border-line bg-white">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link to="/admin" className="flex items-baseline gap-2">
+          <Link to="/admin" className="flex items-center gap-2">
+            <img src={mkLogo} alt="" className="h-7 w-auto" width={44} height={28} />
             <span className="font-display text-xl font-semibold">McreatiK</span>
             <span className="hidden text-xs tracking-[0.2em] text-muted uppercase sm:inline">Live Gallery</span>
           </Link>

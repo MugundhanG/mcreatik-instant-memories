@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
+import mkLogo from '../assets/mk-logo.webp'
 import { ForgotPassword } from '../shared/ForgotPassword'
 import { auth, useSession } from './auth'
 import { Button, ErrorText, Field, inputClass } from './ui'
@@ -49,6 +50,7 @@ export default function LoginPage() {
     <main className="flex min-h-dvh items-center justify-center bg-stone-50 px-4">
       <form onSubmit={submit} className="w-full max-w-sm space-y-5 rounded-2xl border border-line bg-white p-7">
         <div>
+          <img src={mkLogo} alt="" className="mb-3 h-10 w-auto" width={63} height={40} />
           <p className="font-display text-2xl font-semibold">McreatiK</p>
           <p className="text-sm text-muted">Live Gallery · Staff sign in</p>
         </div>

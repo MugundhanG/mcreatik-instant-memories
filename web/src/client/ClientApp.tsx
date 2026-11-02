@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router'
 import { ApiError } from '../lib/api'
 import { ForgotPassword } from '../shared/ForgotPassword'
@@ -113,6 +113,16 @@ function RequireClient({ children }: { children: React.ReactNode }) {
 /** The couple's portal: /client/login, /client/password, /client. */
 export default function ClientApp() {
   const session = useClientSession()
+  // Installing from the couple's portal makes an app that opens their photos, not the studio dashboard.
+  useEffect(() => {
+    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')
+    if (!link) return
+    const previous = link.href
+    link.href = '/client.webmanifest'
+    return () => {
+      link.href = previous
+    }
+  }, [])
   return (
     <Routes>
       <Route path="login" element={<LoginPage />} />
