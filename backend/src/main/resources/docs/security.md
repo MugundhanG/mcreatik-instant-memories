@@ -1,6 +1,6 @@
 # Security and performance
 
-The audit found no critical issues. It found two High issues, each cheap to fix (see Findings and next actions). Everything on this page was confirmed in code, deploy files or the Spring library itself, unless marked as an assumption.
+The audit found no critical issues. One High issue remains (H1 below), and it is cheap to fix. The second, the broken rollback script, has been fixed. Everything on this page was confirmed in code, deploy files or the Spring library itself, unless marked as an assumption.
 
 ## Protections in place
 

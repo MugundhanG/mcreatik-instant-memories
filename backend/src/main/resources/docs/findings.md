@@ -1,12 +1,11 @@
 # Findings and next actions
 
-Fix the two High items first. Each takes minutes. Everything below Medium is maintenance, to do when convenient.
+One High item remains, and it takes minutes. Everything below Medium is maintenance, to do when convenient.
 
 ## Do now
 
 1. **Check which proxy is live.** Run `systemctl is-active nginx caddy` on the VM. If nginx is active, change its `X-Forwarded-For` line to `proxy_set_header X-Forwarded-For $remote_addr;` and reload.
-2. **Don't use `rollback.sh`** until its one-line fix is merged. Roll back by re-running `deploy.sh` with an older `:sha-` image.
-3. **Fix the security one-pager:** it says "checked weekly", but Dependabot runs monthly.
+2. **Fix the security one-pager:** it says "checked weekly", but Dependabot runs monthly.
 
 ## Do next
 
@@ -20,7 +19,6 @@ Fix the two High items first. Each takes minutes. Everything below Medium is mai
 | Severity | Area | Finding | Evidence |
 | --- | --- | --- | --- |
 | High | Security | Login rate limit bypassable with a fake `X-Forwarded-For` when nginx is the proxy | `application.yml`, `nginx-im-api.conf`, spring-web `ForwardedHeaderUtils` |
-| High | Deployment | `rollback.sh` removes the live container, then fails to start the old one | Dry run: `"docker run" requires at least 1 argument` |
 | Medium | Deployment | Every deploy is an outage during Java startup | `deploy.sh` |
 | Medium | Deployment | Backend image is built even when CI fails | `backend-image.yml` |
 | Medium | Operations | No monitoring or alerts | Repo |
@@ -38,3 +36,4 @@ Fix the two High items first. Each takes minutes. Everything below Medium is mai
 | Low | Trust | One-pager claims weekly dependency checks; config is monthly | `.github/dependabot.yml` |
 | Low | Code | No error boundary; hand-kept types; no OpenAPI; large `PhotosPanel` | `web/src` |
 | Low | Code | Leftovers: `web/vercel.json`, two proxy configs, `wget` healthcheck | Repo |
+| Fixed | Deployment | `rollback.sh` used to remove the live container, then fail to start the old one; it now starts the previous image with the deploy's memory and CPU settings and waits for the health check | `deploy/oracle/rollback.sh` |

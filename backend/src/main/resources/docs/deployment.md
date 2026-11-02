@@ -67,7 +67,13 @@ flowchart TB
 
 > **Warning** The live container is removed before the new one starts, so the API is down for the length of Java startup, which can take minutes on this VM. Never deploy during a live event.
 
-> **Warning** `deploy/oracle/rollback.sh` is broken. A comment ends its `docker run` command early, so it removes the live container and then fails to start the old one. Until it's fixed, roll back by running `deploy.sh` with `IMAGE=…:sha-<previous commit>`.
+**Rolling back.** `deploy/oracle/rollback.sh` restarts the image that was live before the last deploy (`:previous`), tags the bad one `:failed`, and waits for the health check:
+
+```bash
+GALLERY_MEMORY=900m GALLERY_CPUS=1 deploy/oracle/rollback.sh
+```
+
+To go back further, run `deploy.sh` with `IMAGE=ghcr.io/mugundhang/mcreatik-instant-memories-backend:sha-<commit>`.
 
 ## Deploying the web app
 
@@ -100,7 +106,6 @@ Values live only in `~/mcreatik-gallery/gallery.env` on the VM; the names are in
 
 | Severity | Finding |
 | --- | --- |
-| High | `rollback.sh` takes the backend down (see above) |
 | Medium | Every deploy is an outage for the length of Java startup |
 | Medium | The image is built even when CI fails; deploy only after CI is green |
 | Medium | No uptime monitoring or alerts |
