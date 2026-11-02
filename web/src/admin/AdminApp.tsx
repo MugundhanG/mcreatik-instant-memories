@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router'
 import { adminApi } from '../lib/api'
 import mkLogo from '../assets/mk-logo.webp'
+import { PageLoader } from '../shared/ShutterLoader'
 import AccountPage from './AccountPage'
 import { auth, useSession } from './auth'
 import EventDashboardPage from './EventDashboardPage'
@@ -10,6 +11,9 @@ import LoginPage from './LoginPage'
 import NewEventPage from './NewEventPage'
 import PrintQrPage from './PrintQrPage'
 import StudiosPage from './StudiosPage'
+
+// McreatiK's documentation (diagrams, Markdown) is a separate download, fetched only when opened.
+const DocsPage = lazy(() => import('./docs/DocsPage'))
 
 function RequireSession() {
   const session = useSession()
@@ -28,20 +32,22 @@ function RequireSession() {
 
 const navClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'text-ink font-medium' : 'text-muted hover:text-ink')
 
-function Layout() {
+/** `wide`: the documentation uses the full width for its sidebars. */
+function Layout({ wide = false }: { wide?: boolean }) {
   const session = useSession()
   return (
     <div className="min-h-dvh bg-stone-50">
       <header className="no-print border-b border-line bg-white">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className={`mx-auto flex h-14 ${wide ? 'max-w-[90rem]' : 'max-w-6xl'} items-center justify-between px-4 sm:px-6`}>
           <Link to="/admin" className="flex items-center gap-2">
             <img src={mkLogo} alt="" className="h-7 w-auto" width={44} height={28} />
-            <span className="font-display text-xl font-semibold">McreatiK</span>
+            <span className="hidden font-display text-xl font-semibold min-[440px]:inline">McreatiK</span>
             <span className="hidden text-xs tracking-[0.2em] text-muted uppercase sm:inline">Live Gallery</span>
           </Link>
           <nav className="flex items-center gap-3 text-sm whitespace-nowrap sm:gap-4">
             <NavLink to="/admin" end className={navClass}>Events</NavLink>
             {session?.role === 'SUPER_ADMIN' && <NavLink to="/admin/studios" className={navClass}>Studios</NavLink>}
+            {session?.role === 'SUPER_ADMIN' && <NavLink to="/admin/docs" className={navClass}>Docs</NavLink>}
             <NavLink to="/admin/account" className={navClass} title={session?.email}>
               <span className="hidden sm:inline">{session?.displayName}</span>
               <span className="sm:hidden">Account</span>
@@ -52,9 +58,15 @@ function Layout() {
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-        <Outlet />
-      </main>
+      {wide ? (
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
+      ) : (
+        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+          <Outlet />
+        </main>
+      )}
     </div>
   )
 }
@@ -71,6 +83,10 @@ export default function AdminApp() {
           <Route path="events/:eventId" element={<EventDashboardPage />} />
           <Route path="studios" element={<StudiosPage />} />
           <Route path="account" element={<AccountPage />} />
+        </Route>
+        <Route element={<Layout wide />}>
+          <Route path="docs" element={<Navigate to="/admin/docs/overview" replace />} />
+          <Route path="docs/:slug" element={<DocsPage />} />
         </Route>
       </Route>
     </Routes>
