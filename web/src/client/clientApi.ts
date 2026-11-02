@@ -104,6 +104,8 @@ const json = (b: unknown) => JSON.stringify(b)
 export const clientApi = {
   login: (email: string, password: string) =>
     request<ClientSession>('/api/client/auth/login', { method: 'POST', body: json({ email, password }) }),
+  forgotPassword: (email: string) =>
+    request<void>('/api/client/auth/forgot-password', { method: 'POST', body: json({ email }) }),
   me: () => request<ClientMe>('/api/client/me'),
   photos: (q: { category?: string; selected?: boolean; offset: number; limit: number }) => {
     const p = new URLSearchParams({ offset: String(q.offset), limit: String(q.limit) })

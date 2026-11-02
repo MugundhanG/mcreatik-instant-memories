@@ -51,6 +51,13 @@ public class AdminEventController {
         return events.update(CurrentAdmin.id(auth), eventId, request);
     }
 
+    /** McreatiK only: turn the guests' gallery and the couple's gallery on or off. */
+    @PatchMapping("/{eventId}/access")
+    public EventDtos.EventDetail access(Authentication auth, @PathVariable UUID eventId,
+                                        @RequestBody EventDtos.GalleryAccessRequest request) {
+        return events.setGalleryAccess(CurrentAdmin.id(auth), eventId, request);
+    }
+
     @DeleteMapping("/{eventId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(Authentication auth, @PathVariable UUID eventId) {

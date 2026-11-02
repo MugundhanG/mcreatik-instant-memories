@@ -26,6 +26,16 @@ public class AdminUser {
     @Column(name = "display_name", nullable = false)
     private String displayName;
 
+    /** "Forgot password": hash of the emailed temporary password, valid until resetExpiresAt. */
+    @Column(name = "reset_password_hash")
+    private String resetPasswordHash;
+
+    @Column(name = "reset_expires_at")
+    private Instant resetExpiresAt;
+
+    @Column(name = "reset_requested_at")
+    private Instant resetRequestedAt;
+
     /** Goes up on every password change or reset; older tokens stop working. */
     @Column(name = "token_version", nullable = false)
     private int tokenVersion;
@@ -134,6 +144,31 @@ public class AdminUser {
 
     public int getTokenVersion() {
         return tokenVersion;
+    }
+
+    /** A temporary password was emailed; the current password keeps working until it is used. */
+    public void startReset(String temporaryHash, Instant expiresAt, Instant now) {
+        this.resetPasswordHash = temporaryHash;
+        this.resetExpiresAt = expiresAt;
+        this.resetRequestedAt = now;
+    }
+
+    public void clearReset() {
+        this.resetPasswordHash = null;
+        this.resetExpiresAt = null;
+    }
+
+    /** The emailed temporary password's hash while it is still valid, else null. */
+    public String validResetHash(Instant now) {
+        return resetPasswordHash != null && resetExpiresAt != null && resetExpiresAt.isAfter(now) ? resetPasswordHash : null;
+    }
+
+    public boolean hasPendingReset() {
+        return resetPasswordHash != null;
+    }
+
+    public Instant getResetRequestedAt() {
+        return resetRequestedAt;
     }
 
     public UUID getId() {

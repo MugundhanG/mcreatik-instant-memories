@@ -21,5 +21,8 @@ public interface GalleryBroadcaster {
 
     void eventStatusChanged(UUID eventId, EventStatus status);
 
+    /** McreatiK turned the guest gallery off: open galleries show "unavailable" and the streams end. */
+    void galleryClosed(UUID eventId, String message);
+
     int subscriberCount(UUID eventId);
 }

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { ApiError, publicApi } from '../lib/api'
 import type { EventStatus, PhotoReadyMessage, PublicEvent, PublicPhoto, PublicPhotoPage } from '../lib/types'
 
-export type LoadStatus = 'loading' | 'ready' | 'not-found' | 'error'
+/** 'unavailable': McreatiK has turned this gallery off (see `unavailableMessage`). */
+export type LoadStatus = 'loading' | 'ready' | 'not-found' | 'unavailable' | 'error'
 export type Connection = 'connecting' | 'live' | 'reconnecting'
 
 export interface LiveGalleryState {
@@ -13,13 +14,15 @@ export interface LiveGalleryState {
   incoming: PublicPhoto[]
   nextCursor: string | null
   status: LoadStatus
+  /** Why the gallery is unavailable, naming the studio to contact. */
+  unavailableMessage?: string
   connection: Connection
   loadingMore: boolean
 }
 
 type Action =
   | { type: 'loaded'; event: PublicEvent; page: PublicPhotoPage }
-  | { type: 'failed'; status: LoadStatus }
+  | { type: 'failed'; status: LoadStatus; message?: string }
   | { type: 'arrived'; photos: PublicPhoto[]; show: boolean }
   | { type: 'showIncoming' }
   | { type: 'removed'; id: string }
@@ -51,7 +54,7 @@ export function reducer(state: LiveGalleryState, action: Action): LiveGallerySta
     case 'loaded':
       return { ...state, event: action.event, photos: action.page.photos, nextCursor: action.page.nextCursor, status: 'ready' }
     case 'failed':
-      return { ...state, status: action.status }
+      return { ...state, status: action.status, unavailableMessage: action.message }
     case 'arrived': {
       const known = new Set([...state.photos, ...state.incoming].map((p) => p.id))
       const fresh = action.photos.filter((p) => !known.has(p.id))
@@ -94,6 +97,12 @@ export function reducer(state: LiveGalleryState, action: Action): LiveGallerySta
 
 function fromMessage(m: PhotoReadyMessage): PublicPhoto {
   return { id: m.photoId, thumbnailUrl: m.thumbnailUrl, webUrl: m.webUrl, width: m.width, height: m.height, readyAt: m.readyAt, cursor: m.cursor }
+}
+
+/** Not found, turned off by McreatiK (with the server's message), or another error. */
+function failure(e: unknown): Action {
+  if (e instanceof ApiError && e.code === 'GALLERY_UNAVAILABLE') return { type: 'failed', status: 'unavailable', message: e.message }
+  return { type: 'failed', status: e instanceof ApiError && e.status === 404 ? 'not-found' : 'error' }
 }
 
 const SAFETY_POLL_MS = 60_000
@@ -143,7 +152,7 @@ export function useLiveGallery(slug: string, shouldShowImmediately: () => boolea
         dispatch({ type: 'loaded', event, page })
       })
       .catch((e) => {
-        if (!cancelled) dispatch({ type: 'failed', status: e instanceof ApiError && e.status === 404 ? 'not-found' : 'error' })
+        if (!cancelled) dispatch(failure(e))
       })
     return () => {
       cancelled = true
@@ -156,8 +165,9 @@ export function useLiveGallery(slug: string, shouldShowImmediately: () => boolea
         ? await publicApi.photos(slug, { after: newest.current.cursor, limit: 200 })
         : await publicApi.photos(slug, { limit: 40 })
       arrive(page.photos)
-    } catch {
-      // next reconnect / poll will try again
+    } catch (e) {
+      // Turned off by McreatiK while open: show why. Anything else: the next reconnect / poll tries again.
+      if (e instanceof ApiError && e.code === 'GALLERY_UNAVAILABLE') dispatch(failure(e))
     }
   }, [slug, arrive])
 
@@ -190,6 +200,16 @@ export function useLiveGallery(slug: string, shouldShowImmediately: () => boolea
         } catch {
           // ignore
         }
+      })
+      source.addEventListener('GALLERY_CLOSED', (e) => {
+        // Turned off by McreatiK. Leaving 'ready' ends this stream and the polling (the effect cleans up).
+        let message = 'Please contact your photographer.'
+        try {
+          message = JSON.parse((e as MessageEvent).data).message ?? message
+        } catch {
+          // keep the default
+        }
+        dispatch({ type: 'failed', status: 'unavailable', message })
       })
       source.addEventListener('EVENT_STATUS', (e) => {
         try {

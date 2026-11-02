@@ -46,6 +46,14 @@ public class Event {
     @Column(name = "retention_until")
     private LocalDate retentionUntil;
 
+    /** Guests' QR gallery; only McreatiK (super admin) turns it off. */
+    @Column(name = "live_gallery_enabled", nullable = false)
+    private boolean liveGalleryEnabled = true;
+
+    /** The couple's login; only McreatiK (super admin) turns it off. */
+    @Column(name = "client_gallery_enabled", nullable = false)
+    private boolean clientGalleryEnabled = true;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -140,6 +148,22 @@ public class Event {
 
     public void setRetentionUntil(LocalDate retentionUntil) {
         this.retentionUntil = retentionUntil;
+    }
+
+    public boolean isLiveGalleryEnabled() {
+        return liveGalleryEnabled;
+    }
+
+    public void setLiveGalleryEnabled(boolean liveGalleryEnabled) {
+        this.liveGalleryEnabled = liveGalleryEnabled;
+    }
+
+    public boolean isClientGalleryEnabled() {
+        return clientGalleryEnabled;
+    }
+
+    public void setClientGalleryEnabled(boolean clientGalleryEnabled) {
+        this.clientGalleryEnabled = clientGalleryEnabled;
     }
 
     public Instant getCreatedAt() {

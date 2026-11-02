@@ -10,8 +10,11 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Limit;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.mcreatik.gallery.album.AlbumService;
 import com.mcreatik.gallery.auth.AdminUser;
@@ -254,9 +257,13 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public Event publicEvent(String slug) {
-        return events.findBySlug(slug)
+        Event event = events.findBySlug(slug)
                 .filter(e -> e.getStatus().isPubliclyVisible())
                 .orElseThrow(() -> ApiException.notFound("Event"));
+        if (!event.isLiveGalleryEnabled()) {
+            throw galleryUnavailable(event);
+        }
+        return event;
     }
 
     @Transactional(readOnly = true)
@@ -274,7 +281,40 @@ public class EventService {
                 e.getEndTime(), e.getStatus(), e.getCoverPhotoId(), coverUrl(e), properties.galleryUrl(e.getSlug()),
                 e.getRetentionUntil(), e.getCreatedAt(), e.getUpdatedAt(), e.getOwnerId(),
                 admins.findById(e.getOwnerId()).map(AdminUser::getDisplayName).orElse(null),
-                branding.ofOwner(e.getOwnerId()));
+                branding.ofOwner(e.getOwnerId()), e.isLiveGalleryEnabled(), e.isClientGalleryEnabled());
+    }
+
+    /** Guests and the couple see this when McreatiK has turned their gallery off. */
+    public ApiException galleryUnavailable(Event e) {
+        return new ApiException(HttpStatus.FORBIDDEN, "GALLERY_UNAVAILABLE",
+                "This gallery is currently unavailable. Please contact " + branding.ofOwner(e.getOwnerId()).name() + ".");
+    }
+
+    /** McreatiK only: turn an event's guest gallery or client gallery on or off. Uploads keep working either way. */
+    @Transactional
+    public EventDtos.EventDetail setGalleryAccess(UUID adminId, UUID eventId, EventDtos.GalleryAccessRequest r) {
+        if (!isSuperAdmin(adminId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Only McreatiK can turn galleries on or off");
+        }
+        Event event = events.findById(eventId).orElseThrow(() -> ApiException.notFound("Event"));
+        if (r.liveGallery() != null) {
+            boolean closing = event.isLiveGalleryEnabled() && !r.liveGallery();
+            event.setLiveGalleryEnabled(r.liveGallery());
+            if (closing) {
+                // Tell open galleries only once the change is saved, so a reload sees it too.
+                String message = galleryUnavailable(event).getMessage();
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        broadcaster.galleryClosed(eventId, message);
+                    }
+                });
+            }
+        }
+        if (r.clientGallery() != null) {
+            event.setClientGalleryEnabled(r.clientGallery());
+        }
+        return toDetail(event);
     }
 
     private String coverUrl(Event e) {

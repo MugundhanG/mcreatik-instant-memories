@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
+import { ForgotPassword } from '../shared/ForgotPassword'
 import { auth, useSession } from './auth'
 import { Button, ErrorText, Field, inputClass } from './ui'
 
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [forgot, setForgot] = useState(false)
 
   if (session) return <Navigate to="/admin" replace />
 
@@ -27,6 +29,20 @@ export default function LoginPage() {
     } finally {
       setBusy(false)
     }
+  }
+
+  if (forgot) {
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-stone-50 px-4">
+        <div className="w-full max-w-sm space-y-5 rounded-2xl border border-line bg-white p-7">
+          <div>
+            <p className="font-display text-2xl font-semibold">McreatiK</p>
+            <p className="text-sm text-muted">Live Gallery · Forgot password</p>
+          </div>
+          <ForgotPassword request={adminApi.forgotPassword} initialEmail={email} onBack={() => setForgot(false)} />
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -46,6 +62,9 @@ export default function LoginPage() {
         <Button type="submit" variant="primary" disabled={busy} className="w-full">
           {busy ? 'Signing in…' : 'Sign in'}
         </Button>
+        <button type="button" onClick={() => setForgot(true)} className="w-full text-center text-sm text-muted underline underline-offset-2 hover:text-ink">
+          Forgot password?
+        </button>
       </form>
     </main>
   )

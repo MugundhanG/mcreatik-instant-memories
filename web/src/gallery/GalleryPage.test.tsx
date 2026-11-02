@@ -244,4 +244,11 @@ describe('Live gallery', () => {
     expect(within(screen.getByTestId('event-status')).getByText('Upcoming')).toBeInTheDocument()
     expect(screen.getByText('Event starts soon')).toBeInTheDocument()
   })
+
+  it('tells guests when McreatiK has turned the gallery off', async () => {
+    const closed = () => new Response(JSON.stringify({ code: 'GALLERY_UNAVAILABLE', message: 'This gallery is currently unavailable. Please contact Lens & Light.' }), { status: 403 })
+    mockFetch({ [base]: closed, [`${base}/photos`]: closed })
+    renderGallery()
+    expect(await screen.findByTestId('gallery-unavailable')).toHaveTextContent('Please contact Lens & Light.')
+  })
 })
