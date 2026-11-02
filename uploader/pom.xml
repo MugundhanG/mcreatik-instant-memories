@@ -68,7 +68,7 @@
       <!-- routes the FTP server's slf4j logging into java.util.logging like the rest of the app -->
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-jdk14</artifactId>
-      <version>1.7.36</version>
+      <version>2.0.20</version>
     </dependency>
 
     <dependency>
