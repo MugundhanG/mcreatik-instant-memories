@@ -74,6 +74,18 @@ export interface Account {
   brand?: Brand
 }
 
+/** A page of McreatiK's internal documentation (super admin only). */
+export interface DocPageSummary {
+  slug: string
+  title: string
+  group: string
+}
+
+export interface DocPage extends DocPageSummary {
+  markdown: string
+  reviewedOn: string
+}
+
 /** A login on the super admin's Studios page (McreatiK itself is listed too, as SUPER_ADMIN). */
 export interface Studio {
   id: string

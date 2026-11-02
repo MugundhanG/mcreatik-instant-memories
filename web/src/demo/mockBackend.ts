@@ -337,6 +337,8 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
   if (path === '/api/admin/account' && method === 'GET') {
     return json({ email: 'demo@mcreatik.com', displayName: 'Demo', role: 'SUPER_ADMIN', mustChangePassword: false })
   }
+  // The internal documentation lives on the real server only.
+  if (path.startsWith('/api/admin/docs')) return json({ code: 'FORBIDDEN', message: 'The documentation is not part of the demo.' }, 403)
   if ((path === '/api/auth/forgot-password' || path === '/api/client/auth/forgot-password') && method === 'POST') return new Response(null, { status: 204 })
   if (path === '/api/admin/account/password' && method === 'POST') return new Response(null, { status: 204 })
   if (path === '/api/admin/studios' && method === 'GET') {
