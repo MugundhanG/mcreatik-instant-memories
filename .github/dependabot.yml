@@ -1,25 +1,49 @@
-# Security updates: weekly pull requests when a dependency has a known vulnerability or a new version.
+# Monthly dependency version updates, against main (the branch the live app is built from).
+# Minor and patch updates arrive grouped in one PR per part of the app; major versions come as separate PRs
+# so they can be tested on their own. (GitHub's security alerts are separate from these.)
 version: 2
 updates:
   - package-ecosystem: maven
     directory: /backend
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-  - package-ecosystem: maven
-    directory: /uploader
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 3
-  - package-ecosystem: npm
-    directory: /web
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    groups:
-      minor-and-patch:
-        update-types: [minor, patch]
-  - package-ecosystem: github-actions
-    directory: /
+    target-branch: main
     schedule:
       interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      backend-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+  - package-ecosystem: maven
+    directory: /uploader
+    target-branch: main
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      uploader-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+  - package-ecosystem: npm
+    directory: /web
+    target-branch: main
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      web-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    ignore:
+      # TypeScript 7 (the new native compiler) needs typescript-eslint support first; revisit later.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: main
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      actions-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
