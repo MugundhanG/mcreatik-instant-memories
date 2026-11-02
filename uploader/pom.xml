@@ -11,7 +11,7 @@
   <properties>
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jackson.version>3.1.5</jackson.version>
+    <jackson.version>3.2.4</jackson.version>
     <sqlite.version>3.53.4.0</sqlite.version>
     <junit.version>5.14.4</junit.version>
     <assertj.version>3.27.7</assertj.version>
