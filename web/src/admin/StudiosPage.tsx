@@ -126,7 +126,7 @@ export default function StudiosPage() {
       )}
 
       {showForm && (
-        <Card title="Add a studio" action={clientStudios.length > 0 && <button type="button" onClick={() => setAdding(false)} className="text-sm text-muted hover:text-ink">Cancel</button>}>
+        <Card className="anim-drop-in" title="Add a studio" action={clientStudios.length > 0 && <button type="button" onClick={() => setAdding(false)} className="text-sm text-muted hover:text-ink">Cancel</button>}>
           <form onSubmit={create} className="grid gap-4 sm:grid-cols-2">
             <Field label="Studio name" hint="Shown on their dashboard">
               <input className={inputClass} required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Lens & Light Studio" />

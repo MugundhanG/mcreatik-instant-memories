@@ -281,7 +281,7 @@ export default function ClientPortal() {
 
       <ZipProgressCard status={zip.status} onClose={zip.dismiss} />
       {toast && !zip.status && (
-        <div role="status" className="fixed bottom-6 left-1/2 z-[70] w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-ink px-4 py-2.5 text-center text-sm text-white shadow-lg">{toast}</div>
+        <div role="status" className="anim-sheet-up fixed bottom-6 left-1/2 z-[70] w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-ink px-4 py-2.5 text-center text-sm text-white shadow-lg">{toast}</div>
       )}
 
       {viewerIndex >= 0 && (

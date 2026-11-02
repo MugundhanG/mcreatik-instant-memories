@@ -199,7 +199,7 @@ export default function DocsPage() {
           <span aria-hidden="true" className="text-muted">{menuOpen ? '×' : '☰'}</span>
         </button>
         {menuOpen && pages && (
-          <div className="mt-3 max-h-[70dvh] overflow-y-auto pb-2">
+          <div className="anim-drop-in mt-3 max-h-[70dvh] overflow-y-auto pb-2">
             <Sidebar pages={pages} current={slug} onNavigate={() => setMenuOpen(false)} />
           </div>
         )}

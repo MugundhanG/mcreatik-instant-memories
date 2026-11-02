@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { EventStatus } from '../lib/types'
+import { usePresence } from '../shared/usePresence'
 import { EventStatusBadge } from './ui'
 
 const STATUSES: { status: EventStatus; hint: string }[] = [
@@ -18,6 +19,7 @@ export function EventStatusMenu({ status, onChange }: { status: EventStatus; onC
   const [open, setOpen] = useState(false)
   const [at, setAt] = useState({ top: 0, left: 0, width: 288 })
   const box = useRef<HTMLDivElement>(null)
+  const { mounted, closing } = usePresence(open, 130)
 
   // Placed in the viewport (not inside the header), so the menu never runs off a phone screen.
   const toggle = () => {
@@ -54,8 +56,9 @@ export function EventStatusMenu({ status, onChange }: { status: EventStatus; onC
         <EventStatusBadge status={status} />
         <svg viewBox="0 0 16 16" className="size-3.5 text-muted" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
       </button>
-      {open && (
-        <div role="menu" aria-label="Event status" style={{ top: at.top, left: at.left, width: at.width }} className="fixed z-40 rounded-xl border border-line bg-white p-1.5 shadow-lg">
+      {mounted && (
+        <div role="menu" aria-label="Event status" aria-hidden={closing || undefined} inert={closing} style={{ top: at.top, left: at.left, width: at.width }}
+          className={`fixed z-40 rounded-xl border border-line bg-white p-1.5 shadow-lg ${closing ? 'anim-pop-out' : 'anim-pop-in'}`}>
           {STATUSES.map(({ status: s, hint }) => (
             <button key={s} type="button" role="menuitemradio" aria-checked={s === status}
               onClick={() => {

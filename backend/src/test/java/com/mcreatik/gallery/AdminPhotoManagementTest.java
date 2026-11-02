@@ -3,6 +3,7 @@ package com.mcreatik.gallery;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -124,5 +125,57 @@ class AdminPhotoManagementTest extends IntegrationTest {
                 .header("Authorization", bearer(adminToken()))).andReturn().getResponse().getContentAsString();
         assertThat(JsonPath.<List<String>>read(next, "$.photos[*].id")).containsExactly(a1);
         assertThat((Object) JsonPath.read(next, "$.nextOffset")).isNull();
+    }
+
+    private org.springframework.test.web.servlet.ResultActions bulk(String eventId, String token, String body) throws Exception {
+        return mvc.perform(post("/api/admin/events/" + eventId + "/photos/bulk").header("Authorization", bearer(token))
+                .contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
+    @Test
+    void selectedPhotosAreLikedHiddenAndDeletedInOneGo() throws Exception {
+        String id = eventId(event);
+        bulk(id, adminToken(), "{\"photoIds\":[\"" + a1 + "\",\"" + b1 + "\"],\"action\":\"LIKE\"}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.changed").value(2));
+        assertThat(ids("?liked=true")).containsExactlyInAnyOrder(a1, b1);
+        bulk(id, adminToken(), "{\"photoIds\":[\"" + a1 + "\"],\"action\":\"UNLIKE\"}").andExpect(status().isOk());
+        assertThat(ids("?liked=true")).containsExactly(b1);
+
+        // Hidden photos leave the guest gallery; showing them brings them back.
+        bulk(id, adminToken(), "{\"photoIds\":[\"" + a1 + "\",\"" + a2 + "\"],\"action\":\"HIDE\"}").andExpect(status().isOk());
+        assertThat(JsonPath.<List<String>>read(publicPhotos(slug(event)), "$.photos[*].id")).containsExactly(b1);
+        bulk(id, adminToken(), "{\"photoIds\":[\"" + a2 + "\"],\"action\":\"SHOW\"}").andExpect(status().isOk());
+        assertThat(JsonPath.<List<String>>read(publicPhotos(slug(event)), "$.photos[*].id")).containsExactlyInAnyOrder(a2, b1);
+
+        bulk(id, adminToken(), "{\"photoIds\":[\"" + a1 + "\",\"" + b1 + "\"],\"action\":\"DELETE\"}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.changed").value(2));
+        assertThat(ids("")).containsExactly(a2);
+        assertThat(JsonPath.<List<String>>read(publicPhotos(slug(event)), "$.photos[*].id")).containsExactly(a2);
+    }
+
+    @Test
+    void bulkChangesStayInsideTheEventAndItsOwner() throws Exception {
+        String other = createEvent("Other", "LIVE");
+        String otherPhoto = uploadPhoto(createUploader(eventId(other), "Cam"), "O1.JPG", jpeg(800, 600));
+        processAll();
+        // A photo of another event is ignored, even by its owner.
+        bulk(eventId(event), adminToken(), "{\"photoIds\":[\"" + otherPhoto + "\"],\"action\":\"DELETE\"}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.changed").value(0));
+        assertThat(JsonPath.<List<String>>read(publicPhotos(slug(other)), "$.photos[*].id")).containsExactly(otherPhoto);
+
+        // Another studio cannot touch this event at all.
+        String email = "bulk-" + java.util.UUID.randomUUID().toString().substring(0, 6) + "@studio.test";
+        mvc.perform(post("/api/admin/studios").header("Authorization", bearer(adminToken())).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Other studio\",\"email\":\"" + email + "\",\"password\":\"temporary-123\",\"plan\":\"UNLIMITED\"}"))
+                .andExpect(status().isCreated());
+        bulk(eventId(event), login(email, "temporary-123"), "{\"photoIds\":[\"" + a1 + "\"],\"action\":\"DELETE\"}")
+                .andExpect(status().isNotFound());
+
+        bulk(eventId(event), adminToken(), "{\"photoIds\":[],\"action\":\"LIKE\"}").andExpect(status().isBadRequest());
+        String tooMany = java.util.stream.IntStream.range(0, 1001).mapToObj(i -> "\"" + java.util.UUID.randomUUID() + "\"")
+                .collect(java.util.stream.Collectors.joining(","));
+        bulk(eventId(event), adminToken(), "{\"photoIds\":[" + tooMany + "],\"action\":\"LIKE\"}")
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("TOO_MANY"));
+        assertThat(ids("")).containsExactly(b1, a2, a1);
     }
 }

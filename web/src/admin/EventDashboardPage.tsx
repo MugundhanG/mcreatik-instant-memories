@@ -138,6 +138,7 @@ export default function EventDashboardPage() {
 
   const client = eventClients?.[0]
   const galleryOff = event.liveGalleryEnabled === false || event.clientGalleryEnabled === false
+  // A section fades in each time it is shown (CSS animations restart when an element stops being hidden).
   const panel = (id: Tab) => ({ id: `panel-${id}`, role: 'tabpanel', 'aria-labelledby': `tab-${id}`, hidden: tab !== id })
 
   return (
@@ -193,7 +194,7 @@ export default function EventDashboardPage() {
       </div>
 
       {/* Every section stays mounted (only hidden), so an upload or a ZIP keeps going while you look elsewhere. */}
-      <section {...panel('overview')} className="space-y-6">
+      <section {...panel('overview')} className="anim-fade-in space-y-6">
         {stats && <StatStrip stats={stats} />}
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
@@ -226,7 +227,7 @@ export default function EventDashboardPage() {
         </div>
       </section>
 
-      <section {...panel('photos')} className="space-y-6">
+      <section {...panel('photos')} className="anim-fade-in space-y-6">
         <UploadPhotosPanel
           eventId={event.id}
           categories={categories}
@@ -250,15 +251,15 @@ export default function EventDashboardPage() {
         />
       </section>
 
-      <section {...panel('guests')}>
+      <section {...panel('guests')} className="anim-fade-in">
         <AnalyticsPanel eventId={event.id} live={event.status === 'LIVE'} />
       </section>
 
-      <section {...panel('couple')}>
+      <section {...panel('couple')} className="anim-fade-in">
         <ClientsCard eventId={event.id} eventName={event.name} refreshKey={stats?.readyPhotos ?? 0} onClients={setEventClients} />
       </section>
 
-      <section {...panel('settings')} className="space-y-6">
+      <section {...panel('settings')} className="anim-fade-in space-y-6">
         {superAdmin && <GalleryAccessCard event={event} onChange={setEvent} />}
         <CategoriesCard eventId={event.id} categories={categories} onChange={loadCategories} />
         <Card title="Privacy & data">

@@ -452,6 +452,28 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
       return json(null, 204)
     }
   }
+  if ((m = path.match(/^\/api\/admin\/events\/([^/]+)\/photos\/bulk$/)) && method === 'POST') {
+    const e = events.find((x) => x.id === m![1])
+    if (!e) return notFound()
+    const b = body as { photoIds: string[]; action: 'LIKE' | 'UNLIKE' | 'HIDE' | 'SHOW' | 'DELETE' }
+    const picked = e.photos.filter((p) => b.photoIds.includes(p.id))
+    for (const p of picked) {
+      if (b.action === 'LIKE' || b.action === 'UNLIKE') p.liked = b.action === 'LIKE'
+      if ((b.action === 'HIDE' || b.action === 'SHOW') && (b.action === 'HIDE') !== !!p.hidden) {
+        p.hidden = b.action === 'HIDE'
+        if (p.hidden && e.coverPhotoId === p.id) e.coverPhotoId = null
+        if (p.hidden) broadcast(e, 'PHOTO_REMOVED', { eventId: e.id, photoId: p.id })
+        else broadcast(e, 'PHOTO_READY', { eventId: e.id, photoId: p.id, ...toPublic(p) })
+      }
+      if (b.action === 'DELETE') {
+        e.photos.splice(e.photos.indexOf(p), 1)
+        if (e.coverPhotoId === p.id) e.coverPhotoId = null
+        broadcast(e, 'PHOTO_REMOVED', { eventId: e.id, photoId: p.id })
+      }
+    }
+    notify()
+    return json({ changed: picked.length })
+  }
   if ((m = path.match(/^\/api\/admin\/photos\/([^/]+)(\/original)?$/))) {
     const e = events.find((x) => x.photos.some((p) => p.id === m![1]))
     const p = e?.photos.find((x) => x.id === m![1])

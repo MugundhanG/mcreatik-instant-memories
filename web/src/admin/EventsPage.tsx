@@ -79,7 +79,7 @@ export default function EventsPage() {
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {events?.map((e) => (
           <li key={e.id}>
-            <Link to={`/admin/events/${e.id}`} className="block rounded-xl border border-line bg-white p-5 transition-shadow hover:shadow-sm">
+            <Link to={`/admin/events/${e.id}`} className="lift block rounded-xl border border-line bg-white p-5">
               <div className="flex items-start justify-between gap-3">
                 <p className="font-medium">{e.name}</p>
                 <EventStatusBadge status={e.status} />

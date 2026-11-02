@@ -152,7 +152,7 @@ export default function GalleryPage() {
       </div>
 
       {incoming.length > 0 && (
-        <div className="sticky top-3 z-30 flex justify-center">
+        <div className="anim-drop-in sticky top-3 z-30 flex justify-center">
           <button
             type="button"
             onClick={revealIncoming}

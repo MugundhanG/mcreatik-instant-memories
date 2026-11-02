@@ -166,7 +166,7 @@ export function PhotoViewer({
       role="dialog"
       aria-modal="true"
       aria-label="Photo viewer"
-      className="fixed inset-0 z-50 flex flex-col text-white select-none"
+      className="anim-fade-in fixed inset-0 z-50 flex flex-col text-white select-none"
       // Swiping down to close fades the backdrop with the photo.
       style={{ backgroundColor: `rgba(0,0,0,${1 - Math.min(slide.y / 400, 0.6)})` }}
     >
@@ -245,7 +245,7 @@ export function PhotoViewer({
       {toast && (
         <div
           role="status"
-          className="pointer-events-none absolute top-16 left-1/2 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-white px-4 py-2 text-center text-sm text-ink shadow-lg"
+          className="anim-drop-in pointer-events-none absolute top-16 left-1/2 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-white px-4 py-2 text-center text-sm text-ink shadow-lg"
         >
           {toast.text}
         </div>

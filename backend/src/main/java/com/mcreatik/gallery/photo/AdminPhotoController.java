@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -171,18 +173,8 @@ public class AdminPhotoController {
         if (request.liked() != null) {
             photo.setLiked(request.liked());
         }
-        if (request.hidden() != null && request.hidden() != photo.isHidden()) {
-            photo.setHidden(request.hidden());
-            if (photo.isHidden()) {
-                events.clearCoverIf(photo.getEventId(), photo.getId());
-            }
-            if (photo.getStatus() == PhotoStatus.READY) {
-                if (photo.isHidden()) {
-                    broadcaster.photoRemoved(photo.getEventId(), photo.getId());
-                } else {
-                    broadcaster.photoReady(photo.getEventId(), mapper.toPublic(photo));
-                }
-            }
+        if (request.hidden() != null) {
+            applyHidden(photo, request.hidden());
         }
         return mapper.toAdmin(photo);
     }
@@ -206,17 +198,79 @@ public class AdminPhotoController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(Authentication auth, @PathVariable UUID photoId) {
         Photo photo = owned(auth, photoId);
-        if (photo.isOriginalStored()) {
-            storage.delete(StorageArea.ORIGINALS, photo.getStorageKey());
-        }
-        if (photo.getOptimizedStorageKey() != null) {
-            storage.delete(StorageArea.MEDIA, photo.getOptimizedStorageKey());
-        }
-        if (photo.getThumbnailStorageKey() != null) {
-            storage.delete(StorageArea.MEDIA, photo.getThumbnailStorageKey());
-        }
         photos.delete(photo);
         broadcaster.photoRemoved(photo.getEventId(), photo.getId());
+        deleteFiles(List.of(photo));
+    }
+
+    public enum BulkAction { LIKE, UNLIKE, HIDE, SHOW, DELETE }
+
+    public record BulkRequest(List<UUID> photoIds, BulkAction action) {
+    }
+
+    public record BulkResult(int changed) {
+    }
+
+    /**
+     * Like, hide or delete many photos at once (the dashboard's Select mode). Only photos of this event are touched;
+     * guests' open galleries update as with single changes.
+     */
+    @PostMapping("/events/{eventId}/photos/bulk")
+    @Transactional
+    public BulkResult bulk(Authentication auth, @PathVariable UUID eventId, @RequestBody BulkRequest request) {
+        events.owned(CurrentAdmin.id(auth), eventId);
+        if (request.action() == null || request.photoIds() == null || request.photoIds().isEmpty()) {
+            throw ApiException.badRequest("INVALID_REQUEST", "Choose some photos and an action");
+        }
+        if (request.photoIds().size() > MAX_BULK) {
+            throw ApiException.badRequest("TOO_MANY", "Change at most 1,000 photos at a time");
+        }
+        List<Photo> found = photos.findAllById(request.photoIds()).stream()
+                .filter(p -> p.getEventId().equals(eventId)).toList();
+        switch (request.action()) {
+            case LIKE, UNLIKE -> found.forEach(p -> p.setLiked(request.action() == BulkAction.LIKE));
+            case HIDE, SHOW -> found.forEach(p -> applyHidden(p, request.action() == BulkAction.HIDE));
+            case DELETE -> {
+                photos.deleteAll(found);
+                // Guests and storage follow only once the rows are really gone.
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        found.forEach(p -> broadcaster.photoRemoved(p.getEventId(), p.getId()));
+                        deleteFiles(found);
+                    }
+                });
+            }
+        }
+        return new BulkResult(found.size());
+    }
+
+    static final int MAX_BULK = 1000;
+
+    /** Hiding takes the photo off guests' screens straight away (and stops it being the cover); showing puts it back. */
+    private void applyHidden(Photo photo, boolean hidden) {
+        if (hidden == photo.isHidden()) {
+            return;
+        }
+        photo.setHidden(hidden);
+        if (hidden) {
+            events.clearCoverIf(photo.getEventId(), photo.getId());
+        }
+        if (photo.getStatus() == PhotoStatus.READY) {
+            if (hidden) {
+                broadcaster.photoRemoved(photo.getEventId(), photo.getId());
+            } else {
+                broadcaster.photoReady(photo.getEventId(), mapper.toPublic(photo));
+            }
+        }
+    }
+
+    /** The originals and gallery copies of deleted photos, removed in batches. */
+    private void deleteFiles(List<Photo> deleted) {
+        storage.deleteAll(StorageArea.ORIGINALS, deleted.stream().filter(Photo::isOriginalStored).map(Photo::getStorageKey).toList());
+        storage.deleteAll(StorageArea.MEDIA, deleted.stream()
+                .flatMap(p -> java.util.stream.Stream.of(p.getOptimizedStorageKey(), p.getThumbnailStorageKey()))
+                .filter(java.util.Objects::nonNull).toList());
     }
 
     private Photo owned(Authentication auth, UUID photoId) {
