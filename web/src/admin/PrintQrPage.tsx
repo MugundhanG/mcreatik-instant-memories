@@ -79,7 +79,7 @@ export default function PrintQrPage() {
           <div className="mt-auto flex w-full items-end justify-between">
             <div className="text-left">
               <p className="text-[11px] tracking-[0.25em] text-[#8a7a66] uppercase">No app · No sign-up needed</p>
-              {brand.poweredByMcreatik && <p className="mt-1.5 text-[10px] tracking-[0.2em] text-[#a8998a] uppercase">Powered by McreatiK</p>}
+              {brand.poweredByMcreatik && <p className="mt-1.5 text-[11px] tracking-[0.2em] text-[#a8998a] uppercase">Powered by McreatiK</p>}
             </div>
             {brand.instagram && (
               <p className="inline-flex items-center gap-2 text-[17px] font-medium tracking-wide text-[#7a4f17]">

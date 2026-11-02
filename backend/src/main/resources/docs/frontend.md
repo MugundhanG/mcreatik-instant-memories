@@ -98,11 +98,11 @@ flowchart LR
 
 | Component | What it does |
 | --- | --- |
-| `EventsPage` | Event list, plan allowance, Buy events dialog |
+| `EventsPage` | Event list, plan allowance, Buy events dialog; a three-step first-event guide when a studio has no events |
 | `NewEventPage` | Create event; a 402 opens `BuyEventsDialog` (UPI) |
-| `EventDashboardPage` | Hub for one event; refreshes stats on a timer and passes `refreshKey` down |
+| `EventDashboardPage` | Hub for one event: header (status menu, Copy link, QR) and tabs Overview / Photos / Guests / Couple / Settings kept in `?tab=`. Every tab stays mounted (only hidden) so uploads and ZIPs keep going. Refreshes stats on a timer and passes `refreshKey` down |
 | `UploadPhotosPanel` + `prepareUpload.ts` | Browser upload queue; resizes to 2048 / 640 px, reads the EXIF date |
-| `PhotosPanel` | Filters, select mode, move, ZIP, like, hide, cover, delete (about 560 lines) |
+| `PhotosPanel` | Filters, select mode, move, ZIP. Each tile shows Like and Hide; Download, Make cover, Download original and Delete sit under More |
 | `ClientsCard` | The couple's single login, album limit, picks, album ZIP |
 | `AnalyticsPanel` | Guest numbers and an hourly chart; refreshes every 30 s while live |
 | `GalleryAccessCard` | McreatiK-only guest and couple gallery switches |

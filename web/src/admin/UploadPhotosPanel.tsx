@@ -208,7 +208,7 @@ export function UploadPhotosPanel({ eventId, onUploaded, categories = [] }: { ev
           >
             <div className="flex items-center justify-between gap-2">
               <p className="font-medium">{MODES[mode].title}</p>
-              <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-muted">{MODES[mode].badge}</span>
+              <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-muted">{MODES[mode].badge}</span>
             </div>
             <p className="mt-2 text-sm text-ink">{MODES[mode].use}</p>
             <p className="mt-1 text-xs text-muted">{MODES[mode].detail}</p>

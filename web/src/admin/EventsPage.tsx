@@ -8,6 +8,12 @@ import { useSession } from './auth'
 import { BuyEventsDialog } from './BuyEventsDialog'
 import { ErrorText, EventStatusBadge } from './ui'
 
+const FIRST_STEPS = [
+  { title: 'Create the event', body: 'Name and date. You get a private gallery address and its QR code.' },
+  { title: 'Print the QR poster', body: 'In the event, press QR code, then Print poster. Place it at the entrance and on the tables.' },
+  { title: 'Connect a camera', body: 'In the event, under Cameras & uploaders, add an uploader and paste its code into the uploader app on the laptop.' },
+]
+
 export default function EventsPage() {
   const [events, setEvents] = useState<EventSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -53,10 +59,22 @@ export default function EventsPage() {
       <ErrorText>{error}</ErrorText>
       {!events && !error && <ShutterLoader className="py-16" />}
       {events?.length === 0 && (
-        <div className="rounded-xl border border-dashed border-line bg-white px-6 py-16 text-center">
-          <p className="font-medium">No events yet</p>
-          <p className="mt-1 text-sm text-muted">Create an event to get its QR code and connect cameras.</p>
-        </div>
+        <section className="rounded-xl border border-line bg-white p-6 sm:p-8" data-testid="first-event">
+          <h2 className="text-lg font-semibold">Your first live gallery in three steps</h2>
+          <p className="mt-1 text-sm text-muted">Guests scan a QR code at the venue and see photos seconds after they are taken.</p>
+          <ol className="mt-6 grid gap-4 sm:grid-cols-3">
+            {FIRST_STEPS.map((step, i) => (
+              <li key={step.title} className="rounded-xl border border-line p-4">
+                <span className="flex size-7 items-center justify-center rounded-full bg-stone-100 text-sm font-semibold tabular-nums">{i + 1}</span>
+                <p className="mt-3 font-medium">{step.title}</p>
+                <p className="mt-1 text-sm text-muted">{step.body}</p>
+              </li>
+            ))}
+          </ol>
+          <Link to="/admin/events/new" className="mt-6 inline-flex h-10 items-center rounded-lg bg-ink px-4 text-sm font-medium text-white hover:bg-stone-800">
+            Create your first event
+          </Link>
+        </section>
       )}
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {events?.map((e) => (

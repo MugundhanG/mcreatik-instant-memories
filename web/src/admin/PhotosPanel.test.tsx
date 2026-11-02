@@ -61,15 +61,17 @@ describe('Dashboard photos', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows Download, Hide and Delete on every photo, and Make cover under More', async () => {
+  it('keeps tiles calm: Hide on the tile, Download, Make cover and Delete under More', async () => {
     const user = userEvent.setup()
     mockApi(() => ({ photos: [adminPhoto(1)], nextOffset: null }))
     const { onCoverChange } = renderPanel()
     const tile = (await screen.findAllByRole('listitem'))[0]
-    expect(within(tile).getByRole('button', { name: 'Download' })).toBeInTheDocument()
     expect(within(tile).getByRole('button', { name: 'Hide from gallery' })).toBeInTheDocument()
-    expect(within(tile).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+    expect(within(tile).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+    expect(within(tile).queryByRole('button', { name: 'Download' })).not.toBeInTheDocument()
     await user.click(within(tile).getByRole('button', { name: 'More' }))
+    expect(within(tile).getByRole('menuitem', { name: /^Download$/ })).toBeInTheDocument()
+    expect(within(tile).getByRole('menuitem', { name: /Delete/ })).toBeInTheDocument()
     await user.click(within(tile).getByRole('menuitem', { name: /Make cover/ }))
     expect(onCoverChange).toHaveBeenCalledWith('p1')
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
@@ -161,7 +163,8 @@ describe('Dashboard photos', () => {
     await waitFor(() => expect(tiles()).toHaveLength(4))
 
     // Delete the 3rd photo (confirm in the dialog).
-    await user.click(within(tiles()[2]).getByRole('button', { name: 'Delete' }))
+    await user.click(within(tiles()[2]).getByRole('button', { name: 'More' }))
+    await user.click(within(tiles()[2]).getByRole('menuitem', { name: /Delete/ }))
     await user.click(await screen.findByRole('button', { name: 'Delete photo' }))
     await waitFor(() => expect(tiles()).toHaveLength(3))
     // The stats poll changes refreshKey: the list is merged, not reset to the first page.

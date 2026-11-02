@@ -88,3 +88,19 @@ body {
 @media print {
   @page { size: A4; margin: 0; }
 }
+
+/*
+ * Keyboard focus: one clear ring everywhere (two tones, so it shows on light pages and on the dark photo viewer).
+ * Outside Tailwind's layers on purpose, so it wins over `outline-none` on individual elements.
+ */
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #fff;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-offset: 1px;
+  box-shadow: none;
+}
