@@ -18,7 +18,7 @@
     <ftpserver.version>1.2.1</ftpserver.version>
     <commons-net.version>3.13.0</commons-net.version>
     <!-- keep in step with backend/pom.xml: photos prepared here must match server-processed ones -->
-    <twelvemonkeys.version>3.15.2</twelvemonkeys.version>
+    <twelvemonkeys.version>3.15.3</twelvemonkeys.version>
     <metadata-extractor.version>2.21.0</metadata-extractor.version>
   </properties>
 
