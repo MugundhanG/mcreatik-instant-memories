@@ -69,40 +69,29 @@ export async function downloadPhoto(url: string, eventSlug: string, photoId: str
   }
 }
 
-export type ShareResult = 'shared-file' | 'shared-link' | 'copied' | 'cancelled' | 'unsupported'
+export type ShareResult = 'shared' | 'cancelled' | 'unsupported'
+
+/** The caption that goes with a shared photo: credits the studio (and McreatiK), never links to the gallery. */
+export function shareCaption(brand: { name: string; instagram: string | null; poweredByMcreatik: boolean }): string {
+  const studio = brand.instagram ? `📸 ${brand.name} · instagram.com/${brand.instagram}` : `📸 ${brand.name}`
+  return brand.poweredByMcreatik ? `${studio}\nLive photos by McreatiK` : studio
+}
 
 /**
- * Mobile: shares the actual image (WhatsApp, Instagram, "Save Image" on iOS).
- * Otherwise shares/copies a link that opens this photo in the gallery.
- * Not shown in the gallery for now (SHOW_SHARE in PhotoViewer).
+ * Shares the photo itself (WhatsApp, Instagram, …) with the studio's credit as the caption. The gallery link is
+ * never shared, so the gallery stays private to the people who have its QR code. Where the phone can't share
+ * files, the caller saves the photo instead and copies the caption.
  */
-export async function sharePhoto(opts: { url: string; eventSlug: string; eventName: string; photoId: string }): Promise<ShareResult> {
-  const link = `${window.location.origin}/e/${opts.eventSlug}?photo=${opts.photoId}`
+export async function sharePhoto(opts: { url: string; eventSlug: string; photoId: string; caption: string; prefetched?: Blob | null }): Promise<ShareResult> {
   const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean }
+  if (IS_DEMO || !nav.share || !nav.canShare) return 'unsupported'
   try {
-    if (nav.share && nav.canShare) {
-      const blob = await fetchPhoto(opts.url)
-      const file = new File([blob], fileNameFor(opts.eventSlug, opts.photoId), { type: 'image/jpeg' })
-      if (nav.canShare({ files: [file] })) {
-        await nav.share({ files: [file], title: opts.eventName })
-        return 'shared-file'
-      }
-    }
-    if (nav.share) {
-      await nav.share({ title: opts.eventName, url: link })
-      return 'shared-link'
-    }
-    if (nav.clipboard) {
-      await nav.clipboard.writeText(link)
-      return 'copied'
-    }
-    return 'unsupported'
+    const blob = opts.prefetched ?? (await fetchPhoto(opts.url))
+    const file = new File([blob], fileNameFor(opts.eventSlug, opts.photoId), { type: 'image/jpeg' })
+    if (!nav.canShare({ files: [file] })) return 'unsupported'
+    await nav.share({ files: [file], text: opts.caption })
+    return 'shared'
   } catch (e) {
-    if (e instanceof DOMException && e.name === 'AbortError') return 'cancelled'
-    if (nav.clipboard) {
-      await nav.clipboard.writeText(link)
-      return 'copied'
-    }
-    return 'unsupported'
+    return e instanceof DOMException && e.name === 'AbortError' ? 'cancelled' : 'unsupported'
   }
 }

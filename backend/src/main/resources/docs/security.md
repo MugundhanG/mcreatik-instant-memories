@@ -28,7 +28,7 @@ The audit found no critical issues, and no High issues remain. H1 does not apply
 | M1 | Medium | Login tokens sit in localStorage for 12 hours | Mitigated by the strict CSP; consider shorter tokens later |
 | M2 | Medium | One server with in-memory state (rate limits, SSE, ZIP jobs) | Accept for now; never deploy during events |
 | M3 | Medium | 1 CPU / 900 MB is tight when originals, ZIPs and logins peak together | Most photos are prepared on the laptop; load-test before big events |
-| M4 | Medium | No defined backups | Confirm the Supabase backup level; decide on a second copy of originals |
+| M4 | Fixed | No defined backups (Supabase free plan keeps none) | Nightly `backup.sh` to the private bucket; photos rely on R2 durability plus the studio's own copies |
 | M5 | Medium | Gallery photo URLs work for anyone holding the exact link | By design; keys are random UUIDs; disclosed on the privacy page |
 | L1 | Low | Some couple, album and billing requests lack `@Valid` limits; no per-account lockout | Later hardening |
 | L2 | Low | Uploader token stored in plain text on the laptop; camera-to-laptop FTP unencrypted (local Wi-Fi only) | Rotate the token if a laptop is lost |

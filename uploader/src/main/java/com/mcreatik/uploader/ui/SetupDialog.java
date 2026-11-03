@@ -60,7 +60,7 @@ public final class SetupDialog {
         c.gridy = 0;
         c.gridwidth = 3;
         form.add(new JLabel("<html><b>Connect this computer to a McreatiK event</b><br>"
-                + "Copy the connection code from the event dashboard (Uploaders → Add uploader).</html>"), c);
+                + "Copy the connection code from the event dashboard (Overview → Cameras &amp; uploaders → Add uploader).</html>"), c);
         c.gridwidth = 1;
         c.gridy = 1;
         form.add(new JLabel("Connection code"), c);

@@ -25,14 +25,14 @@ interface Props {
   promoteFollow?: boolean
   /** Instagram the download toast invites guests to follow; null shows no invite. */
   instagram?: string | null
+  /** Caption for Share (the studio's credit). Share is shown only when it's set: the guest gallery. */
+  shareCaption?: string
   /** Guest analytics (the public gallery only): photo shown, downloaded, shared, Instagram tapped. */
   onActivity?: (type: 'PHOTO_VIEW' | 'DOWNLOAD' | 'SHARE' | 'INSTAGRAM', photoId?: string) => void
   /** Shown under the counter, e.g. the file name in the dashboard. */
   caption?: (photo: PublicPhoto) => ReactNode
 }
 
-/** Share is hidden for now; flip to bring the button back. */
-const SHOW_SHARE = false
 const SAVE_HINT = 'Press and hold the photo, then tap “Save image”'
 const FOLLOW_SHOWN_KEY = 'mcreatik.follow-invite'
 
@@ -54,7 +54,7 @@ function markFollowInviteShown() {
 }
 
 export function PhotoViewer({
-  photos, index, total, eventSlug, eventName, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity, hideDownload = false,
+  photos, index, total, eventSlug, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity, hideDownload = false, shareCaption,
 }: Props) {
   const photo = photos[index]
   const count = Math.max(total, photos.length)
@@ -121,7 +121,8 @@ export function PhotoViewer({
     if (currentId) reportActivity.current?.('PHOTO_VIEW', currentId)
   }, [currentId])
   useEffect(() => {
-    if (!currentId || !currentWebUrl || !isIOS()) return
+    // iPhone (Download opens the share sheet) and Share both need the photo ready the moment it's tapped.
+    if (!currentId || !currentWebUrl || !(isIOS() || shareCaption)) return
     let active = true
     fetchPhoto(currentWebUrl)
       .then((blob) => active && setPrefetched({ id: currentId, blob }))
@@ -129,11 +130,12 @@ export function PhotoViewer({
     return () => {
       active = false
     }
-  }, [currentId, currentWebUrl])
+  }, [currentId, currentWebUrl, shareCaption])
 
   if (!photo) return null
 
-  const onDownload = async () => {
+  /** `savedNote` replaces the "saved" message (Share's fallback adds the caption hint). */
+  const onDownload = async (savedNote?: string) => {
     setBusy('download')
     const blob = prefetched?.id === photo.id ? prefetched.blob : null
     const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id, blob)
@@ -141,7 +143,7 @@ export function PhotoViewer({
     if (result === 'saved' || result === 'save-sheet') onActivity?.('DOWNLOAD', photo.id)
     if (result === 'unavailable') return setToast({ text: 'Downloads are turned off in this demo', ms: 2500 })
     if (result === 'cancelled') return
-    const status = result === 'hint' ? SAVE_HINT : result === 'save-sheet' ? 'Love the photos?' : 'Saved to your phone ✓'
+    const status = result === 'hint' ? SAVE_HINT : savedNote ?? (result === 'save-sheet' ? 'Love the photos?' : 'Saved to your phone ✓')
     // Right after saving is when guests are happiest with the photos: invite them to follow the studio, with a
     // card at the top (Chrome's own download bar covers the bottom of the screen). Once per visit, so it never nags.
     if (promote && instagram && !followInviteShown()) {
@@ -149,16 +151,24 @@ export function PhotoViewer({
       setToast(null)
       return setFollowCard(status)
     }
-    setToast({ text: result === 'saved' ? 'Saved ✓' : status, ms: result === 'hint' ? 6000 : 2500 })
+    setToast({ text: result === 'saved' && !savedNote ? 'Saved ✓' : status, ms: result === 'hint' ? 6000 : savedNote ? 4500 : 2500 })
   }
 
   const onShare = async () => {
+    if (!shareCaption) return
     setBusy('share')
-    const result = await sharePhoto({ url: photo.webUrl, eventSlug, eventName, photoId: photo.id })
+    const blob = prefetched?.id === photo.id ? prefetched.blob : null
+    const result = await sharePhoto({ url: photo.webUrl, eventSlug, photoId: photo.id, caption: shareCaption, prefetched: blob })
     setBusy(null)
-    if (result !== 'unsupported' && result !== 'cancelled') onActivity?.('SHARE', photo.id)
-    if (result === 'copied') setToast({ text: 'Link copied', ms: 2500 })
-    if (result === 'unsupported') setToast({ text: 'Sharing is not available on this device', ms: 2500 })
+    if (result === 'shared') return onActivity?.('SHARE', photo.id)
+    if (result === 'cancelled') return
+    // No file sharing here (most laptops): save the photo and put the credit on the clipboard to paste when posting.
+    try {
+      await navigator.clipboard?.writeText(shareCaption)
+    } catch {
+      // clipboard blocked: the photo is still saved
+    }
+    await onDownload('Photo saved. The caption is copied: paste it when you post.')
   }
 
   return (
@@ -223,7 +233,7 @@ export function PhotoViewer({
       <div className="flex items-center justify-center gap-3 px-4 pt-3 pb-[max(env(safe-area-inset-bottom),1rem)]">
         {!hideDownload && <button
           type="button"
-          onClick={onDownload}
+          onClick={() => void onDownload()}
           disabled={busy !== null}
           className="inline-flex h-12 min-w-36 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-medium text-ink disabled:opacity-60"
         >
@@ -231,7 +241,7 @@ export function PhotoViewer({
           {busy === 'download' ? 'Saving…' : 'Download'}
         </button>}
         {actions?.(photo)}
-        {SHOW_SHARE && <button
+        {shareCaption && <button
           type="button"
           onClick={onShare}
           disabled={busy !== null}

@@ -1,6 +1,15 @@
-# Add to /etc/caddy/Caddyfile, then `sudo systemctl reload caddy` (Caddy gets the HTTPS certificate itself).
+# Replace the im-api.mcreatik.com block in /etc/caddy/Caddyfile with this, then:
+#   sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy
+# Caddy gets the HTTPS certificate itself. The backend runs in one of two slots (8081 or 8082, see slots.sh);
+# Caddy sends traffic to whichever answers its health check, and retries a request on the other slot while an
+# update switches over, so deploys never take the gallery offline.
 im-api.mcreatik.com {
-    reverse_proxy 127.0.0.1:8081 {
+    reverse_proxy 127.0.0.1:8081 127.0.0.1:8082 {
+        lb_policy first
+        lb_try_duration 15s
+        health_uri /actuator/health
+        health_interval 5s
+        health_timeout 3s
         flush_interval -1   # Server-Sent Events: send each new photo immediately
     }
 }

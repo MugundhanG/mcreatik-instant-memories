@@ -73,6 +73,7 @@ public final class UploaderMain {
                     """.formatted(UploadEngine.APP_VERSION));
             return;
         }
+        KeepAwake.start();
         boolean headless = a.headless || GraphicsEnvironment.isHeadless();
         Files.createDirectories(a.dataDir);
         FileLock lock = lockDataDir(a.dataDir);

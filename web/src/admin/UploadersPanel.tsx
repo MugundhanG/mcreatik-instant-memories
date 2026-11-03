@@ -5,6 +5,29 @@ import type { UploaderCredentials, UploaderStats } from '../lib/types'
 import { Button, Card, ErrorText, inputClass, UploaderStatusDot } from './ui'
 import { useConfirm } from './useConfirm'
 
+const RELEASES = 'https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download'
+
+/** Installers with Java included (built by the "Uploader installers" workflow). */
+const UPLOADER_DOWNLOADS = [
+  { label: 'Windows', href: `${RELEASES}/McreatiK-Uploader-Windows.msi` },
+  { label: 'Mac (M1–M4)', href: `${RELEASES}/McreatiK-Uploader-Mac-AppleSilicon.dmg` },
+  { label: 'Mac (Intel)', href: `${RELEASES}/McreatiK-Uploader-Mac-Intel.dmg` },
+]
+
+function DownloadLinks() {
+  return (
+    <p className="text-xs text-muted">
+      Download McreatiK Uploader:{' '}
+      {UPLOADER_DOWNLOADS.map((d, i) => (
+        <span key={d.label}>
+          {i > 0 && ' · '}
+          <a href={d.href} className="font-medium text-ink underline underline-offset-2 hover:text-[#8a5a1c]">{d.label}</a>
+        </span>
+      ))}
+    </p>
+  )
+}
+
 function CredentialsDialog({ credentials, onClose }: { credentials: UploaderCredentials; onClose: () => void }) {
   const [copied, setCopied] = useState(false)
   const copy = async () => {
@@ -16,10 +39,11 @@ function CredentialsDialog({ credentials, onClose }: { credentials: UploaderCred
       <div className="anim-dialog-in w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
         <h3 className="text-lg font-semibold">Connect “{credentials.name}”</h3>
         <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-muted">
-          <li>Open McreatiK Uploader on the laptop for this camera.</li>
+          <li>Open McreatiK Uploader on the laptop for this camera (not installed yet? use a link below).</li>
           <li>Paste this connection code.</li>
           <li>Choose the folder the camera sends photos to.</li>
         </ol>
+        <div className="mt-3"><DownloadLinks /></div>
         <textarea
           readOnly
           value={credentials.connectionCode}
@@ -113,6 +137,7 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
         <Button type="submit" variant="primary" className="shrink-0">Add uploader</Button>
       </form>
       <ErrorText>{error}</ErrorText>
+      <div className="mt-3"><DownloadLinks /></div>
       {confirmDialog}
       {credentials && <CredentialsDialog credentials={credentials} onClose={() => setCredentials(null)} />}
     </Card>

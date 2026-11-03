@@ -7,33 +7,35 @@ The **McreatiK Uploader** runs on a laptop at the venue. It receives each photo 
 | | Windows | Mac |
 | --- | --- | --- |
 | Status | Field-tested with a Canon EOS R6 Mark II | **Not yet field-tested**: rehearse first (section 7) |
-| Needs | Java 21 | Java 21 (Apple Silicon or Intel, macOS 12+) |
-| Start | Double-click, or `java -jar mcreatik-uploader.jar` | `caffeinate -dims java -jar …` in Terminal |
+| Install | `McreatiK-Uploader-Windows.msi` | `McreatiK-Uploader-Mac-AppleSilicon.dmg` (M1–M4) or `…-Mac-Intel.dmg` |
+| Needs | Nothing else: Java is included | Nothing else: Java is included; macOS 12+ |
 
 One laptop per camera is simplest. Two cameras on one laptop is possible (section 6).
 
-## 1. Install (once)
+## 1. Download and install (once)
 
-1. Install **Java 21**: go to **adoptium.net**, choose **Temurin 21 (LTS)** for your system, then download and run the installer (.msi on Windows, .pkg on Mac).
-2. Check it in a terminal (PowerShell or Terminal):
-   ```
-   java -version
-   ```
-   It should print `openjdk version "21…"`.
-3. Put **mcreatik-uploader.jar** (sent by McreatiK) in a permanent folder, for example Documents → McreatiK.
+Download from the event dashboard (**Overview → Cameras & uploaders → Download McreatiK Uploader**), or use these links:
+
+| Laptop | Download |
+| --- | --- |
+| Windows | [McreatiK-Uploader-Windows.msi](https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Uploader-Windows.msi) |
+| Mac with Apple chip (M1–M4) | [McreatiK-Uploader-Mac-AppleSilicon.dmg](https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Uploader-Mac-AppleSilicon.dmg) |
+| Older Mac (Intel) | [McreatiK-Uploader-Mac-Intel.dmg](https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Uploader-Mac-Intel.dmg) |
+
+Not sure which Mac you have? Apple menu → **About This Mac**: "Chip Apple M…" means Apple chip; "Processor Intel" means Intel.
+
+**Windows**
+1. Open the `.msi` file. Windows may show "Windows protected your PC" (the app isn't code-signed yet): click **More info → Run anyway**.
+2. Click through the installer. **McreatiK Uploader** appears in the Start menu and on the desktop.
+
+**Mac**
+1. Open the `.dmg` file and drag **McreatiK Uploader** into **Applications**.
+2. Open it from Applications. The first time, macOS says it can't check the app (not code-signed yet): click **Done**, then go to **System Settings → Privacy & Security**, scroll down to McreatiK Uploader and click **Open Anyway**.
+3. The app keeps the Mac awake by itself while it runs.
 
 ## 2. Start and connect to the event
 
-**Windows:** double-click the jar, or run:
-```
-java -jar "%USERPROFILE%\Documents\McreatiK\mcreatik-uploader.jar"
-```
-
-**Mac:** in Terminal, run:
-```
-caffeinate -dims java -jar ~/Documents/McreatiK/mcreatik-uploader.jar
-```
-`caffeinate` keeps the Mac awake while the uploader runs. Start it from Terminal: double-clicking a downloaded jar may be blocked as coming from an "unidentified developer". Keep the Terminal window open.
+Start **McreatiK Uploader** from the Start menu (Windows) or Applications (Mac).
 
 The first time, the **Setup** window opens:
 
@@ -84,11 +86,11 @@ When the connection returns, they upload by themselves, oldest first, and guests
 ## 5. Keep the laptop ready
 
 **Windows**
-- When the firewall asks, click **Allow** for "OpenJDK Platform binary" on **Private and Public** networks. A new phone hotspot counts as Public.
+- When the firewall asks, click **Allow** for **McreatiK Uploader** on **Private and Public** networks. A new phone hotspot counts as Public.
 - Settings → System → Power & battery: **never sleep when plugged in**. Keep it plugged in.
 
 **Mac**
-- When macOS asks "Do you want the application 'java' to accept incoming network connections?", click **Allow**. If you clicked Deny, go to System Settings → Network → Firewall → Options and allow **java**.
+- When macOS asks whether **McreatiK Uploader** may accept incoming network connections, click **Allow**. If you clicked Deny, go to System Settings → Network → Firewall → Options and allow it.
 - System Settings → Battery → Options: **prevent automatic sleeping on power adapter when the display is off**. Keep the lid open; a closed lid sleeps the Mac.
 
 **Both**
@@ -97,7 +99,7 @@ When the connection returns, they upload by themselves, oldest first, and guests
 
 ## 6. Two cameras on one laptop
 
-Start a second copy with its own data folder and FTP port, and its own connection code:
+Start a second copy with its own data folder and FTP port, and its own connection code. This needs the command-line version (see "Advanced" below):
 ```
 java -jar mcreatik-uploader.jar --data-dir ~/.mcreatik-camera2 --ftp-port 2122
 ```
@@ -109,7 +111,7 @@ Other options: `--headless` (no window, for advanced use), and `--upload-origina
 
 Do this once per laptop, with the real camera, on a test event:
 
-1. `java -version` shows 21.
+1. The app installs and opens (first-open steps above).
 2. The uploader shows **Online** (green).
 3. The firewall prompt was allowed.
 4. The camera connects: "Camera connected · N received".
@@ -129,12 +131,16 @@ Do this once per laptop, with the real camera, on a test event:
 
 | Symptom | Fix |
 | --- | --- |
-| `java: command not found` / "not recognized" | Java isn't installed, or the terminal was open during the install: reopen it and run `java -version`. |
+| "Windows protected your PC" / Mac "can't be opened" | The app isn't code-signed yet: Windows → More info → Run anyway; Mac → System Settings → Privacy & Security → Open Anyway. |
 | Setup says the code is invalid | Copy the whole code again from the dashboard (it starts with `MCK1.`). Lost it? **New code** on the dashboard. |
 | Amber "Offline" | No internet on this laptop: check the hotspot's data. Photos are safe in the queue. |
 | Camera: "cannot connect to FTP server" | Same Wi-Fi? Server address typed exactly as shown? Port 2121? Firewall allowed? |
 | "Could not start on port 2121" | Another program uses it: add `--ftp-port 2122` and enter 2122 in the camera. |
-| Photos stop after a while | The laptop slept (Mac: start with `caffeinate`, keep the lid open), or the camera slept (extend its auto power off). |
+| Photos stop after a while | The laptop slept (keep it plugged in and the lid open; the Mac app keeps itself awake), or the camera slept (extend its auto power off). |
 | Dashboard shows the camera Offline | The uploader on that laptop is closed or has no internet. |
 
 More: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day).
+
+## Advanced: the command-line version
+
+For two cameras on one laptop, or Linux: install **Java 21** (adoptium.net → Temurin 21), then run `mcreatik-uploader.jar` (sent by McreatiK). On a Mac, start it with `caffeinate -dims java -jar mcreatik-uploader.jar` so the Mac stays awake. Options: `--data-dir`, `--ftp-port`, `--headless` (no window), `--upload-originals`.
