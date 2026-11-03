@@ -1,5 +1,7 @@
 # Canon EOS R6 Mark II → McreatiK Live Gallery (Wi-Fi FTP)
 
+> The maintained, illustrated version of this guide is in the McreatiK admin Docs: **Camera & uploader guides → Canon EOS R6 Mark II** (`backend/src/main/resources/docs/guide-canon.md`), next to the Sony α7 IV, uploader (Windows and Mac) and event-day guides, and the SOPs for McreatiK, studios, couples and guests.
+
 The camera sends every photo over Wi-Fi to the McreatiK Uploader on your laptop, which puts it in the live gallery.
 No cable and no separate FTP software.
 
@@ -15,6 +17,7 @@ R6 Mark II ──Wi-Fi (FTP)──> laptop: McreatiK Uploader ──internet─�
 - The window shows a **Camera Wi-Fi (FTP)** box with the **server address, port (2121), user name and password**.
   Keep it visible, you'll type these into the camera.
 - Windows: when the firewall asks, click **Allow** (private networks).
+- Mac: follow [UPLOADER-MACOS.md](UPLOADER-MACOS.md) first (install Java 21, start with `caffeinate`, allow `java` in the firewall).
 - From the command line instead: `java -jar mcreatik-uploader.jar --ftp --connect MCK1.… --folder "D:\McreatiK Photos"`.
 
 **2. One network for both**

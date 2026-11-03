@@ -58,6 +58,17 @@ async function request<T>(path: string, init: RequestInit = {}, auth = false): P
 
 const json = (body: unknown) => JSON.stringify(body)
 
+/** Fetches a logged-in file (a documentation screenshot) as a Blob, for an object URL. */
+async function requestBlob(path: string): Promise<Blob> {
+  const headers = new Headers()
+  const token = tokenProvider()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers })
+  if (response.status === 401) onUnauthorized()
+  if (!response.ok) throw new ApiError(response.status, 'HTTP_' + response.status, response.statusText || 'Request failed')
+  return response.blob()
+}
+
 // ---- Guest API ----
 
 export const publicApi = {
@@ -98,6 +109,7 @@ export const adminApi = {
   /** McreatiK only: the internal documentation (the server refuses everyone else with 403). */
   docs: () => request<DocPageSummary[]>('/api/admin/docs', {}, true),
   doc: (slug: string) => request<DocPage>(`/api/admin/docs/${encodeURIComponent(slug)}`, {}, true),
+  docImage: (name: string) => requestBlob(`/api/admin/docs/images/${encodeURIComponent(name)}`),
   /** Emails a temporary password if the account exists; the answer is the same either way. */
   forgotPassword: (email: string) =>
     request<void>('/api/auth/forgot-password', { method: 'POST', body: json({ email }) }),

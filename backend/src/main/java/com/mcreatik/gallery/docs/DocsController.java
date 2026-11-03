@@ -6,9 +6,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +26,9 @@ import com.mcreatik.gallery.common.ApiException;
  * McreatiK's internal documentation (architecture, API, security findings), shown in the dashboard to the super
  * admin only. It is served from the backend after the role check instead of being built into the website, because
  * every website file is public and the security notes must not be.
- * <p>Pages come from a fixed list; the slug in the URL is only ever a map key, never a file path.
+ * <p>Pages come from a fixed list; the slug in the URL is only ever a map key, never a file path. Screenshots and
+ * illustrations live in {@code docs/images/}; an image name must match {@link #IMAGE_NAME} (no slashes or dots
+ * beyond the extension), so it can never reach another classpath file.
  */
 @RestController
 @RequestMapping("/api/admin/docs")
@@ -38,6 +43,14 @@ public class DocsController {
     static final List<Page> PAGES = List.of(
             new Page("overview", "Overview", "Getting started"),
             new Page("architecture", "Architecture", "Getting started"),
+            new Page("sop-admin", "McreatiK admin", "SOPs"),
+            new Page("sop-studio", "Studios", "SOPs"),
+            new Page("sop-couple", "Couples (clients)", "SOPs"),
+            new Page("sop-guest", "Guests", "SOPs"),
+            new Page("guide-uploader", "McreatiK Uploader", "Camera & uploader guides"),
+            new Page("guide-canon", "Canon EOS R6 Mark II", "Camera & uploader guides"),
+            new Page("guide-sony", "Sony α7 IV", "Camera & uploader guides"),
+            new Page("guide-event-day", "Event-day checklist", "Camera & uploader guides"),
             new Page("frontend", "Frontend", "Codebase"),
             new Page("backend", "Backend", "Codebase"),
             new Page("database", "Database", "Codebase"),
@@ -53,6 +66,9 @@ public class DocsController {
             new Page("deployment", "Deployment", "Operations"),
             new Page("findings", "Findings and next actions", "Reference"),
             new Page("glossary", "Glossary", "Reference"));
+
+    /** Lower-case letters, digits and dashes, then one known extension. */
+    static final Pattern IMAGE_NAME = Pattern.compile("[a-z0-9][a-z0-9-]{0,80}\\.(png|jpg|webp|svg)");
 
     public record PageSummary(String slug, String title, String group) {
     }
@@ -100,5 +116,38 @@ public class DocsController {
             throw ApiException.notFound("Page");
         }
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(page);
+    }
+
+    /** A screenshot or illustration used by a page. Private to the super admin like the pages themselves. */
+    @GetMapping("/images/{name}")
+    public ResponseEntity<byte[]> image(Authentication auth, @PathVariable String name) {
+        access.requireSuperAdmin(auth);
+        if (!IMAGE_NAME.matcher(name).matches()) {
+            throw ApiException.notFound("Image");
+        }
+        ClassPathResource file = new ClassPathResource("docs/images/" + name);
+        if (!file.exists()) {
+            throw ApiException.notFound("Image");
+        }
+        try (InputStream in = file.getInputStream()) {
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePrivate())
+                    .contentType(mediaType(name))
+                    // An SVG opened on its own must not run anything.
+                    .header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+                    .body(in.readAllBytes());
+        } catch (IOException e) {
+            throw ApiException.notFound("Image");
+        }
+    }
+
+    private static MediaType mediaType(String name) {
+        String ext = name.substring(name.lastIndexOf('.') + 1);
+        return switch (ext) {
+            case "png" -> MediaType.IMAGE_PNG;
+            case "jpg" -> MediaType.IMAGE_JPEG;
+            case "svg" -> MediaType.valueOf("image/svg+xml");
+            default -> MediaType.valueOf("image/webp");
+        };
     }
 }

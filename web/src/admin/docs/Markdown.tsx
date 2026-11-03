@@ -1,8 +1,10 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
+import { Link } from 'react-router'
 import remarkGfm from 'remark-gfm'
 import { slugify, textOf, type TreeNode } from './docsText'
 import { Mermaid } from './Mermaid'
+import { adminApi } from '../../lib/api'
 
 function Heading({ level, node, children }: { level: 2 | 3; node?: TreeNode; children: ReactNode }) {
   const id = slugify(textOf(node))
@@ -43,17 +45,82 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   )
 }
 
+/**
+ * A screenshot or illustration from `docs/images/`, written in a page as `![Caption](images/name.webp)`.
+ * Images are fetched with the login token (they are as private as the pages), shown with their caption,
+ * and open full size on click.
+ */
+function DocImage({ src, alt }: { src?: string; alt?: string }) {
+  const name = src?.startsWith('images/') ? src.slice('images/'.length) : null
+  const [url, setUrl] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [zoomed, setZoomed] = useState(false)
+  useEffect(() => {
+    if (!name) return
+    let objectUrl: string | null = null
+    let cancelled = false
+    adminApi.docImage(name)
+      .then((blob) => {
+        if (cancelled) return
+        objectUrl = URL.createObjectURL(blob)
+        setUrl(objectUrl)
+      })
+      .catch(() => !cancelled && setFailed(true))
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [name])
+  useEffect(() => {
+    if (!zoomed) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setZoomed(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [zoomed])
+  if (!name) return null
+  return (
+    <figure className="my-6" data-testid="doc-image">
+      {url ? (
+        <button type="button" onClick={() => setZoomed(true)} aria-label={`Enlarge: ${alt ?? 'image'}`}
+          className="block w-full cursor-zoom-in overflow-hidden rounded-xl border border-line bg-stone-50 shadow-sm">
+          <img src={url} alt={alt ?? ''} className="mx-auto block h-auto max-h-[640px] max-w-full" />
+        </button>
+      ) : (
+        <div className={`flex h-48 items-center justify-center rounded-xl border border-line text-sm text-muted ${failed ? '' : 'animate-pulse bg-stone-100'}`}>
+          {failed ? 'Image could not be loaded' : ''}
+        </div>
+      )}
+      {alt && <figcaption className="mt-2 text-center text-sm text-muted">{alt}</figcaption>}
+      {zoomed && url && (
+        <div role="dialog" aria-modal="true" aria-label={alt ?? 'Image'} onClick={() => setZoomed(false)}
+          className="anim-fade-in fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/80 p-4">
+          <img src={url} alt={alt ?? ''} className="max-h-full max-w-full rounded-lg shadow-2xl" />
+        </div>
+      )}
+    </figure>
+  )
+}
+
 const CALLOUTS: Record<string, string> = {
   Note: 'border-sky-300 bg-sky-50',
   Warning: 'border-amber-400 bg-amber-50',
+  Tip: 'border-emerald-300 bg-emerald-50',
 }
 
 const components: Components = {
   h1: ({ children }) => <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">{children}</h1>,
   h2: ({ node, children }) => <Heading level={2} node={node as TreeNode}>{children}</Heading>,
   h3: ({ node, children }) => <Heading level={3} node={node as TreeNode}>{children}</Heading>,
-  p: ({ children }) => <p className="my-4 leading-7 text-stone-700">{children}</p>,
-  a: ({ href, children }) => (
+  // A paragraph holding only an image becomes the image's <figure> (a figure can't sit inside a <p>).
+  p: ({ node, children }) => {
+    const kids = ((node as TreeNode | undefined)?.children ?? []).filter((c) => !(c.type === 'text' && !String(c.value ?? '').trim()))
+    if (kids.length > 0 && kids.every((c) => c.tagName === 'img')) return <>{children}</>
+    return <p className="my-4 leading-7 text-stone-700">{children}</p>
+  },
+  img: ({ src, alt }) => <DocImage src={typeof src === 'string' ? src : undefined} alt={alt} />,
+  a: ({ href, children }) => href?.startsWith('/admin/docs/') ? (
+    <Link to={href} className="font-medium text-ink underline decoration-stone-300 underline-offset-4 hover:decoration-ink">{children}</Link>
+  ) : (
     <a href={href} className="font-medium text-ink underline decoration-stone-300 underline-offset-4 hover:decoration-ink"
       {...(href?.startsWith('http') ? { target: '_blank', rel: 'noreferrer' } : {})}>
       {children}
