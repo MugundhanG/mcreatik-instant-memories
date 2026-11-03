@@ -1,11 +1,10 @@
 # Findings and next actions
 
-One High item remains, and it takes minutes. Everything below Medium is maintenance, to do when convenient.
+No High items remain: Caddy is the live proxy, so the `X-Forwarded-For` finding does not apply (confirmed 3 November 2026). Everything below Medium is maintenance, to do when convenient.
 
 ## Do now
 
-1. **Check which proxy is live.** Run `systemctl is-active nginx caddy` on the VM. If nginx is active, change its `X-Forwarded-For` line to `proxy_set_header X-Forwarded-For $remote_addr;` and reload.
-2. **Fix the security one-pager:** it says "checked weekly", but Dependabot runs monthly.
+1. **Fix the security one-pager:** it says "checked weekly", but Dependabot runs monthly.
 
 ## Do next
 
@@ -18,7 +17,7 @@ One High item remains, and it takes minutes. Everything below Medium is maintena
 
 | Severity | Area | Finding | Evidence |
 | --- | --- | --- | --- |
-| High | Security | Login rate limit bypassable with a fake `X-Forwarded-For` when nginx is the proxy | `application.yml`, `nginx-im-api.conf`, spring-web `ForwardedHeaderUtils` |
+| Resolved | Security | Login rate limit bypassable with a fake `X-Forwarded-For` when nginx is the proxy. Caddy is live (`via: 1.1 Caddy`, 3 November 2026), so it does not apply | `application.yml`, `nginx-im-api.conf`, spring-web `ForwardedHeaderUtils` |
 | Medium | Deployment | Every deploy is an outage during Java startup | `deploy.sh` |
 | Medium | Deployment | Backend image is built even when CI fails | `backend-image.yml` |
 | Medium | Operations | No monitoring or alerts | Repo |
