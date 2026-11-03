@@ -43,7 +43,9 @@ class DocsTest extends IntegrationTest {
                 .andExpect(jsonPath("$[0].group").value("Getting started"))
                 .andReturn().getResponse().getContentAsString();
         java.util.List<String> slugs = JsonPath.read(list, "$[*].slug");
-        assertThat(slugs).hasSize(11).contains("api", "security", "glossary");
+        assertThat(slugs).hasSize(17).contains("api", "security", "glossary", "qa-guests", "qa-tricky");
+        java.util.List<String> qaGroups = JsonPath.read(list, "$[?(@.slug == 'qa-guests')].group");
+        assertThat(qaGroups).containsExactly("Instant Memories Q&A");
 
         for (String slug : slugs) {
             String page = mvc.perform(get("/api/admin/docs/" + slug).header("Authorization", bearer(adminToken())))

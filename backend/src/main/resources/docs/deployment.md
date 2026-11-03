@@ -24,7 +24,7 @@ Source of each fact:
 
 - **Repo:** workflows, image names, scripts, the 127.0.0.1 binding, Workers hosting and variable names.
 - **Earlier setup (not in the repo):** DNS (`im-api` DNS-only, `im-media` proxied), Supabase, and the 1 GB VM.
-- **Unknown:** which proxy, nginx or Caddy, is live.
+- **Confirmed 3 November 2026:** Caddy is the live proxy (the API answers with `via: 1.1 Caddy`); `nginx-im-api.conf` is a leftover.
 
 ## Continuous integration
 

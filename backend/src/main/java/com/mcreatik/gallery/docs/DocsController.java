@@ -30,7 +30,7 @@ import com.mcreatik.gallery.common.ApiException;
 public class DocsController {
 
     /** The day the documentation was last checked against the code. */
-    static final String REVIEWED_ON = "2026-11-02";
+    static final String REVIEWED_ON = "2026-11-03";
 
     record Page(String slug, String title, String group) {
     }
@@ -43,6 +43,12 @@ public class DocsController {
             new Page("database", "Database", "Codebase"),
             new Page("api", "API reference", "Codebase"),
             new Page("journeys", "User journeys", "Product"),
+            new Page("qa-how-to-use", "How to use these answers", "Instant Memories Q&A"),
+            new Page("qa-guests", "Guests", "Instant Memories Q&A"),
+            new Page("qa-couples", "Couples", "Instant Memories Q&A"),
+            new Page("qa-studios-product", "Studios: product", "Instant Memories Q&A"),
+            new Page("qa-studios-buying", "Studios: buying and trust", "Instant Memories Q&A"),
+            new Page("qa-tricky", "Tricky questions", "Instant Memories Q&A"),
             new Page("security", "Security and performance", "Operations"),
             new Page("deployment", "Deployment", "Operations"),
             new Page("findings", "Findings and next actions", "Reference"),

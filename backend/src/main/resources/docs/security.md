@@ -1,6 +1,6 @@
 # Security and performance
 
-The audit found no critical issues. One High issue remains (H1 below), and it is cheap to fix. The second, the broken rollback script, has been fixed. Everything on this page was confirmed in code, deploy files or the Spring library itself, unless marked as an assumption.
+The audit found no critical issues, and no High issues remain. H1 does not apply because Caddy is the live proxy (confirmed 3 November 2026), and the broken rollback script has been fixed. Everything on this page was confirmed in code, deploy files or the Spring library itself, unless marked as an assumption.
 
 ## Protections in place
 
@@ -24,7 +24,7 @@ The audit found no critical issues. One High issue remains (H1 below), and it is
 
 | ID | Severity | Finding | Fix |
 | --- | --- | --- | --- |
-| H1 | High | With nginx in front, the login rate limit can be bypassed by sending a fake `X-Forwarded-For`. `forward-headers-strategy: framework` makes Spring take the **leftmost** value, and `nginx-im-api.conf` appends to the client's header. Caddy replaces the header, so a Caddy setup is not affected. | Check `systemctl is-active nginx caddy`; with nginx use `proxy_set_header X-Forwarded-For $remote_addr;` |
+| H1 | Resolved | With nginx in front, the login rate limit could be bypassed by sending a fake `X-Forwarded-For` (Spring takes the **leftmost** value and `nginx-im-api.conf` appends to the client's header). Caddy is the live proxy (confirmed 3 November 2026 from the `via: 1.1 Caddy` response header), and Caddy ignores a client-sent `X-Forwarded-For`, so the bypass does not apply. | None needed. If nginx is ever put in front, use `proxy_set_header X-Forwarded-For $remote_addr;` |
 | M1 | Medium | Login tokens sit in localStorage for 12 hours | Mitigated by the strict CSP; consider shorter tokens later |
 | M2 | Medium | One server with in-memory state (rate limits, SSE, ZIP jobs) | Accept for now; never deploy during events |
 | M3 | Medium | 1 CPU / 900 MB is tight when originals, ZIPs and logins peak together | Most photos are prepared on the laptop; load-test before big events |
