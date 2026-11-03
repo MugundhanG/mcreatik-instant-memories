@@ -15,6 +15,7 @@ R6 Mark II ──Wi-Fi (FTP)──> laptop: McreatiK Uploader ──internet─�
 - The window shows a **Camera Wi-Fi (FTP)** box with the **server address, port (2121), user name and password**.
   Keep it visible, you'll type these into the camera.
 - Windows: when the firewall asks, click **Allow** (private networks).
+- Mac: follow [UPLOADER-MACOS.md](UPLOADER-MACOS.md) first (install Java 21, start with `caffeinate`, allow `java` in the firewall).
 - From the command line instead: `java -jar mcreatik-uploader.jar --ftp --connect MCK1.… --folder "D:\McreatiK Photos"`.
 
 **2. One network for both**

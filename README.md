@@ -100,6 +100,7 @@ The uploader receives photos in one of two ways:
 - **Camera Wi-Fi (FTP), built in.** For cameras with FTP transfer, e.g. Canon EOS R6 Mark II.
   The camera sends each JPEG straight to the uploader; nothing else to install.
   Step-by-step: [docs/CAMERA-SETUP-CANON-R6-MARK-II.md](docs/CAMERA-SETUP-CANON-R6-MARK-II.md).
+  On a Mac: [docs/UPLOADER-MACOS.md](docs/UPLOADER-MACOS.md) (Java 21, firewall, keeping the Mac awake; not yet field-tested).
 - **Folder.** Any camera app, tethering software or card reader that saves JPEGs into a folder.
 
 1. Set the camera to shoot **RAW+JPEG** (JPEGs are what guests see).
