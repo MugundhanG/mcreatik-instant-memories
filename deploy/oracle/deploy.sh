@@ -1,23 +1,19 @@
 #!/usr/bin/env bash
-# Build and deploy the Instant Memories backend on the Oracle VM, next to the website backend.
-# Same routine as the website: build, test on a spare port, switch, keep :previous for rollback.
+# Deploy the Instant Memories backend on the Oracle VM, next to the website backend, without taking it offline.
+# The new version starts in the idle slot (8081 or 8082) while the old one keeps serving; once it is healthy the old
+# one stops and Caddy moves traffic over (see slots.sh). :previous is kept for rollback.sh.
 #
 #   cd ~/mcreatik-instant-memories && git pull && deploy/oracle/deploy.sh
 #
 # Small VMs (e.g. the 1 GB E2.1.Micro) should not compile Java: use the image GitHub Actions builds instead:
 #   IMAGE=ghcr.io/mugundhang/mcreatik-instant-memories-backend:latest GALLERY_MEMORY=900m GALLERY_CPUS=1 deploy/oracle/deploy.sh
 #
+# One-time step before the first deploy of this version: Caddy must list both slots (Caddyfile.snippet). The script
+# checks this and refuses to run otherwise, so a missed step can never cause an outage.
+# Still avoid deploying during a live event: ZIP downloads in progress at the switch have to be restarted.
 # The container is capped (memory/CPU) so a busy event can never starve the website backend.
 set -euo pipefail
 
-NAME=mcreatik-gallery
-ENV_FILE=${ENV_FILE:-$HOME/mcreatik-gallery/gallery.env}
-LIVE_PORT=${LIVE_PORT:-8081}
-TEST_PORT=${TEST_PORT:-18081}
-MEMORY=${GALLERY_MEMORY:-2g}
-CPUS=${GALLERY_CPUS:-2}
-# Fast servers answer in ~20 s; the 1 GB E2.1.Micro can need over 10 minutes while two copies start side by side.
-HEALTH_WAIT_SECONDS=${HEALTH_WAIT_SECONDS:-1200}
 LOG=${DEPLOY_LOG:-$HOME/mcreatik-gallery/deploy.log}
 
 # The 1 GB server can stop answering SSH while a new version starts, and a dropped connection would kill the
@@ -34,31 +30,16 @@ if [[ -z "${DEPLOY_DETACHED:-}" ]]; then
 fi
 
 cd "$(dirname "$0")/../.."
+# shellcheck source=slots.sh
+source deploy/oracle/slots.sh
 [[ -r "$ENV_FILE" ]] || { echo "Missing $ENV_FILE (copy deploy/oracle/gallery.env.example and fill it in)"; exit 1; }
-
-start() { # name port image restart-policy
-  docker run -d --name "$1" --env-file "$ENV_FILE" -e PORT=8080 \
-    -p "127.0.0.1:$2:8080" --memory "$MEMORY" --cpus "$CPUS" \
-    --log-opt max-size=20m --log-opt max-file=5 \
-    --restart "$4" "$3" >/dev/null
-}
-
-wait_healthy() { # name port
-  for _ in $(seq 1 $((HEALTH_WAIT_SECONDS / 2))); do
-    if curl -fsS "http://127.0.0.1:$2/actuator/health" 2>/dev/null | grep -q '"UP"'; then return 0; fi
-    if [[ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" != "true" ]]; then break; fi
-    sleep 2
-  done
-  echo "!! $1 did not become healthy. Last log lines:"
-  docker logs --tail 60 "$1" || true
-  return 1
-}
+require_caddy_slots
 
 if [[ -n "${IMAGE:-}" ]]; then
   echo "==> Pulling $IMAGE"
   docker pull "$IMAGE"
   docker tag "$IMAGE" "$NAME:new"
-  commit=$(docker inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$NAME:new" 2>/dev/null | cut -c1-7)
+  commit=$(docker inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$NAME:new" 2>/dev/null | cut -c1-7 || true)
   commit=${commit:-unknown}
 else
   commit=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
@@ -66,26 +47,11 @@ else
   docker build -t "$NAME:new" --label "commit=$commit" backend
 fi
 
-echo "==> Testing the new image on port $TEST_PORT"
-docker rm -f "$NAME-test" >/dev/null 2>&1 || true
-start "$NAME-test" "$TEST_PORT" "$NAME:new" no
-if ! wait_healthy "$NAME-test" "$TEST_PORT"; then
-  docker rm -f "$NAME-test" >/dev/null
-  echo "Deploy aborted; the running version was not touched."
+if ! switch_to "$NAME:new" "$commit"; then
   exit 1
 fi
-docker rm -f "$NAME-test" >/dev/null
-
-echo "==> Switching to the new version"
 if docker image inspect "$NAME:current" >/dev/null 2>&1; then
   docker tag "$NAME:current" "$NAME:previous"
 fi
 docker tag "$NAME:new" "$NAME:current"
-docker rm -f "$NAME" >/dev/null 2>&1 || true
-start "$NAME" "$LIVE_PORT" "$NAME:current" unless-stopped
-if wait_healthy "$NAME" "$LIVE_PORT"; then
-  echo "==> Live: $NAME ($commit) on 127.0.0.1:$LIVE_PORT"
-else
-  echo "Rollback with: deploy/oracle/rollback.sh"
-  exit 1
-fi
+echo "==> Done. Roll back with: deploy/oracle/rollback.sh"

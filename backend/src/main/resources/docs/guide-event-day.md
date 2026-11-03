@@ -15,7 +15,7 @@ Use this on the day. Print it, or keep it open on a phone. It works for the stud
 ## At the venue (30 minutes before guests)
 
 1. **Hotspot on.** iPhone: Maximize Compatibility. Android: 2.4 GHz.
-2. **Laptop:** join the hotspot, plug in the charger, start the uploader (Mac: `caffeinate -dims java -jar …`). Check it shows green **Online**.
+2. **Laptop:** join the hotspot, plug in the charger, start McreatiK Uploader. Check it shows green **Online**.
 3. **Check the address.** Make sure the Server in the uploader matches the one in the camera's FTP settings.
 4. **Camera:** turn Wi-Fi/FTP on and take one test shot. The uploader should show **Camera connected · 1 received**.
 5. **Phone:** scan the poster's QR code. The test photo should be in the gallery.
@@ -64,7 +64,7 @@ The uploader is amber (**Offline**), so this laptop has no internet. Check the h
 ### Photos stopped arriving
 
 - The **camera slept**: disable or extend auto power off.
-- The **laptop slept**: keep it plugged in, set "never sleep" (Windows), use `caffeinate` and keep the lid open (Mac).
+- The **laptop slept**: keep it plugged in, set "never sleep" (Windows), keep the lid open (Mac).
 - Out of **range**: move the laptop or hotspot closer to where you shoot.
 
 ### Guests can't open the gallery

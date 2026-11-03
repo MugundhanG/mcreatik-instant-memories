@@ -24,7 +24,7 @@ Keep the page open. New photos appear by themselves, usually within seconds of b
 ## 3. View and save a photo
 
 1. Tap a photo to see it full screen. Swipe for the next one, and pinch to zoom.
-2. Tap **Download** to save it to your phone.
+2. Tap **Download** to save it to your phone, or **Share** to send it.
 
 ![A photo full screen with Download and Request removal](images/g-viewer.webp)
 
@@ -32,7 +32,7 @@ Keep the page open. New photos appear by themselves, usually within seconds of b
 
 > **Note** Opened the link inside Instagram or WhatsApp? If Download doesn't save, open the link in Safari or Chrome. On some iPhones, press and hold the photo and tap **Save image**.
 
-To share a photo, download it first, then share it from your phone's gallery.
+**Share** sends the photo straight to WhatsApp, Instagram or any app, with the studio's name as the caption. Only the photo is shared, never the gallery link, so the gallery stays private to the guests. On a laptop, Share saves the photo and copies the caption for you to paste.
 
 ## 4. Photos after the event
 

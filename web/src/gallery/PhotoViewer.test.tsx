@@ -72,7 +72,7 @@ describe('Photo viewer', () => {
     expect(screen.getByTestId('viewer-counter')).toHaveTextContent('2 / 3')
   })
 
-  it('Android/desktop: Download saves the photo without leaving the gallery, and Share is hidden', async () => {
+  it('Android/desktop: Download saves the photo without leaving the gallery', async () => {
     const user = userEvent.setup()
     const createObjectURL = vi.fn(() => 'blob:photo')
     vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }))
@@ -80,7 +80,6 @@ describe('Photo viewer', () => {
 
     renderGallery()
     await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
-    expect(screen.queryByRole('button', { name: 'Share' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Download' }))
     await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
@@ -98,6 +97,41 @@ describe('Photo viewer', () => {
     // Bypasses the cached non-CORS copy the <img> loaded, which would make the CORS fetch fail.
     const call = vi.mocked(fetch).mock.calls.find(([input]) => String(input).endsWith('/web/3.jpg'))
     expect(call?.[1]).toMatchObject({ mode: 'cors', cache: 'no-store' })
+  })
+
+  it('Share sends the photo itself with the studio credit, never a gallery link', async () => {
+    const user = userEvent.setup()
+    const share = vi.fn(async () => {})
+    Object.assign(navigator, { share, canShare: () => true })
+    renderGallery()
+    await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
+    await user.click(screen.getByRole('button', { name: 'Share' }))
+    await waitFor(() => expect(share).toHaveBeenCalledTimes(1))
+    const data = (share.mock.calls[0] as unknown as [ShareData])[0]
+    expect(data.files?.[0]).toBeInstanceOf(File)
+    expect(data.files?.[0].type).toBe('image/jpeg')
+    expect(data.text).toMatch(/^📸 /)
+    expect(data.text).toContain('instagram.com/')
+    expect(data).not.toHaveProperty('url')
+    expect(data.text).not.toMatch(/https?:|\/e\//)
+  })
+
+  it('where the phone cannot share files, Share saves the photo and copies the credit', async () => {
+    const user = userEvent.setup()
+    const createObjectURL = vi.fn(() => 'blob:photo')
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }))
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    try {
+      renderGallery()
+      await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
+      await user.click(screen.getByRole('button', { name: 'Share' }))
+      await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
+      expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^📸 /))
+      expect(await screen.findByText(/caption is copied/)).toBeInTheDocument()
+    } finally {
+      Reflect.deleteProperty(navigator, 'clipboard')
+    }
   })
 
   it('when the photo cannot be fetched, explains press-and-hold instead of opening a new page', async () => {
