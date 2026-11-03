@@ -1,5 +1,7 @@
 # Canon EOS R6 Mark II → McreatiK Live Gallery (Wi-Fi FTP)
 
+> The maintained, illustrated version of this guide is in the McreatiK admin Docs: **Camera & uploader guides → Canon EOS R6 Mark II** (`backend/src/main/resources/docs/guide-canon.md`), next to the Sony α7 IV, uploader (Windows and Mac) and event-day guides, and the SOPs for McreatiK, studios, couples and guests.
+
 The camera sends every photo over Wi-Fi to the McreatiK Uploader on your laptop, which puts it in the live gallery.
 No cable and no separate FTP software.
 

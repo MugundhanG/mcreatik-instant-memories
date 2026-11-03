@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 520" width="760" height="520" font-family="Inter, Helvetica, Arial, sans-serif">
+<rect width="760" height="520" rx="22" fill="#e7e5e4"/>
+<rect x="20" y="20" width="720" height="400" rx="16" fill="#1c1917"/>
+<rect x="36" y="36" width="688" height="368" rx="8" fill="#0c0a09"/>
+<text x="56" y="70" fill="#a8a29e" font-size="15">Sony α7 IV · Network › Wi-Fi</text>
+<text x="56" y="100" fill="#fafaf9" font-size="22" font-weight="600">Access Point Set.</text>
+<line x1="56" y1="116" x2="704" y2="116" stroke="#44403c"/>
+<rect x="48" y="124" width="664" height="40" rx="6" fill="#b45309"/>
+<text x="64" y="150" fill="#fff" font-size="19">Studio-Hotspot</text>
+<text x="64" y="196" fill="#e7e5e4" font-size="19">Venue-Guest-WiFi</text>
+<text x="64" y="242" fill="#e7e5e4" font-size="19">Manual Registration</text>
+<circle cx="62" cy="460" r="22" fill="#b45309"/><text x="62" y="467" fill="#fff" font-size="20" font-weight="700" text-anchor="middle">1</text>
+<text x="100" y="456" fill="#1c1917" font-size="18" font-weight="600">Join the same Wi-Fi as the laptop</text>
+<text x="100" y="480" fill="#57534e" font-size="15">MENU › Network › Wi-Fi › Access Point Set. › enter the password</text>
+<text x="736" y="506" fill="#a8a29e" font-size="12" text-anchor="end">Illustration · menu names can differ slightly by firmware</text>
+</svg>

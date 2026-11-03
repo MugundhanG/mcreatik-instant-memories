@@ -26,6 +26,8 @@ They share one PostgreSQL database (Supabase) and two Cloudflare R2 buckets. Ori
 
 ## How to read these docs
 
+**Running the service day to day?** Start with **SOPs** (one per role: [McreatiK admin](/admin/docs/sop-admin), [Studios](/admin/docs/sop-studio), [Couples](/admin/docs/sop-couple), [Guests](/admin/docs/sop-guest)) and the **Camera & uploader guides** ([Uploader](/admin/docs/guide-uploader), [Canon](/admin/docs/guide-canon), [Sony](/admin/docs/guide-sony), [Event-day checklist](/admin/docs/guide-event-day)). The rest is the technical reference:
+
 1. **Architecture** shows how the parts connect.
 2. **Frontend**, **Backend**, **Database** and **API reference** explain the code.
 3. **User journeys** follow each person through the system.
