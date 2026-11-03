@@ -1,6 +1,6 @@
 # Sony α7 IV setup
 
-This guide sets up the **Sony α7 IV** to send every JPEG over Wi-Fi (FTP) to the McreatiK Uploader on your laptop.
+This guide sets up the **Sony α7 IV** to send every JPEG over Wi-Fi (FTP) to the McreatiK Instant Memories Uploader on your laptop.
 
 > **Warning** **Not yet field-tested with McreatiK.** The α7 IV supports FTP transfer, and the uploader speaks standard FTP, but run the [rehearsal](/admin/docs/guide-uploader#7-rehearsal-before-the-first-paid-event) with a real α7 IV before promising it to a studio. Update the firmware first (Sony's site, "ILCE-7M4").
 
@@ -8,11 +8,11 @@ This guide sets up the **Sony α7 IV** to send every JPEG over Wi-Fi (FTP) to th
 
 ## Before you start
 
-- The uploader is running and shows the **Camera Wi-Fi (FTP)** box with Server, Port, User and Password ([Uploader guide](/admin/docs/guide-uploader)).
+- The uploader is running and shows the **Camera Wi-Fi settings** card with Server, Port, User and Password ([Uploader guide](/admin/docs/guide-uploader)).
 - The laptop is connected to the **same Wi-Fi or phone hotspot** the camera will join.
 - File format is **RAW & JPEG** (Shooting menu → Image Quality → File Format). The JPEG goes to guests.
 
-![The uploader's Camera Wi-Fi box shows what to type into the camera](images/uploader-main-waiting.webp)
+![The uploader's Camera Wi-Fi settings card shows what to type into the camera](images/uploader-main-waiting.webp)
 
 ## Setup (once per network, about 10 minutes)
 

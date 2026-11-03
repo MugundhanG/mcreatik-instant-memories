@@ -58,7 +58,7 @@ Press **Buy events**, choose how many, then pay by UPI: scan the code or tap **P
 
 ## 4. Connect your cameras
 
-Every camera needs its own **uploader**: the McreatiK Uploader app on a laptop at the venue.
+Every camera needs its own **uploader**: the McreatiK Instant Memories Uploader app on a laptop at the venue.
 
 1. Open the event. On **Overview**, under **Cameras & uploaders**, type a name such as "Camera 1 · Canon R6 II" and press **Add uploader**.
 2. A **connection code** appears. **It's shown only once**, so press **Copy code** and paste it into the uploader (see the [Uploader guide](/admin/docs/guide-uploader)).

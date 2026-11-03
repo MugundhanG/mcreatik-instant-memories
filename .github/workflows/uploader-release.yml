@@ -1,13 +1,13 @@
 name: Uploader installers
 
-# Builds one-click installers for the McreatiK Uploader with Java bundled inside (studios install nothing else):
+# Builds one-click installers for the McreatiK Instant Memories Uploader with Java bundled inside (studios install nothing else):
 #   Windows .msi, macOS .dmg for Apple Silicon and for Intel.
 # Pull requests that touch the uploader build them as downloadable artifacts (to check the build).
 # A manual run (Actions → Uploader installers → Run workflow) on main, or a tag uploader-v1.2.3, publishes a GitHub
 # release whose files keep the same names, so these links never change:
-#   https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Uploader-Windows.msi
-#   https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Uploader-Mac-AppleSilicon.dmg
-#   https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Uploader-Mac-Intel.dmg
+#   https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Instant-Memories-Uploader-Windows.msi
+#   https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Instant-Memories-Uploader-Mac-AppleSilicon.dmg
+#   https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Instant-Memories-Uploader-Mac-Intel.dmg
 # The installers are not code-signed yet: Windows SmartScreen and macOS Gatekeeper ask once (see the Uploader guide).
 on:
   pull_request:
@@ -30,11 +30,11 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            asset: McreatiK-Uploader-Windows.msi
+            asset: McreatiK-Instant-Memories-Uploader-Windows.msi
           - os: macos-14
-            asset: McreatiK-Uploader-Mac-AppleSilicon.dmg
+            asset: McreatiK-Instant-Memories-Uploader-Mac-AppleSilicon.dmg
           - os: macos-15-intel
-            asset: McreatiK-Uploader-Mac-Intel.dmg
+            asset: McreatiK-Instant-Memories-Uploader-Mac-Intel.dmg
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +71,7 @@ jobs:
           export PATH="$PATH:/c/Program Files (x86)/WiX Toolset v3.14/bin"
           jpackage --type msi --dest dist --input pkg --main-jar mcreatik-uploader.jar \
             --main-class com.mcreatik.uploader.UploaderMain \
-            --name "McreatiK Uploader" --app-version "${{ steps.version.outputs.value }}" \
+            --name "McreatiK Instant Memories Uploader" --app-version "${{ steps.version.outputs.value }}" \
             --vendor McreatiK --description "Sends camera photos to the McreatiK Instant Memories live gallery" \
             --icon uploader/packaging/icon.ico --add-modules "$MODULES" \
             --jlink-options "--strip-debug --no-header-files --no-man-pages" \
@@ -90,11 +90,11 @@ jobs:
           iconutil -c icns icon.iconset -o icon.icns
           jpackage --type dmg --dest dist --input pkg --main-jar mcreatik-uploader.jar \
             --main-class com.mcreatik.uploader.UploaderMain \
-            --name "McreatiK Uploader" --app-version "${{ steps.version.outputs.value }}" \
+            --name "McreatiK Instant Memories Uploader" --app-version "${{ steps.version.outputs.value }}" \
             --vendor McreatiK --description "Sends camera photos to the McreatiK Instant Memories live gallery" \
             --icon icon.icns --add-modules "$MODULES" \
             --jlink-options "--strip-debug --no-header-files --no-man-pages" \
-            --mac-package-identifier com.mcreatik.uploader --mac-package-name "McreatiK Uploader"
+            --mac-package-identifier com.mcreatik.uploader --mac-package-name "McreatiK Instant Memories Uploader"
           mv dist/*.dmg "dist/${{ matrix.asset }}"
 
       - name: Size
@@ -122,5 +122,5 @@ jobs:
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then tag="${GITHUB_REF#refs/tags/}"; else tag="uploader-v1.0.${GITHUB_RUN_NUMBER}"; fi
           gh release create "$tag" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
-            --title "McreatiK Uploader ${tag#uploader-v}" \
-            --notes "Installers with Java included. Windows: McreatiK-Uploader-Windows.msi. Mac: the AppleSilicon .dmg for M1–M4 Macs, the Intel .dmg for older Macs. Not code-signed yet: on first open, Windows → More info → Run anyway; Mac → System Settings → Privacy & Security → Open Anyway."
+            --title "McreatiK Instant Memories Uploader ${tag#uploader-v}" \
+            --notes "Installers with Java included. Windows: McreatiK-Instant-Memories-Uploader-Windows.msi. Mac: the AppleSilicon .dmg for M1–M4 Macs, the Intel .dmg for older Macs. Not code-signed yet: on first open, Windows → More info → Run anyway; Mac → System Settings → Privacy & Security → Open Anyway."

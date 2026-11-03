@@ -47,7 +47,7 @@ public class DocsController {
             new Page("sop-studio", "Studios", "SOPs"),
             new Page("sop-couple", "Couples (clients)", "SOPs"),
             new Page("sop-guest", "Guests", "SOPs"),
-            new Page("guide-uploader", "McreatiK Uploader", "Camera & uploader guides"),
+            new Page("guide-uploader", "McreatiK Instant Memories Uploader", "Camera & uploader guides"),
             new Page("guide-canon", "Canon EOS R6 Mark II", "Camera & uploader guides"),
             new Page("guide-sony", "Sony α7 IV", "Camera & uploader guides"),
             new Page("guide-event-day", "Event-day checklist", "Camera & uploader guides"),
