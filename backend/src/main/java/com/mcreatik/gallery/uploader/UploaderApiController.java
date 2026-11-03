@@ -25,7 +25,7 @@ import com.mcreatik.gallery.event.EventRepository;
 import com.mcreatik.gallery.event.EventStatus;
 import com.mcreatik.gallery.photo.UploadService;
 
-/** API used by the McreatiK Uploader desktop app. */
+/** API used by the McreatiK Instant Memories Uploader desktop app. */
 @RestController
 @RequestMapping("/api/uploader")
 public class UploaderApiController {

@@ -4,7 +4,7 @@ Guests scan a QR code at an event and watch the photographers' photos arrive liv
 
 ```
 Camera → (camera's own transfer: FTP / Wi-Fi app / tethering / card) → watched folder
-       → McreatiK Uploader (queue, retries) → Cloudflare R2 → processing → live gallery (SSE) → guests
+       → McreatiK Instant Memories Uploader (queue, retries) → Cloudflare R2 → processing → live gallery (SSE) → guests
 ```
 
 Multiple cameras upload into the same event simultaneously; a dropped venue connection never loses a photo.
@@ -105,7 +105,7 @@ The uploader receives photos in one of two ways:
 - **Folder.** Any camera app, tethering software or card reader that saves JPEGs into a folder.
 
 1. Set the camera to shoot **RAW+JPEG** (JPEGs are what guests see).
-2. Start McreatiK Uploader, paste the connection code from the dashboard, and either keep "Receive photos from the camera over Wi-Fi" ticked (FTP) or choose the folder your camera software saves to.
+2. Start McreatiK Instant Memories Uploader, paste the connection code from the dashboard, and either keep "Receive photos from the camera over Wi-Fi" ticked (FTP) or choose the folder your camera software saves to.
 3. Leave it running. Each photo is resized on the laptop and only the web + thumbnail versions (~0.6 MB) are uploaded,
    so photos reach guests within seconds even on a phone hotspot; the full-size originals stay on your laptop and card
    (start with `--upload-originals` to send originals for server-side processing instead).

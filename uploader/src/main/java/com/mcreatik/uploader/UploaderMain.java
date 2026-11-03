@@ -28,7 +28,7 @@ import com.mcreatik.uploader.ui.SetupDialog;
 import com.mcreatik.uploader.ui.UploaderWindow;
 
 /**
- * McreatiK Uploader.
+ * McreatiK Instant Memories Uploader.
  *
  * <pre>
  *   java -jar mcreatik-uploader.jar                                  # window; asks for code + folder the first time
@@ -59,7 +59,7 @@ public final class UploaderMain {
         Args a = Args.parse(args);
         if (a.help) {
             System.out.println("""
-                    McreatiK Uploader %s
+                    McreatiK Instant Memories Uploader %s
                       --connect <code>     connection code from the McreatiK dashboard (MCK1....)
                       --folder <path>      folder the camera transfers photos into
                       --data-dir <path>    settings + queue location (default ~/.mcreatik-uploader)
@@ -78,7 +78,7 @@ public final class UploaderMain {
         Files.createDirectories(a.dataDir);
         FileLock lock = lockDataDir(a.dataDir);
         if (lock == null) {
-            fail(headless, "Another McreatiK Uploader is already using " + a.dataDir
+            fail(headless, "Another McreatiK Instant Memories Uploader is already using " + a.dataDir
                     + ". To run a second camera on this computer, start it with a different --data-dir.");
             return;
         }
@@ -243,7 +243,7 @@ public final class UploaderMain {
             System.err.println(message);
             System.exit(1);
         } else {
-            javax.swing.JOptionPane.showMessageDialog(null, message, "McreatiK Uploader",
+            javax.swing.JOptionPane.showMessageDialog(null, message, com.mcreatik.uploader.ui.UiTheme.APP_NAME,
                     javax.swing.JOptionPane.ERROR_MESSAGE);
             System.exit(1);
         }

@@ -9,15 +9,15 @@ const RELEASES = 'https://github.com/MugundhanG/mcreatik-instant-memories/releas
 
 /** Installers with Java included (built by the "Uploader installers" workflow). */
 const UPLOADER_DOWNLOADS = [
-  { label: 'Windows', href: `${RELEASES}/McreatiK-Uploader-Windows.msi` },
-  { label: 'Mac (M1–M4)', href: `${RELEASES}/McreatiK-Uploader-Mac-AppleSilicon.dmg` },
-  { label: 'Mac (Intel)', href: `${RELEASES}/McreatiK-Uploader-Mac-Intel.dmg` },
+  { label: 'Windows', href: `${RELEASES}/McreatiK-Instant-Memories-Uploader-Windows.msi` },
+  { label: 'Mac (M1–M4)', href: `${RELEASES}/McreatiK-Instant-Memories-Uploader-Mac-AppleSilicon.dmg` },
+  { label: 'Mac (Intel)', href: `${RELEASES}/McreatiK-Instant-Memories-Uploader-Mac-Intel.dmg` },
 ]
 
 function DownloadLinks() {
   return (
     <p className="text-xs text-muted">
-      Download McreatiK Uploader:{' '}
+      Download McreatiK Instant Memories Uploader:{' '}
       {UPLOADER_DOWNLOADS.map((d, i) => (
         <span key={d.label}>
           {i > 0 && ' · '}
@@ -39,7 +39,7 @@ function CredentialsDialog({ credentials, onClose }: { credentials: UploaderCred
       <div className="anim-dialog-in w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
         <h3 className="text-lg font-semibold">Connect “{credentials.name}”</h3>
         <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-muted">
-          <li>Open McreatiK Uploader on the laptop for this camera (not installed yet? use a link below).</li>
+          <li>Open McreatiK Instant Memories Uploader on the laptop for this camera (not installed yet? use a link below).</li>
           <li>Paste this connection code.</li>
           <li>Choose the folder the camera sends photos to.</li>
         </ol>

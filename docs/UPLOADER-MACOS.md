@@ -1,4 +1,4 @@
-# McreatiK Uploader on a Mac (macOS)
+# McreatiK Instant Memories Uploader on a Mac (macOS)
 
 > **Status: not yet field-tested on a Mac.** The uploader is plain Java 21 and is written to run on macOS
 > (port 2121 instead of 21, folder polling instead of macOS file events, data in your home folder), but every
@@ -8,7 +8,7 @@
 Works on Apple Silicon (M1–M4) and Intel Macs, macOS 12 Monterey or newer.
 
 ```
-Camera ──Wi-Fi (FTP)──> Mac: McreatiK Uploader ──internet──> McreatiK ──> guests' phones
+Camera ──Wi-Fi (FTP)──> Mac: McreatiK Instant Memories Uploader ──internet──> McreatiK ──> guests' phones
 ```
 
 ## 1. Install Java 21 (once, ~5 minutes)

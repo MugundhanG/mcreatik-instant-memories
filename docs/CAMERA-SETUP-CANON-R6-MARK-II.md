@@ -2,17 +2,17 @@
 
 > The maintained, illustrated version of this guide is in the McreatiK admin Docs: **Camera & uploader guides → Canon EOS R6 Mark II** (`backend/src/main/resources/docs/guide-canon.md`), next to the Sony α7 IV, uploader (Windows and Mac) and event-day guides, and the SOPs for McreatiK, studios, couples and guests.
 
-The camera sends every photo over Wi-Fi to the McreatiK Uploader on your laptop, which puts it in the live gallery.
+The camera sends every photo over Wi-Fi to the McreatiK Instant Memories Uploader on your laptop, which puts it in the live gallery.
 No cable and no separate FTP software.
 
 ```
-R6 Mark II ──Wi-Fi (FTP)──> laptop: McreatiK Uploader ──internet──> McreatiK ──> guests' phones
+R6 Mark II ──Wi-Fi (FTP)──> laptop: McreatiK Instant Memories Uploader ──internet──> McreatiK ──> guests' phones
 ```
 
 ## Before the event (once per camera, ~10 minutes)
 
 **1. Laptop**
-- Start McreatiK Uploader, paste the connection code from the event dashboard, keep
+- Start McreatiK Instant Memories Uploader, paste the connection code from the event dashboard, keep
   **"Receive photos from the camera over Wi-Fi"** ticked, and click OK.
 - The window shows a **Camera Wi-Fi (FTP)** box with the **server address, port (2121), user name and password**.
   Keep it visible, you'll type these into the camera.

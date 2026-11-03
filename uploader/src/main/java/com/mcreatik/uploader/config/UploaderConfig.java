@@ -96,7 +96,7 @@ public record UploaderConfig(String serverUrl, String token, Path watchFolder, i
         p.setProperty("ftpPassword", ftp.password());
         Path tmp = dataDir.resolve(FILE_NAME + ".tmp");
         try (OutputStream out = Files.newOutputStream(tmp)) {
-            p.store(out, "McreatiK Uploader - keep this file private (contains the uploader token)");
+            p.store(out, "McreatiK Instant Memories Uploader - keep this file private (contains the uploader token)");
         }
         Files.move(tmp, dataDir.resolve(FILE_NAME), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         restrictPermissions(dataDir.resolve(FILE_NAME));

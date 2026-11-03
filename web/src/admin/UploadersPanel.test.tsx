@@ -7,9 +7,9 @@ describe('UploadersPanel', () => {
     render(<UploadersPanel eventId="e1" uploaders={[]} onChange={() => {}} />)
     const links = ['Windows', 'Mac (M1–M4)', 'Mac (Intel)'].map((name) => screen.getByRole('link', { name }))
     expect(links.map((l) => l.getAttribute('href'))).toEqual([
-      'https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Uploader-Windows.msi',
-      'https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Uploader-Mac-AppleSilicon.dmg',
-      'https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Uploader-Mac-Intel.dmg',
+      'https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Instant-Memories-Uploader-Windows.msi',
+      'https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Instant-Memories-Uploader-Mac-AppleSilicon.dmg',
+      'https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Instant-Memories-Uploader-Mac-Intel.dmg',
     ])
   })
 })

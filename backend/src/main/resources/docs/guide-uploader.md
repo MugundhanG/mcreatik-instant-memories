@@ -1,52 +1,54 @@
-# McreatiK Uploader
+# McreatiK Instant Memories Uploader
 
-The **McreatiK Uploader** runs on a laptop at the venue. It receives each photo from the camera over Wi-Fi (or from a folder), makes a light, sharp copy, and uploads it to the live gallery. If the internet drops, photos wait safely on the laptop and upload by themselves later.
+The **McreatiK Instant Memories Uploader** runs on a laptop at the venue. It receives each photo from the camera over Wi-Fi (or from a folder), makes a light, sharp copy, and uploads it to the live gallery. If the internet drops, photos wait safely on the laptop and upload by themselves later.
 
 ![How a photo reaches every guest](images/flow-photo-journey.svg)
 
 | | Windows | Mac |
 | --- | --- | --- |
 | Status | Field-tested with a Canon EOS R6 Mark II | **Not yet field-tested**: rehearse first (section 7) |
-| Install | `McreatiK-Uploader-Windows.msi` | `McreatiK-Uploader-Mac-AppleSilicon.dmg` (M1–M4) or `…-Mac-Intel.dmg` |
+| Install | `McreatiK-Instant-Memories-Uploader-Windows.msi` | `McreatiK-Instant-Memories-Uploader-Mac-AppleSilicon.dmg` (M1–M4) or `…-Mac-Intel.dmg` |
 | Needs | Nothing else: Java is included | Nothing else: Java is included; macOS 12+ |
 
 One laptop per camera is simplest. Two cameras on one laptop is possible (section 6).
 
 ## 1. Download and install (once)
 
-Download from the event dashboard (**Overview → Cameras & uploaders → Download McreatiK Uploader**), or use these links:
+Download from the event dashboard (**Overview → Cameras & uploaders → Download McreatiK Instant Memories Uploader**), or use these links:
 
 | Laptop | Download |
 | --- | --- |
-| Windows | [McreatiK-Uploader-Windows.msi](https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Uploader-Windows.msi) |
-| Mac with Apple chip (M1–M4) | [McreatiK-Uploader-Mac-AppleSilicon.dmg](https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Uploader-Mac-AppleSilicon.dmg) |
-| Older Mac (Intel) | [McreatiK-Uploader-Mac-Intel.dmg](https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Uploader-Mac-Intel.dmg) |
+| Windows | [McreatiK-Instant-Memories-Uploader-Windows.msi](https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Instant-Memories-Uploader-Windows.msi) |
+| Mac with Apple chip (M1–M4) | [McreatiK-Instant-Memories-Uploader-Mac-AppleSilicon.dmg](https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Instant-Memories-Uploader-Mac-AppleSilicon.dmg) |
+| Older Mac (Intel) | [McreatiK-Instant-Memories-Uploader-Mac-Intel.dmg](https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Instant-Memories-Uploader-Mac-Intel.dmg) |
 
 Not sure which Mac you have? Apple menu → **About This Mac**: "Chip Apple M…" means Apple chip; "Processor Intel" means Intel.
 
 **Windows**
 1. Open the `.msi` file. Windows may show "Windows protected your PC" (the app isn't code-signed yet): click **More info → Run anyway**.
-2. Click through the installer. **McreatiK Uploader** appears in the Start menu and on the desktop.
+2. Click through the installer. **McreatiK Instant Memories Uploader** appears in the Start menu and on the desktop.
 
 **Mac**
-1. Open the `.dmg` file and drag **McreatiK Uploader** into **Applications**.
-2. Open it from Applications. The first time, macOS says it can't check the app (not code-signed yet): click **Done**, then go to **System Settings → Privacy & Security**, scroll down to McreatiK Uploader and click **Open Anyway**.
+1. Open the `.dmg` file and drag **McreatiK Instant Memories Uploader** into **Applications**.
+2. Open it from Applications. The first time, macOS says it can't check the app (not code-signed yet): click **Done**, then go to **System Settings → Privacy & Security**, scroll down to McreatiK Instant Memories Uploader and click **Open Anyway**.
 3. The app keeps the Mac awake by itself while it runs.
 
 ## 2. Start and connect to the event
 
-Start **McreatiK Uploader** from the Start menu (Windows) or Applications (Mac).
+Start **McreatiK Instant Memories Uploader** from the Start menu (Windows) or Applications (Mac).
 
 The first time, the **Setup** window opens:
 
 ![Uploader setup window](images/uploader-setup-empty.webp)
 
-1. **Connection code:** paste the code from the event dashboard (Overview → Cameras & uploaders → Add uploader → Copy code).
-2. **Camera folder:** where photos are saved on this laptop. The default "McreatiK Photos" in your home folder is fine.
-3. Keep **"Receive photos from the camera over Wi-Fi"** ticked for Canon or Sony FTP. Untick it only if your camera software already saves into a folder.
-4. Press **OK**.
+1. **Connection code:** copy the code from the event dashboard (Overview → Cameras & uploaders → Add uploader → Copy code), then press **Paste**.
+2. **Folder for photos on this computer:** the default "McreatiK Photos" in your home folder is fine.
+3. **How photos arrive:** keep **"Receive photos from the camera over Wi-Fi"** ticked for Canon or Sony FTP. Untick it only if your camera software already saves into a folder.
+4. Press **Connect**. If something is wrong, the reason appears in red under the form:
 
-![Setup with the connection code pasted](images/uploader-setup-filled.webp)
+![A damaged connection code is explained in red](images/uploader-setup-error.webp)
+
+![Setup with the connection code pasted, ready to connect](images/uploader-setup-filled.webp)
 
 Next time it remembers the event and goes straight to the main window.
 
@@ -57,15 +59,15 @@ Next time it remembers the event and goes straight to the main window.
 | Part | Meaning |
 | --- | --- |
 | Event name, "This computer: …" | Which event and which camera this laptop serves |
-| Green **Online — photos upload automatically** | Connected to McreatiK |
-| **Camera Wi-Fi (FTP)** box | What to type into the camera: **Server** (this laptop's address), **Port 2121**, **User mcreatik**, **Password** |
-| Waiting · Uploading · Uploaded · Duplicates · Failed | The queue counts |
-| Photo list | Each photo's status and time |
-| Open folder · Retry failed · Open live gallery | Quick actions |
+| Green banner **Online — photos upload automatically** | Connected to McreatiK (amber = offline, photos queued; red = paused) |
+| **Camera Wi-Fi settings** | What to type into the camera: **Server** (this laptop's address), **Port 2121**, **User mcreatik**, **Password**. Each has a **Copy** button |
+| Waiting · Uploading · Uploaded · Already sent · Failed | The queue counts ("Already sent" = the camera sent a photo twice; it's skipped) |
+| Recent photos | Each photo's status (coloured) and time |
+| Open folder · Retry failed · Open live gallery | Quick actions (Retry failed lights up only when something failed) |
 
 Now set up the camera: [Canon EOS R6 Mark II](/admin/docs/guide-canon) · [Sony α7 IV](/admin/docs/guide-sony).
 
-When the camera connects, the FTP box turns green: **Camera connected · N received**.
+When the camera connects, the line under the settings turns green: **Camera connected · N received**.
 
 ![Photos arriving from the camera and uploading](images/uploader-main-uploading.webp)
 
@@ -81,16 +83,16 @@ When the connection returns, they upload by themselves, oldest first, and guests
 
 ![Back online: the queue empties by itself](images/uploader-main-recovered.webp)
 
-**Duplicates** counts photos the camera sent twice. They're skipped, which is normal. **Failed** photos (rare) retry with **Retry failed**.
+**Already sent** counts photos the camera sent twice. They're skipped, which is normal. **Failed** photos (rare) retry with **Retry failed**.
 
 ## 5. Keep the laptop ready
 
 **Windows**
-- When the firewall asks, click **Allow** for **McreatiK Uploader** on **Private and Public** networks. A new phone hotspot counts as Public.
+- When the firewall asks, click **Allow** for **McreatiK Instant Memories Uploader** on **Private and Public** networks. A new phone hotspot counts as Public.
 - Settings → System → Power & battery: **never sleep when plugged in**. Keep it plugged in.
 
 **Mac**
-- When macOS asks whether **McreatiK Uploader** may accept incoming network connections, click **Allow**. If you clicked Deny, go to System Settings → Network → Firewall → Options and allow it.
+- When macOS asks whether **McreatiK Instant Memories Uploader** may accept incoming network connections, click **Allow**. If you clicked Deny, go to System Settings → Network → Firewall → Options and allow it.
 - System Settings → Battery → Options: **prevent automatic sleeping on power adapter when the display is off**. Keep the lid open; a closed lid sleeps the Mac.
 
 **Both**
