@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
 import mkLogo from '../assets/mk-logo.webp'
 import { ForgotPassword } from '../shared/ForgotPassword'
+import { PolicyLinks } from '../shared/policies/PolicyLayout'
 import { auth, useSession } from './auth'
 import { Button, ErrorText, Field, inputClass } from './ui'
 
@@ -67,6 +68,7 @@ export default function LoginPage() {
         <button type="button" onClick={() => setForgot(true)} className="w-full text-center text-sm text-muted underline underline-offset-2 hover:text-ink">
           Forgot password?
         </button>
+        <PolicyLinks className="border-t border-line pt-4" />
       </form>
     </main>
   )

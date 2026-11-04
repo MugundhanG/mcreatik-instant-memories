@@ -100,6 +100,10 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 | POST | `/api/admin/billing/payments/{id}/approve` · `/reject` | Super | Approve adds credits |
 | GET / PATCH | `/api/admin/billing/studios[/{studioId}]` | Super | `{plan?, monthlyQuota?, addCredits?}` |
 | GET / PUT | `/api/admin/billing/settings` | Super | UPI ID, payee, prices |
+| POST | `/api/admin/billing/online-orders` | Admin | `{events}` → Razorpay order at the server's price `{paymentId, razorpayOrderId, keyId, amountPaise, …}` (201) |
+| POST | `/api/admin/billing/online-orders/{paymentId}/confirm` | Admin | `{razorpayPaymentId, razorpaySignature}` → checks the signature and the captured amount, adds the events once |
+| POST | `/api/public/razorpay/webhook` | Razorpay | `X-Razorpay-Signature` over the raw body; `payment.captured` / `order.paid` add the events (idempotent). 404 when online payment is off |
+| GET | `/api/public/pricing` | Public | Current prices for the `/pricing` page |
 
 ## Camera uploaders
 

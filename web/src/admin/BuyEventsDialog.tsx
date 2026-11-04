@@ -3,7 +3,10 @@ import { adminApi, ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
 import type { BillingSummary } from '../lib/types'
 import { qrSvg } from '../shared/qr'
+import { lastFailure, openCheckout, resetLastFailure } from '../shared/razorpay'
 import { Button, ErrorText, inputClass } from './ui'
+
+type Method = 'online' | 'upi'
 
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
@@ -14,8 +17,9 @@ function upiLink(upiId: string, payee: string | null, amount: number, events: nu
 }
 
 /**
- * Buy extra events by UPI: choose how many, scan the QR (or tap Pay on a phone), then enter the transaction ID.
- * The events can be used straight away; McreatiK checks the payment afterwards.
+ * Buy extra events. Two ways:
+ * - Pay online (card, netbanking, UPI, wallet) with Razorpay: the events are added as soon as Razorpay confirms.
+ * - UPI QR: scan, pay, enter the transaction ID; usable at once, McreatiK checks the payment afterwards.
  */
 export function BuyEventsDialog({ billing, reason, onPaid, onClose }: {
   billing: BillingSummary
@@ -29,8 +33,32 @@ export function BuyEventsDialog({ billing, reason, onPaid, onClose }: {
   const [qr, setQr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [paidOnline, setPaidOnline] = useState<number | null>(null)
   const amount = events * billing.unitPrice
   const link = billing.upiId ? upiLink(billing.upiId, billing.payeeName, amount, events) : null
+  const [method, setMethod] = useState<Method>(billing.onlinePayments ? 'online' : 'upi')
+  const plural = (n: number) => `${n} event${n === 1 ? '' : 's'}`
+
+  const payOnline = async () => {
+    setBusy(true)
+    setError(null)
+    resetLastFailure()
+    try {
+      const order = await adminApi.startOnlinePayment(events)
+      const outcome = await openCheckout(order, `${plural(order.events)} · Instant Memories`)
+      if (outcome.kind === 'dismissed') {
+        setError(lastFailure ? `${lastFailure}. No money was taken for events; try again or use another way.` : null)
+        setBusy(false)
+        return
+      }
+      await adminApi.confirmOnlinePayment(order.paymentId, outcome.result.razorpay_payment_id, outcome.result.razorpay_signature)
+      setPaidOnline(order.events)
+      setTimeout(onPaid, 1200) // a moment to read "Paid", then carry on (e.g. create the event)
+    } catch (err) {
+      setError(err instanceof ApiError || err instanceof Error ? err.message : 'The payment could not be completed')
+      setBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (!link) return
@@ -69,10 +97,15 @@ export function BuyEventsDialog({ billing, reason, onPaid, onClose }: {
           <button type="button" onClick={onClose} aria-label="Close" className="-mt-1 -mr-1 flex size-9 items-center justify-center rounded-full text-xl text-muted hover:bg-stone-100">×</button>
         </div>
 
-        {!link ? (
+        {paidOnline !== null ? (
+          <div className="mt-6 rounded-xl bg-green-50 p-5 text-center" role="status">
+            <p className="text-lg font-semibold text-green-800">Paid ✓</p>
+            <p className="mt-1 text-sm text-green-900">{plural(paidOnline)} added to your account.</p>
+          </div>
+        ) : !link && !billing.onlinePayments ? (
           <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Payments are not set up yet. Please contact McreatiK.</p>
         ) : (
-          <form onSubmit={submit} className="mt-4 space-y-4">
+          <div className="mt-4 space-y-4">
             <div className="flex items-center justify-between rounded-xl bg-stone-50 p-3">
               <div className="flex items-center gap-2">
                 <button type="button" aria-label="Fewer events" onClick={() => setEvents((n) => Math.max(1, n - 1))} className="size-9 rounded-full border border-line bg-white text-lg">−</button>
@@ -85,29 +118,63 @@ export function BuyEventsDialog({ billing, reason, onPaid, onClose }: {
               </p>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="size-36 shrink-0 rounded-lg border border-line p-1.5 [&>svg]:size-full" role="img" aria-label={`UPI QR for ${rupees(amount)}`}
-                // SVG generated locally from our own UPI link.
-                dangerouslySetInnerHTML={qr ? { __html: qr } : undefined} />
-              <div className="min-w-0 text-sm">
-                <p className="font-medium">1. Pay {rupees(amount)} by UPI</p>
-                <p className="mt-1 text-muted">Scan with any UPI app, or on this phone:</p>
-                <a href={link} className="mt-2 inline-flex h-9 items-center rounded-lg bg-ink px-3.5 text-sm font-medium text-white">Pay with UPI app</a>
-                <p className="mt-2 truncate text-xs text-muted" title={billing.upiId ?? ''}>To {billing.payeeName ? `${billing.payeeName} · ` : ''}{billing.upiId}</p>
+            {billing.onlinePayments && link && (
+              <div role="tablist" aria-label="How to pay" className="grid grid-cols-2 gap-1 rounded-xl bg-stone-100 p-1 text-sm">
+                {([['online', 'Card, netbanking, UPI'], ['upi', 'UPI QR']] as const).map(([m, label]) => (
+                  <button key={m} type="button" role="tab" aria-selected={method === m} onClick={() => { setMethod(m); setError(null) }}
+                    className={`h-9 rounded-lg font-medium transition-colors ${method === m ? 'bg-white text-ink shadow-sm' : 'text-muted hover:text-ink'}`}>
+                    {label}
+                  </button>
+                ))}
               </div>
-            </div>
+            )}
 
-            <label className="block text-sm">
-              <span className="font-medium">2. Enter the UPI transaction ID</span>
-              <span className="block text-xs text-muted">The 12-digit UTR / reference number shown in your UPI app after paying.</span>
-              <input className={`${inputClass} mt-1.5 font-mono`} required inputMode="numeric" value={utr} onChange={(e) => setUtr(e.target.value)} placeholder="e.g. 418299301122" />
-            </label>
-            <ErrorText>{error}</ErrorText>
-            <Button type="submit" variant="primary" disabled={busy || utr.trim().length < 8} className="w-full">
-              {busy ? 'Saving…' : `I've paid ${rupees(amount)}: add ${events} event${events === 1 ? '' : 's'}`}
-            </Button>
-            <p className="text-center text-xs text-muted">Your events are ready at once; McreatiK confirms the payment within a day.</p>
-          </form>
+            {method === 'online' && billing.onlinePayments ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted">
+                  Pay securely with a debit or credit card, netbanking, any UPI app or a wallet. Your events are added as soon as the
+                  payment goes through.
+                </p>
+                <ErrorText>{error}</ErrorText>
+                <Button variant="primary" onClick={payOnline} disabled={busy} className="w-full">
+                  {busy ? 'Opening secure payment…' : `Pay ${rupees(amount)} for ${plural(events)}`}
+                </Button>
+                <p className="text-center text-xs text-muted">Payments are processed by Razorpay. McreatiK never sees your card or bank details.</p>
+              </div>
+            ) : link ? (
+              <form onSubmit={submit} className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="size-36 shrink-0 rounded-lg border border-line p-1.5 [&>svg]:size-full" role="img" aria-label={`UPI QR for ${rupees(amount)}`}
+                    // SVG generated locally from our own UPI link.
+                    dangerouslySetInnerHTML={qr ? { __html: qr } : undefined} />
+                  <div className="min-w-0 text-sm">
+                    <p className="font-medium">1. Pay {rupees(amount)} by UPI</p>
+                    <p className="mt-1 text-muted">Scan with any UPI app, or on this phone:</p>
+                    <a href={link} className="mt-2 inline-flex h-9 items-center rounded-lg bg-ink px-3.5 text-sm font-medium text-white">Pay with UPI app</a>
+                    <p className="mt-2 truncate text-xs text-muted" title={billing.upiId ?? ''}>To {billing.payeeName ? `${billing.payeeName} · ` : ''}{billing.upiId}</p>
+                  </div>
+                </div>
+
+                <label className="block text-sm">
+                  <span className="font-medium">2. Enter the UPI transaction ID</span>
+                  <span className="block text-xs text-muted">The 12-digit UTR / reference number shown in your UPI app after paying.</span>
+                  <input className={`${inputClass} mt-1.5 font-mono`} required inputMode="numeric" value={utr} onChange={(e) => setUtr(e.target.value)} placeholder="e.g. 418299301122" />
+                </label>
+                <ErrorText>{error}</ErrorText>
+                <Button type="submit" variant="primary" disabled={busy || utr.trim().length < 8} className="w-full">
+                  {busy ? 'Saving…' : `I've paid ${rupees(amount)}: add ${plural(events)}`}
+                </Button>
+                <p className="text-center text-xs text-muted">Your events are ready at once; McreatiK confirms the payment within a day.</p>
+              </form>
+            ) : null}
+            <p className="text-center text-xs text-muted">
+              <a href="/pricing" target="_blank" rel="noreferrer" className="underline underline-offset-2">Pricing</a>
+              {' · '}
+              <a href="/refunds" target="_blank" rel="noreferrer" className="underline underline-offset-2">Refunds &amp; cancellation</a>
+              {' · '}
+              <a href="/terms" target="_blank" rel="noreferrer" className="underline underline-offset-2">Terms</a>
+            </p>
+          </div>
         )}
       </div>
     </div>

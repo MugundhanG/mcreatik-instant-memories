@@ -1,13 +1,14 @@
 # Security headers for live.mcreatik.com (Cloudflare Workers static assets reads this file; vercel.json is not used).
 # CSP: the app loads only its own scripts/fonts; photos and logos come from im-media, data from im-api, and
-# "Upload original photos" sends files straight to R2 storage.
+# "Upload original photos" sends files straight to R2 storage. Razorpay Checkout (Buy events → card, netbanking,
+# UPI, wallet) loads its script, frames and images from razorpay.com.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://im-media.mcreatik.com; font-src 'self' data:; connect-src 'self' https://im-api.mcreatik.com https://im-media.mcreatik.com https://*.r2.cloudflarestorage.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://im-media.mcreatik.com https://*.razorpay.com; font-src 'self' data:; connect-src 'self' https://im-api.mcreatik.com https://im-media.mcreatik.com https://*.r2.cloudflarestorage.com https://api.razorpay.com https://lumberjack.razorpay.com; frame-src https://api.razorpay.com https://checkout.razorpay.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self "https://api.razorpay.com" "https://checkout.razorpay.com"), usb=(), interest-cohort=()
   Cross-Origin-Opener-Policy: same-origin-allow-popups
 
 /assets/*

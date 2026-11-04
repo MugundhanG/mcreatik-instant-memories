@@ -8,6 +8,11 @@ const AdminApp = lazy(() => import('./admin/AdminApp'))
 // The couple's portal (their own login): separate chunk too.
 const ClientApp = lazy(() => import('./client/ClientApp'))
 const PrivacyPage = lazy(() => import('./shared/PrivacyPage'))
+const PricingPage = lazy(() => import('./shared/policies/PricingPage'))
+const TermsPage = lazy(() => import('./shared/policies/TermsPage'))
+const RefundsPage = lazy(() => import('./shared/policies/RefundsPage'))
+const ContactPage = lazy(() => import('./shared/policies/ContactPage'))
+const POLICIES = [['/pricing', PricingPage], ['/terms', TermsPage], ['/refunds', RefundsPage], ['/contact', ContactPage]] as const
 // Demo build only (see src/demo). Inlined env check so production builds drop these chunks entirely.
 const IS_DEMO = import.meta.env.VITE_DEMO === '1'
 const DemoHome = IS_DEMO ? lazy(() => import('./demo/DemoHome')) : null
@@ -31,6 +36,9 @@ export default function App() {
             </Suspense>
           }
         />
+        {POLICIES.map(([path, Page]) => (
+          <Route key={path} path={path} element={<Suspense fallback={<PageLoader />}><Page /></Suspense>} />
+        ))}
         <Route
           path="/admin/*"
           element={

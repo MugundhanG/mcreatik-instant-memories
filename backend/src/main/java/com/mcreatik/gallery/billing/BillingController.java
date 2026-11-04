@@ -25,10 +25,32 @@ public class BillingController {
 
     private final BillingService billing;
     private final AdminAccess access;
+    private final OnlinePaymentService online;
 
-    public BillingController(BillingService billing, AdminAccess access) {
+    public BillingController(BillingService billing, AdminAccess access, OnlinePaymentService online) {
         this.billing = billing;
         this.access = access;
+        this.online = online;
+    }
+
+    public record OnlineOrderRequest(int events) {
+    }
+
+    /** Pay online (card, netbanking, UPI, wallet): opens a Razorpay order at the server's price. */
+    @PostMapping("/online-orders")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    public OnlinePaymentService.CheckoutOrder startOnline(Authentication auth, @RequestBody OnlineOrderRequest request) {
+        return online.start(CurrentAdmin.id(auth), request.events());
+    }
+
+    public record ConfirmRequest(String razorpayPaymentId, String razorpaySignature) {
+    }
+
+    /** Back from Razorpay Checkout: verified with Razorpay, then the events are added (once). */
+    @PostMapping("/online-orders/{paymentId}/confirm")
+    public OnlinePaymentService.Result confirmOnline(Authentication auth, @PathVariable UUID paymentId,
+                                                     @RequestBody ConfirmRequest request) {
+        return online.confirm(CurrentAdmin.id(auth), paymentId, request.razorpayPaymentId(), request.razorpaySignature());
     }
 
     /** The logged-in studio's plan, this month's usage, bought events, UPI details and its payments. */

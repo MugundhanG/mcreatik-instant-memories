@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, DocPage, DocPageSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Studio, StudioBilling, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, DocPage, OnlineOrder, OnlinePaymentResult, DocPageSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, PublicPricing, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export type BulkPhotoAction = 'LIKE' | 'UNLIKE' | 'HIDE' | 'SHOW' | 'DELETE'
 
@@ -72,6 +72,7 @@ async function requestBlob(path: string): Promise<Blob> {
 // ---- Guest API ----
 
 export const publicApi = {
+  pricing: () => request<PublicPricing>('/api/public/pricing'),
   event: (slug: string) => request<PublicEvent>(`/api/public/events/${encodeURIComponent(slug)}`),
   photos: (slug: string, opts: { before?: string; after?: string; limit?: number } = {}) => {
     const q = new URLSearchParams()
@@ -212,6 +213,11 @@ export const adminApi = {
   removeStudioLogo: (studioId: string) => request<Brand>(`/api/admin/studios/${studioId}/logo`, { method: 'DELETE' }, true),
   billing: () => request<BillingSummary>('/api/admin/billing', {}, true),
   /** The studio paid by UPI: the events are usable at once, McreatiK checks the transaction later. */
+  startOnlinePayment: (events: number) =>
+    request<OnlineOrder>('/api/admin/billing/online-orders', { method: 'POST', body: json({ events }) }, true),
+  confirmOnlinePayment: (paymentId: string, razorpayPaymentId: string, razorpaySignature: string) =>
+    request<OnlinePaymentResult>(`/api/admin/billing/online-orders/${paymentId}/confirm`,
+      { method: 'POST', body: json({ razorpayPaymentId, razorpaySignature }) }, true),
   payForEvents: (events: number, utr: string) =>
     request<EventPayment>('/api/admin/billing/payments', { method: 'POST', body: json({ events, utr }) }, true),
   payments: (status?: EventPayment['status']) =>
