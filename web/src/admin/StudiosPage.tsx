@@ -22,13 +22,13 @@ interface Credentials {
 
 /** The message the super admin sends the studio (WhatsApp/email). */
 function loginMessage(c: Credentials) {
-  return `Your McreatiK Live Gallery login for ${c.name}\n\nDashboard: ${window.location.origin}/admin\nEmail: ${c.email}\nTemporary password: ${c.password}\n\nYou'll be asked to choose your own password when you first log in.`
+  return `Your McreatiK Instant Memories login for ${c.name}\n\nDashboard: ${window.location.origin}/admin\nEmail: ${c.email}\nTemporary password: ${c.password}\n\nYou'll be asked to choose your own password when you first log in.`
 }
 
 const outgoing = (c: Credentials): Outgoing => ({
   email: c.email,
   phone: c.phone,
-  subject: `Your McreatiK Live Gallery login for ${c.name}`,
+  subject: `Your McreatiK Instant Memories login for ${c.name}`,
   message: loginMessage(c),
 })
 

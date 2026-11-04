@@ -54,7 +54,7 @@ function Layout({ wide = false }: { wide?: boolean }) {
           <Link to="/admin" className="flex items-center gap-2">
             <img src={mkLogo} alt="" className="h-7 w-auto" width={44} height={28} />
             <span className="font-display text-xl font-semibold">McreatiK</span>
-            <span className="hidden text-xs tracking-[0.2em] text-muted uppercase sm:inline">Live Gallery</span>
+            <span className="hidden text-xs tracking-[0.2em] text-muted uppercase sm:inline">Instant Memories</span>
           </Link>
           <nav aria-label="Main" className="hidden items-center gap-4 text-sm whitespace-nowrap sm:flex">
             <NavLink to="/admin" end className={navClass}>Events</NavLink>
