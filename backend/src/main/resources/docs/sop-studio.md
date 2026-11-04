@@ -58,7 +58,7 @@ Press **Buy events**, choose how many, then pay by UPI: scan the code or tap **P
 
 ## 4. Connect your cameras
 
-Every camera needs its own **uploader**: the McreatiK Instant Memories Uploader app on a laptop at the venue.
+Every camera needs its own **uploader**. One laptop with the McreatiK Instant Memories Uploader app can serve up to 4 cameras: add the extra cameras in the app with **+ Add camera**, and each one appears here as Camera 2, 3 or 4 by itself.
 
 1. Open the event. On **Overview**, under **Cameras & uploaders**, type a name such as "Camera 1 · Canon R6 II" and press **Add uploader**.
 2. A **connection code** appears. **It's shown only once**, so press **Copy code** and paste it into the uploader (see the [Uploader guide](/admin/docs/guide-uploader)). A laptop already used for an earlier event: press **Change event…** in the uploader and paste the new code ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)).

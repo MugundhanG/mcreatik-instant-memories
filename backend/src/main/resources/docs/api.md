@@ -109,6 +109,8 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 | POST | `/api/admin/uploaders/{uploaderId}/rotate-token` | Admin | Old token stops working |
 | PATCH / DELETE | `/api/admin/uploaders/{uploaderId}` | Admin | Rename, remove |
 | GET | `/api/uploader/me` | Uploader | Event and uploader details, including `eventDate` and `eventStartTime` (shown in the uploader; may be null) |
+| POST | `/api/uploader/cameras` | Uploader | "Add camera" in the app: a new uploader ("Camera N") in the caller's event → `{uploaderId, name, token}`; 409 `TOO_MANY_CAMERAS` (8 per event) or `EVENT_ARCHIVED` |
+| DELETE | `/api/uploader/me` | Uploader | "Remove camera": the uploader deletes itself; its photos stay |
 | POST | `/api/uploader/heartbeat` | Uploader | Queue counts → `{eventStatus, acceptingUploads}` |
 | POST | `/api/uploader/uploads` | Uploader | `{fileName, fileSize, mimeType, checksumSha256, prepared?}` → presigned PUTs or `DUPLICATE` |
 | POST | `/api/uploader/uploads/{photoId}/complete` | Uploader | Safe to repeat |

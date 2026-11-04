@@ -16,13 +16,19 @@ import com.mcreatik.gallery.event.EventService;
 @Service
 public class UploaderAdminService {
 
+    /** Cameras one event can have when the uploader app adds them itself ("Add camera"). */
+    public static final int MAX_UPLOADERS_PER_EVENT = 8;
+
     private final UploaderRepository uploaders;
     private final EventService events;
+    private final com.mcreatik.gallery.event.EventRepository eventRepository;
     private final GalleryProperties properties;
 
-    public UploaderAdminService(UploaderRepository uploaders, EventService events, GalleryProperties properties) {
+    public UploaderAdminService(UploaderRepository uploaders, EventService events,
+                                com.mcreatik.gallery.event.EventRepository eventRepository, GalleryProperties properties) {
         this.uploaders = uploaders;
         this.events = events;
+        this.eventRepository = eventRepository;
         this.properties = properties;
     }
 
@@ -40,6 +46,39 @@ public class UploaderAdminService {
         Uploader uploader = new Uploader(event.getId(), name.trim(), Tokens.sha256Hex(token), prefixOf(token));
         uploaders.save(uploader);
         return credentials(uploader, token);
+    }
+
+    /**
+     * "Add camera" in the uploader app: a new uploader in the caller's own event, named the next free "Camera N".
+     * Only the event of an uploader that is still valid; never another event.
+     */
+    @Transactional
+    public UploaderCredentials createSibling(UploaderPrincipal caller) {
+        Event event = eventRepository.findById(caller.eventId()).orElseThrow(() -> ApiException.notFound("Event"));
+        if (event.getStatus() == com.mcreatik.gallery.event.EventStatus.ARCHIVED) {
+            throw ApiException.conflict("EVENT_ARCHIVED", "This event is archived. Cameras can't be added to it.");
+        }
+        java.util.List<Uploader> existing = uploaders.findByEventIdOrderByCreatedAtAsc(event.getId());
+        if (existing.size() >= MAX_UPLOADERS_PER_EVENT) {
+            throw ApiException.conflict("TOO_MANY_CAMERAS",
+                    "This event already has " + MAX_UPLOADERS_PER_EVENT + " cameras. Remove one in the dashboard first.");
+        }
+        java.util.Set<String> names = new java.util.HashSet<>();
+        existing.forEach(u -> names.add(u.getName().trim().toLowerCase(java.util.Locale.ROOT)));
+        int n = existing.size() + 1;
+        while (names.contains(("camera " + n))) {
+            n++;
+        }
+        String token = newToken();
+        Uploader uploader = new Uploader(event.getId(), "Camera " + n, Tokens.sha256Hex(token), prefixOf(token));
+        uploaders.save(uploader);
+        return credentials(uploader, token);
+    }
+
+    /** "Remove camera" in the uploader app: the uploader deletes itself (its photos stay in the gallery). */
+    @Transactional
+    public void deleteSelf(UploaderPrincipal caller) {
+        uploaders.findById(caller.uploaderId()).ifPresent(uploaders::delete);
     }
 
     @Transactional

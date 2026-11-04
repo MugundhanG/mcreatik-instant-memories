@@ -36,13 +36,33 @@ public class UploaderApiController {
     private final EventRepository events;
     private final UploadService uploadService;
     private final GalleryProperties properties;
+    private final UploaderAdminService uploaderAdmin;
 
     public UploaderApiController(UploaderRepository uploaders, EventRepository events, UploadService uploadService,
-                                 GalleryProperties properties) {
+                                 GalleryProperties properties, UploaderAdminService uploaderAdmin) {
         this.uploaders = uploaders;
         this.events = events;
         this.uploadService = uploadService;
         this.properties = properties;
+        this.uploaderAdmin = uploaderAdmin;
+    }
+
+    public record CameraResponse(UUID uploaderId, String name, String token) {
+    }
+
+    /** "Add camera" in the app: another camera (uploader) in this uploader's event. */
+    @PostMapping("/cameras")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    public CameraResponse addCamera(@AuthenticationPrincipal UploaderPrincipal principal) {
+        UploaderAdminService.UploaderCredentials c = uploaderAdmin.createSibling(principal);
+        return new CameraResponse(c.uploaderId(), c.name(), c.token());
+    }
+
+    /** "Remove camera" in the app: this uploader leaves the event. */
+    @org.springframework.web.bind.annotation.DeleteMapping("/me")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void removeSelf(@AuthenticationPrincipal UploaderPrincipal principal) {
+        uploaderAdmin.deleteSelf(principal);
     }
 
     public record MeResponse(UUID uploaderId, String uploaderName, UUID eventId, String eventName,

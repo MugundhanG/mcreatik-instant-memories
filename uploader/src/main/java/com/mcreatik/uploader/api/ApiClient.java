@@ -50,6 +50,16 @@ public class ApiClient {
         return send(get("/api/uploader/me"), ApiModels.Me.class);
     }
 
+    /** "Add camera": the server creates another camera (uploader) in this uploader's event. */
+    public ApiModels.CameraCreated addCamera() throws ApiException {
+        return send(post("/api/uploader/cameras", null), ApiModels.CameraCreated.class);
+    }
+
+    /** "Remove camera": this uploader leaves its event on the server. */
+    public void removeSelf() throws ApiException {
+        send(base("/api/uploader/me").DELETE().build(), Void.class);
+    }
+
     public ApiModels.HeartbeatResponse heartbeat(ApiModels.HeartbeatRequest request) throws ApiException {
         return send(post("/api/uploader/heartbeat", request), ApiModels.HeartbeatResponse.class);
     }
@@ -132,6 +142,9 @@ public class ApiClient {
         HttpResponse<String> response = execute(request);
         int status = response.statusCode();
         if (status / 100 == 2) {
+            if (type == Void.class) {
+                return null;
+            }
             try {
                 return JSON.readValue(response.body(), type);
             } catch (JacksonException e) {

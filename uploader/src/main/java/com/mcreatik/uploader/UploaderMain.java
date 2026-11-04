@@ -21,11 +21,7 @@ import com.mcreatik.uploader.config.EventSwitch;
 import com.mcreatik.uploader.config.UploaderConfig;
 import com.mcreatik.uploader.engine.EngineStatus;
 import com.mcreatik.uploader.engine.UploadEngine;
-import com.mcreatik.uploader.queue.UploadQueue;
-import com.mcreatik.uploader.source.CompositePhotoSource;
-import com.mcreatik.uploader.source.FolderPhotoSource;
 import com.mcreatik.uploader.source.FtpPhotoSource;
-import com.mcreatik.uploader.source.PhotoSource;
 import com.mcreatik.uploader.ui.SetupDialog;
 import com.mcreatik.uploader.ui.UploaderWindow;
 
@@ -54,7 +50,7 @@ public final class UploaderMain {
     private static volatile List<String> startArgs = List.of();
     private static volatile Path startDataDir;
     private static volatile int startConcurrency = 2;
-    private static volatile UploadQueue startQueue;
+    private static volatile Cameras startCameras;
 
     private UploaderMain() {
     }
@@ -92,8 +88,8 @@ public final class UploaderMain {
         Files.createDirectories(a.dataDir);
         FileLock lock = lockDataDir(a.dataDir, a.waitForLock);
         if (lock == null) {
-            fail(headless, "Another McreatiK Instant Memories Uploader is already using " + a.dataDir
-                    + ". To run a second camera on this computer, start it with a different --data-dir.");
+            fail(headless, "McreatiK Instant Memories Uploader is already open on this computer. To use more cameras,"
+                    + " press + Add camera in its window.");
             return;
         }
 
@@ -105,30 +101,20 @@ public final class UploaderMain {
         config = applyFtpFlags(config, a);
         config.save(a.dataDir); // persists generated FTP credentials so they never change between runs
 
-        ApiClient api = new ApiClient(config.serverUrl(), config.token());
-        UploadQueue queue = new UploadQueue(a.dataDir.resolve("queue.db"));
-        startQueue = queue;
-        FtpPhotoSource ftp = config.ftp().enabled()
-                ? new FtpPhotoSource(config.watchFolder(), config.ftp().port(), config.ftp().username(), config.ftp().password())
-                : null;
-        PhotoSource source = ftp == null ? new FolderPhotoSource(config.watchFolder())
-                : new CompositePhotoSource(List.of(new FolderPhotoSource(config.watchFolder()), ftp));
-        UploadEngine engine = new UploadEngine(api, queue, source, config.concurrency(), config.deviceId(),
-                !a.uploadOriginals);
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            engine.close();
-            queue.close();
-        }, "shutdown"));
-        engine.start();
+        Cameras cameras = Cameras.start(a.dataDir, config, a.uploadOriginals);
+        startCameras = cameras;
+        Runtime.getRuntime().addShutdownHook(new Thread(cameras::closeAll, "shutdown"));
 
         if (headless) {
-            if (ftp != null) {
-                printFtpSettings(ftp.status());
+            for (CameraRuntime c : cameras.all()) {
+                if (c.ftp() != null) {
+                    System.out.println("Camera " + c.number() + ":");
+                    printFtpSettings(c.ftp().status());
+                }
             }
-            runConsole(engine);
+            runConsole(cameras);
         } else {
-            UploaderWindow.open(engine, config, ftp, a.dataDir, a.uploadOriginals);
+            UploaderWindow.open(cameras, a.dataDir, a.uploadOriginals);
         }
     }
 
@@ -240,7 +226,14 @@ public final class UploaderMain {
         if (next.isEmpty()) {
             return;
         }
-        startQueue.startNewEvent(); // the new event's counts start at 0; old photos are still never re-sent
+        // Camera 1 is connected to the new event; the other cameras follow it (same ports and camera login).
+        List<Integer> notMoved = startCameras.moveToNewEvent(next.get());
+        if (!notMoved.isEmpty()) {
+            javax.swing.JOptionPane.showMessageDialog(null, "Camera " + notMoved.stream().map(String::valueOf)
+                    .collect(java.util.stream.Collectors.joining(", ")) + " couldn't be added to the new event (no internet,"
+                    + " or the McreatiK server needs an update). Add it again with + Add camera.",
+                    com.mcreatik.uploader.ui.UiTheme.APP_NAME, javax.swing.JOptionPane.WARNING_MESSAGE);
+        }
         try {
             restart();
         } catch (IOException e) {
@@ -270,19 +263,21 @@ public final class UploaderMain {
         System.exit(0);
     }
 
-    private static void runConsole(UploadEngine engine) throws InterruptedException {
+    private static void runConsole(Cameras cameras) throws InterruptedException {
         CountDownLatch forever = new CountDownLatch(1);
         Thread.ofPlatform().daemon(true).name("console-status").start(() -> {
-            String previous = "";
+            java.util.Map<Integer, String> previous = new java.util.HashMap<>();
             while (true) {
-                EngineStatus s = engine.status();
-                String line = "[%s] %s | waiting %d, uploading %d, uploaded %d, duplicates %d, failed %d%s".formatted(
-                        s.connection(), s.eventName() == null ? "(event not loaded yet)" : s.eventName(), s.counts().queued(),
-                        s.counts().uploading(), s.counts().done(), s.counts().duplicate(), s.counts().failed(),
-                        s.blockedReason() == null ? "" : " | PAUSED: " + s.blockedReason());
-                if (!line.equals(previous)) {
-                    System.out.println(line);
-                    previous = line;
+                for (CameraRuntime c : cameras.all()) {
+                    EngineStatus s = c.engine().status();
+                    String line = "[Camera %d %s] %s | waiting %d, uploading %d, uploaded %d, duplicates %d, failed %d%s".formatted(
+                            c.number(), s.connection(), s.eventName() == null ? "(event not loaded yet)" : s.eventName(),
+                            s.counts().queued(), s.counts().uploading(), s.counts().done(), s.counts().duplicate(),
+                            s.counts().failed(), s.blockedReason() == null ? "" : " | PAUSED: " + s.blockedReason());
+                    if (!line.equals(previous.get(c.number()))) {
+                        System.out.println(line);
+                        previous.put(c.number(), line);
+                    }
                 }
                 try {
                     Thread.sleep(2_000);

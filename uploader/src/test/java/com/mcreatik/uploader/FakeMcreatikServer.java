@@ -48,11 +48,20 @@ public class FakeMcreatikServer implements AutoCloseable {
     public final Map<String, String> preparedSessions = new ConcurrentHashMap<>();
     private static final Pattern PREPARED = Pattern.compile("\"prepared\"\\s*:\\s*(\\{[^}]*\\})");
 
+    /** Valid uploader tokens: Camera 1's plus every camera added with "Add camera". */
+    public final Set<String> tokens = ConcurrentHashMap.newKeySet();
+    /** sha256 → token of the camera that sent it (to check each camera uploads as itself). */
+    public final Map<String, String> tokenBySha = new ConcurrentHashMap<>();
+    /** True = behaves like an older server without "Add camera" (404). */
+    public volatile boolean noCamerasEndpoint;
+    private final AtomicInteger camerasIssued = new AtomicInteger(1);
+
     public final AtomicInteger sessionCalls = new AtomicInteger();
     public final AtomicInteger putCalls = new AtomicInteger();
     public final AtomicInteger heartbeats = new AtomicInteger();
 
     public FakeMcreatikServer() throws IOException {
+        tokens.add(TOKEN);
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         server.createContext("/", this::handle);
@@ -93,7 +102,9 @@ public class FakeMcreatikServer implements AutoCloseable {
             respond(ex, 200, "");
             return;
         }
-        if (revoked.get() || !("Bearer " + TOKEN).equals(ex.getRequestHeaders().getFirst("Authorization"))) {
+        String auth = ex.getRequestHeaders().getFirst("Authorization");
+        String token = auth != null && auth.startsWith("Bearer ") ? auth.substring(7) : "";
+        if (revoked.get() || !tokens.contains(token)) {
             respond(ex, 401, "{\"code\":\"UNAUTHORIZED\",\"message\":\"Invalid uploader token\"}");
             return;
         }
@@ -107,7 +118,28 @@ public class FakeMcreatikServer implements AutoCloseable {
                 heartbeats.incrementAndGet();
                 respond(ex, 200, "{\"eventStatus\":\"LIVE\",\"acceptingUploads\":true}");
             }
-            case "POST /api/uploader/uploads" -> createSession(ex, new String(body, StandardCharsets.UTF_8));
+            case "POST /api/uploader/uploads" -> {
+                String json = new String(body, StandardCharsets.UTF_8);
+                Matcher m = SHA.matcher(json);
+                if (m.find()) {
+                    tokenBySha.putIfAbsent(m.group(1), token);
+                }
+                createSession(ex, json);
+            }
+            case "POST /api/uploader/cameras" -> {
+                if (noCamerasEndpoint) {
+                    respond(ex, 404, "{\"code\":\"NOT_FOUND\",\"message\":\"Not found\"}");
+                    return;
+                }
+                int n = camerasIssued.incrementAndGet();
+                String t = "mku_camera-" + n;
+                tokens.add(t);
+                respond(ex, 201, "{\"uploaderId\":\"u" + n + "\",\"name\":\"Camera " + n + "\",\"token\":\"" + t + "\"}");
+            }
+            case "DELETE /api/uploader/me" -> {
+                tokens.remove(token);
+                respond(ex, 204, "");
+            }
             default -> {
                 if (method.equals("POST") && path.startsWith("/api/uploader/uploads/") && path.endsWith("/complete")) {
                     String id = path.substring("/api/uploader/uploads/".length(), path.length() - "/complete".length());

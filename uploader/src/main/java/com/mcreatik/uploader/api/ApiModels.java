@@ -8,6 +8,10 @@ public final class ApiModels {
     private ApiModels() {
     }
 
+    /** A camera the server created for "Add camera". */
+    public record CameraCreated(String uploaderId, String name, String token) {
+    }
+
     /** {@code eventDate}/{@code eventStartTime} are null with servers that don't send them yet. */
     public record Me(String uploaderId, String uploaderName, String eventId, String eventName, String eventStatus,
                      String galleryUrl, long heartbeatIntervalSeconds, long maxFileSizeBytes,
