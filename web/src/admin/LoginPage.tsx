@@ -38,7 +38,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm space-y-5 rounded-2xl border border-line bg-white p-7">
           <div>
             <p className="font-display text-2xl font-semibold">McreatiK</p>
-            <p className="text-sm text-muted">Live Gallery · Forgot password</p>
+            <p className="text-sm text-muted">Instant Memories · Forgot password</p>
           </div>
           <ForgotPassword request={adminApi.forgotPassword} initialEmail={email} onBack={() => setForgot(false)} />
         </div>
@@ -52,7 +52,7 @@ export default function LoginPage() {
         <div>
           <img src={mkLogo} alt="" className="mb-3 h-10 w-auto" width={63} height={40} />
           <p className="font-display text-2xl font-semibold">McreatiK</p>
-          <p className="text-sm text-muted">Live Gallery · Staff sign in</p>
+          <p className="text-sm text-muted">Instant Memories · Staff sign in</p>
         </div>
         <Field label="Email">
           <input className={inputClass} type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />

@@ -3,22 +3,16 @@ import { adminApi, ApiError } from '../lib/api'
 import { formatCount, timeAgo } from '../lib/format'
 import type { UploaderCredentials, UploaderStats } from '../lib/types'
 import { Button, Card, ErrorText, inputClass, UploaderStatusDot } from './ui'
+import { UPLOADER_DOWNLOADS } from './uploaderDownloads'
 import { useConfirm } from './useConfirm'
 
-const RELEASES = 'https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download'
-
-/** Installers with Java included (built by the "Uploader installers" workflow). */
-const UPLOADER_DOWNLOADS = [
-  { label: 'Windows', href: `${RELEASES}/McreatiK-Instant-Memories-Uploader-Windows.msi` },
-  { label: 'Mac (M1–M4)', href: `${RELEASES}/McreatiK-Instant-Memories-Uploader-Mac-AppleSilicon.dmg` },
-  { label: 'Mac (Intel)', href: `${RELEASES}/McreatiK-Instant-Memories-Uploader-Mac-Intel.dmg` },
-]
+const DOWNLOAD_LIST = [UPLOADER_DOWNLOADS.windows, UPLOADER_DOWNLOADS.macApple, UPLOADER_DOWNLOADS.macIntel]
 
 function DownloadLinks() {
   return (
     <p className="text-xs text-muted">
       Download McreatiK Instant Memories Uploader:{' '}
-      {UPLOADER_DOWNLOADS.map((d, i) => (
+      {DOWNLOAD_LIST.map((d, i) => (
         <span key={d.label}>
           {i > 0 && ' · '}
           <a href={d.href} className="font-medium text-ink underline underline-offset-2 hover:text-[#8a5a1c]">{d.label}</a>

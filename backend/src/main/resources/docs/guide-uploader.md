@@ -14,7 +14,11 @@ One laptop can serve **up to 4 cameras** at the same time (section 7).
 
 ## 1. Download and install (once)
 
-Download from the event dashboard (**Overview → Cameras & uploaders → Download McreatiK Instant Memories Uploader**), or use these links:
+In the dashboard, press **Install uploader** in the top bar (on a phone: **Menu → Install uploader**). It shows the Windows and Mac downloads, with this computer's first, and the first-open steps:
+
+![Install uploader in the top bar: Windows and Mac downloads](images/s-install-uploader.webp)
+
+Or use these links:
 
 | Laptop | Download |
 | --- | --- |

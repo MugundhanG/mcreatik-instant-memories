@@ -17,13 +17,13 @@ export default function PrivacyPage() {
   return (
     <div className="min-h-dvh bg-paper">
       <main className="mx-auto max-w-2xl px-5 py-12">
-        <p className="text-xs font-semibold tracking-[0.3em] text-[#8a5a1c] uppercase">McreatiK Live Gallery</p>
+        <p className="text-xs font-semibold tracking-[0.3em] text-[#8a5a1c] uppercase">McreatiK Instant Memories</p>
         <h1 className="mt-2 font-display text-4xl font-medium text-ink">Privacy &amp; your photos</h1>
         <p className="mt-2 text-sm text-muted">Last updated {UPDATED}</p>
 
         <Section title="Who we are">
           <p>
-            McreatiK Live Gallery shares event photos from photography studios with their clients and guests. The studio that
+            McreatiK Instant Memories shares event photos from photography studios with their clients and guests. The studio that
             photographed the event decides which photos are shared and for how long; McreatiK runs the gallery for them.
           </p>
         </Section>
