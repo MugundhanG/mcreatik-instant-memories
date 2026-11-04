@@ -38,7 +38,7 @@ describe('Events page', () => {
     await screen.findByTestId('first-event')
     await user.click(screen.getByRole('button', { name: 'Menu' }))
     const menu = document.getElementById('phone-menu')!
-    expect(within(menu).getAllByRole('link').map((a) => a.textContent)).toEqual(['Events', 'Studios', 'Docs', 'Account · Lens & Light'])
+    expect(within(menu).getAllByRole('link').map((a) => a.textContent)).toEqual(['Events', 'Install uploader', 'Studios', 'Docs', 'Account · Lens & Light'])
     expect(within(menu).getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
     await user.click(within(menu).getByRole('link', { name: 'Studios' }))
     // It fades out, then is gone.

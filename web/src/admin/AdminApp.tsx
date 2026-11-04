@@ -8,6 +8,8 @@ import AccountPage from './AccountPage'
 import { auth, useSession } from './auth'
 import EventDashboardPage from './EventDashboardPage'
 import EventsPage from './EventsPage'
+import { DownloadIcon } from './icons'
+import InstallUploaderPage from './InstallUploaderPage'
 import LoginPage from './LoginPage'
 import NewEventPage from './NewEventPage'
 import PrintQrPage from './PrintQrPage'
@@ -41,6 +43,7 @@ function Layout({ wide = false }: { wide?: boolean }) {
   const sheet = usePresence(menuOpen, 150)
   const phoneLinks = [
     { to: '/admin', label: 'Events' },
+    { to: '/admin/install', label: 'Install uploader' },
     ...(superAdmin ? [{ to: '/admin/studios', label: 'Studios' }, { to: '/admin/docs', label: 'Docs' }] : []),
     { to: '/admin/account', label: session?.displayName ? `Account · ${session.displayName}` : 'Account' },
   ]
@@ -55,6 +58,12 @@ function Layout({ wide = false }: { wide?: boolean }) {
           </Link>
           <nav aria-label="Main" className="hidden items-center gap-4 text-sm whitespace-nowrap sm:flex">
             <NavLink to="/admin" end className={navClass}>Events</NavLink>
+            <NavLink to="/admin/install" title="Install McreatiK Instant Memories Uploader on a Windows or Mac laptop"
+              className={({ isActive }) => `inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 font-medium transition-colors ${
+                isActive ? 'border-ink bg-ink text-white' : 'border-line text-ink hover:border-stone-400 hover:bg-stone-50'}`}>
+              <DownloadIcon className="size-3.5" />
+              Install uploader
+            </NavLink>
             {superAdmin && <NavLink to="/admin/studios" className={navClass}>Studios</NavLink>}
             {superAdmin && <NavLink to="/admin/docs" className={navClass}>Docs</NavLink>}
             <NavLink to="/admin/account" className={navClass} title={session?.email}>{session?.displayName}</NavLink>
@@ -111,6 +120,7 @@ export default function AdminApp() {
           <Route path="events/:eventId" element={<EventDashboardPage />} />
           <Route path="studios" element={<StudiosPage />} />
           <Route path="account" element={<AccountPage />} />
+          <Route path="install" element={<InstallUploaderPage />} />
         </Route>
         <Route element={<Layout wide />}>
           <Route path="docs" element={<Navigate to="/admin/docs/overview" replace />} />
