@@ -52,9 +52,14 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 
 ### Need more events this month?
 
-Press **Buy events**, choose how many, then pay by UPI: scan the code or tap **Pay with UPI app**. Enter the **12-digit UPI transaction ID (UTR)** from your UPI app and press **I've paid**. McreatiK checks the payment and adds the events, usually the same day.
+Press **Buy events** and choose how many. Then pay one of two ways:
 
-![Buy events dialog with UPI QR and the UTR field](images/s-buy-events.webp)
+- **Card, netbanking, UPI** (fastest): press **Pay ₹…**. A secure Razorpay window opens; pay by card, netbanking, UPI or wallet. The events are added **straight away** and your new event carries on. Closing the window without paying changes nothing.
+- **UPI QR**: press **Show UPI QR for ₹…**, then scan it with GPay, PhonePe, Paytm or any UPI app (on a phone, tap **Pay with UPI app**). The events are added **automatically within seconds** of paying; there is nothing to type. The QR works for 15 minutes; if it runs out, press **New UPI QR**.
+
+The price is the same both ways. Bought events never expire. If a card or bank payment fails, no events are added; any money taken is returned by your bank, or by us (see **Refunds** at the foot of the dashboard).
+
+![Buy events: pay by card, netbanking or UPI, or by UPI QR](images/s-buy-events.webp)
 
 ## 4. Connect your cameras
 

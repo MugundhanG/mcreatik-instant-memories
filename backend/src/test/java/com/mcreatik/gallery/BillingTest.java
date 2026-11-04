@@ -51,6 +51,28 @@ class BillingTest extends IntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), "$.token");
     }
 
+    @Test
+    void thePublicPricingPageReadsTheCurrentPricesWithoutALogin() throws Exception {
+        mvc.perform(get("/api/public/pricing"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perEventPrice").isNumber())
+                .andExpect(jsonPath("$.monthlyEvents").value(4))
+                .andExpect(jsonPath("$.currency").value("INR"))
+                .andExpect(jsonPath("$.upiId").doesNotExist());
+    }
+
+    @Test
+    void onlinePaymentIsOffWithoutRazorpayKeysAndTheUpiQrStillWorks() throws Exception {
+        mvc.perform(get("/api/admin/billing").header("Authorization", bearer(studio)))
+                .andExpect(jsonPath("$.onlinePayments").value(false));
+        mvc.perform(post("/api/admin/billing/online-orders").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"events\":1}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ONLINE_PAYMENTS_OFF"));
+        mvc.perform(post("/api/public/razorpay/webhook").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isNotFound());
+        pay(1, "418299301122").andExpect(status().isCreated()).andExpect(jsonPath("$.method").value("UPI_QR"));
+    }
+
     private ResultActions createEvent(String token) throws Exception {
         return mvc.perform(post("/api/admin/events").header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Wedding\",\"eventDate\":\"2026-12-01\"}"));

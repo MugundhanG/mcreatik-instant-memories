@@ -309,12 +309,35 @@ export interface EventPayment {
   events: number
   unitPrice: number
   amount: number
-  /** UPI transaction ID (UTR) the studio reported. */
-  utr: string
+  /** UPI transaction ID (UTR) the studio reported (UPI QR payments only). */
+  utr: string | null
   status: 'PENDING' | 'APPROVED' | 'REJECTED'
   note: string | null
   createdAt: string
   reviewedAt: string | null
+  /** UPI_QR: checked by McreatiK. RAZORPAY: paid online. UPI_AUTO: Razorpay UPI QR. Both confirmed by Razorpay. */
+  method: 'UPI_QR' | 'RAZORPAY' | 'UPI_AUTO'
+  razorpayPaymentId: string | null
+}
+
+/** A Razorpay order the server opened for "Pay online" (the amount is always the server's). */
+export interface OnlineOrder {
+  paymentId: string
+  razorpayOrderId: string
+  keyId: string
+  amountPaise: number
+  currency: 'INR'
+  events: number
+  amount: number
+  studioName: string
+  email: string
+}
+
+export interface OnlinePaymentResult {
+  paymentId: string
+  events: number
+  /** Bought events now available. */
+  credits: number
 }
 
 /** The logged-in studio's plan and allowance. */
@@ -332,6 +355,8 @@ export interface BillingSummary {
   upiId: string | null
   payeeName: string | null
   payments: EventPayment[]
+  /** Card / netbanking / UPI / wallet checkout (Razorpay) is set up. */
+  onlinePayments: boolean
 }
 
 export interface StudioBilling {
@@ -348,4 +373,31 @@ export interface BillingSettings {
   perEventPrice: number
   extraEventPrice: number
   monthlyPrice: number
+}
+
+/** Current prices for the public /pricing page. */
+export interface PublicPricing {
+  perEventPrice: number
+  monthlyPrice: number
+  monthlyEvents: number
+  extraEventPrice: number
+  currency: 'INR'
+}
+
+/** A single-use UPI QR for the exact amount, confirmed automatically (no transaction ID to type). */
+export interface UpiQrOrder {
+  paymentId: string
+  /** upi://pay link drawn as the QR, or opened by a UPI app on this phone. */
+  upiLink: string | null
+  imageUrl: string | null
+  events: number
+  amount: number
+  expiresAt: string
+}
+
+export interface OnlinePaymentStatus {
+  paymentId: string
+  status: 'WAITING' | 'PAID' | 'EXPIRED'
+  events: number
+  credits: number
 }

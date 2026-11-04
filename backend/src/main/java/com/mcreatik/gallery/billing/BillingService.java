@@ -18,8 +18,9 @@ import com.mcreatik.gallery.common.ApiException;
 
 /**
  * Studio plans and event allowances. MONTHLY: {@code monthly_quota} events each calendar month (India time), then
- * paid extra events; PER_EVENT: every event paid. Extra events are bought by UPI: credited straight away, then
- * checked by McreatiK (approved, or rejected and taken back). Bought events never expire.
+ * paid extra events; PER_EVENT: every event paid. Extra events are bought by UPI QR (credited straight away, then
+ * checked by McreatiK: approved, or rejected and taken back) or online with Razorpay ({@link OnlinePaymentService}:
+ * credited when Razorpay confirms the payment). Bought events never expire.
  */
 @Service
 public class BillingService {
@@ -32,22 +33,33 @@ public class BillingService {
     public record Settings(String upiId, String payeeName, int perEventPrice, int extraEventPrice, int monthlyPrice) {
     }
 
+    /** {@code method}: UPI_QR (checked by McreatiK) or RAZORPAY (confirmed by Razorpay, no checking needed). */
     public record Payment(UUID id, UUID studioId, String studioName, int events, int unitPrice, int amount, String utr,
-                          String status, String note, Instant createdAt, Instant reviewedAt) {
+                          String status, String note, Instant createdAt, Instant reviewedAt, String method,
+                          String razorpayPaymentId) {
     }
 
-    /** {@code free}: McreatiK itself or an unlimited studio; {@code unitPrice}: what one more event costs. */
+    /**
+     * {@code free}: McreatiK itself or an unlimited studio; {@code unitPrice}: what one more event costs;
+     * {@code onlinePayments}: card / netbanking / UPI / wallet checkout is available.
+     */
     public record Summary(Plan plan, boolean free, int monthlyQuota, int usedThisMonth, int credits, int unitPrice,
-                          int monthlyPrice, String upiId, String payeeName, List<Payment> payments) {
+                          int monthlyPrice, String upiId, String payeeName, List<Payment> payments, boolean onlinePayments) {
+    }
+
+    /** What buying {@code events} costs this studio right now. */
+    public record Quote(int events, int unitPrice, int amount) {
     }
 
     public record StudioBilling(UUID studioId, Plan plan, int monthlyQuota, int usedThisMonth, int credits) {
     }
 
     private final JdbcTemplate jdbc;
+    private final RazorpayProperties razorpay;
 
-    public BillingService(JdbcTemplate jdbc) {
+    public BillingService(JdbcTemplate jdbc, RazorpayProperties razorpay) {
         this.jdbc = jdbc;
+        this.razorpay = razorpay;
     }
 
     record Account(String role, Plan plan, int quota, int credits) {
@@ -131,7 +143,20 @@ public class BillingService {
         Account a = account(studioId, false);
         Settings s = settings();
         return new Summary(a.plan(), a.free(), a.quota(), usedThisMonth(studioId), a.credits(), unitPrice(a.plan(), s),
-                s.monthlyPrice(), s.upiId(), s.payeeName(), payments("p.studio_id = ?", studioId, 20));
+                s.monthlyPrice(), s.upiId(), s.payeeName(), payments("p.studio_id = ?", studioId, 20), razorpay.enabled());
+    }
+
+    /** The price is always the server's: the studio's plan and the current settings. */
+    public Quote quote(UUID studioId, int events) {
+        Account a = account(studioId, false);
+        if (a.free()) {
+            throw ApiException.badRequest("NOT_NEEDED", "Your plan has no event limit");
+        }
+        if (events < 1 || events > MAX_EVENTS_PER_PAYMENT) {
+            throw ApiException.badRequest("INVALID_EVENTS", "Buy between 1 and " + MAX_EVENTS_PER_PAYMENT + " events at a time");
+        }
+        int price = unitPrice(a.plan(), settings());
+        return new Quote(events, price, events * price);
     }
 
     /** The studio paid by UPI and reports the transaction: the events are usable at once, checked later. */
@@ -173,14 +198,14 @@ public class BillingService {
     private List<Payment> payments(String where, Object arg, int limit) {
         String sql = """
                 SELECT p.id, p.studio_id, u.display_name, p.events, p.unit_price, p.amount, p.utr, p.status, p.note,
-                       p.created_at, p.reviewed_at
+                       p.created_at, p.reviewed_at, p.method, p.razorpay_payment_id
                 FROM event_payments p JOIN admin_users u ON u.id = p.studio_id
-                WHERE %s ORDER BY p.created_at DESC LIMIT %d""".formatted(where, limit);
+                WHERE p.status <> 'CREATED' AND %s ORDER BY p.created_at DESC LIMIT %d""".formatted(where, limit);
         Object[] args = arg == null ? new Object[0] : new Object[] {arg};
         return jdbc.query(sql, (rs, n) -> new Payment(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class),
                 rs.getString(3), rs.getInt(4), rs.getInt(5), rs.getInt(6), rs.getString(7), rs.getString(8),
                 rs.getString(9), rs.getTimestamp(10).toInstant(),
-                rs.getTimestamp(11) == null ? null : rs.getTimestamp(11).toInstant()), args);
+                rs.getTimestamp(11) == null ? null : rs.getTimestamp(11).toInstant(), rs.getString(12), rs.getString(13)), args);
     }
 
     /** Found in the bank statement: confirmed. */

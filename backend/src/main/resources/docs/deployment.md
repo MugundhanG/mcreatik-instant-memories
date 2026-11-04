@@ -164,9 +164,25 @@ Values live only in `~/mcreatik-gallery/gallery.env` on the VM; the names are in
 | Storage | `STORAGE_TYPE`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ORIGINALS_BUCKET`, `R2_MEDIA_BUCKET`, `R2_MEDIA_PUBLIC_BASE_URL` |
 | Processing and retention | `PROCESSING_WORKERS`, `RETENTION_DEFAULT_DAYS` |
 | Mail | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` |
+| Online payments | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` (all three, or online payment stays off) |
 | Web build | `VITE_API_BASE_URL` (public, set in Cloudflare) |
 
 > **Note** Never print or screenshot `gallery.env`. Check a single value's presence with `grep -c '^NAME=' ~/mcreatik-gallery/gallery.env`.
+
+## Online payments (Razorpay)
+
+Instant Memories uses the **same Razorpay account as the main website**. Payments for the website's store are ignored by this server (it only acts on orders it created).
+
+1. **Keys:** Razorpay Dashboard → Account & Settings → API keys. Copy the **existing** Key ID and Key Secret into `gallery.env` as `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. **Do not regenerate the keys**: that breaks the website's checkout.
+2. **Webhook:** Dashboard → Account & Settings → Webhooks → **Add new webhook**:
+   - URL `https://im-api.mcreatik.com/api/public/razorpay/webhook`
+   - Secret: a new random value; put it in `gallery.env` as `RAZORPAY_WEBHOOK_SECRET`
+   - Events: `payment.captured`, `order.paid`, `payment.failed`, `qr_code.credited`
+3. **UPI QR:** the UPI QR tab uses Razorpay **QR Codes**. If creating a QR fails, turn it on: Dashboard → Payment Products → QR Codes.
+4. If Razorpay asks for website details, add `live.mcreatik.com` (policy pages: `/pricing`, `/terms`, `/refunds`, `/privacy`, `/contact`).
+5. Deploy the backend. **Buy events** now shows **Card, netbanking, UPI** and an automatic **UPI QR**. Buy 1 event to test, then refund it from the dashboard if wanted.
+
+The web app's `_headers` already allow Razorpay Checkout (script, frames, `payment` permission).
 
 ## Deployment findings
 

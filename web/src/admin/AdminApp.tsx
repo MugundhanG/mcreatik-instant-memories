@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { PolicyLinks } from '../shared/policies/PolicyLayout'
 import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router'
 import { adminApi } from '../lib/api'
 import mkLogo from '../assets/mk-logo.webp'
@@ -100,9 +101,12 @@ function Layout({ wide = false }: { wide?: boolean }) {
           <Outlet />
         </Suspense>
       ) : (
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-          <Outlet />
-        </main>
+        <>
+          <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+            <Outlet />
+          </main>
+          <PolicyLinks className="pb-8" />
+        </>
       )}
     </div>
   )
