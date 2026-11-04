@@ -96,4 +96,5 @@ The laptop gets a **different address on each network**. Sony keeps several serv
 | Only some photos arrive | Photos shot before the camera joined Wi-Fi aren't sent automatically: use **FTP Transfer** to send the rest. |
 | Worked at home, not at the venue | Select the hotspot's server under Server Setting, and check its hostname matches the uploader. |
 | Photos stop after a while | The camera slept or FTP Power Save is on. Or the laptop slept. |
-| Uploader says "Could not start on port 2121" | Start it with `--ftp-port 2122` and set the camera's port to 2122. |
+| Uploader says "Could not start on port 2121" | Another program uses that port. Close it, or start the uploader with `--ftp-port 2131` and set the camera's port to 2131. |
+| Several cameras on one laptop | Each camera uses the **Port on its own tab** in the uploader (2121, 2122, 2123, 2124); Server, User and Password are the same for all. |

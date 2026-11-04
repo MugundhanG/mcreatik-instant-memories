@@ -113,4 +113,71 @@ class UploaderApiTest extends IntegrationTest {
         mvc.perform(get("/api/uploader/me").header("Authorization", bearer(token))).andExpect(status().isUnauthorized());
         assertThat(jdbc.queryForObject("select count(*) from photos", Integer.class)).isEqualTo(1);
     }
+
+    // ---- "Add camera" / "Remove camera" from the uploader app ----
+
+    private String addCamera(String token, int expectedStatus) throws Exception {
+        var r = mvc.perform(post("/api/uploader/cameras").header("Authorization", bearer(token)))
+                .andExpect(status().is(expectedStatus)).andReturn();
+        return expectedStatus == 201 ? r.getResponse().getContentAsString() : null;
+    }
+
+    @Test
+    void theAppAddsCamerasToItsOwnEventNamedInOrder() throws Exception {
+        String event = createEvent("Two shooters", "LIVE");
+        String token = createUploader(eventId(event), "Camera 1");
+
+        String second = addCamera(token, 201);
+        assertThat(JsonPath.<String>read(second, "$.name")).isEqualTo("Camera 2");
+        String secondToken = JsonPath.read(second, "$.token");
+        mvc.perform(get("/api/uploader/me").header("Authorization", bearer(secondToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.eventId").value(eventId(event)))
+                .andExpect(jsonPath("$.uploaderName").value("Camera 2"));
+
+        String third = addCamera(secondToken, 201); // any camera of the event may add the next one
+        assertThat(JsonPath.<String>read(third, "$.name")).isEqualTo("Camera 3");
+        assertThat(jdbc.queryForObject("select count(*) from uploaders where event_id = ?::uuid", Integer.class,
+                eventId(event))).isEqualTo(3);
+        // never into another event
+        String other = createEvent("Other", "LIVE");
+        assertThat(jdbc.queryForObject("select count(*) from uploaders where event_id = ?::uuid", Integer.class,
+                eventId(other))).isZero();
+    }
+
+    @Test
+    void anEventHasAtMostEightCameras() throws Exception {
+        String token = createUploader(eventId(createEvent("Big", "LIVE")), "Camera 1");
+        for (int i = 2; i <= 8; i++) {
+            addCamera(token, 201);
+        }
+        mvc.perform(post("/api/uploader/cameras").header("Authorization", bearer(token)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("TOO_MANY_CAMERAS"));
+    }
+
+    @Test
+    void noCamerasAreAddedToAnArchivedEvent() throws Exception {
+        String event = createEvent("Old", "LIVE");
+        String token = createUploader(eventId(event), "Camera 1");
+        jdbc.update("update events set status = 'ARCHIVED' where id = ?::uuid", eventId(event));
+        mvc.perform(post("/api/uploader/cameras").header("Authorization", bearer(token)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("EVENT_ARCHIVED"));
+    }
+
+    @Test
+    void aRemovedCameraLeavesTheEventAndItsTokenStopsWorking() throws Exception {
+        String event = createEvent("Remove", "LIVE");
+        String token = createUploader(eventId(event), "Camera 1");
+        String secondToken = JsonPath.read(addCamera(token, 201), "$.token");
+        mvc.perform(delete("/api/uploader/me").header("Authorization", bearer(secondToken)))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/uploader/me").header("Authorization", bearer(secondToken)))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/uploader/me").header("Authorization", bearer(token))).andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("select count(*) from uploaders where event_id = ?::uuid", Integer.class,
+                eventId(event))).isEqualTo(1);
+        mvc.perform(post("/api/uploader/cameras")).andExpect(status().isUnauthorized());
+    }
 }

@@ -26,8 +26,12 @@ public final class SettingsPage implements Page {
     private final PageLayout page = new PageLayout("Settings", "How this computer receives and uploads photos.");
     private final CredentialField port = new CredentialField("Camera port", false);
     private final CredentialField user = new CredentialField("Camera user", false);
+    private final Ui.TLabel photoPath = Ui.label(" ", Font.BOLD, 13f, "text");
+    private final Ui.TLabel dataPath = Ui.label(" ", Font.BOLD, 13f, "text");
+    private final AppContext ctx;
 
     public SettingsPage(AppContext ctx) {
+        this.ctx = ctx;
         Ui.Surface look = section("Appearance", "palette", "Light suits bright venues; Dark is easier on the eyes at night. Saved on this computer.");
         JPanel switchRow = Ui.clear(new FlowLayout(FlowLayout.LEFT, 0, 0));
         switchRow.add(new ThemeSwitch());
@@ -36,12 +40,12 @@ public final class SettingsPage implements Page {
 
         Ui.Surface photos = section("Photos on this computer", "folder-open",
                 "Every photo is kept here as well as uploaded. To use another folder, use Change event….");
-        photos.add(pathRow(ctx, ctx.config().watchFolder()), BorderLayout.CENTER);
+        photos.add(pathRow(ctx, () -> ctx.config().watchFolder(), photoPath), BorderLayout.CENTER);
         page.section(photos);
 
         if (ctx.ftp() != null) {
             Ui.Surface cam = section("Camera Wi-Fi (FTP)", "wifi",
-                    "The camera logs in with these. To use another port, start the uploader with --ftp-port 2122.");
+                    "The selected camera logs in with these. Each camera has its own port; the user and password are shared.");
             JPanel grid = Ui.clear(new GridLayout(1, 2, 8, 0));
             grid.add(port);
             grid.add(user);
@@ -58,7 +62,7 @@ public final class SettingsPage implements Page {
 
         Ui.Surface data = section("Settings and queue", "hard-drive",
                 "The connection, camera login and upload queue. Don't delete this folder during an event.");
-        data.add(pathRow(ctx, ctx.dataDir()), BorderLayout.CENTER);
+        data.add(pathRow(ctx, ctx::dataDir, dataPath), BorderLayout.CENTER);
         page.section(data);
     }
 
@@ -74,13 +78,11 @@ public final class SettingsPage implements Page {
         return card;
     }
 
-    private static JPanel pathRow(AppContext ctx, Path folder) {
+    private static JPanel pathRow(AppContext ctx, java.util.function.Supplier<Path> folder, Ui.TLabel p) {
         JPanel row = Ui.clear(new BorderLayout(12, 0));
-        Ui.TLabel p = Ui.label(folder.toString(), Font.BOLD, 13f, "text");
-        p.setToolTipText(folder.toString());
         row.add(p, BorderLayout.CENTER);
         Ui.Btn open = new Ui.Btn("Open", Ui.Kind.SECONDARY, "folder-open");
-        open.addActionListener(e -> ctx.actions().openFolder(folder));
+        open.addActionListener(e -> ctx.actions().openFolder(folder.get()));
         row.add(open, BorderLayout.EAST);
         return row;
     }
@@ -97,6 +99,10 @@ public final class SettingsPage implements Page {
 
     @Override
     public void refresh(Snapshot s) {
+        photoPath.text(ctx.config().watchFolder().toString());
+        photoPath.setToolTipText(ctx.config().watchFolder().toString());
+        dataPath.text(ctx.dataDir().toString());
+        dataPath.setToolTipText(ctx.dataDir().toString());
         if (s.ftp() != null) {
             port.set(Integer.toString(s.ftp().port()));
             user.set(s.ftp().username());

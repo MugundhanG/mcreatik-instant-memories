@@ -6,6 +6,7 @@ Use this on the day. Print it, or keep it open on a phone. It works for the stud
 
 - [ ] The event exists, its status is **Upcoming**, and the date is right.
 - [ ] One **uploader per camera** has been added, and each laptop shows **this** event's name. If it shows an old event, press **Change event…** and paste this event's code.
+- [ ] Several cameras on one laptop: each camera is added (**+ Add camera**) and set to the **Port** on its tab.
 - [ ] Every camera has been tested at home with a few shots ([Canon](/admin/docs/guide-canon) · [Sony](/admin/docs/guide-sony)).
 - [ ] QR posters are printed (Overview → QR code → **Print poster**), at least 3.
 - [ ] Laptops and phone hotspot are charged; chargers, a power bank and spare camera batteries are packed.

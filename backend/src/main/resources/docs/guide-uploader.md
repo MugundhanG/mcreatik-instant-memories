@@ -10,7 +10,7 @@ The **McreatiK Instant Memories Uploader** runs on a laptop at the venue. It rec
 | Install | `McreatiK-Instant-Memories-Uploader-Windows.msi` | `McreatiK-Instant-Memories-Uploader-Mac-AppleSilicon.dmg` (M1–M4) or `…-Mac-Intel.dmg` |
 | Needs | Nothing else: Java is included | Nothing else: Java is included; macOS 12+ |
 
-One laptop per camera is simplest. Two cameras on one laptop is possible (section 7).
+One laptop can serve **up to 4 cameras** at the same time (section 7).
 
 ## 1. Download and install (once)
 
@@ -136,13 +136,41 @@ When the connection returns, they upload by themselves, oldest first, and guests
 - The camera and the laptop must be on the **same Wi-Fi or phone hotspot**. iPhone hotspot: turn on **Maximize Compatibility**. Android hotspot: use 2.4 GHz.
 - The laptop's address changes with each network (iPhone hotspot usually `172.20.10.x`, Android `192.168.43.x`). Always use the **Server** shown in the window.
 
-## 7. Two cameras on one laptop
+## 7. Several cameras on one laptop (up to 4)
 
-Start a second copy with its own data folder and FTP port, and its own connection code. This needs the command-line version (see "Advanced" below):
-```
-java -jar mcreatik-uploader.jar --data-dir ~/.mcreatik-camera2 --ftp-port 2122
-```
-Enter **2122** as the port in the second camera.
+One uploader can receive photos from up to **4 cameras at the same time**, for example a main photographer and a candid photographer. Each camera appears in the gallery under its own name, with its own photo count in the dashboard.
+
+![Four cameras on one laptop: each tab shows its port and photos uploaded](images/uploader-cameras.webp)
+
+**Add a camera**
+1. In the uploader, press **+ Add camera** (next to the camera tabs at the top).
+2. The new camera is created in the same event straight away, with no code needed. A message shows its **port**:
+
+![Camera 2 is ready: use Port 2122](images/uploader-camera-added.webp)
+
+3. In that camera's FTP settings, use the **same Server, User and Password** as Camera 1, and the camera's own **Port**:
+
+| Camera | Port |
+| --- | --- |
+| Camera 1 | 2121 |
+| Camera 2 | 2122 |
+| Camera 3 | 2123 |
+| Camera 4 | 2124 |
+
+If one of these ports is taken by another program, the uploader picks the next free one and shows it. Always use the port on the camera's tab.
+
+**While shooting**
+- Click a camera's tab to see its status, settings, counters, pipeline and photos. The dot on each tab is green when that camera is fine, blue while reconnecting, amber when offline and red when it needs attention.
+- The top right shows all cameras together, for example "Live event · 4 cameras online".
+- Each camera keeps its photos in its own folder, for example `McreatiK Photos/Meera & Karthik Wedding - Camera 2`.
+
+**Remove a camera**
+Select its tab and press **Remove camera** (Camera 1 can't be removed). It is allowed only when that camera's Waiting and Uploading are 0. Its photos stay in the gallery and in its folder.
+
+**Next event**
+**Change event…** moves **all** cameras to the new event. The ports and password stay the same, so no camera needs new settings.
+
+> **Note** All cameras share this laptop's Wi-Fi, internet and battery. Keep it plugged in, close to where you shoot, and on a good hotspot. If the laptop sleeps, every camera stops.
 
 Other options: `--headless` (no window, for advanced use), and `--upload-originals` (send full-size files for server-side processing instead of the light copy).
 
@@ -173,9 +201,9 @@ Do this once per laptop, with the real camera, on a test event:
 | "Windows protected your PC" / Mac "can't be opened" | The app isn't code-signed yet: Windows → More info → Run anyway; Mac → System Settings → Privacy & Security → Open Anyway. |
 | Setup says the code is invalid | Copy the whole code again from the dashboard (it starts with `MCK1.`). Lost it? **New code** on the dashboard. |
 | Blue "Reconnecting" or amber "Offline" | No internet on this laptop: check the hotspot's data. Photos are safe in the queue. |
-| Red "The camera can't send photos" | The camera receiver couldn't start, usually because another program uses port 2121: add `--ftp-port 2122` and enter 2122 in the camera. |
+| Red "The camera can't send photos" | The camera receiver couldn't start, usually because another program uses port 2121: close that program, or start the uploader with `--ftp-port 2131` and enter 2131 in the camera. |
 | Camera: "cannot connect to FTP server" | Same Wi-Fi? Server address typed exactly as shown? Port 2121? Firewall allowed? |
-| "Could not start on port 2121" | Another program uses it: add `--ftp-port 2122` and enter 2122 in the camera. |
+| "Could not start on port 2121" | Another program uses it: close it, or start the uploader with `--ftp-port 2131` and enter 2131 in the camera. |
 | Photos stop after a while | The laptop slept (keep it plugged in and the lid open; the Mac app keeps itself awake), or the camera slept (extend its auto power off). |
 | Dashboard shows the camera Offline | The uploader on that laptop is closed or has no internet. |
 | It still shows the **old event's name** | The uploader remembers its last event. Press **Change event…** and paste the new event's code (section 4). |
@@ -185,4 +213,4 @@ More: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day).
 
 ## Advanced: the command-line version
 
-For two cameras on one laptop, or Linux: install **Java 21** (adoptium.net → Temurin 21), then run `mcreatik-uploader.jar` (sent by McreatiK). On a Mac, start it with `caffeinate -dims java -jar mcreatik-uploader.jar` so the Mac stays awake. Options: `--data-dir`, `--ftp-port`, `--headless` (no window), `--upload-originals`.
+For Linux, or special setups: install **Java 21** (adoptium.net → Temurin 21), then run `mcreatik-uploader.jar` (sent by McreatiK). On a Mac, start it with `caffeinate -dims java -jar mcreatik-uploader.jar` so the Mac stays awake. Options: `--data-dir`, `--ftp-port`, `--headless` (no window), `--upload-originals`.

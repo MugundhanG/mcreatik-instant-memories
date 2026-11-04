@@ -68,6 +68,7 @@ public final class LiveUploadPage implements Page {
     private final EmptyState empty;
     private final Ui.Btn retry = new Ui.Btn("Retry failed", Ui.Kind.SECONDARY, "rotate-cw");
     private final Ui.Btn gallery = new Ui.Btn("Open live gallery", Ui.Kind.PRIMARY, "external-link");
+    private final Ui.TLabel where = Ui.label(" ", Font.PLAIN, 12f, "muted");
 
     public LiveUploadPage(AppContext ctx) {
         this.ctx = ctx;
@@ -182,14 +183,11 @@ public final class LiveUploadPage implements Page {
             }
         };
         bar.setBorder(BorderFactory.createEmptyBorder(12, 24, 12, 24));
-        Path folder = ctx.config().watchFolder();
-        Ui.TLabel where = Ui.label((ctx.ftp() != null ? "Photos saved in  " : "Watching  ") + folder, Font.PLAIN, 12f, "muted");
         where.setIcon(Icons.get("hard-drive", 15, "muted"));
         where.setIconTextGap(8);
-        where.setToolTipText(folder.toString());
         bar.add(where, BorderLayout.CENTER);
         Ui.Btn open = new Ui.Btn("Open folder", Ui.Kind.SECONDARY, "folder-open");
-        open.addActionListener(e -> ctx.actions().openFolder(folder));
+        open.addActionListener(e -> ctx.actions().openFolder(ctx.config().watchFolder()));
         retry.addActionListener(e -> ctx.engine().retryFailed());
         gallery.addActionListener(e -> ctx.actions().openGallery());
         JPanel buttons = Ui.clear(new FlowLayout(FlowLayout.RIGHT, 8, 0));
@@ -203,6 +201,9 @@ public final class LiveUploadPage implements Page {
     @Override
     public void refresh(Snapshot s) {
         EngineStatus e = s.engine();
+        Path folder = ctx.config().watchFolder();
+        where.text((ctx.ftp() != null ? "Photos saved in  " : "Watching  ") + folder);
+        where.setToolTipText(folder.toString());
         event.refresh(s);
         status.set(s.live());
         if (s.ftp() != null) {

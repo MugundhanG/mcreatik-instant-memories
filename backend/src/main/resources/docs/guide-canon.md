@@ -110,4 +110,5 @@ Always use the **same phone** as the event hotspot. It usually gives the laptop 
 | Connects, but transfers fail | Toggle **Passive mode**. Check the port is 2121. |
 | Worked at home, not at the venue | You're on a different network: pick the hotspot SET, and check its address matches the uploader. |
 | Photos stop after a while | The camera slept: disable auto power off. Or the laptop slept. |
-| Uploader says "Could not start on port 2121" | Start it with `--ftp-port 2122` and set the camera's port to 2122. |
+| Uploader says "Could not start on port 2121" | Another program uses that port. Close it, or start the uploader with `--ftp-port 2131` and set the camera's port to 2131. |
+| Several cameras on one laptop | Each camera uses the **Port on its own tab** in the uploader (2121, 2122, 2123, 2124); Server, User and Password are the same for all. |

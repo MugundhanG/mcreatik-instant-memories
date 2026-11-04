@@ -22,13 +22,14 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.WindowConstants;
 
+import com.mcreatik.uploader.CameraRuntime;
+import com.mcreatik.uploader.Cameras;
 import com.mcreatik.uploader.UploaderMain;
 import com.mcreatik.uploader.config.EventSwitch;
-import com.mcreatik.uploader.config.UploaderConfig;
 import com.mcreatik.uploader.engine.EngineStatus;
-import com.mcreatik.uploader.engine.UploadEngine;
 import com.mcreatik.uploader.queue.QueueItem;
 import com.mcreatik.uploader.source.FtpPhotoSource;
+import com.mcreatik.uploader.ui.components.CameraStrip;
 import com.mcreatik.uploader.ui.components.HeaderBar;
 import com.mcreatik.uploader.ui.components.Sidebar;
 import com.mcreatik.uploader.ui.components.Ui;
@@ -59,16 +60,18 @@ public final class UploaderWindow implements AppContext.Actions {
     private Ui.TLabel sideStatus;
     private String visible = LiveUploadPage.ID;
     private String galleryUrl;
+    private CameraStrip strip;
+    private boolean adding;
 
-    private UploaderWindow(UploadEngine engine, UploaderConfig config, FtpPhotoSource ftp, Path dataDir, boolean originals) {
-        this.ctx = new AppContext(engine, config, ftp, dataDir, originals, this);
+    private UploaderWindow(Cameras cameras, boolean originals) {
+        this.ctx = new AppContext(cameras, originals, this);
     }
 
-    /** @param ftp the built-in camera FTP server, or null when the camera writes into the folder itself */
-    public static void open(UploadEngine engine, UploaderConfig config, FtpPhotoSource ftp, Path dataDir, boolean uploadOriginals) {
+    /** Opens the window for this laptop's cameras (Camera 1 selected). */
+    public static void open(Cameras cameras, Path dataDir, boolean uploadOriginals) {
         SwingUtilities.invokeLater(() -> {
             UiTheme.apply(); // the saved theme, before any component exists (no flash of the wrong one)
-            new UploaderWindow(engine, config, ftp, dataDir, uploadOriginals).build();
+            new UploaderWindow(cameras, uploadOriginals).build();
         });
     }
 
@@ -97,9 +100,23 @@ public final class UploaderWindow implements AppContext.Actions {
         sidebar.select(visible);
 
         header = new HeaderBar(UiTheme.logo(30));
+        strip = new CameraStrip(this::selectCamera, this::addCamera, this::removeCamera);
+        JPanel stripBar = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(java.awt.Graphics g) {
+                g.setColor(com.mcreatik.uploader.ui.theme.Tok.c("bg"));
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        stripBar.setBorder(javax.swing.BorderFactory.createEmptyBorder(14, 24, 0, 24));
+        stripBar.add(strip, BorderLayout.CENTER);
+        JPanel main = new JPanel(new BorderLayout());
+        main.add(stripBar, BorderLayout.NORTH);
+        main.add(cards, BorderLayout.CENTER);
         JPanel body = new JPanel(new BorderLayout());
         body.add(sidebar, BorderLayout.WEST);
-        body.add(cards, BorderLayout.CENTER);
+        body.add(main, BorderLayout.CENTER);
+        ctx.cameras().onChange(() -> SwingUtilities.invokeLater(this::refresh));
         JPanel root = new JPanel(new BorderLayout());
         root.add(header, BorderLayout.NORTH);
         root.add(body, BorderLayout.CENTER);
@@ -120,20 +137,39 @@ public final class UploaderWindow implements AppContext.Actions {
 
     private void refresh() {
         try {
-            EngineStatus s = ctx.engine().status();
-            FtpPhotoSource.Status f = ctx.ftp() == null ? null : ctx.ftp().status();
-            List<QueueItem> recent = ctx.engine().queue().recent(RECENT_READ);
             Instant now = Instant.now();
-            LiveState live = LiveState.of(s, f, LiveUploadPage.lastPhotoAt(f, recent), now);
-            Snapshot snap = new Snapshot(s, f, live, recent, now);
-            galleryUrl = s.galleryUrl();
-            header.setEventStatus(live.tone(), headerText(s, live));
-            sideStatus.text((s.uploaderName() == null ? "" : s.uploaderName() + " · ") + switch (live.conn()) {
-                case ONLINE -> "Online";
-                case RECONNECTING -> "Reconnecting";
-                case OFFLINE -> "Offline";
-                case ERROR -> "Needs attention";
-            });
+            CameraRuntime selected = ctx.selected();
+            Snapshot snap = null;
+            List<CameraStrip.Entry> entries = new java.util.ArrayList<>();
+            LiveState worst = null;
+            EngineStatus anyStatus = null;
+            for (CameraRuntime c : ctx.cameras().all()) {
+                EngineStatus s = c.engine().status();
+                FtpPhotoSource.Status f = c.ftp() == null ? null : c.ftp().status();
+                List<QueueItem> recent = c.queue().recent(RECENT_READ);
+                LiveState live = LiveState.of(s, f, LiveUploadPage.lastPhotoAt(f, recent), now);
+                entries.add(new CameraStrip.Entry(c, s.uploaderName() == null ? "Camera " + c.number() : s.uploaderName(),
+                        live, f == null ? 0 : f.port()));
+                if (worst == null || severity(live) > severity(worst)) {
+                    worst = live;
+                }
+                if (anyStatus == null) {
+                    anyStatus = s;
+                }
+                if (c == selected) {
+                    snap = new Snapshot(s, f, live, recent, now);
+                }
+            }
+            if (snap == null) {
+                return;
+            }
+            galleryUrl = snap.engine().galleryUrl();
+            strip.set(entries, selected, ctx.cameras().canAdd() && !adding, addHint());
+            LiveState.Conn worstConn = worst.conn();
+            int inWorst = (int) entries.stream().filter(en -> en.state().conn() == worstConn).count();
+            header.setEventStatus(worst.tone(), headerText(anyStatus, worst, entries.size(), inWorst));
+            sideStatus.text((entries.size() > 1 ? entries.size() + " cameras · " : (snap.engine().uploaderName() == null ? ""
+                    : snap.engine().uploaderName() + " · ")) + word(worst.conn()));
             Page p = pages.get(visible);
             p.refresh(snap);
             if (!visible.equals(LiveUploadPage.ID)) {
@@ -144,13 +180,48 @@ public final class UploaderWindow implements AppContext.Actions {
         }
     }
 
-    static String headerText(EngineStatus s, LiveState live) {
-        String conn = switch (live.conn()) {
+    /** Worst first: a camera that needs attention decides the header colour. */
+    static int severity(LiveState s) {
+        return switch (s.conn()) {
+            case ONLINE -> 0;
+            case RECONNECTING -> 1;
+            case OFFLINE -> 2;
+            case ERROR -> 3;
+        };
+    }
+
+    static String word(LiveState.Conn c) {
+        return switch (c) {
             case ONLINE -> "Online";
             case RECONNECTING -> "Reconnecting";
             case OFFLINE -> "Offline";
             case ERROR -> "Needs attention";
         };
+    }
+
+    private String addHint() {
+        if (ctx.cameras().first().ftp() == null) {
+            return "Adding cameras needs camera Wi-Fi (FTP)";
+        }
+        return ctx.cameras().all().size() >= com.mcreatik.uploader.config.CameraSet.MAX
+                ? "Up to " + com.mcreatik.uploader.config.CameraSet.MAX + " cameras per computer"
+                : "Receive photos from another camera on this computer";
+    }
+
+    /** For example "Live event · 4 cameras online" or "Live event · 1 camera needs attention". */
+    static String headerText(EngineStatus s, LiveState live, int cameras, int inThatState) {
+        String conn;
+        if (cameras <= 1) {
+            conn = word(live.conn());
+        } else {
+            String n = inThatState + (inThatState == 1 ? " camera " : " cameras ");
+            conn = n + switch (live.conn()) {
+                case ONLINE -> "online";
+                case RECONNECTING -> "reconnecting";
+                case OFFLINE -> "offline";
+                case ERROR -> inThatState == 1 ? "needs attention" : "need attention";
+            };
+        }
         if (s.eventStatus() == null) {
             return conn;
         }
@@ -176,13 +247,89 @@ public final class UploaderWindow implements AppContext.Actions {
     /** Only with an empty queue, so no photo from this event can end up in the next one. */
     @Override
     public void changeEvent() {
-        String blocked = EventSwitch.blockedReason(ctx.engine().queue().counts());
+        String blocked = ctx.cameras().blockedReason(); // every camera's photos must have arrived
         if (blocked != null) {
             JOptionPane.showMessageDialog(frame, "<html><body style='width:300px'>" + blocked + "</body></html>",
                     "Change event", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        UploaderMain.changeEvent(ctx.config());
+        UploaderMain.changeEvent(ctx.cameras().first().config());
+    }
+
+    @Override
+    public void selectCamera(CameraRuntime camera) {
+        ctx.select(camera);
+        refresh();
+    }
+
+    /** One click: the server adds the next camera to this event; it starts receiving at once. */
+    @Override
+    public void addCamera() {
+        if (adding || !ctx.cameras().canAdd()) {
+            return;
+        }
+        adding = true;
+        refresh();
+        new javax.swing.SwingWorker<CameraRuntime, Void>() {
+            @Override
+            protected CameraRuntime doInBackground() throws Exception {
+                return ctx.cameras().add();
+            }
+
+            @Override
+            protected void done() {
+                adding = false;
+                try {
+                    CameraRuntime c = get();
+                    ctx.select(c);
+                    refresh();
+                    JOptionPane.showMessageDialog(frame, "<html><body style='width:320px'><b>Camera " + c.number()
+                            + " is ready.</b><br><br>In that camera's FTP settings use <b>Port " + c.config().ftp().port()
+                            + "</b>. The Server, User and Password are the same as Camera 1.</body></html>",
+                            "Camera added", JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception e) {
+                    refresh();
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    String msg = cause instanceof com.mcreatik.uploader.api.ApiException api && api.status() == 404
+                            ? "The McreatiK server needs an update before cameras can be added here. Ask McreatiK, or add"
+                                    + " the camera in the dashboard and run a second uploader."
+                            : cause instanceof com.mcreatik.uploader.api.ApiException api
+                                    && api.kind() == com.mcreatik.uploader.api.ApiException.Kind.TRANSIENT
+                            ? "McreatiK couldn't be reached. Check the internet and try again."
+                            : cause.getMessage();
+                    JOptionPane.showMessageDialog(frame, "<html><body style='width:320px'>" + msg + "</body></html>",
+                            "Add camera", JOptionPane.WARNING_MESSAGE);
+                }
+            }
+        }.execute();
+    }
+
+    @Override
+    public void removeCamera(CameraRuntime camera) {
+        String blocked = com.mcreatik.uploader.config.EventSwitch.blockedReason(camera.queue().counts());
+        if (blocked != null) {
+            JOptionPane.showMessageDialog(frame, "<html><body style='width:300px'>" + blocked.replace("change event",
+                    "remove the camera") + "</body></html>", "Remove camera", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        String name = camera.engine().status().uploaderName();
+        int ok = JOptionPane.showConfirmDialog(frame, "<html><body style='width:300px'>Remove <b>"
+                + (name == null ? "Camera " + camera.number() : name) + "</b> from this computer and the event? Its photos stay"
+                + " in the gallery and in its folder.</body></html>", "Remove camera", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (ok != JOptionPane.OK_OPTION) {
+            return;
+        }
+        try {
+            String note = ctx.cameras().remove(camera);
+            ctx.select(ctx.cameras().first());
+            refresh();
+            if (note != null) {
+                JOptionPane.showMessageDialog(frame, note, "Remove camera", JOptionPane.INFORMATION_MESSAGE);
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(frame, e.getMessage(), "Remove camera", JOptionPane.WARNING_MESSAGE);
+        }
     }
 
     @Override
