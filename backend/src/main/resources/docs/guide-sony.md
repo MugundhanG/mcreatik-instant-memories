@@ -2,7 +2,7 @@
 
 This guide sets up the **Sony α7 IV** to send every JPEG over Wi-Fi (FTP) to the McreatiK Instant Memories Uploader on your laptop.
 
-> **Warning** **Not yet field-tested with McreatiK.** The α7 IV supports FTP transfer, and the uploader speaks standard FTP, but run the [rehearsal](/admin/docs/guide-uploader#7-rehearsal-before-the-first-paid-event) with a real α7 IV before promising it to a studio. Update the firmware first (Sony's site, "ILCE-7M4").
+> **Warning** **Not yet field-tested with McreatiK.** The α7 IV supports FTP transfer, and the uploader speaks standard FTP, but run the [rehearsal](/admin/docs/guide-uploader#8-rehearsal-before-the-first-paid-event) with a real α7 IV before promising it to a studio. Update the firmware first (Sony's site, "ILCE-7M4").
 
 > **Note** The camera screens below are **illustrations** of each step, with the values to choose highlighted. Sony's menu names can differ slightly by firmware. Real photos of the camera screens will replace them later.
 
@@ -79,7 +79,7 @@ This guide sets up the **Sony α7 IV** to send every JPEG over Wi-Fi (FTP) to th
 
 ### Step 9: Test
 
-Shoot 3 frames. Within seconds the uploader shows **Camera connected · 3 received**, and the photos are in the gallery. To check the camera's side, go to **FTP Transfer Func. → FTP Transfer** and look at the transfer status.
+Shoot 3 frames. Within seconds the uploader shows **3 received this session**, the **Camera** stage turns green (**Receiving**), and the photos are in the gallery. To check the camera's side, go to **FTP Transfer Func. → FTP Transfer** and look at the transfer status.
 
 ![The uploader receiving photos from the camera](images/uploader-main-uploaded.webp)
 

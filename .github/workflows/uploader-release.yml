@@ -21,7 +21,7 @@ permissions:
 
 env:
   # Modules from `jdeps --print-module-deps`, plus TLS (jdk.crypto.ec), charsets and JMX for the FTP server.
-  MODULES: java.base,java.desktop,java.logging,java.management,java.naming,java.net.http,java.security.jgss,java.security.sasl,java.sql,jdk.charsets,jdk.crypto.ec,jdk.unsupported
+  MODULES: java.base,java.desktop,java.logging,java.management,java.naming,java.net.http,java.prefs,java.security.jgss,java.security.sasl,java.sql,jdk.charsets,jdk.crypto.ec,jdk.unsupported
 
 jobs:
   build:

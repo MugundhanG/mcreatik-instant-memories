@@ -91,6 +91,50 @@ class UploadEngineTest {
         assertThat(server.heartbeats.get()).isPositive();
     }
 
+    @Test
+    void showsARenamedEventWithoutARestart() throws Exception {
+        startEngine();
+        await("first name", () -> "Arun & Priya Wedding".equals(engine.status().eventName()));
+        server.eventName = "Arun & Priya Reception";
+        await("renamed", () -> "Arun & Priya Reception".equals(engine.status().eventName()));
+    }
+
+    @Test
+    void reportsConnectionTimesAndARealUploadSpeed() throws Exception {
+        startEngine();
+        await("online", () -> engine.status().connection() == EngineStatus.Connection.ONLINE);
+        assertThat(engine.status().onlineSince()).isNotNull();
+        assertThat(engine.status().offlineSince()).isNull();
+        assertThat(engine.status().bytesPerSecond()).as("no upload yet, no speed shown").isZero();
+
+        TestPhotos.write(folder, "IMG_SPEED.JPG");
+        await("uploaded", () -> queue.counts().done() == 1);
+        assertThat(engine.status().bytesPerSecond()).as("speed from a real upload").isPositive();
+
+        server.offline.set(true);
+        TestPhotos.write(folder, "IMG_OFF.JPG");
+        await("offline", () -> engine.status().connection() == EngineStatus.Connection.OFFLINE);
+        assertThat(engine.status().offlineSince()).isNotNull();
+        assertThat(engine.status().onlineSince()).isNull();
+    }
+
+    @Test
+    void readsTheEventDateWhenTheServerSendsIt() throws Exception {
+        server.eventDate = "2026-11-20";
+        startEngine();
+        await("date", () -> java.time.LocalDate.of(2026, 11, 20).equals(engine.status().eventDate()));
+        assertThat(engine.status().eventStatus()).isNotBlank();
+    }
+
+    @Test
+    void anUploaderRemovedInTheDashboardPausesAndPointsToChangeEvent() throws Exception {
+        startEngine();
+        await("online", () -> engine.status().connection() == EngineStatus.Connection.ONLINE);
+        server.revoked.set(true);
+        await("paused", () -> engine.status().connection() == EngineStatus.Connection.BLOCKED);
+        assertThat(engine.status().blockedReason()).contains("Change event");
+    }
+
     /** The V1 failure test: internet drops mid-event, photographer keeps shooting, nothing is lost. */
     @Test
     void internetOutageKeepsPhotosQueuedAndResumesAutomatically() throws Exception {
@@ -189,7 +233,7 @@ class UploadEngineTest {
         await("queued", () -> queue.counts().total() == 1);
         Thread.sleep(300);
         assertThat(queue.counts().failed()).isZero();
-        assertThat(engine.status().blockedReason()).contains("disconnected");
+        assertThat(engine.status().blockedReason()).contains("removed from the event");
 
         server.revoked.set(false); // admin fixed it / new token
         await("resumed", () -> queue.counts().done() == 1);

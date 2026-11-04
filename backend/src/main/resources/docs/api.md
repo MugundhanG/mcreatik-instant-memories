@@ -108,7 +108,7 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 | POST | `/api/admin/events/{eventId}/uploaders` | Admin | Returns token and `MCK1.` connection code, shown once |
 | POST | `/api/admin/uploaders/{uploaderId}/rotate-token` | Admin | Old token stops working |
 | PATCH / DELETE | `/api/admin/uploaders/{uploaderId}` | Admin | Rename, remove |
-| GET | `/api/uploader/me` | Uploader | Event and uploader details |
+| GET | `/api/uploader/me` | Uploader | Event and uploader details, including `eventDate` and `eventStartTime` (shown in the uploader; may be null) |
 | POST | `/api/uploader/heartbeat` | Uploader | Queue counts → `{eventStatus, acceptingUploads}` |
 | POST | `/api/uploader/uploads` | Uploader | `{fileName, fileSize, mimeType, checksumSha256, prepared?}` → presigned PUTs or `DUPLICATE` |
 | POST | `/api/uploader/uploads/{photoId}/complete` | Uploader | Safe to repeat |

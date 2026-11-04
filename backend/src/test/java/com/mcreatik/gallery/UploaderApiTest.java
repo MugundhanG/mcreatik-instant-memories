@@ -45,7 +45,8 @@ class UploaderApiTest extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.uploaderName").value("Camera 1"))
                 .andExpect(jsonPath("$.eventId").value(eventId(event)))
-                .andExpect(jsonPath("$.galleryUrl").value("https://gallery.mcreatik.test/e/" + slug(event)));
+                .andExpect(jsonPath("$.galleryUrl").value("https://gallery.mcreatik.test/e/" + slug(event)))
+                .andExpect(jsonPath("$.eventDate").value("2026-10-10")); // shown in the uploader's event card
         mvc.perform(get("/api/uploader/me").header("Authorization", "Bearer mku_invalid"))
                 .andExpect(status().isUnauthorized());
     }

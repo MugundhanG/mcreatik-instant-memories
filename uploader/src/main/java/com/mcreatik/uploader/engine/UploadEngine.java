@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -67,6 +68,15 @@ public class UploadEngine implements AutoCloseable {
     private volatile String blockedReason;
     private volatile String lastError;
     private volatile ApiModels.Me me;
+    private volatile Instant onlineSince;
+    private volatile Instant offlineSince;
+    /** (finished-at millis, bytes, transfer millis) of recent uploads, for the upload speed. */
+    private final java.util.Deque<long[]> finished = new java.util.ArrayDeque<>();
+    static final long SPEED_WINDOW_MS = 30_000;
+    /** Heartbeats since the event details were last fetched: they are re-read every {@link #ME_REFRESH_BEATS}. */
+    private int beatsSinceMe;
+    /** Every 4 heartbeats (one minute at the normal 15 s), so a renamed event shows without a restart. */
+    static final int ME_REFRESH_BEATS = 4;
 
     public UploadEngine(ApiClient api, UploadQueue queue, PhotoSource source, int concurrency, String deviceId) {
         this(api, queue, source, concurrency, deviceId, Backoff.DEFAULT, System::currentTimeMillis, Duration.ofSeconds(15));
@@ -186,6 +196,7 @@ public class UploadEngine implements AutoCloseable {
                 return;
             }
             PhotoPreparer.Prepared prepared = prepareLocally ? prepare(item) : null;
+            long transferStart = clock.getAsLong();
             ApiModels.UploadSession session = api.createUpload(new ApiModels.CreateUploadRequest(
                     item.fileName(), item.size(), item.mimeType(), item.sha256(), versions(prepared)));
             markOnline();
@@ -211,6 +222,8 @@ public class UploadEngine implements AutoCloseable {
             }
             api.complete(session.photoId());
             queue.markDone(item.id(), session.photoId(), false);
+            EngineStatus.ActiveUpload done = active.get(item.id());
+            recordFinished(done == null ? 0 : done.totalBytes(), clock.getAsLong() - transferStart);
             lastError = null;
         } catch (ApiException e) {
             handleFailure(item, e);
@@ -265,8 +278,9 @@ public class UploadEngine implements AutoCloseable {
     /** Presence + connectivity probe. Package-private for tests. */
     void heartbeat() {
         try {
-            if (me == null) {
+            if (me == null || ++beatsSinceMe >= ME_REFRESH_BEATS) {
                 me = api.me();
+                beatsSinceMe = 0;
             }
             QueueCounts counts = queue.counts();
             ApiModels.HeartbeatResponse response = api.heartbeat(new ApiModels.HeartbeatRequest(
@@ -302,6 +316,8 @@ public class UploadEngine implements AutoCloseable {
         EngineStatus.Connection previous = connection;
         connection = EngineStatus.Connection.ONLINE;
         if (previous != EngineStatus.Connection.ONLINE) {
+            onlineSince = Instant.ofEpochMilli(clock.getAsLong());
+            offlineSince = null;
             int expedited = queue.expediteRetries();
             if (previous == EngineStatus.Connection.OFFLINE) {
                 log.info("Back online. Resuming " + expedited + " waiting photo(s) now.");
@@ -313,6 +329,8 @@ public class UploadEngine implements AutoCloseable {
     private void markOffline() {
         if (connection != EngineStatus.Connection.OFFLINE) {
             log.warning("Connection lost. Photos stay safely queued and will upload automatically.");
+            offlineSince = Instant.ofEpochMilli(clock.getAsLong());
+            onlineSince = null;
         }
         connection = EngineStatus.Connection.OFFLINE;
     }
@@ -323,6 +341,7 @@ public class UploadEngine implements AutoCloseable {
         }
         blockedReason = reason;
         connection = EngineStatus.Connection.BLOCKED;
+        onlineSince = null;
     }
 
     // ---- controls ----
@@ -338,7 +357,36 @@ public class UploadEngine implements AutoCloseable {
         return new EngineStatus(connection, blockedReason,
                 info == null ? null : info.eventName(), info == null ? null : info.uploaderName(),
                 info == null ? null : info.galleryUrl(), source.describe(), queue.counts(),
-                List.copyOf(active.values()), lastError);
+                List.copyOf(active.values()), lastError, onlineSince, offlineSince, bytesPerSecond(),
+                info == null ? null : info.eventDateValue(), info == null ? null : info.eventStartValue(),
+                info == null ? null : info.eventStatus());
+    }
+
+    private void recordFinished(long bytes, long transferMillis) {
+        synchronized (finished) {
+            finished.addLast(new long[] {clock.getAsLong(), bytes, Math.max(1, transferMillis)});
+        }
+    }
+
+    /**
+     * Upload speed: bytes sent divided by the time spent sending them, over uploads that finished in the last
+     * {@link #SPEED_WINDOW_MS}. 0 when nothing finished in that time. Parallel uploads overlap, so with two workers
+     * this is per-photo speed, a fair "how fast is the internet" figure.
+     */
+    long bytesPerSecond() {
+        long now = clock.getAsLong();
+        long bytes = 0;
+        long millis = 0;
+        synchronized (finished) {
+            while (!finished.isEmpty() && finished.peekFirst()[0] < now - SPEED_WINDOW_MS) {
+                finished.removeFirst();
+            }
+            for (long[] f : finished) {
+                bytes += f[1];
+                millis += f[2];
+            }
+        }
+        return millis == 0 ? 0 : bytes * 1000 / millis;
     }
 
     public UploadQueue queue() {
