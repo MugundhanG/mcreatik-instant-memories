@@ -24,6 +24,11 @@ public class UploadQueue implements AutoCloseable {
 
     private final Connection connection;
     private final LongSupplier clock;
+    /**
+     * Rows up to this id belong to events this uploader was connected to before ("Change event…"). They still stop a
+     * photo being sent twice, but are left out of the counts, the recent list, retries and uploading.
+     */
+    private long eventFloor;
 
     public UploadQueue(Path databaseFile) {
         this(databaseFile, System::currentTimeMillis);
@@ -57,6 +62,10 @@ public class UploadQueue implements AutoCloseable {
                         )""");
                 s.execute("CREATE INDEX IF NOT EXISTS ix_uploads_path ON uploads (path, size, modified_ms)");
                 s.execute("CREATE INDEX IF NOT EXISTS ix_uploads_due ON uploads (status, next_attempt_at, id)");
+                s.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+                try (ResultSet rs = s.executeQuery("SELECT value FROM settings WHERE key = 'event_floor'")) {
+                    eventFloor = rs.next() ? Long.parseLong(rs.getString(1)) : 0;
+                }
             }
         } catch (Exception e) {
             throw new IllegalStateException("Cannot open upload queue at " + databaseFile + ": " + e.getMessage(), e);
@@ -95,8 +104,11 @@ public class UploadQueue implements AutoCloseable {
     public synchronized Optional<QueueItem> claimNext() {
         long now = clock.getAsLong();
         Optional<QueueItem> item = query("""
-                SELECT * FROM uploads WHERE status = 'QUEUED' AND next_attempt_at <= ?
-                ORDER BY id LIMIT 1""", ps -> ps.setLong(1, now), UploadQueue::map);
+                SELECT * FROM uploads WHERE status = 'QUEUED' AND next_attempt_at <= ? AND id > ?
+                ORDER BY id LIMIT 1""", ps -> {
+            ps.setLong(1, now);
+            ps.setLong(2, eventFloor);
+        }, UploadQueue::map);
         item.ifPresent(i -> update("""
                 UPDATE uploads SET status = 'UPLOADING', attempts = attempts + 1, updated_at = ? WHERE id = ?""", ps -> {
             ps.setLong(1, now);
@@ -143,7 +155,26 @@ public class UploadQueue implements AutoCloseable {
     public synchronized int retryFailed() {
         return update("""
                 UPDATE uploads SET status = 'QUEUED', attempts = 0, next_attempt_at = 0, updated_at = ?
-                WHERE status = 'FAILED'""", ps -> ps.setLong(1, clock.getAsLong()));
+                WHERE status = 'FAILED' AND id > ?""", ps -> {
+            ps.setLong(1, clock.getAsLong());
+            ps.setLong(2, eventFloor);
+        });
+    }
+
+    /**
+     * "Change event…": from now on, counts, the recent list and retries cover only photos for the new event. Photos
+     * already seen are still remembered, so they are never sent to the new event.
+     */
+    public synchronized void startNewEvent() {
+        try (Statement s = connection.createStatement();
+             ResultSet rs = s.executeQuery("SELECT coalesce(max(id), 0) FROM uploads")) {
+            long floor = rs.next() ? rs.getLong(1) : 0;
+            update("INSERT INTO settings (key, value) VALUES ('event_floor', ?) "
+                    + "ON CONFLICT (key) DO UPDATE SET value = excluded.value", ps -> ps.setString(1, Long.toString(floor)));
+            eventFloor = floor;
+        } catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /** Connectivity came back: don't wait out long backoffs, retry everything now. */
@@ -157,8 +188,9 @@ public class UploadQueue implements AutoCloseable {
 
     public synchronized QueueCounts counts() {
         int[] c = new int[QueueStatus.values().length];
-        try (Statement s = connection.createStatement();
-             ResultSet rs = s.executeQuery("SELECT status, count(*) FROM uploads GROUP BY status")) {
+        try (PreparedStatement ps = connection.prepareStatement("SELECT status, count(*) FROM uploads WHERE id > ? GROUP BY status")) {
+            ps.setLong(1, eventFloor);
+            ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 c[QueueStatus.valueOf(rs.getString(1)).ordinal()] = rs.getInt(2);
             }
@@ -171,8 +203,9 @@ public class UploadQueue implements AutoCloseable {
 
     public synchronized List<QueueItem> recent(int limit) {
         List<QueueItem> items = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM uploads ORDER BY updated_at DESC, id DESC LIMIT ?")) {
-            ps.setInt(1, limit);
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM uploads WHERE id > ? ORDER BY updated_at DESC, id DESC LIMIT ?")) {
+            ps.setLong(1, eventFloor);
+            ps.setInt(2, limit);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     items.add(map(rs));
@@ -190,7 +223,8 @@ public class UploadQueue implements AutoCloseable {
 
     /** Earliest future retry time, if any item is waiting on a backoff. */
     public synchronized Optional<Long> nextDueAt() {
-        return query("SELECT min(next_attempt_at) FROM uploads WHERE status = 'QUEUED'", ps -> { },
+        return query("SELECT min(next_attempt_at) FROM uploads WHERE status = 'QUEUED' AND id > ?",
+                ps -> ps.setLong(1, eventFloor),
                 rs -> rs.getObject(1) == null ? null : rs.getLong(1));
     }
 

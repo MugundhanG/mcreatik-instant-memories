@@ -143,7 +143,7 @@ public class ApiClient {
         String message = error != null && error.message() != null ? error.message() : "HTTP " + status;
         if (status == 401) {
             throw new ApiException(ApiException.Kind.BLOCKED, status, "UNAUTHORIZED",
-                    "This uploader was disconnected in the McreatiK dashboard. Paste a new connection code.");
+                    "This uploader was removed from the event in the dashboard. Use Change event… to connect with a new code.");
         }
         if (code != null && BLOCKING_CODES.contains(code)) {
             throw new ApiException(ApiException.Kind.BLOCKED, status, code, message);

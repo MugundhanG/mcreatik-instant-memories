@@ -14,8 +14,10 @@ import java.util.logging.Logger;
 
 import com.mcreatik.uploader.api.ApiClient;
 import com.mcreatik.uploader.api.ApiException;
+import com.mcreatik.uploader.api.ApiModels;
 import com.mcreatik.uploader.config.ConnectionCode;
 import com.mcreatik.uploader.config.DeviceId;
+import com.mcreatik.uploader.config.EventSwitch;
 import com.mcreatik.uploader.config.UploaderConfig;
 import com.mcreatik.uploader.engine.EngineStatus;
 import com.mcreatik.uploader.engine.UploadEngine;
@@ -48,6 +50,12 @@ public final class UploaderMain {
     private static final List<Logger> QUIET_LOGGERS =
             List.of(Logger.getLogger("org.apache.ftpserver"), Logger.getLogger("org.apache.mina"));
 
+    /** How this copy was started, so "Change event…" can start it again the same way. */
+    private static volatile List<String> startArgs = List.of();
+    private static volatile Path startDataDir;
+    private static volatile int startConcurrency = 2;
+    private static volatile UploadQueue startQueue;
+
     private UploaderMain() {
     }
 
@@ -73,10 +81,13 @@ public final class UploaderMain {
                     """.formatted(UploadEngine.APP_VERSION));
             return;
         }
+        startArgs = List.of(args);
+        startDataDir = a.dataDir;
+        startConcurrency = a.concurrency;
         KeepAwake.start();
         boolean headless = a.headless || GraphicsEnvironment.isHeadless();
         Files.createDirectories(a.dataDir);
-        FileLock lock = lockDataDir(a.dataDir);
+        FileLock lock = lockDataDir(a.dataDir, a.waitForLock);
         if (lock == null) {
             fail(headless, "Another McreatiK Instant Memories Uploader is already using " + a.dataDir
                     + ". To run a second camera on this computer, start it with a different --data-dir.");
@@ -93,6 +104,7 @@ public final class UploaderMain {
 
         ApiClient api = new ApiClient(config.serverUrl(), config.token());
         UploadQueue queue = new UploadQueue(a.dataDir.resolve("queue.db"));
+        startQueue = queue;
         FtpPhotoSource ftp = config.ftp().enabled()
                 ? new FtpPhotoSource(config.watchFolder(), config.ftp().port(), config.ftp().username(), config.ftp().password())
                 : null;
@@ -184,10 +196,15 @@ public final class UploaderMain {
         return SetupDialog.show(a.dataDir, a.concurrency, a.ftp == null || a.ftp).orElse(null);
     }
 
-    /** Checks the code works before saving. Offline is allowed (queue until online); a bad code is not. */
-    public static void verify(UploaderConfig config) {
+    /**
+     * Checks the code works before saving. Offline is allowed (queue until online); a bad code is not.
+     *
+     * @return the event details, or null when McreatiK couldn't be reached right now
+     */
+    public static ApiModels.Me verify(UploaderConfig config) {
+        ApiModels.Me me = null;
         try {
-            var me = new ApiClient(config.serverUrl(), config.token()).me();
+            me = new ApiClient(config.serverUrl(), config.token()).me();
             log.info("Connected as \"" + me.uploaderName() + "\" for event \"" + me.eventName() + "\"");
         } catch (ApiException e) {
             if (e.kind() == ApiException.Kind.TRANSIENT) {
@@ -207,6 +224,47 @@ public final class UploaderMain {
                 throw new IllegalArgumentException("Cannot create folder " + config.watchFolder() + ": " + e.getMessage(), e);
             }
         }
+        return me;
+    }
+
+    /**
+     * "Change event…": asks for the new event's code (keeping the folder choice and the camera's FTP login), saves it,
+     * and starts the uploader again so everything comes up exactly as on a normal start.
+     * Runs on the Swing thread; returns only if the user cancelled.
+     */
+    public static void changeEvent(UploaderConfig current) {
+        Optional<UploaderConfig> next = SetupDialog.showSwitch(startDataDir, startConcurrency, current);
+        if (next.isEmpty()) {
+            return;
+        }
+        startQueue.startNewEvent(); // the new event's counts start at 0; old photos are still never re-sent
+        try {
+            restart();
+        } catch (IOException e) {
+            javax.swing.JOptionPane.showMessageDialog(null, "The new event is saved. Close the uploader and open it again"
+                    + " to finish switching.\n\n(" + e.getMessage() + ")", com.mcreatik.uploader.ui.UiTheme.APP_NAME,
+                    javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            System.exit(0);
+        }
+    }
+
+    /** Starts a new copy of this app with the same options, then exits (the shutdown hook closes the queue and FTP). */
+    private static void restart() throws IOException {
+        List<String> command = new java.util.ArrayList<>();
+        String appPath = System.getProperty("jpackage.app-path"); // set by the installed app's launcher
+        if (appPath != null && Files.isExecutable(Path.of(appPath))) {
+            command.add(appPath);
+        } else {
+            command.add(Path.of(System.getProperty("java.home"), "bin", "java").toString());
+            command.addAll(java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments());
+            command.add("-cp");
+            command.add(System.getProperty("java.class.path"));
+            command.add(UploaderMain.class.getName());
+        }
+        command.addAll(EventSwitch.restartArgs(startArgs));
+        log.info("Restarting for the new event: " + command);
+        new ProcessBuilder(command).inheritIO().start();
+        System.exit(0);
     }
 
     private static void runConsole(UploadEngine engine) throws InterruptedException {
@@ -233,9 +291,22 @@ public final class UploaderMain {
         forever.await();
     }
 
-    private static FileLock lockDataDir(Path dataDir) throws IOException {
+    /** @param waitForLock after "Change event…", the previous copy may take a few seconds to close */
+    private static FileLock lockDataDir(Path dataDir, boolean waitForLock) throws IOException, InterruptedException {
         FileChannel channel = FileChannel.open(dataDir.resolve(".lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-        return channel.tryLock();
+        long deadline = System.nanoTime() + (waitForLock ? 20_000_000_000L : 0);
+        while (true) {
+            FileLock lock;
+            try {
+                lock = channel.tryLock();
+            } catch (java.nio.channels.OverlappingFileLockException e) {
+                lock = null;
+            }
+            if (lock != null || System.nanoTime() >= deadline) {
+                return lock;
+            }
+            Thread.sleep(250);
+        }
     }
 
     private static void fail(boolean headless, String message) {
@@ -259,6 +330,7 @@ public final class UploaderMain {
         Boolean ftp;
         Integer ftpPort;
         boolean uploadOriginals;
+        boolean waitForLock;
 
         static Args parse(String[] args) {
             Args a = new Args();
@@ -273,6 +345,7 @@ public final class UploaderMain {
                     case "--no-ftp" -> a.ftp = false;
                     case "--ftp-port" -> a.ftpPort = Integer.parseInt(args[++i]);
                     case "--upload-originals" -> a.uploadOriginals = true;
+                    case "--wait-for-lock" -> a.waitForLock = true;
                     case "--help", "-h" -> a.help = true;
                     default -> throw new IllegalArgumentException("Unknown option " + args[i] + " (try --help)");
                 }

@@ -96,4 +96,31 @@ class UploadQueueTest {
             assertThat(q.recent(10).getFirst().photoId()).isEqualTo("p1");
         }
     }
+
+    @Test
+    void aNewEventStartsFromZeroButOldPhotosAreNeverSentAgain(@TempDir Path dir) {
+        Path db = dir.resolve("queue.db");
+        try (UploadQueue q = new UploadQueue(db)) {
+            q.enqueue(Path.of("/cam/1.jpg"), "1.jpg", 10, 1, sha('1'), "image/jpeg");
+            q.enqueue(Path.of("/cam/2.jpg"), "2.jpg", 10, 1, sha('2'), "image/jpeg");
+            q.markDone(q.claimNext().orElseThrow().id(), "p1", false);
+            q.markFailed(q.claimNext().orElseThrow().id(), "too large");
+
+            q.startNewEvent();
+
+            assertThat(q.counts()).isEqualTo(new QueueCounts(0, 0, 0, 0, 0));
+            assertThat(q.recent(10)).isEmpty();
+            assertThat(q.retryFailed()).as("the old event's failed photo must not go to the new event").isZero();
+            assertThat(q.claimNext()).isEmpty();
+            assertThat(q.isKnown(Path.of("/cam/1.jpg"), 10, 1)).as("a photo already seen is still recognised").isTrue();
+            assertThat(q.enqueue(Path.of("/cam/1.jpg"), "1.jpg", 10, 1, sha('1'), "image/jpeg"))
+                    .isEqualTo(UploadQueue.EnqueueResult.ALREADY_QUEUED);
+        }
+        try (UploadQueue q = new UploadQueue(db)) { // survives the restart that follows "Change event…"
+            assertThat(q.counts().total()).isZero();
+            q.enqueue(Path.of("/cam/3.jpg"), "3.jpg", 10, 1, sha('3'), "image/jpeg");
+            assertThat(q.counts().queued()).isEqualTo(1);
+            assertThat(q.claimNext().orElseThrow().fileName()).isEqualTo("3.jpg");
+        }
+    }
 }

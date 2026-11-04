@@ -67,6 +67,10 @@ public class UploadEngine implements AutoCloseable {
     private volatile String blockedReason;
     private volatile String lastError;
     private volatile ApiModels.Me me;
+    /** Heartbeats since the event details were last fetched: they are re-read every {@link #ME_REFRESH_BEATS}. */
+    private int beatsSinceMe;
+    /** Every 4 heartbeats (one minute at the normal 15 s), so a renamed event shows without a restart. */
+    static final int ME_REFRESH_BEATS = 4;
 
     public UploadEngine(ApiClient api, UploadQueue queue, PhotoSource source, int concurrency, String deviceId) {
         this(api, queue, source, concurrency, deviceId, Backoff.DEFAULT, System::currentTimeMillis, Duration.ofSeconds(15));
@@ -265,8 +269,9 @@ public class UploadEngine implements AutoCloseable {
     /** Presence + connectivity probe. Package-private for tests. */
     void heartbeat() {
         try {
-            if (me == null) {
+            if (me == null || ++beatsSinceMe >= ME_REFRESH_BEATS) {
                 me = api.me();
+                beatsSinceMe = 0;
             }
             QueueCounts counts = queue.counts();
             ApiModels.HeartbeatResponse response = api.heartbeat(new ApiModels.HeartbeatRequest(

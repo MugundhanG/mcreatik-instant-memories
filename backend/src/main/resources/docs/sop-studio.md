@@ -61,7 +61,7 @@ Press **Buy events**, choose how many, then pay by UPI: scan the code or tap **P
 Every camera needs its own **uploader**: the McreatiK Instant Memories Uploader app on a laptop at the venue.
 
 1. Open the event. On **Overview**, under **Cameras & uploaders**, type a name such as "Camera 1 · Canon R6 II" and press **Add uploader**.
-2. A **connection code** appears. **It's shown only once**, so press **Copy code** and paste it into the uploader (see the [Uploader guide](/admin/docs/guide-uploader)).
+2. A **connection code** appears. **It's shown only once**, so press **Copy code** and paste it into the uploader (see the [Uploader guide](/admin/docs/guide-uploader)). A laptop already used for an earlier event: press **Change event…** in the uploader and paste the new code ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)).
 
 ![Add uploader: the one-time connection code](images/s-add-uploader.webp)
 
@@ -94,7 +94,7 @@ The **Guest QR code** card on the Overview gives you:
 
 ![Event status menu: Draft, Upcoming, Live, Completed, Archived](images/s-status-menu.webp)
 
-2. Start the uploader on each laptop and check it shows **Online** (see the [Uploader guide](/admin/docs/guide-uploader)).
+2. Start the uploader on each laptop and check it shows **Online** and **this event's name** (see the [Uploader guide](/admin/docs/guide-uploader)).
 3. Take one test shot per camera. It should appear in the gallery within seconds.
 4. Put the QR posters out.
 5. Follow the [Event-day checklist](/admin/docs/guide-event-day).
@@ -161,6 +161,7 @@ Then share the [Couple SOP](/admin/docs/sop-couple) with them.
 | Problem | Fix |
 | --- | --- |
 | A camera shows Offline on the dashboard | The uploader on that laptop is closed, asleep or has no internet. Check its window. |
+| The uploader shows an earlier event's name | Press **Change event…** in the uploader and paste this event's code. |
 | The camera can't connect to the laptop | See the camera guide's troubleshooting ([Canon](/admin/docs/guide-canon#troubleshooting) · [Sony](/admin/docs/guide-sony#troubleshooting)). |
 | Guests say the page is empty | Status is Draft or Archived, or no photos yet. Set Upcoming or Live. |
 | "This gallery is currently unavailable" | McreatiK turned the gallery off. Contact McreatiK. |

@@ -91,6 +91,23 @@ class UploadEngineTest {
         assertThat(server.heartbeats.get()).isPositive();
     }
 
+    @Test
+    void showsARenamedEventWithoutARestart() throws Exception {
+        startEngine();
+        await("first name", () -> "Arun & Priya Wedding".equals(engine.status().eventName()));
+        server.eventName = "Arun & Priya Reception";
+        await("renamed", () -> "Arun & Priya Reception".equals(engine.status().eventName()));
+    }
+
+    @Test
+    void anUploaderRemovedInTheDashboardPausesAndPointsToChangeEvent() throws Exception {
+        startEngine();
+        await("online", () -> engine.status().connection() == EngineStatus.Connection.ONLINE);
+        server.revoked.set(true);
+        await("paused", () -> engine.status().connection() == EngineStatus.Connection.BLOCKED);
+        assertThat(engine.status().blockedReason()).contains("Change event");
+    }
+
     /** The V1 failure test: internet drops mid-event, photographer keeps shooting, nothing is lost. */
     @Test
     void internetOutageKeepsPhotosQueuedAndResumesAutomatically() throws Exception {
@@ -189,7 +206,7 @@ class UploadEngineTest {
         await("queued", () -> queue.counts().total() == 1);
         Thread.sleep(300);
         assertThat(queue.counts().failed()).isZero();
-        assertThat(engine.status().blockedReason()).contains("disconnected");
+        assertThat(engine.status().blockedReason()).contains("removed from the event");
 
         server.revoked.set(false); // admin fixed it / new token
         await("resumed", () -> queue.counts().done() == 1);

@@ -22,6 +22,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
@@ -33,6 +34,8 @@ import javax.swing.WindowConstants;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
+import com.mcreatik.uploader.UploaderMain;
+import com.mcreatik.uploader.config.EventSwitch;
 import com.mcreatik.uploader.config.UploaderConfig;
 import com.mcreatik.uploader.engine.EngineStatus;
 import com.mcreatik.uploader.engine.UploadEngine;
@@ -105,7 +108,7 @@ public final class UploaderWindow {
 
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(UiTheme.PAPER);
-        root.add(topBar(), BorderLayout.NORTH);
+        root.add(topBar(frame, config), BorderLayout.NORTH);
         JPanel body = new JPanel(new BorderLayout());
         body.setOpaque(false);
         body.add(content, BorderLayout.NORTH);
@@ -130,7 +133,7 @@ public final class UploaderWindow {
 
     // ---- layout pieces ----
 
-    private static JPanel topBar() {
+    private JPanel topBar(JFrame frame, UploaderConfig config) {
         JPanel bar = new JPanel(new BorderLayout());
         bar.setBackground(UiTheme.CARD);
         bar.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, UiTheme.LINE),
@@ -144,7 +147,26 @@ public final class UploaderWindow {
         names.add(UiTheme.label("INSTANT MEMORIES UPLOADER", Font.PLAIN, 10f, UiTheme.GOLD));
         brand.add(names);
         bar.add(brand, BorderLayout.WEST);
+
+        JButton change = UiTheme.secondary("Change event…");
+        change.setToolTipText("Connect this computer to another event with a new connection code");
+        change.addActionListener(e -> changeEvent(frame, config));
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        right.setOpaque(false);
+        right.add(change);
+        bar.add(right, BorderLayout.EAST);
         return bar;
+    }
+
+    /** Only with an empty queue, so no photo from this event can end up in the next one. */
+    private void changeEvent(JFrame frame, UploaderConfig config) {
+        String blocked = EventSwitch.blockedReason(engine.queue().counts());
+        if (blocked != null) {
+            JOptionPane.showMessageDialog(frame, "<html><body style='width:300px'>" + blocked + "</body></html>",
+                    "Change event", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        UploaderMain.changeEvent(config);
     }
 
     private JPanel eventHeader() {

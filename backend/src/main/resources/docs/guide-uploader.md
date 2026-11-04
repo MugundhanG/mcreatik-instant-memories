@@ -6,11 +6,11 @@ The **McreatiK Instant Memories Uploader** runs on a laptop at the venue. It rec
 
 | | Windows | Mac |
 | --- | --- | --- |
-| Status | Field-tested with a Canon EOS R6 Mark II | **Not yet field-tested**: rehearse first (section 7) |
+| Status | Field-tested with a Canon EOS R6 Mark II | **Not yet field-tested**: rehearse first (section 8) |
 | Install | `McreatiK-Instant-Memories-Uploader-Windows.msi` | `McreatiK-Instant-Memories-Uploader-Mac-AppleSilicon.dmg` (M1–M4) or `…-Mac-Intel.dmg` |
 | Needs | Nothing else: Java is included | Nothing else: Java is included; macOS 12+ |
 
-One laptop per camera is simplest. Two cameras on one laptop is possible (section 6).
+One laptop per camera is simplest. Two cameras on one laptop is possible (section 7).
 
 ## 1. Download and install (once)
 
@@ -50,7 +50,7 @@ The first time, the **Setup** window opens:
 
 ![Setup with the connection code pasted, ready to connect](images/uploader-setup-filled.webp)
 
-Next time it remembers the event and goes straight to the main window.
+Next time it remembers the event and goes straight to the main window. To use the laptop for a **different event**, press **Change event…** (section 4).
 
 ## 3. The main window
 
@@ -64,6 +64,7 @@ Next time it remembers the event and goes straight to the main window.
 | Waiting · Uploading · Uploaded · Already sent · Failed | The queue counts ("Already sent" = the camera sent a photo twice; it's skipped) |
 | Recent photos | Each photo's status (coloured) and time |
 | Open folder · Retry failed · Open live gallery | Quick actions (Retry failed lights up only when something failed) |
+| **Change event…** (top right) | Connect this laptop to another event (section 4) |
 
 Now set up the camera: [Canon EOS R6 Mark II](/admin/docs/guide-canon) · [Sony α7 IV](/admin/docs/guide-sony).
 
@@ -73,7 +74,33 @@ When the camera connects, the line under the settings turns green: **Camera conn
 
 ![All photos uploaded](images/uploader-main-uploaded.webp)
 
-## 4. When the internet drops
+## 4. Switching to another event
+
+The uploader remembers its event, even after you close it or install an update. For each new event, connect it to that event's code:
+
+![Change event… is at the top right of the window](images/uploader-change-event-button.webp)
+
+1. Check **Waiting** and **Uploading** are both **0**, so every photo has reached the event you just shot.
+2. In the **new** event's dashboard: **Overview → Cameras & uploaders → Add uploader → Copy code**.
+3. In the uploader, press **Change event…**, then **Paste**, then **Switch event**.
+
+![Switch to another event: paste the new code](images/uploader-switch-event.webp)
+
+The uploader restarts by itself and shows the new event's name, with the counters back at 0.
+
+- **The camera settings don't change.** The Server, Port, User and Password stay the same, so the camera needs no setup.
+- **Each event gets its own folder** inside McreatiK Photos (for example `McreatiK Photos/Kavin & Nila Reception`). If you chose a folder yourself, it's kept.
+- **Old photos are never sent to the new event.** The uploader remembers every photo it has already sent.
+
+If photos are still waiting, the uploader asks you to wait first, so no photo from one event can end up in another:
+
+![Photos still waiting: wait until Waiting and Uploading are 0](images/uploader-switch-wait.webp)
+
+If the internet is down, connect the laptop first and let the queue empty. Then change the event.
+
+> **Tip** A renamed event or camera in the dashboard shows in the uploader within a minute. There's no need to restart.
+
+## 5. When the internet drops
 
 The status turns amber: **Offline — photos are safely queued**. The camera can keep sending, and photos wait in the queue on the laptop.
 
@@ -85,7 +112,7 @@ When the connection returns, they upload by themselves, oldest first, and guests
 
 **Already sent** counts photos the camera sent twice. They're skipped, which is normal. **Failed** photos (rare) retry with **Retry failed**.
 
-## 5. Keep the laptop ready
+## 6. Keep the laptop ready
 
 **Windows**
 - When the firewall asks, click **Allow** for **McreatiK Instant Memories Uploader** on **Private and Public** networks. A new phone hotspot counts as Public.
@@ -99,7 +126,7 @@ When the connection returns, they upload by themselves, oldest first, and guests
 - The camera and the laptop must be on the **same Wi-Fi or phone hotspot**. iPhone hotspot: turn on **Maximize Compatibility**. Android hotspot: use 2.4 GHz.
 - The laptop's address changes with each network (iPhone hotspot usually `172.20.10.x`, Android `192.168.43.x`). Always use the **Server** shown in the window.
 
-## 6. Two cameras on one laptop
+## 7. Two cameras on one laptop
 
 Start a second copy with its own data folder and FTP port, and its own connection code. This needs the command-line version (see "Advanced" below):
 ```
@@ -109,7 +136,7 @@ Enter **2122** as the port in the second camera.
 
 Other options: `--headless` (no window, for advanced use), and `--upload-originals` (send full-size files for server-side processing instead of the light copy).
 
-## 7. Rehearsal before the first paid event
+## 8. Rehearsal before the first paid event
 
 Do this once per laptop, with the real camera, on a test event:
 
@@ -140,6 +167,8 @@ Do this once per laptop, with the real camera, on a test event:
 | "Could not start on port 2121" | Another program uses it: add `--ftp-port 2122` and enter 2122 in the camera. |
 | Photos stop after a while | The laptop slept (keep it plugged in and the lid open; the Mac app keeps itself awake), or the camera slept (extend its auto power off). |
 | Dashboard shows the camera Offline | The uploader on that laptop is closed or has no internet. |
+| It still shows the **old event's name** | The uploader remembers its last event. Press **Change event…** and paste the new event's code (section 4). |
+| Red "This uploader was removed from the event" | Someone deleted this uploader in the dashboard. Add a new one there, then **Change event…** with its code. |
 
 More: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day).
 
