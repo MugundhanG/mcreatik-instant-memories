@@ -127,7 +127,7 @@ describe('Buy events online (card, netbanking, UPI, wallet)', () => {
     expect(onPaid).not.toHaveBeenCalled()
   })
 
-  it('explains a declined payment and still offers the UPI QR', async () => {
+  it('explains a declined payment and still offers the automatic UPI QR', async () => {
     const user = userEvent.setup()
     mockServer()
     stubRazorpay('decline-then-close')
@@ -135,6 +135,74 @@ describe('Buy events online (card, netbanking, UPI, wallet)', () => {
     await user.click(screen.getByRole('button', { name: /Pay ₹999 for 1 event/ }))
     expect(await screen.findByText(/Your card was declined\. No money was taken/)).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: 'UPI QR' }))
-    expect(screen.getByRole('link', { name: 'Pay with UPI app' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Show UPI QR for ₹999/ })).toBeInTheDocument()
+  })
+})
+
+describe('UPI QR confirmed automatically (Razorpay QR)', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+  const online = { ...billing, onlinePayments: true }
+
+  function qrServer(statuses: string[]) {
+    const calls: { method: string; path: string; body: unknown }[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname
+      calls.push({ method: init?.method ?? 'GET', path, body: init?.body ? JSON.parse(String(init.body)) : undefined })
+      const ok = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json' } })
+      if (path.endsWith('/upi-qr')) {
+        return ok({ paymentId: 'q-1', upiLink: 'upi://pay?pa=rzp.qr@icici&am=1998', imageUrl: null, events: 2, amount: 1998,
+          expiresAt: new Date(Date.now() + 15 * 60_000).toISOString() }, 201)
+      }
+      if (path.endsWith('/online-orders/q-1') && init?.method === 'DELETE') return new Response(null, { status: 204 })
+      if (path.endsWith('/online-orders/q-1')) return ok({ paymentId: 'q-1', status: statuses.shift() ?? 'WAITING', events: 2, credits: 2 })
+      return new Response('{}', { status: 404 })
+    }))
+    return calls
+  }
+
+  it('shows a QR for the exact amount with nothing to type, and carries on by itself once paid', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const calls = qrServer(['WAITING', 'PAID'])
+    const onPaid = vi.fn()
+    render(<BuyEventsDialog billing={online} onPaid={onPaid} onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'More events' }))
+    await user.click(screen.getByRole('tab', { name: 'UPI QR' }))
+    await user.click(screen.getByRole('button', { name: 'Show UPI QR for ₹1,998' }))
+
+    expect(await screen.findByRole('img', { name: 'UPI QR for ₹1,998' })).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText(/418299301122/)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Pay with UPI app' })).toHaveAttribute('href', 'upi://pay?pa=rzp.qr@icici&am=1998')
+    expect(screen.getByText(/Waiting for your payment/)).toBeInTheDocument()
+    expect(calls[0]).toMatchObject({ path: '/api/admin/billing/upi-qr', body: { events: 2 } })
+
+    await vi.advanceTimersByTimeAsync(3100)
+    expect(screen.queryByText('Paid ✓')).not.toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(3100)
+    expect(await screen.findByText('Paid ✓')).toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(1300)
+    expect(onPaid).toHaveBeenCalled()
+  })
+
+  it('offers a new QR when it expires, and closes the QR when the dialog closes', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const calls = qrServer(['EXPIRED'])
+    const { unmount } = render(<BuyEventsDialog billing={online} onPaid={vi.fn()} onClose={vi.fn()} />)
+    await user.click(screen.getByRole('tab', { name: 'UPI QR' }))
+    await user.click(screen.getByRole('button', { name: /Show UPI QR/ }))
+    await screen.findByText(/Waiting for your payment/)
+    await vi.advanceTimersByTimeAsync(3100)
+    expect(await screen.findByRole('button', { name: /New UPI QR/ })).toBeInTheDocument()
+    expect(calls.some((c) => c.method === 'DELETE')).toBe(true)
+
+    calls.length = 0
+    await user.click(screen.getByRole('button', { name: /New UPI QR/ }))
+    await screen.findByText(/Waiting for your payment/)
+    unmount()
+    expect(calls.some((c) => c.method === 'DELETE' && c.path.endsWith('/online-orders/q-1'))).toBe(true)
   })
 })

@@ -4,6 +4,7 @@ import { formatCount } from '../lib/format'
 import type { BillingSummary } from '../lib/types'
 import { qrSvg } from '../shared/qr'
 import { lastFailure, openCheckout, resetLastFailure } from '../shared/razorpay'
+import { AutoUpiQr } from './AutoUpiQr'
 import { Button, ErrorText, inputClass } from './ui'
 
 type Method = 'online' | 'upi'
@@ -19,7 +20,8 @@ function upiLink(upiId: string, payee: string | null, amount: number, events: nu
 /**
  * Buy extra events. Two ways:
  * - Pay online (card, netbanking, UPI, wallet) with Razorpay: the events are added as soon as Razorpay confirms.
- * - UPI QR: scan, pay, enter the transaction ID; usable at once, McreatiK checks the payment afterwards.
+ * - UPI QR: with Razorpay set up, a single-use QR confirmed automatically (nothing to type). Without it, McreatiK's own
+ *   UPI ID: scan, pay, enter the transaction ID; usable at once, McreatiK checks the payment afterwards.
  */
 export function BuyEventsDialog({ billing, reason, onPaid, onClose }: {
   billing: BillingSummary
@@ -118,7 +120,7 @@ export function BuyEventsDialog({ billing, reason, onPaid, onClose }: {
               </p>
             </div>
 
-            {billing.onlinePayments && link && (
+            {billing.onlinePayments && (
               <div role="tablist" aria-label="How to pay" className="grid grid-cols-2 gap-1 rounded-xl bg-stone-100 p-1 text-sm">
                 {([['online', 'Card, netbanking, UPI'], ['upi', 'UPI QR']] as const).map(([m, label]) => (
                   <button key={m} type="button" role="tab" aria-selected={method === m} onClick={() => { setMethod(m); setError(null) }}
@@ -141,6 +143,11 @@ export function BuyEventsDialog({ billing, reason, onPaid, onClose }: {
                 </Button>
                 <p className="text-center text-xs text-muted">Payments are processed by Razorpay. McreatiK never sees your card or bank details.</p>
               </div>
+            ) : billing.onlinePayments ? (
+              <AutoUpiQr key={events} events={events} amount={amount} onPaid={(n) => {
+                setPaidOnline(n)
+                setTimeout(onPaid, 1200)
+              }} />
             ) : link ? (
               <form onSubmit={submit} className="space-y-4">
                 <div className="flex items-center gap-4">

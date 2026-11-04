@@ -23,7 +23,10 @@ import com.mcreatik.gallery.common.ApiException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-/** The two Razorpay API calls we need (create an order, read a payment), plus signature checks. No SDK needed. */
+/**
+ * The Razorpay API calls we need (orders and payments for Checkout; single-use UPI QR codes), plus signature checks.
+ * No SDK needed.
+ */
 @Component
 public class RazorpayClient {
 
@@ -48,6 +51,36 @@ public class RazorpayClient {
         JsonNode n = send(request("/v1/orders").POST(HttpRequest.BodyPublishers.ofString(body)).build());
         return new Order(n.path("id").asString(), n.path("amount").asLong(), n.path("currency").asString(),
                 n.path("status").asString());
+    }
+
+    /** A single-use UPI QR: {@code upiLink} is the upi://pay string to draw (any UPI app pays it). */
+    public record UpiQr(String id, String upiLink, String imageUrl) {
+    }
+
+    /** A UPI QR that accepts exactly {@code amountPaise}, once, until {@code closeByEpochSeconds}. */
+    public UpiQr createUpiQr(long amountPaise, long closeByEpochSeconds, String description, Map<String, String> notes) {
+        String body = json.writeValueAsString(Map.of("type", "upi_qr", "name", "McreatiK Instant Memories",
+                "usage", "single_use", "fixed_amount", true, "payment_amount", amountPaise,
+                "description", description, "close_by", closeByEpochSeconds, "notes", notes));
+        JsonNode n = send(request("/v1/payments/qr_codes").POST(HttpRequest.BodyPublishers.ofString(body)).build());
+        return new UpiQr(n.path("id").asString(), n.path("image_content").asString(null), n.path("image_url").asString(null));
+    }
+
+    /** Payments made to a QR code (straight from Razorpay, so they can be trusted). */
+    public java.util.List<PaymentInfo> qrPayments(String qrId) {
+        JsonNode n = send(request("/v1/payments/qr_codes/" + qrId + "/payments").GET().build());
+        java.util.List<PaymentInfo> list = new java.util.ArrayList<>();
+        n.path("items").forEach((p) -> list.add(info(p)));
+        return list;
+    }
+
+    /** Stops a QR accepting payments (best effort: an already closed or paid QR is fine). */
+    public void closeQr(String qrId) {
+        try {
+            send(request("/v1/payments/qr_codes/" + qrId + "/close").POST(HttpRequest.BodyPublishers.noBody()).build());
+        } catch (ApiException e) {
+            // already closed / paid: nothing to do
+        }
     }
 
     public PaymentInfo payment(String paymentId) {

@@ -102,7 +102,10 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 | GET / PUT | `/api/admin/billing/settings` | Super | UPI ID, payee, prices |
 | POST | `/api/admin/billing/online-orders` | Admin | `{events}` → Razorpay order at the server's price `{paymentId, razorpayOrderId, keyId, amountPaise, …}` (201) |
 | POST | `/api/admin/billing/online-orders/{paymentId}/confirm` | Admin | `{razorpayPaymentId, razorpaySignature}` → checks the signature and the captured amount, adds the events once |
-| POST | `/api/public/razorpay/webhook` | Razorpay | `X-Razorpay-Signature` over the raw body; `payment.captured` / `order.paid` add the events (idempotent). 404 when online payment is off |
+| POST | `/api/public/razorpay/webhook` | Razorpay | `X-Razorpay-Signature` over the raw body; `payment.captured` / `order.paid` / `qr_code.credited` add the events (idempotent; a QR is re-checked with Razorpay's API). 404 when online payment is off |
+| POST | `/api/admin/billing/upi-qr` | Admin | `{events}` → single-use Razorpay UPI QR at the server's price `{paymentId, upiLink, imageUrl, amount, expiresAt}` (201) |
+| GET | `/api/admin/billing/online-orders/{paymentId}` | Admin | `{status: WAITING / PAID / EXPIRED}`; while waiting, checks the QR with Razorpay and adds the events once paid |
+| DELETE | `/api/admin/billing/online-orders/{paymentId}` | Admin | Closes the QR (a payment already made still counts) |
 | GET | `/api/public/pricing` | Public | Current prices for the `/pricing` page |
 
 ## Camera uploaders

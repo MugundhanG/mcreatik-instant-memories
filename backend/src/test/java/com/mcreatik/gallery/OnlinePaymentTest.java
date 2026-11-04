@@ -1,6 +1,7 @@
 package com.mcreatik.gallery;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -43,6 +44,8 @@ class OnlinePaymentTest extends IntegrationTest {
     static final Map<String, Long> ORDERS = new ConcurrentHashMap<>();
     /** payment id -> {order id, amount, status} that the stub reports */
     static final Map<String, Object[]> PAYMENTS = new ConcurrentHashMap<>();
+    /** QR id -> {amount in paise, payments made [payment json...], closed} */
+    static final Map<String, Object[]> QRS = new ConcurrentHashMap<>();
     static final AtomicInteger IDS = new AtomicInteger();
     static final AtomicInteger IPS = new AtomicInteger();
 
@@ -79,6 +82,28 @@ class OnlinePaymentTest extends IntegrationTest {
             String id = "order_T" + IDS.incrementAndGet() + "abcdef";
             ORDERS.put(id, amount);
             respond(ex, 200, "{\"id\":\"" + id + "\",\"amount\":" + amount + ",\"currency\":\"INR\",\"status\":\"created\"}");
+            return;
+        }
+        if (path.equals("/v1/payments/qr_codes")) {
+            Matcher m = Pattern.compile("\"payment_amount\"\\s*:\\s*(\\d+)").matcher(body);
+            long amount = m.find() ? Long.parseLong(m.group(1)) : -1;
+            String id = "qr_T" + IDS.incrementAndGet() + "abcdef";
+            QRS.put(id, new Object[] {amount, new java.util.ArrayList<String>(), false});
+            respond(ex, 200, "{\"id\":\"" + id + "\",\"image_content\":\"upi://pay?pa=rzp.qr@icici&am=" + amount / 100
+                    + "&tr=" + id + "\",\"image_url\":\"https://rzp.io/i/x\",\"status\":\"active\"}");
+            return;
+        }
+        Matcher qr = Pattern.compile("^/v1/payments/qr_codes/(qr_[A-Za-z0-9]+)/(payments|close)$").matcher(path);
+        if (qr.matches() && QRS.containsKey(qr.group(1))) {
+            Object[] q = QRS.get(qr.group(1));
+            if (qr.group(2).equals("close")) {
+                q[2] = true;
+                respond(ex, 200, "{\"id\":\"" + qr.group(1) + "\",\"status\":\"closed\"}");
+            } else {
+                @SuppressWarnings("unchecked")
+                java.util.List<String> items = (java.util.List<String>) q[1];
+                respond(ex, 200, "{\"count\":" + items.size() + ",\"items\":[" + String.join(",", items) + "]}");
+            }
             return;
         }
         Matcher pay = Pattern.compile("^/v1/payments/(pay_[A-Za-z0-9]+)(/capture)?$").matcher(path);
@@ -141,6 +166,86 @@ class OnlinePaymentTest extends IntegrationTest {
         return mvc.perform(post("/api/admin/billing/online-orders").header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+    }
+
+    /** The stub records a UPI payment to the QR, as if the studio paid in GPay. */
+    @SuppressWarnings("unchecked")
+    static void payQr(String qrId, String payId, long paise, String status) {
+        ((java.util.List<String>) QRS.get(qrId)[1]).add("{\"id\":\"" + payId + "\",\"amount\":" + paise
+                + ",\"currency\":\"INR\",\"status\":\"" + status + "\",\"method\":\"upi\"}");
+    }
+
+    private String startQr(String token, int events) throws Exception {
+        return mvc.perform(post("/api/admin/billing/upi-qr").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"events\":" + events + "}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+    }
+
+    private String qrStatus(String token, String paymentId) throws Exception {
+        return JsonPath.read(mvc.perform(get("/api/admin/billing/online-orders/" + paymentId).header("Authorization", bearer(token)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), "$.status");
+    }
+
+    private String qrIdOf(String paymentId) {
+        return jdbc.queryForObject("SELECT razorpay_qr_id FROM event_payments WHERE id = ?::uuid", String.class, paymentId);
+    }
+
+    @Test
+    void aUpiQrIsConfirmedAutomaticallyOnceWithoutATransactionId() throws Exception {
+        String res = startQr(studio, 2);
+        String paymentId = JsonPath.read(res, "$.paymentId");
+        assertThat((String) JsonPath.read(res, "$.upiLink")).startsWith("upi://pay");
+        assertThat((Integer) JsonPath.read(res, "$.amount")).isEqualTo(5000);
+        String qrId = qrIdOf(paymentId);
+        assertThat(QRS.get(qrId)[0]).isEqualTo(500000L); // the server's price, in paise
+
+        assertThat(qrStatus(studio, paymentId)).isEqualTo("WAITING");
+        assertThat(credits()).isZero();
+        payQr(qrId, "pay_QR1abcdefgh", 500000, "captured");
+        assertThat(qrStatus(studio, paymentId)).isEqualTo("PAID");
+        assertThat(credits()).isEqualTo(2);
+        assertThat(qrStatus(studio, paymentId)).isEqualTo("PAID");
+        String body = "{\"event\":\"qr_code.credited\",\"payload\":{\"qr_code\":{\"entity\":{\"id\":\"" + qrId + "\"}}}}";
+        mvc.perform(post("/api/public/razorpay/webhook").contentType(MediaType.APPLICATION_JSON).content(body)
+                .header("X-Razorpay-Signature", hmac(WEBHOOK_SECRET, body))).andExpect(status().isOk());
+        assertThat(credits()).isEqualTo(2); // never twice
+        assertThat(jdbc.queryForObject("SELECT method || '/' || status FROM event_payments WHERE id = ?::uuid", String.class, paymentId))
+                .isEqualTo("UPI_AUTO/APPROVED");
+    }
+
+    @Test
+    void theQrWebhookCreditsAStudioWhoClosedTheDialogAndIgnoresForgeriesAndShortPayments() throws Exception {
+        String paymentId = JsonPath.read(startQr(studio, 1), "$.paymentId");
+        String qrId = qrIdOf(paymentId);
+        payQr(qrId, "pay_QR2abcdefgh", 100, "captured"); // wrong amount
+        String body = "{\"event\":\"qr_code.credited\",\"payload\":{\"qr_code\":{\"entity\":{\"id\":\"" + qrId + "\"}}}}";
+        mvc.perform(post("/api/public/razorpay/webhook").contentType(MediaType.APPLICATION_JSON).content(body)
+                .header("X-Razorpay-Signature", "forged")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/public/razorpay/webhook").contentType(MediaType.APPLICATION_JSON).content(body)
+                .header("X-Razorpay-Signature", hmac(WEBHOOK_SECRET, body))).andExpect(status().isOk());
+        assertThat(credits()).isZero();
+        payQr(qrId, "pay_QR3abcdefgh", 250000, "captured");
+        mvc.perform(post("/api/public/razorpay/webhook").contentType(MediaType.APPLICATION_JSON).content(body)
+                .header("X-Razorpay-Signature", hmac(WEBHOOK_SECRET, body))).andExpect(status().isOk());
+        assertThat(credits()).isEqualTo(1);
+    }
+
+    @Test
+    void closingTheQrStopsItAndAnotherStudioCantSeeIt() throws Exception {
+        String paymentId = JsonPath.read(startQr(studio, 1), "$.paymentId");
+        String other = "other-" + UUID.randomUUID().toString().substring(0, 8) + "@client.test";
+        mvc.perform(post("/api/admin/studios").header("Authorization", bearer(adminToken())).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Other\",\"email\":\"" + other + "\",\"password\":\"temporary-123\",\"plan\":\"PER_EVENT\"}"))
+                .andExpect(status().isCreated());
+        String otherToken = login(other);
+        mvc.perform(get("/api/admin/billing/online-orders/" + paymentId).header("Authorization", bearer(otherToken)))
+                .andExpect(status().isNotFound());
+        mvc.perform(delete("/api/admin/billing/online-orders/" + paymentId).header("Authorization", bearer(studio)))
+                .andExpect(status().isNoContent());
+        assertThat(QRS.get(qrIdOf(paymentId))[2]).isEqualTo(true);
+        assertThat(credits()).isZero();
+        jdbc.update("UPDATE event_payments SET expires_at = now() - interval '1 minute' WHERE id = ?::uuid", paymentId);
+        assertThat(qrStatus(studio, paymentId)).isEqualTo("EXPIRED");
     }
 
     private int credits() {

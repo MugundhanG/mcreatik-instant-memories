@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, DocPage, OnlineOrder, OnlinePaymentResult, DocPageSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, PublicPricing, Studio, StudioBilling, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, DocPage, OnlineOrder, OnlinePaymentResult, OnlinePaymentStatus, UpiQrOrder, DocPageSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, PublicPricing, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export type BulkPhotoAction = 'LIKE' | 'UNLIKE' | 'HIDE' | 'SHOW' | 'DELETE'
 
@@ -218,6 +218,10 @@ export const adminApi = {
   confirmOnlinePayment: (paymentId: string, razorpayPaymentId: string, razorpaySignature: string) =>
     request<OnlinePaymentResult>(`/api/admin/billing/online-orders/${paymentId}/confirm`,
       { method: 'POST', body: json({ razorpayPaymentId, razorpaySignature }) }, true),
+  startUpiQr: (events: number) =>
+    request<UpiQrOrder>('/api/admin/billing/upi-qr', { method: 'POST', body: json({ events }) }, true),
+  onlinePaymentStatus: (paymentId: string) => request<OnlinePaymentStatus>(`/api/admin/billing/online-orders/${paymentId}`, {}, true),
+  cancelOnlinePayment: (paymentId: string) => request<void>(`/api/admin/billing/online-orders/${paymentId}`, { method: 'DELETE' }, true),
   payForEvents: (events: number, utr: string) =>
     request<EventPayment>('/api/admin/billing/payments', { method: 'POST', body: json({ events, utr }) }, true),
   payments: (status?: EventPayment['status']) =>

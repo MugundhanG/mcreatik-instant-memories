@@ -53,6 +53,26 @@ public class BillingController {
         return online.confirm(CurrentAdmin.id(auth), paymentId, request.razorpayPaymentId(), request.razorpaySignature());
     }
 
+    /** UPI QR confirmed automatically: a single-use Razorpay QR for the exact amount. */
+    @PostMapping("/upi-qr")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    public OnlinePaymentService.UpiQrOrder startUpiQr(Authentication auth, @RequestBody OnlineOrderRequest request) {
+        return online.startQr(CurrentAdmin.id(auth), request.events());
+    }
+
+    /** "Paid yet?" for a UPI QR (checks with Razorpay; adds the events once paid). */
+    @GetMapping("/online-orders/{paymentId}")
+    public OnlinePaymentService.Status onlineStatus(Authentication auth, @PathVariable UUID paymentId) {
+        return online.status(CurrentAdmin.id(auth), paymentId);
+    }
+
+    /** The studio closed the QR: stop it accepting payments. */
+    @org.springframework.web.bind.annotation.DeleteMapping("/online-orders/{paymentId}")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void cancelOnline(Authentication auth, @PathVariable UUID paymentId) {
+        online.cancel(CurrentAdmin.id(auth), paymentId);
+    }
+
     /** The logged-in studio's plan, this month's usage, bought events, UPI details and its payments. */
     @GetMapping
     public BillingService.Summary summary(Authentication auth) {

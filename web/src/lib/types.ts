@@ -315,8 +315,8 @@ export interface EventPayment {
   note: string | null
   createdAt: string
   reviewedAt: string | null
-  /** UPI_QR: checked by McreatiK. RAZORPAY: paid online, confirmed by Razorpay. */
-  method: 'UPI_QR' | 'RAZORPAY'
+  /** UPI_QR: checked by McreatiK. RAZORPAY: paid online. UPI_AUTO: Razorpay UPI QR. Both confirmed by Razorpay. */
+  method: 'UPI_QR' | 'RAZORPAY' | 'UPI_AUTO'
   razorpayPaymentId: string | null
 }
 
@@ -382,4 +382,22 @@ export interface PublicPricing {
   monthlyEvents: number
   extraEventPrice: number
   currency: 'INR'
+}
+
+/** A single-use UPI QR for the exact amount, confirmed automatically (no transaction ID to type). */
+export interface UpiQrOrder {
+  paymentId: string
+  /** upi://pay link drawn as the QR, or opened by a UPI app on this phone. */
+  upiLink: string | null
+  imageUrl: string | null
+  events: number
+  amount: number
+  expiresAt: string
+}
+
+export interface OnlinePaymentStatus {
+  paymentId: string
+  status: 'WAITING' | 'PAID' | 'EXPIRED'
+  events: number
+  credits: number
 }

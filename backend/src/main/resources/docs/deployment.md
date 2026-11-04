@@ -177,9 +177,10 @@ Instant Memories uses the **same Razorpay account as the main website**. Payment
 2. **Webhook:** Dashboard → Account & Settings → Webhooks → **Add new webhook**:
    - URL `https://im-api.mcreatik.com/api/public/razorpay/webhook`
    - Secret: a new random value; put it in `gallery.env` as `RAZORPAY_WEBHOOK_SECRET`
-   - Events: `payment.captured`, `order.paid`, `payment.failed`
-3. If Razorpay asks for website details, add `live.mcreatik.com` (policy pages: `/pricing`, `/terms`, `/refunds`, `/privacy`, `/contact`).
-4. Deploy the backend. **Buy events** now shows **Card, netbanking, UPI**. Buy 1 event to test, then refund it from the dashboard if wanted.
+   - Events: `payment.captured`, `order.paid`, `payment.failed`, `qr_code.credited`
+3. **UPI QR:** the UPI QR tab uses Razorpay **QR Codes**. If creating a QR fails, turn it on: Dashboard → Payment Products → QR Codes.
+4. If Razorpay asks for website details, add `live.mcreatik.com` (policy pages: `/pricing`, `/terms`, `/refunds`, `/privacy`, `/contact`).
+5. Deploy the backend. **Buy events** now shows **Card, netbanking, UPI** and an automatic **UPI QR**. Buy 1 event to test, then refund it from the dashboard if wanted.
 
 The web app's `_headers` already allow Razorpay Checkout (script, frames, `payment` permission).
 
