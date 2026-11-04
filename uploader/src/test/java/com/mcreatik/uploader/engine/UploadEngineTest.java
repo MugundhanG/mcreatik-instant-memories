@@ -100,6 +100,33 @@ class UploadEngineTest {
     }
 
     @Test
+    void reportsConnectionTimesAndARealUploadSpeed() throws Exception {
+        startEngine();
+        await("online", () -> engine.status().connection() == EngineStatus.Connection.ONLINE);
+        assertThat(engine.status().onlineSince()).isNotNull();
+        assertThat(engine.status().offlineSince()).isNull();
+        assertThat(engine.status().bytesPerSecond()).as("no upload yet, no speed shown").isZero();
+
+        TestPhotos.write(folder, "IMG_SPEED.JPG");
+        await("uploaded", () -> queue.counts().done() == 1);
+        assertThat(engine.status().bytesPerSecond()).as("speed from a real upload").isPositive();
+
+        server.offline.set(true);
+        TestPhotos.write(folder, "IMG_OFF.JPG");
+        await("offline", () -> engine.status().connection() == EngineStatus.Connection.OFFLINE);
+        assertThat(engine.status().offlineSince()).isNotNull();
+        assertThat(engine.status().onlineSince()).isNull();
+    }
+
+    @Test
+    void readsTheEventDateWhenTheServerSendsIt() throws Exception {
+        server.eventDate = "2026-11-20";
+        startEngine();
+        await("date", () -> java.time.LocalDate.of(2026, 11, 20).equals(engine.status().eventDate()));
+        assertThat(engine.status().eventStatus()).isNotBlank();
+    }
+
+    @Test
     void anUploaderRemovedInTheDashboardPausesAndPointsToChangeEvent() throws Exception {
         startEngine();
         await("online", () -> engine.status().connection() == EngineStatus.Connection.ONLINE);

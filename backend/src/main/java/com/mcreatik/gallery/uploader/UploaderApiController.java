@@ -47,7 +47,7 @@ public class UploaderApiController {
 
     public record MeResponse(UUID uploaderId, String uploaderName, UUID eventId, String eventName,
                              EventStatus eventStatus, String galleryUrl, long heartbeatIntervalSeconds,
-                             long maxFileSizeBytes) {
+                             long maxFileSizeBytes, java.time.LocalDate eventDate, java.time.Instant eventStartTime) {
     }
 
     @GetMapping("/me")
@@ -56,7 +56,7 @@ public class UploaderApiController {
         var event = events.findById(principal.eventId()).orElseThrow(() -> ApiException.notFound("Event"));
         return new MeResponse(uploader.getId(), uploader.getName(), event.getId(), event.getName(), event.getStatus(),
                 properties.galleryUrl(event.getSlug()), HEARTBEAT_INTERVAL.toSeconds(),
-                properties.upload().maxFileSizeBytes());
+                properties.upload().maxFileSizeBytes(), event.getEventDate(), event.getStartTime());
     }
 
     public record HeartbeatRequest(@Size(max = 200) String deviceIdentifier, @Min(0) int queuePending,

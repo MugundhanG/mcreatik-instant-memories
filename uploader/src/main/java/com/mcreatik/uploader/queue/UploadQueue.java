@@ -217,6 +217,25 @@ public class UploadQueue implements AutoCloseable {
         return items;
     }
 
+    /** This event's photos, newest first, a page at a time (the Gallery page). */
+    public synchronized List<QueueItem> list(int limit, int offset) {
+        List<QueueItem> items = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT * FROM uploads WHERE id > ? ORDER BY id DESC LIMIT ? OFFSET ?")) {
+            ps.setLong(1, eventFloor);
+            ps.setInt(2, limit);
+            ps.setInt(3, offset);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    items.add(map(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
+        return items;
+    }
+
     public synchronized Optional<QueueItem> find(long id) {
         return query("SELECT * FROM uploads WHERE id = ?", ps -> ps.setLong(1, id), UploadQueue::map);
     }

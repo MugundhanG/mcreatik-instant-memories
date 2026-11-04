@@ -79,7 +79,7 @@ This guide sets up the **Sony α7 IV** to send every JPEG over Wi-Fi (FTP) to th
 
 ### Step 9: Test
 
-Shoot 3 frames. Within seconds the uploader shows **Camera connected · 3 received**, and the photos are in the gallery. To check the camera's side, go to **FTP Transfer Func. → FTP Transfer** and look at the transfer status.
+Shoot 3 frames. Within seconds the uploader shows **3 received this session**, the **Camera** stage turns green (**Receiving**), and the photos are in the gallery. To check the camera's side, go to **FTP Transfer Func. → FTP Transfer** and look at the transfer status.
 
 ![The uploader receiving photos from the camera](images/uploader-main-uploaded.webp)
 

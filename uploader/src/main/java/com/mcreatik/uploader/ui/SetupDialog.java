@@ -201,9 +201,8 @@ public final class SetupDialog {
             form.add(field("2  ·  Folder for photos on this computer", row(folder, browse)));
         }
         form.add(Box.createVerticalStrut(14));
-        JPanel ftpCard = UiTheme.card(new BorderLayout(0, 4));
-        ftpCard.setBackground(UiTheme.PAPER);
-        ftpCard.setBorder(UiTheme.roundedBorder(UiTheme.LINE, new Insets(10, 12, 10, 12)));
+        JPanel ftpCard = new com.mcreatik.uploader.ui.components.Ui.Surface(new BorderLayout(0, 4), "inset", "border", 12,
+                new Insets(10, 12, 10, 12));
         ftpCard.add(ftp, BorderLayout.NORTH);
         ftpHint.setBorder(BorderFactory.createEmptyBorder(0, 26, 0, 0));
         ftpCard.add(ftpHint, BorderLayout.CENTER);
@@ -218,8 +217,13 @@ public final class SetupDialog {
         buttons.add(connect);
         actions.add(buttons, BorderLayout.EAST);
 
-        JPanel root = new JPanel(new BorderLayout(0, 22));
-        root.setBackground(UiTheme.CARD);
+        JPanel root = new JPanel(new BorderLayout(0, 22)) {
+            @Override
+            protected void paintComponent(java.awt.Graphics g) {
+                g.setColor(com.mcreatik.uploader.ui.theme.Tok.c("card"));
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
         root.setBorder(BorderFactory.createEmptyBorder(24, 26, 20, 26));
         root.add(header, BorderLayout.NORTH);
         root.add(form, BorderLayout.CENTER);

@@ -82,7 +82,7 @@ Choose the same Wi-Fi network or hotspot as the laptop, then enter its password.
 
 ### Step 9: Test
 
-Shoot 3 frames. Within seconds the uploader shows **Camera connected · 3 received**, and the photos are in the gallery.
+Shoot 3 frames. Within seconds the uploader shows **3 received this session**, the **Camera** stage turns green (**Receiving**), and the photos are in the gallery.
 
 ![The uploader receiving photos from the camera](images/uploader-main-uploaded.webp)
 

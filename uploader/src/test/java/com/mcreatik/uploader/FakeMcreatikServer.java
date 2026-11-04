@@ -40,6 +40,8 @@ public class FakeMcreatikServer implements AutoCloseable {
     public final AtomicInteger failNextPuts = new AtomicInteger();
     public volatile String rejectUploadsWithCode;
     public volatile String eventName = "Arun & Priya Wedding";
+    /** Sent in /me when set (newer servers); null leaves the field out, like an older server. */
+    public volatile String eventDate;
     /** True = behaves like a server that accepts web/thumbnail versions prepared by the uploader. */
     public volatile boolean supportsPrepared;
     /** photoId → the "prepared" JSON object of its latest session, for photos sent in prepared mode */
@@ -99,7 +101,8 @@ public class FakeMcreatikServer implements AutoCloseable {
             case "GET /api/uploader/me" -> respond(ex, 200, """
                     {"uploaderId":"u1","uploaderName":"Camera 1","eventId":"e1","eventName":"%s",
                      "eventStatus":"LIVE","galleryUrl":"https://gallery.mcreatik.com/e/arun-priya-7k3d",
-                     "heartbeatIntervalSeconds":15,"maxFileSizeBytes":62914560}""".formatted(eventName));
+                     "heartbeatIntervalSeconds":15,"maxFileSizeBytes":62914560%s}""".formatted(eventName,
+                    eventDate == null ? "" : ",\"eventDate\":\"" + eventDate + "\""));
             case "POST /api/uploader/heartbeat" -> {
                 heartbeats.incrementAndGet();
                 respond(ex, 200, "{\"eventStatus\":\"LIVE\",\"acceptingUploads\":true}");

@@ -123,4 +123,18 @@ class UploadQueueTest {
             assertThat(q.claimNext().orElseThrow().fileName()).isEqualTo("3.jpg");
         }
     }
+
+    @Test
+    void theGalleryPagesThroughThisEventNewestFirst(@TempDir Path dir) {
+        try (UploadQueue q = new UploadQueue(dir.resolve("queue.db"))) {
+            q.enqueue(Path.of("/cam/old.jpg"), "old.jpg", 10, 1, sha('0'), "image/jpeg");
+            q.startNewEvent();
+            for (char c = '1'; c <= '5'; c++) {
+                q.enqueue(Path.of("/cam/" + c + ".jpg"), c + ".jpg", 10, 1, sha(c), "image/jpeg");
+            }
+            assertThat(q.list(2, 0)).extracting(QueueItem::fileName).containsExactly("5.jpg", "4.jpg");
+            assertThat(q.list(2, 4)).extracting(QueueItem::fileName).containsExactly("1.jpg");
+            assertThat(q.list(10, 0)).extracting(QueueItem::fileName).doesNotContain("old.jpg");
+        }
+    }
 }

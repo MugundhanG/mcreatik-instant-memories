@@ -8,8 +8,28 @@ public final class ApiModels {
     private ApiModels() {
     }
 
+    /** {@code eventDate}/{@code eventStartTime} are null with servers that don't send them yet. */
     public record Me(String uploaderId, String uploaderName, String eventId, String eventName, String eventStatus,
-                     String galleryUrl, long heartbeatIntervalSeconds, long maxFileSizeBytes) {
+                     String galleryUrl, long heartbeatIntervalSeconds, long maxFileSizeBytes,
+                     String eventDate, String eventStartTime) {
+
+        /** The event date, or null when missing or unreadable. */
+        public java.time.LocalDate eventDateValue() {
+            try {
+                return eventDate == null ? null : java.time.LocalDate.parse(eventDate);
+            } catch (java.time.format.DateTimeParseException e) {
+                return null;
+            }
+        }
+
+        /** The event start time, or null when missing or unreadable. */
+        public java.time.Instant eventStartValue() {
+            try {
+                return eventStartTime == null ? null : java.time.Instant.parse(eventStartTime);
+            } catch (java.time.format.DateTimeParseException e) {
+                return null;
+            }
+        }
     }
 
     public record HeartbeatRequest(String deviceIdentifier, int queuePending, int queueFailed, String lastError,

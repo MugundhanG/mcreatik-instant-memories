@@ -15,9 +15,9 @@ Use this on the day. Print it, or keep it open on a phone. It works for the stud
 ## At the venue (30 minutes before guests)
 
 1. **Hotspot on.** iPhone: Maximize Compatibility. Android: 2.4 GHz.
-2. **Laptop:** join the hotspot, plug in the charger, start McreatiK Instant Memories Uploader. Check it shows green **Online**.
+2. **Laptop:** join the hotspot, plug in the charger, start McreatiK Instant Memories Uploader. Check it shows green **Online** and this event's name and date.
 3. **Check the address.** Make sure the Server in the uploader matches the one in the camera's FTP settings.
-4. **Camera:** turn Wi-Fi/FTP on and take one test shot. The uploader should show **Camera connected · 1 received**.
+4. **Camera:** turn Wi-Fi/FTP on and take one test shot. The uploader should show **1 received this session**, and the pipeline turns green.
 5. **Phone:** scan the poster's QR code. The test photo should be in the gallery.
 6. **Hide the test shot** on the Photos tab if you don't want guests to see it.
 7. **Posters out:** entrance, stage side, food area.

@@ -43,6 +43,12 @@
       <version>${flatlaf.version}</version>
     </dependency>
     <dependency>
+      <!-- SVG icons (Lucide) that recolour with the theme -->
+      <groupId>com.formdev</groupId>
+      <artifactId>flatlaf-extras</artifactId>
+      <version>${flatlaf.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.formdev</groupId>
       <artifactId>flatlaf-fonts-inter</artifactId>
       <version>4.0</version>

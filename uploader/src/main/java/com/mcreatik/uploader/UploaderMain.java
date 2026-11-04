@@ -86,6 +86,9 @@ public final class UploaderMain {
         startConcurrency = a.concurrency;
         KeepAwake.start();
         boolean headless = a.headless || GraphicsEnvironment.isHeadless();
+        if (!headless) {
+            com.mcreatik.uploader.ui.UiTheme.apply(); // saved Light/Dark theme before any window, so nothing flashes
+        }
         Files.createDirectories(a.dataDir);
         FileLock lock = lockDataDir(a.dataDir, a.waitForLock);
         if (lock == null) {
@@ -125,7 +128,7 @@ public final class UploaderMain {
             }
             runConsole(engine);
         } else {
-            UploaderWindow.open(engine, config, ftp);
+            UploaderWindow.open(engine, config, ftp, a.dataDir, a.uploadOriginals);
         }
     }
 
