@@ -41,7 +41,7 @@ caffeinate -dims java -jar ~/Documents/McreatiK/mcreatik-uploader.jar
 - Keep the Terminal window open (you can minimise it). Closing it closes the uploader.
 
 The first time, the window asks for the **connection code** (copy it from the event dashboard: Overview →
-Cameras & uploaders → Add uploader). Keep **"Receive photos from the camera over Wi-Fi"** ticked and click OK.
+Cameras & uploaders → Add camera & get code). Keep **"Receive photos from the camera over Wi-Fi"** ticked and click OK.
 The default photo folder is **McreatiK Photos** in your home folder.
 
 ## 4. Allow the camera through the firewall

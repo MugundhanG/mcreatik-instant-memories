@@ -95,7 +95,7 @@ export default function InstallUploaderPage() {
       <section className="mt-6 rounded-2xl border border-line bg-white p-6">
         <h2 className="text-base font-semibold">After installing</h2>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-stone-700">
-          <li>Open the event here: <b>Overview → Cameras &amp; uploaders → Add uploader → Copy code</b>.</li>
+          <li>Open the event here: <b>Overview → Cameras &amp; uploaders → Add camera &amp; get code → Copy code (or Get new code on a camera you already added)</b>.</li>
           <li>Open the uploader, press <b>Paste</b>, then <b>Connect</b>.</li>
           <li>Type the <b>Server, Port, User and Password</b> it shows into the camera's FTP settings, and take a test shot.</li>
           <li>More cameras on the same laptop: press <b>+ Add camera</b> in the uploader and use the port it shows.</li>

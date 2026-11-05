@@ -44,7 +44,7 @@ The first time, the **Setup** window opens:
 
 ![Uploader setup window](images/uploader-setup-empty.webp)
 
-1. **Connection code:** copy the code from the event dashboard (Overview → Cameras & uploaders → Add uploader → Copy code), then press **Paste**.
+1. **Connection code:** copy the code from the event dashboard (Overview → Cameras & uploaders → **Add camera & get code** → **Copy code**; for a camera you already added, **Get new code**), then press **Paste**.
 2. **Folder for photos on this computer:** the default "McreatiK Photos" in your home folder is fine.
 3. **How photos arrive:** keep **"Receive photos from the camera over Wi-Fi"** ticked for Canon or Sony FTP. Untick it only if your camera software already saves into a folder.
 4. Press **Connect**. If something is wrong, the reason appears in red under the form:
@@ -94,7 +94,9 @@ The uploader remembers its event, even after you close it or install an update. 
 ![Change event… is on the right of the event card (also on the Events page)](images/uploader-change-event-button.webp)
 
 1. Check **Waiting** and **Uploading** are both **0**, so every photo has reached the event you just shot.
-2. In the **new** event's dashboard: **Overview → Cameras & uploaders → Add uploader → Copy code**.
+2. In the **new** event's dashboard, go to **Overview → Cameras & uploaders**:
+   - No camera there yet: type a name, press **Add camera & get code**, then **Copy code**.
+   - The camera is already listed (you added it when you created the event): press **Get new code** next to it, then **Copy code**. The dashboard never shows a code again after its pop-up closes, so this is how you get one later.
 3. In the uploader, press **Change event…** (on the event card, or on the **Events** page), then **Paste**, then **Switch event**.
 
 ![Switch to another event: paste the new code](images/uploader-switch-event.webp)
