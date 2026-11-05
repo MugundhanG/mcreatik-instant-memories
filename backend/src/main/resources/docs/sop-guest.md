@@ -1,8 +1,6 @@
-# Guest SOP
+# Live photos at the event: a guide for guests
 
-This is the guide for **guests**: everyone at the event who scans the QR code. There's no app, no sign-up and no login. Studios can share this page with event planners, or print its key lines on table cards. "You" means the guest.
-
-> **Tip** Table card text you can copy: "**Scan to see the photos live.** Point your phone camera at the code. No app needed. New photos appear on their own."
+This guide is for everyone at the event who scans the QR code. There's no app, no sign-up and no login: the photos open in your phone's browser.
 
 ## 1. Open the gallery
 

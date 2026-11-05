@@ -1,6 +1,6 @@
-# Couple SOP
+# Your photo gallery: a guide for couples
 
-This is the guide for the **couple** (the client). It covers getting into your private photo login, picking your album photos and downloading everything. Studios: send this page, or the steps below, with the login. "You" means the couple.
+Your photographer has set up a private photo gallery for your event. This guide covers getting into your login, picking your album photos and downloading everything.
 
 ## What you get
 

@@ -25,7 +25,7 @@ This is the standard operating procedure for the **McreatiK super admin**: the p
 
 ![Staff sign-in page](images/s-login.webp)
 
-As the super admin you see four extra menu items that studios never see: **Studios**, **Docs**, and the events of *every* studio.
+As the super admin you see extra menu items that studios never see: **Studios**, the full **Docs** (studios get **Guides**: only the pages tagged "Studios" in the sidebar), and the events of *every* studio.
 
 ## 2. See every event
 

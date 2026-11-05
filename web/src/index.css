@@ -64,9 +64,16 @@ body {
   .shutter-iris { animation-duration: 4s; animation-timing-function: linear; }
 }
 
+.print-only { display: none; }
+
 @media print {
   .no-print { display: none !important; }
+  .print-only { display: block; }
   body { background: white; }
+  /* Documentation PDFs (Download PDF): keep pictures, tables and diagrams whole, headings with their text. */
+  .doc-print img, .doc-print figure, .doc-print table, .doc-print pre, .doc-print svg, .doc-print tr { break-inside: avoid; }
+  .doc-print h1, .doc-print h2, .doc-print h3 { break-after: avoid; }
+  .doc-print a { color: inherit; text-decoration: none; }
 }
 
 /* Printed QR poster (PrintQrPage): ivory paper, gold foil accents. */

@@ -159,13 +159,29 @@ Choose a category first if the batch belongs to one (for example "Cake cutting")
 - **Turn off:** blocks the couple's login without deleting anything.
 - **Delete login:** removes it. Their picks are kept with the event.
 
-Then share the [Couple SOP](/admin/docs/sop-couple) with them.
+Then send them the couple guide: **Guides → Couples (clients) → Download PDF** (see [Guides for your clients](#11-guides-for-you-and-your-clients)).
 
 ## 10. See how guests used it
 
 **Guests** shows people, QR scans, gallery visits, photo views and downloads, an hourly chart and the most-loved photos. Guests stay anonymous. Use it in your marketing ("312 guests watched live").
 
 ![Guests tab: guest activity, hourly chart and most-loved photos](images/s-guests-full.webp)
+
+## 11. Guides for you and your clients
+
+**Guides** in the top menu has every guide for you, plus guides to send your clients. Each page has a **Download PDF** button: choose **Save as PDF** in the print window. The PDF always matches the current app.
+
+| Send this | To | When |
+| --- | --- | --- |
+| [Couples (clients)](/admin/docs/sop-couple) | The couple | With their login (step 9) |
+| [Guests](/admin/docs/sop-guest) | The event planner or family | A few days before the event |
+| [Couples Q&A](/admin/docs/qa-couples) and [Guests Q&A](/admin/docs/qa-guests) | Anyone with questions | Any time |
+
+The client guides show **your studio's name, logo and Instagram** (set in **Account**, step 2), with a small "Live photos by McreatiK Instant Memories" line at the end. Send the PDF on WhatsApp or email: your clients don't need a login to read it.
+
+Table card text you can copy: "**Scan to see the photos live.** Point your phone camera at the code. No app needed. New photos appear on their own."
+
+![Guides: the couple guide with your studio's name and logo, and the Download PDF button](images/s-guides.webp)
 
 ## Troubleshooting
 

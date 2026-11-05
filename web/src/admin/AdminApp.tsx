@@ -45,11 +45,12 @@ function Layout({ wide = false }: { wide?: boolean }) {
   const phoneLinks = [
     { to: '/admin', label: 'Events' },
     { to: '/admin/install', label: 'Install uploader' },
-    ...(superAdmin ? [{ to: '/admin/studios', label: 'Studios' }, { to: '/admin/docs', label: 'Docs' }] : []),
+    ...(superAdmin ? [{ to: '/admin/studios', label: 'Studios' }] : []),
+    { to: '/admin/docs', label: superAdmin ? 'Docs' : 'Guides' },
     { to: '/admin/account', label: session?.displayName ? `Account · ${session.displayName}` : 'Account' },
   ]
   return (
-    <div className="min-h-dvh bg-stone-50">
+    <div className="min-h-dvh bg-stone-50 print:bg-white">
       <header className="no-print border-b border-line bg-white">
         <div className={`mx-auto flex h-14 ${wide ? 'max-w-[90rem]' : 'max-w-6xl'} items-center justify-between px-4 sm:px-6`}>
           <Link to="/admin" className="flex items-center gap-2">
@@ -66,7 +67,7 @@ function Layout({ wide = false }: { wide?: boolean }) {
               Install uploader
             </NavLink>
             {superAdmin && <NavLink to="/admin/studios" className={navClass}>Studios</NavLink>}
-            {superAdmin && <NavLink to="/admin/docs" className={navClass}>Docs</NavLink>}
+            <NavLink to="/admin/docs" className={navClass}>{superAdmin ? 'Docs' : 'Guides'}</NavLink>
             <NavLink to="/admin/account" className={navClass} title={session?.email}>{session?.displayName}</NavLink>
             <button type="button" onClick={auth.signOut} className="text-muted hover:text-ink">
               Sign out
@@ -112,6 +113,12 @@ function Layout({ wide = false }: { wide?: boolean }) {
   )
 }
 
+/** The docs start page: the overview for McreatiK, the studio guide for a studio. */
+function DocsHome() {
+  const session = useSession()
+  return <Navigate to={session?.role === 'SUPER_ADMIN' ? 'overview' : 'sop-studio'} replace />
+}
+
 export default function AdminApp() {
   return (
     <Routes>
@@ -127,7 +134,7 @@ export default function AdminApp() {
           <Route path="install" element={<InstallUploaderPage />} />
         </Route>
         <Route element={<Layout wide />}>
-          <Route path="docs" element={<Navigate to="/admin/docs/overview" replace />} />
+          <Route path="docs" element={<DocsHome />} />
           <Route path="docs/:slug" element={<DocsPage />} />
         </Route>
       </Route>

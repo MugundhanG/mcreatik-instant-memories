@@ -18,7 +18,7 @@ The audit found no critical issues, and no High issues remain. H1 does not apply
 | Container | Non-root user, bound to 127.0.0.1, memory and CPU capped, exits on out-of-memory | `backend/Dockerfile`, `deploy.sh` |
 | Image bombs | Subsampled decoding, 60 MB upload cap, 1 MB logo cap with type check | `ImageOps`, `StudioBranding` |
 | Dev endpoints | Local storage controller exists only with `STORAGE_TYPE=local` | `@ConditionalOnProperty` |
-| This documentation | Served by the backend to the super admin only; not in the public website files | `DocsController` |
+| This documentation | Served by the backend after the role check; not in the public website files. Studios get only the studio guides and their images: internal pages and images are 404 for them, so they can't tell which exist | `DocsController` |
 
 ## Security findings
 

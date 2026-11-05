@@ -19,7 +19,7 @@ The backend (`backend/`) is a Spring Boot 4.1 application on Java 21, organised 
 | `analytics` | Anonymous guest activity | `GuestActivityController`, `GuestActivityService` |
 | `storage` | R2 (production) or local disk (development) | `StorageService`, `R2StorageService`, `LocalStorageService`, `StorageKeys` |
 | `mail` | Email | `Mailer`, `SmtpMailer` |
-| `docs` | This documentation (super admin only) | `DocsController` |
+| `docs` | This documentation: every page for the super admin, the studio guides for studios | `DocsController` |
 | `common` | Errors and tokens | `ApiException`, `GlobalExceptionHandler`, `Tokens` |
 
 ## Request lifecycle
