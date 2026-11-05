@@ -72,9 +72,10 @@ export function GalleryAccessCard({ event, onChange }: { event: EventDetail; onC
 
 /** What the studio sees when McreatiK has turned a gallery off (it cannot change it). */
 export function GalleryAccessNotice({ event }: { event: EventDetail }) {
+  // A client gallery has no live gallery by design; a couple's gallery waiting for storage has its own notice.
   const off = [
-    event.liveGalleryEnabled === false && 'Live gallery',
-    event.clientGalleryEnabled === false && 'Client gallery',
+    event.liveGalleryEnabled === false && event.eventType !== 'CLIENT' && 'Live gallery',
+    event.clientGalleryEnabled === false && !event.storageLocked && 'Client gallery',
   ].filter(Boolean) as string[]
   if (off.length === 0) return null
   return (

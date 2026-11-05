@@ -75,8 +75,15 @@ public class BillingService {
         }
     }
 
-    /** What a payment buys. */
-    public enum Item { MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN }
+    /**
+     * What a payment buys. STORAGE: GB for one event; CLIENT_SETUP: client galleries (one used per gallery created);
+     * EXTEND: 6 more months for one event, charged per GB it holds.
+     */
+    public enum Item { MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN, STORAGE, CLIENT_SETUP, EXTEND }
+
+    /** One GB as storage is counted and sold (1024^3 bytes). */
+    public static final long GB = 1024L * 1024 * 1024;
+    static final int MAX_GB_PER_PAYMENT = 1000;
 
     static final ZoneId INDIA = ZoneId.of("Asia/Kolkata");
     static final int MAX_EVENTS_PER_PAYMENT = 50;
@@ -90,7 +97,8 @@ public class BillingService {
      */
     public record Settings(String upiId, String payeeName, int perEventPrice, int extraEventPrice, int monthlyPrice,
                            Integer quickPrice, Integer main2Price, Integer main4Price, Integer quick2Price,
-                           Integer quick4Price, Integer upgradePrice, Integer upgradeGuests) {
+                           Integer quick4Price, Integer upgradePrice, Integer upgradeGuests, Integer storageGbPrice,
+                           Integer freeStorageGb, Integer clientSetupPrice, Integer activeMonths) {
 
         int packPrice(Plan plan) {
             return switch (plan) {
@@ -111,7 +119,8 @@ public class BillingService {
     }
 
     /** Every current price, for the dashboard (the server prices each purchase again). */
-    public record Prices(int main, int quick, int main2, int main4, int quick2, int quick4, int upgrade, int upgradeGuests) {
+    public record Prices(int main, int quick, int main2, int main4, int quick2, int quick4, int upgrade, int upgradeGuests,
+                         int storageGb, int freeStorageGb, int clientSetup, int activeMonths) {
     }
 
     /**
@@ -123,7 +132,7 @@ public class BillingService {
     public record Summary(Plan plan, boolean free, int monthlyQuota, int usedThisMonth, int credits, int unitPrice,
                           int monthlyPrice, String upiId, String payeeName, List<Payment> payments, boolean onlinePayments,
                           int mainCredits, int quickCredits, int carryOver, boolean packActive, LocalDate planPaidUntil,
-                          Prices prices) {
+                          Prices prices, int clientCredits) {
     }
 
     /** What a purchase costs this studio right now. {@code events}: how many (events or months). */
@@ -135,7 +144,8 @@ public class BillingService {
     }
 
     public record StudioBilling(UUID studioId, Plan plan, int monthlyQuota, int usedThisMonth, int credits,
-                                int mainCredits, int quickCredits, LocalDate planPaidUntil, boolean packActive) {
+                                int mainCredits, int quickCredits, LocalDate planPaidUntil, boolean packActive,
+                                int clientCredits) {
     }
 
     private final JdbcTemplate jdbc;
@@ -147,7 +157,7 @@ public class BillingService {
     }
 
     record Account(String role, Plan plan, int legacyQuota, int mainCredits, int quickCredits, LocalDate paidUntil,
-                   LocalDate planSince) {
+                   LocalDate planSince, int clientCredits) {
         boolean free() {
             return "SUPER_ADMIN".equals(role) || plan == Plan.UNLIMITED;
         }
@@ -167,10 +177,10 @@ public class BillingService {
 
     private Account account(UUID studioId, boolean lock) {
         List<Account> rows = jdbc.query("""
-                SELECT role, plan, monthly_quota, main_credits, quick_credits, plan_paid_until, plan_since
+                SELECT role, plan, monthly_quota, main_credits, quick_credits, plan_paid_until, plan_since, client_credits
                 FROM admin_users WHERE id = ?""" + (lock ? " FOR UPDATE" : ""), (rs, n) -> new Account(rs.getString(1),
                 Plan.valueOf(rs.getString(2)), rs.getInt(3), rs.getInt(4), rs.getInt(5),
-                rs.getDate(6) == null ? null : rs.getDate(6).toLocalDate(), rs.getDate(7).toLocalDate()), studioId);
+                rs.getDate(6) == null ? null : rs.getDate(6).toLocalDate(), rs.getDate(7).toLocalDate(), rs.getInt(8)), studioId);
         if (rows.isEmpty()) {
             throw ApiException.notFound("Studio");
         }
@@ -219,9 +229,11 @@ public class BillingService {
     public Settings settings() {
         return jdbc.queryForObject("""
                 SELECT upi_id, payee_name, per_event_price, extra_event_price, monthly_price, quick_price, main2_price,
-                       main4_price, quick2_price, quick4_price, upgrade_price, upgrade_guests FROM billing_settings""",
+                       main4_price, quick2_price, quick4_price, upgrade_price, upgrade_guests, storage_gb_price,
+                       free_storage_gb, client_setup_price, active_months FROM billing_settings""",
                 (rs, n) -> new Settings(rs.getString(1), rs.getString(2), rs.getInt(3), rs.getInt(4), rs.getInt(5),
-                        rs.getInt(6), rs.getInt(7), rs.getInt(8), rs.getInt(9), rs.getInt(10), rs.getInt(11), rs.getInt(12)));
+                        rs.getInt(6), rs.getInt(7), rs.getInt(8), rs.getInt(9), rs.getInt(10), rs.getInt(11), rs.getInt(12),
+                        rs.getInt(13), rs.getInt(14), rs.getInt(15), rs.getInt(16)));
     }
 
     private static int orKeep(Integer value, int current) {
@@ -237,18 +249,23 @@ public class BillingService {
         int[] prices = {s.perEventPrice(), s.extraEventPrice(), s.monthlyPrice(), orKeep(s.quickPrice(), now.quickPrice()),
                 orKeep(s.main2Price(), now.main2Price()), orKeep(s.main4Price(), now.main4Price()),
                 orKeep(s.quick2Price(), now.quick2Price()), orKeep(s.quick4Price(), now.quick4Price()),
-                orKeep(s.upgradePrice(), now.upgradePrice()), orKeep(s.upgradeGuests(), now.upgradeGuests())};
-        for (int p : prices) {
-            if (p < 1) {
+                orKeep(s.upgradePrice(), now.upgradePrice()), orKeep(s.upgradeGuests(), now.upgradeGuests()),
+                orKeep(s.storageGbPrice(), now.storageGbPrice()), orKeep(s.freeStorageGb(), now.freeStorageGb()),
+                orKeep(s.clientSetupPrice(), now.clientSetupPrice()), orKeep(s.activeMonths(), now.activeMonths())};
+        for (int i = 0; i < prices.length; i++) {
+            // The free storage may be 0 GB; everything else must be at least 1.
+            if (prices[i] < (i == 11 ? 0 : 1)) {
                 throw ApiException.badRequest("INVALID_PRICE", "Prices must be positive");
             }
         }
         jdbc.update("""
                 UPDATE billing_settings SET upi_id = ?, payee_name = ?, per_event_price = ?, extra_event_price = ?,
                        monthly_price = ?, quick_price = ?, main2_price = ?, main4_price = ?, quick2_price = ?, quick4_price = ?,
-                       upgrade_price = ?, upgrade_guests = ?""",
+                       upgrade_price = ?, upgrade_guests = ?, storage_gb_price = ?, free_storage_gb = ?,
+                       client_setup_price = ?, active_months = ?""",
                 upi == null || upi.isEmpty() ? null : upi, s.payeeName() == null ? null : s.payeeName().trim(),
-                prices[0], prices[1], prices[2], prices[3], prices[4], prices[5], prices[6], prices[7], prices[8], prices[9]);
+                prices[0], prices[1], prices[2], prices[3], prices[4], prices[5], prices[6], prices[7], prices[8], prices[9],
+                prices[10], prices[11], prices[12], prices[13]);
         return settings();
     }
 
@@ -277,6 +294,16 @@ public class BillingService {
         Account a = account(studioId, true);
         if (a.free()) {
             return "FREE";
+        }
+        if (type == EventType.CLIENT) {
+            if (a.clientCredits() > 0) {
+                jdbc.update("UPDATE admin_users SET client_credits = client_credits - 1 WHERE id = ?", studioId);
+                return "CLIENT";
+            }
+            Settings s = settings();
+            throw new ApiException(HttpStatus.PAYMENT_REQUIRED, "CLIENT_PAYMENT_REQUIRED",
+                    "A client gallery is " + rupees(s.clientSetupPrice()) + " to set up, plus storage at "
+                            + rupees(s.storageGbPrice()) + " per GB. Buy one to create it.");
         }
         LocalDate today = today();
         boolean packOk = a.packActive(today) && a.plan().covers(type);
@@ -319,7 +346,8 @@ public class BillingService {
 
     private static Prices prices(Settings s) {
         return new Prices(s.perEventPrice(), s.quickPrice(), s.main2Price(), s.main4Price(), s.quick2Price(),
-                s.quick4Price(), s.upgradePrice(), s.upgradeGuests());
+                s.quick4Price(), s.upgradePrice(), s.upgradeGuests(), s.storageGbPrice(), s.freeStorageGb(),
+                s.clientSetupPrice(), s.activeMonths());
     }
 
     /** The current prices for the public /pricing page. */
@@ -334,14 +362,15 @@ public class BillingService {
         return new Summary(a.plan(), a.free(), a.monthlyEvents(), usedThisMonth(studioId, a), a.mainCredits() + a.quickCredits(),
                 eventPrice(a.plan(), EventType.MAIN, s), a.plan() == Plan.MONTHLY ? s.monthlyPrice() : s.packPrice(a.plan()),
                 s.upiId(), s.payeeName(), payments("p.studio_id = ?", studioId, 20), razorpay.enabled(),
-                a.mainCredits(), a.quickCredits(), carryOver(studioId, a), a.packActive(today), a.paidUntil(), prices(s));
+                a.mainCredits(), a.quickCredits(), carryOver(studioId, a), a.packActive(today), a.paidUntil(), prices(s),
+                a.clientCredits());
     }
 
     /** Fills the defaults: a missing item is Main events (the older API sent only a count). */
     public static Purchase normalize(Item item, Integer quantity, UUID eventId, Plan plan) {
         Item i = item == null ? Item.MAIN_EVENT : item;
         int q = quantity == null ? 1 : quantity;
-        return new Purchase(i, i == Item.UPGRADE ? 1 : q, eventId, plan);
+        return new Purchase(i, i == Item.UPGRADE || i == Item.EXTEND ? 1 : q, eventId, plan);
     }
 
     /** The price is always the server's: the studio's plan, the current settings and what is bought. */
@@ -390,7 +419,72 @@ public class BillingService {
                 int price = s.packPrice(plan);
                 yield new Quote(Item.PLAN, p.quantity(), price, p.quantity() * price, null, plan);
             }
+            case CLIENT_SETUP -> {
+                if (a.free()) {
+                    throw ApiException.badRequest("NOT_NEEDED", "Your plan has no event limit");
+                }
+                if (p.quantity() < 1 || p.quantity() > MAX_EVENTS_PER_PAYMENT) {
+                    throw ApiException.badRequest("INVALID_EVENTS", "Buy between 1 and " + MAX_EVENTS_PER_PAYMENT + " client galleries at a time");
+                }
+                yield new Quote(Item.CLIENT_SETUP, p.quantity(), s.clientSetupPrice(), p.quantity() * s.clientSetupPrice(), null, null);
+            }
+            case STORAGE -> {
+                if (a.free()) {
+                    throw ApiException.badRequest("NOT_NEEDED", "Your plan has no storage limit");
+                }
+                ownedEvent(studioId, p.eventId());
+                if (p.quantity() < 1 || p.quantity() > MAX_GB_PER_PAYMENT) {
+                    throw ApiException.badRequest("INVALID_GB", "Add between 1 and " + MAX_GB_PER_PAYMENT + " GB at a time");
+                }
+                yield new Quote(Item.STORAGE, p.quantity(), s.storageGbPrice(), p.quantity() * s.storageGbPrice(), p.eventId(), null);
+            }
+            case EXTEND -> {
+                if (a.free()) {
+                    throw ApiException.badRequest("NOT_NEEDED", "Your plan has no time limit: change the date in the event settings");
+                }
+                ownedEvent(studioId, p.eventId());
+                Boolean deleted = jdbc.queryForObject("SELECT retention_until IS NOT NULL AND retention_until < ? FROM events WHERE id = ?",
+                        Boolean.class, Date.valueOf(today()), p.eventId());
+                if (Boolean.TRUE.equals(deleted)) {
+                    throw ApiException.conflict("EVENT_DELETED", "This gallery's files have been deleted");
+                }
+                int gb = gbFor(eventBytes(p.eventId()));
+                yield new Quote(Item.EXTEND, gb, s.storageGbPrice(), gb * s.storageGbPrice(), p.eventId(), null);
+            }
         };
+    }
+
+    private void ownedEvent(UUID studioId, UUID eventId) {
+        if (eventId == null) {
+            throw ApiException.badRequest("INVALID_EVENT", "Choose the event");
+        }
+        if (jdbc.queryForObject("SELECT count(*) FROM events WHERE id = ? AND owner_id = ?", Integer.class, eventId, studioId) == 0) {
+            throw ApiException.notFound("Event");
+        }
+    }
+
+    /** Whole GB to charge for this many bytes (at least 1). */
+    public static int gbFor(long bytes) {
+        return (int) Math.max(1, (bytes + GB - 1) / GB);
+    }
+
+    /** Everything an event stores: web versions, thumbnails and the kept full-quality originals. */
+    public long eventBytes(UUID eventId) {
+        return jdbc.queryForObject("""
+                SELECT coalesce(sum(media_bytes + CASE WHEN original_stored THEN file_size ELSE 0 END), 0)
+                FROM photos WHERE event_id = ?""", Long.class, eventId);
+    }
+
+    /** McreatiK itself or an unlimited studio: no prices, no storage limit, dates set by hand. */
+    public boolean freeAccount(UUID studioId) {
+        return account(studioId, false).free();
+    }
+
+    /** The couple's gallery of a live event, locked for unpaid storage, comes back once its storage is covered. */
+    void unlockIfCovered(UUID eventId) {
+        jdbc.update("""
+                UPDATE events SET client_gallery_enabled = true, storage_locked = false
+                WHERE id = ? AND storage_locked AND storage_quota_gb::bigint * ? >= ?""", eventId, GB, eventBytes(eventId));
     }
 
     /**
@@ -403,6 +497,29 @@ public class BillingService {
             case QUICK_EVENT -> jdbc.update("UPDATE admin_users SET quick_credits = quick_credits + ? WHERE id = ?", sign * quantity, studioId);
             case UPGRADE -> jdbc.update("UPDATE events SET event_type = ?, updated_at = now() WHERE id = ? AND owner_id = ?",
                     sign > 0 ? EventType.MAIN.name() : EventType.QUICK.name(), eventId, studioId);
+            case CLIENT_SETUP -> jdbc.update("UPDATE admin_users SET client_credits = client_credits + ? WHERE id = ?", sign * quantity, studioId);
+            case STORAGE -> {
+                jdbc.update("UPDATE events SET storage_quota_gb = GREATEST(0, storage_quota_gb + ?) WHERE id = ? AND owner_id = ?",
+                        sign * quantity, eventId, studioId);
+                if (sign > 0) {
+                    unlockIfCovered(eventId);
+                }
+            }
+            case EXTEND -> {
+                int months = settings().activeMonths();
+                // Six more months from the current end (or from today, if it already ended); deleted 30 days after.
+                if (sign > 0) {
+                    jdbc.update("""
+                            UPDATE events SET active_until = (GREATEST(coalesce(active_until, ?), ?) + make_interval(months => ?))::date
+                            WHERE id = ? AND owner_id = ?""", Date.valueOf(today()), Date.valueOf(today()), months, eventId, studioId);
+                } else {
+                    jdbc.update("""
+                            UPDATE events SET active_until = (active_until - make_interval(months => ?))::date
+                            WHERE id = ? AND owner_id = ? AND active_until IS NOT NULL""", months, eventId, studioId);
+                }
+                jdbc.update("UPDATE events SET retention_until = (active_until + interval '30 days')::date, expiry_warned_for = NULL,"
+                        + " expiry_notified_for = NULL WHERE id = ? AND active_until IS NOT NULL", eventId);
+            }
             case PLAN -> {
                 if (sign > 0) {
                     // A different pack starts today; the same pack extends from its paid-until date.
@@ -536,17 +653,19 @@ public class BillingService {
         return jdbc.query("""
                 SELECT u.id, u.plan, u.monthly_quota, u.main_credits, u.quick_credits, u.plan_paid_until, u.role, u.plan_since,
                        (SELECT count(*) FROM event_charges c WHERE c.owner_id = u.id AND c.kind = 'QUOTA'
-                          AND c.created_at >= GREATEST(?, u.plan_since::timestamp AT TIME ZONE 'Asia/Kolkata'))
+                          AND c.created_at >= GREATEST(?, u.plan_since::timestamp AT TIME ZONE 'Asia/Kolkata')),
+                       u.client_credits
                 FROM admin_users u ORDER BY u.created_at""", (rs, n) -> {
             Account a = new Account(rs.getString(7), Plan.valueOf(rs.getString(2)), rs.getInt(3), rs.getInt(4), rs.getInt(5),
-                    rs.getDate(6) == null ? null : rs.getDate(6).toLocalDate(), rs.getDate(8).toLocalDate());
+                    rs.getDate(6) == null ? null : rs.getDate(6).toLocalDate(), rs.getDate(8).toLocalDate(), rs.getInt(10));
             return new StudioBilling(rs.getObject(1, UUID.class), a.plan(), a.monthlyEvents(), rs.getInt(9),
-                    a.mainCredits() + a.quickCredits(), a.mainCredits(), a.quickCredits(), a.paidUntil(), a.packActive(today));
+                    a.mainCredits() + a.quickCredits(), a.mainCredits(), a.quickCredits(), a.paidUntil(), a.packActive(today),
+                    a.clientCredits());
         }, Timestamp.from(monthStart()));
     }
 
     public StudioBilling updateStudio(UUID studioId, Plan plan, Integer monthlyQuota, Integer addCredits) {
-        return updateStudio(studioId, plan, monthlyQuota, addCredits, null, null);
+        return updateStudio(studioId, plan, monthlyQuota, addCredits, null, null, null);
     }
 
     /**
@@ -555,7 +674,7 @@ public class BillingService {
      */
     @Transactional
     public StudioBilling updateStudio(UUID studioId, Plan plan, Integer monthlyQuota, Integer addCredits,
-                                      Integer addQuickCredits, LocalDate planPaidUntil) {
+                                      Integer addQuickCredits, LocalDate planPaidUntil, Integer addClientCredits) {
         Account before = account(studioId, true);
         if (plan != null && plan != before.plan()) {
             jdbc.update("UPDATE admin_users SET plan = ?, plan_since = ? WHERE id = ?", plan.name(), Date.valueOf(today()), studioId);
@@ -577,6 +696,9 @@ public class BillingService {
         }
         if (addQuickCredits != null && addQuickCredits != 0) {
             jdbc.update("UPDATE admin_users SET quick_credits = quick_credits + ? WHERE id = ?", addQuickCredits, studioId);
+        }
+        if (addClientCredits != null && addClientCredits != 0) {
+            jdbc.update("UPDATE admin_users SET client_credits = client_credits + ? WHERE id = ?", addClientCredits, studioId);
         }
         return studios().stream().filter(s -> s.studioId().equals(studioId)).findFirst().orElseThrow();
     }

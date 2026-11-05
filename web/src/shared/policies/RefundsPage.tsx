@@ -1,7 +1,7 @@
 import { BUSINESS } from './business'
 import { PolicyLayout, Section } from './PolicyLayout'
 
-const UPDATED = '4 November 2026'
+const UPDATED = '5 November 2026'
 
 /** Refund and cancellation policy. Draft for the owner to review. Every statement here must stay true. */
 export default function RefundsPage() {
@@ -16,8 +16,8 @@ export default function RefundsPage() {
 
       <Section title="No refunds for bought events">
         <p>
-          Because events are delivered instantly and never expire, payments for events, upgrades and monthly packs are not
-          refunded, and events cannot be exchanged for cash.
+          Because events are delivered instantly and never expire, payments for events, upgrades, monthly packs, client
+          galleries, storage and extra months are not refunded, and cannot be exchanged for cash.
         </p>
       </Section>
 

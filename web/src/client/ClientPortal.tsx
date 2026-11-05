@@ -48,7 +48,7 @@ export default function ClientPortal() {
   // McreatiK may have turned this gallery off: show why instead of loading forever.
   const [closed, setClosed] = useState<string | null>(null)
   const loadMe = useCallback(() => clientApi.me().then(setMe).catch((err) => {
-    if (err instanceof ApiError && err.code === 'GALLERY_UNAVAILABLE') setClosed(err.message)
+    if (err instanceof ApiError && (err.code === 'GALLERY_UNAVAILABLE' || err.code === 'GALLERY_EXPIRED')) setClosed(err.message)
   }), [])
   useEffect(() => {
     loadMe()

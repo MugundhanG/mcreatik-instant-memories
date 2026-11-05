@@ -34,8 +34,15 @@ export function unitPrice(item: PurchaseItem, billing: BillingSummary, plan?: Pl
     case 'QUICK_EVENT': return billing.prices.quick
     case 'UPGRADE': return billing.prices.upgrade
     case 'PLAN': return packPrice(plan ?? billing.plan, billing.prices)
+    case 'STORAGE': case 'EXTEND': return billing.prices.storageGb
+    case 'CLIENT_SETUP': return billing.prices.clientSetup
   }
 }
+
+/** About how many full-quality photos fit in this many GB (~12 MB each, with web versions). */
+export const photosPerGb = (gb: number) => Math.round((gb * 1024) / 12.5 / 10) * 10
+
+export const formatGb = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(bytes < 10 * 1024 ** 3 ? 1 : 0)} GB`
 
 /** "2 Main events", "Upgrade to Main", "1 month of Main pack · 4 events/month". */
 export function describe(p: Purchase, billing: BillingSummary): string {
@@ -45,5 +52,8 @@ export function describe(p: Purchase, billing: BillingSummary): string {
     case 'QUICK_EVENT': return `${n} Quick event${n === 1 ? '' : 's'}`
     case 'UPGRADE': return 'Upgrade to a Main event'
     case 'PLAN': return `${n} month${n === 1 ? '' : 's'} of ${PLAN_LABEL[p.plan ?? billing.plan]}`
+    case 'STORAGE': return `${n} GB of storage`
+    case 'CLIENT_SETUP': return `${n} client galler${n === 1 ? 'y' : 'ies'}`
+    case 'EXTEND': return `6 more months (${n} GB)`
   }
 }

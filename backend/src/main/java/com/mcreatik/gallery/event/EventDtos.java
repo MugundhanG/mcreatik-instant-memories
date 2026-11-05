@@ -53,7 +53,9 @@ public final class EventDtos {
                               Instant endTime, EventStatus status, UUID coverPhotoId, String coverUrl,
                               String galleryUrl, LocalDate retentionUntil, Instant createdAt, Instant updatedAt,
                               UUID ownerId, String ownerName, StudioBranding.Brand brand,
-                              boolean liveGalleryEnabled, boolean clientGalleryEnabled, EventType eventType) {
+                              boolean liveGalleryEnabled, boolean clientGalleryEnabled, EventType eventType,
+                              LocalDate activeUntil, int storageQuotaGb, long storageBytes, boolean storageLocked,
+                              boolean expired) {
     }
 
     /** McreatiK only: turn the guests' gallery and/or the couple's gallery on or off. Null leaves it as is. */

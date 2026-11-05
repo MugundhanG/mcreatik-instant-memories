@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, EventType, DocPage, OnlineOrder, OnlinePaymentResult, OnlinePaymentStatus, UpiQrOrder, DocPageSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, EventType, DocPage, OnlineOrder, OnlinePaymentResult, OnlinePaymentStatus, UpiQrOrder, DocPageSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export type BulkPhotoAction = 'LIKE' | 'UNLIKE' | 'HIDE' | 'SHOW' | 'DELETE'
 
@@ -73,6 +73,13 @@ async function requestBlob(path: string): Promise<Blob> {
  * A backend from before the packages (the website deploys first) sends no prices or typed credits: fill them in, so
  * the dashboard keeps working until the backend is updated.
  */
+function fallbackPrices(b: BillingSummary): Prices {
+  return {
+    main: b.unitPrice, quick: b.unitPrice, main2: b.monthlyPrice, main4: b.monthlyPrice, quick2: b.monthlyPrice,
+    quick4: b.monthlyPrice, upgrade: 0, upgradeGuests: 300, storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 6,
+  }
+}
+
 export function withBillingDefaults(b: BillingSummary): BillingSummary {
   return {
     ...b,
@@ -81,10 +88,8 @@ export function withBillingDefaults(b: BillingSummary): BillingSummary {
     carryOver: b.carryOver ?? 0,
     packActive: b.packActive ?? b.plan === 'MONTHLY',
     planPaidUntil: b.planPaidUntil ?? null,
-    prices: b.prices ?? {
-      main: b.unitPrice, quick: b.unitPrice, main2: b.monthlyPrice, main4: b.monthlyPrice, quick2: b.monthlyPrice,
-      quick4: b.monthlyPrice, upgrade: 0, upgradeGuests: 300,
-    },
+    clientCredits: b.clientCredits ?? 0,
+    prices: { ...fallbackPrices(b), ...(b.prices as Partial<Prices> | undefined) },
   }
 }
 
@@ -256,7 +261,7 @@ export const adminApi = {
   rejectPayment: (id: string, note?: string) =>
     request<void>(`/api/admin/billing/payments/${id}/reject`, { method: 'POST', body: json({ note: note ?? null }) }, true),
   studioBilling: () => request<StudioBilling[]>('/api/admin/billing/studios', {}, true),
-  updateStudioBilling: (studioId: string, input: { plan?: Plan; monthlyQuota?: number; addCredits?: number; addQuickCredits?: number; planPaidUntil?: string }) =>
+  updateStudioBilling: (studioId: string, input: { plan?: Plan; monthlyQuota?: number; addCredits?: number; addQuickCredits?: number; addClientCredits?: number; planPaidUntil?: string }) =>
     request<StudioBilling>(`/api/admin/billing/studios/${studioId}`, { method: 'PATCH', body: json(input) }, true),
   billingSettings: () => request<BillingSettings>('/api/admin/billing/settings', {}, true),
   updateBillingSettings: (s: BillingSettings) =>

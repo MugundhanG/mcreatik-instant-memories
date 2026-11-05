@@ -133,7 +133,7 @@ public class BillingController {
 
     /** {@code addCredits}: Main events to give (minus to take back); {@code addQuickCredits}: Quick events. */
     public record StudioBillingRequest(BillingService.Plan plan, Integer monthlyQuota, Integer addCredits,
-                                       Integer addQuickCredits, java.time.LocalDate planPaidUntil) {
+                                       Integer addQuickCredits, java.time.LocalDate planPaidUntil, Integer addClientCredits) {
     }
 
     @PatchMapping("/studios/{studioId}")
@@ -141,7 +141,7 @@ public class BillingController {
                                                      @RequestBody StudioBillingRequest request) {
         access.requireSuperAdmin(auth);
         return billing.updateStudio(studioId, request.plan(), request.monthlyQuota(), request.addCredits(),
-                request.addQuickCredits(), request.planPaidUntil());
+                request.addQuickCredits(), request.planPaidUntil(), request.addClientCredits());
     }
 
     @GetMapping("/settings")

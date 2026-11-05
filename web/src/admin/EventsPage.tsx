@@ -29,6 +29,7 @@ function PlanBar({ billing: b, onBuy }: { billing: BillingSummary; onBuy: (p: Pu
   const bought = [
     b.mainCredits > 0 && `${b.mainCredits} Main`,
     b.quickCredits > 0 && `${b.quickCredits} Quick`,
+    b.clientCredits > 0 && `${b.clientCredits} client galler${b.clientCredits === 1 ? 'y' : 'ies'}`,
   ].filter(Boolean).join(' + ')
   return (
     <div className="space-y-2">
@@ -52,7 +53,7 @@ function PlanBar({ billing: b, onBuy }: { billing: BillingSummary; onBuy: (p: Pu
           {b.carryOver > 0 && <span className="text-muted"> · {b.carryOver} carried over</span>}
           {' · '}
           <span className={owed ? 'text-red-700' : 'text-muted'}>
-            {owed ? 'payment not received for some events' : bought ? `${bought} event${b.credits === 1 ? '' : 's'} bought` : 'no bought events'}
+            {owed ? 'payment not received for some events' : bought ? `${bought} bought` : 'no bought events'}
           </span>
           {pack && b.planPaidUntil && b.packActive && !renewSoon && <span className="text-muted"> · paid until {formatDay(b.planPaidUntil)}</span>}
         </p>
@@ -127,6 +128,7 @@ export default function EventsPage() {
               <p className="mt-1 text-sm text-muted">
                 {formatEventDate(e.eventDate)}
                 {e.eventType === 'QUICK' && <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600">Quick</span>}
+                {e.eventType === 'CLIENT' && <span className="ml-2 rounded-full bg-[#f6ecd9] px-2 py-0.5 text-[11px] font-medium text-[#7a4f17]">Client gallery</span>}
               </p>
               {superAdmin && e.ownerName && <p className="mt-1 text-xs font-medium text-[#8a5a1c]">{e.ownerName}</p>}
               <p className="mt-4 text-sm">

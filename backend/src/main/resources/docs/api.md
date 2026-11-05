@@ -18,10 +18,10 @@ All endpoints live under `https://im-api.mcreatik.com`. Requests and responses a
 | --- | --- | --- |
 | 400 | `VALIDATION_FAILED`, `BAD_REQUEST`, `INVALID_SLUG` | Input is wrong |
 | 401 | none | Not logged in, expired, or password changed since login |
-| 402 | none | Plan used up; payment needed |
-| 403 | `FORBIDDEN`, `GALLERY_UNAVAILABLE`, `ACCOUNT_DISABLED` | Not allowed |
+| 402 | `EVENT_PAYMENT_REQUIRED`, `CLIENT_PAYMENT_REQUIRED` | Plan used up, or no client gallery paid for; payment needed |
+| 403 | `FORBIDDEN`, `GALLERY_UNAVAILABLE`, `GALLERY_EXPIRED`, `ACCOUNT_DISABLED`, `EXTEND_INSTEAD` | Not allowed (`EXTEND_INSTEAD`: studios can't set the delete date; they keep it 6 more months) |
 | 404 | `NOT_FOUND` | Missing, or not yours (deliberately the same) |
-| 409 | `EVENT_CLOSED`, `CLIENT_EXISTS`, `EMAIL_TAKEN`, `UPLOAD_NOT_FOUND` | Conflicts with current state |
+| 409 | `EVENT_CLOSED`, `CLIENT_EXISTS`, `EMAIL_TAKEN`, `UPLOAD_NOT_FOUND`, `STORAGE_FULL` | Conflicts with current state |
 | 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header) |
 | 503 | `TOO_MANY_VIEWERS` | Live stream full |
 
@@ -56,7 +56,7 @@ There is no delete endpoint for studios; they are only disabled.
 | Method | Path | Who | Notes |
 | --- | --- | --- | --- |
 | GET | `/api/admin/events` | Admin | Own events (all for McreatiK), with photo counts |
-| POST | `/api/admin/events` | Admin | `{name, eventDate, status?, slug?, …, ownerId? (super)}` → 201, or 402 |
+| POST | `/api/admin/events` | Admin | `{name, eventDate, eventType? (MAIN / QUICK / CLIENT), status?, slug?, …, ownerId? (super)}` → 201, or 402. The detail carries `activeUntil`, `storageQuotaGb`, `storageBytes`, `storageLocked`, `expired` |
 | GET / PATCH / DELETE | `/api/admin/events/{eventId}` | Admin | Delete is permanent, files included |
 | GET | `/api/admin/events/{eventId}/logo` | Admin | The owning studio's logo file, for the event and table cards (404 without a logo) |
 | PATCH | `/api/admin/events/{eventId}/access` | Super | `{liveGallery?, clientGallery?}` |
@@ -96,10 +96,10 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 | Method | Path | Who | Notes |
 | --- | --- | --- | --- |
 | GET | `/api/admin/billing` | Admin | Plan, this month's pack usage, `carryOver`, `mainCredits` / `quickCredits` (`credits` = both), `packActive`, `planPaidUntil`, `prices`, UPI details |
-| POST | `/api/admin/billing/payments` | Admin | `{item, quantity, eventId?, plan?, utr}` → PENDING payment, applied at once. `item`: `MAIN_EVENT` / `QUICK_EVENT` (quantity = events), `UPGRADE` (`eventId` of a Quick event; 409 `NOT_QUICK`), `PLAN` (`plan` = a pack, quantity = months; a different pack starts today). The older `{events, utr}` still means Main events |
+| POST | `/api/admin/billing/payments` | Admin | `{item, quantity, eventId?, plan?, utr}` → PENDING payment, applied at once. `item`: `MAIN_EVENT` / `QUICK_EVENT` (quantity = events), `UPGRADE` (`eventId` of a Quick event; 409 `NOT_QUICK`), `PLAN` (`plan` = a pack, quantity = months; a different pack starts today), `CLIENT_SETUP` (quantity = client galleries, 1–50), `STORAGE` (`eventId`, quantity = GB, 1–1000), `EXTEND` (`eventId`; quantity is set by the server to the event's GB, rounded up; adds 6 months). The older `{events, utr}` still means Main events |
 | GET | `/api/admin/billing/payments?status=` | Super | Payments to check |
 | POST | `/api/admin/billing/payments/{id}/approve` · `/reject` | Super | Reject reverses what the payment applied (credits, upgrade or pack month) |
-| GET / PATCH | `/api/admin/billing/studios[/{studioId}]` | Super | `{plan?, monthlyQuota?, addCredits?, addQuickCredits?, planPaidUntil?}`; moving onto a pack sets paid-until to a month from today unless given |
+| GET / PATCH | `/api/admin/billing/studios[/{studioId}]` | Super | `{plan?, monthlyQuota?, addCredits?, addQuickCredits?, addClientCredits?, planPaidUntil?}`; moving onto a pack sets paid-until to a month from today unless given |
 | GET / PUT | `/api/admin/billing/settings` | Super | UPI ID, payee, prices |
 | POST | `/api/admin/billing/online-orders` · `/upi-qr` | Admin | The same purchase body as `/payments` (without `utr`) → Razorpay order at the server's price `{paymentId, razorpayOrderId, keyId, amountPaise, …}` (201) |
 | POST | `/api/admin/billing/online-orders/{paymentId}/confirm` | Admin | `{razorpayPaymentId, razorpaySignature}` → checks the signature and the captured amount, adds the events once |

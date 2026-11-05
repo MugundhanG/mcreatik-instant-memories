@@ -15,6 +15,9 @@ function paymentFor(p: EventPayment): string {
     case 'QUICK_EVENT': return `${n} Quick event${n === 1 ? '' : 's'}`
     case 'UPGRADE': return `Upgrade to Main${p.eventName ? `: ${p.eventName}` : ''}`
     case 'PLAN': return `${n} month${n === 1 ? '' : 's'} · ${p.plan ? PLAN_LABEL[p.plan] : 'pack'}`
+    case 'STORAGE': return `${n} GB storage${p.eventName ? `: ${p.eventName}` : ''}`
+    case 'CLIENT_SETUP': return `${n} client galler${n === 1 ? 'y' : 'ies'}`
+    case 'EXTEND': return `6 more months (${n} GB)${p.eventName ? `: ${p.eventName}` : ''}`
     default: return `${n} Main event${n === 1 ? '' : 's'}`
   }
 }
@@ -129,6 +132,18 @@ export function BillingSettingsCard() {
         <Field label="Offer the upgrade after (guests)" hint="Unique guests on a Quick event">
           <input className={inputClass} inputMode="numeric" value={s.upgradeGuests} onChange={num('upgradeGuests')} />
         </Field>
+        <Field label="Storage (₹ per GB, for the active period)">
+          <input className={inputClass} inputMode="numeric" value={s.storageGbPrice} onChange={num('storageGbPrice')} />
+        </Field>
+        <Field label="Free storage with a live event (GB)">
+          <input className={inputClass} inputMode="numeric" value={s.freeStorageGb} onChange={num('freeStorageGb')} />
+        </Field>
+        <Field label="Client gallery setup (₹ each)">
+          <input className={inputClass} inputMode="numeric" value={s.clientSetupPrice} onChange={num('clientSetupPrice')} />
+        </Field>
+        <Field label="Galleries stay open (months)" hint="Then deleted 30 days later unless kept longer">
+          <input className={inputClass} inputMode="numeric" value={s.activeMonths} onChange={num('activeMonths')} />
+        </Field>
         <Field label="Older Monthly package: extra event (₹)">
           <input className={inputClass} inputMode="numeric" value={s.extraEventPrice} onChange={num('extraEventPrice')} />
         </Field>
@@ -151,13 +166,14 @@ export function BillingSettingsCard() {
  */
 export function StudioPlan({ billing, onChange }: { billing: StudioBilling; onChange: () => void }) {
   const [quota, setQuota] = useState(String(billing.monthlyQuota))
-  const update = async (input: { plan?: Plan; monthlyQuota?: number; addCredits?: number; addQuickCredits?: number; planPaidUntil?: string }) => {
+  const update = async (input: { plan?: Plan; monthlyQuota?: number; addCredits?: number; addQuickCredits?: number; addClientCredits?: number; planPaidUntil?: string }) => {
     await adminApi.updateStudioBilling(billing.studioId, input)
     onChange()
   }
-  const give = (kind: 'Main' | 'Quick') => {
-    const n = Number(window.prompt(`How many free ${kind} events to give? (use a minus number to take back)`, '1'))
-    if (Number.isInteger(n) && n !== 0) void update(kind === 'Main' ? { addCredits: n } : { addQuickCredits: n })
+  const give = (kind: 'Main' | 'Quick' | 'Client') => {
+    const what = kind === 'Client' ? 'client galleries' : `${kind} events`
+    const n = Number(window.prompt(`How many free ${what} to give? (use a minus number to take back)`, '1'))
+    if (Number.isInteger(n) && n !== 0) void update(kind === 'Main' ? { addCredits: n } : kind === 'Quick' ? { addQuickCredits: n } : { addClientCredits: n })
   }
   const plans: Plan[] = ['PER_EVENT', ...PACKS, 'UNLIMITED', ...(billing.plan === 'MONTHLY' ? ['MONTHLY' as Plan] : [])]
   return (
@@ -187,11 +203,12 @@ export function StudioPlan({ billing, onChange }: { billing: StudioBilling; onCh
       {billing.plan !== 'UNLIMITED' && (
         <>
           <span className={`tabular-nums ${billing.mainCredits < 0 || billing.quickCredits < 0 ? 'font-medium text-red-700' : 'text-muted'}`}>
-            · {billing.mainCredits} Main + {billing.quickCredits} Quick bought
+            · {billing.mainCredits} Main + {billing.quickCredits} Quick + {billing.clientCredits} client bought
           </span>
           <span className="ml-auto flex gap-3">
             <button type="button" onClick={() => give('Main')} className="text-xs font-medium text-[#8a5a1c] hover:underline">Give Main events</button>
             <button type="button" onClick={() => give('Quick')} className="text-xs font-medium text-[#8a5a1c] hover:underline">Give Quick events</button>
+            <button type="button" onClick={() => give('Client')} className="text-xs font-medium text-[#8a5a1c] hover:underline">Give client galleries</button>
           </span>
         </>
       )}

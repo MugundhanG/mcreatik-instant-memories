@@ -75,6 +75,20 @@ describe('Upload photos panel', () => {
     expect(progress).not.toHaveTextContent('failed')
   })
 
+  it('stops a full client gallery, says why and points to Add storage', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ code: 'STORAGE_FULL', message: "This client gallery's storage is full" }),
+      { status: 409, headers: { 'Content-Type': 'application/json' } })))
+    const onAddStorage = vi.fn()
+    render(<UploadPhotosPanel eventId="e1" onUploaded={vi.fn()} onAddStorage={onAddStorage} />)
+    await user.upload(screen.getByLabelText('Photos to upload'), ['a.jpg', 'b.jpg', 'c.jpg'].map((n) => new File(['x'], n, { type: 'image/jpeg' })))
+    const banner = await screen.findByTestId('storage-full')
+    expect(banner).toHaveTextContent("This client gallery's storage is full")
+    await waitFor(() => expect(screen.getByTestId('upload-progress')).toHaveTextContent('3 of 3 done'))
+    await user.click(within(banner).getByRole('button', { name: 'Add storage' }))
+    expect(onAddStorage).toHaveBeenCalled()
+  })
+
   it('original quality: puts the full file to storage, then adds the gallery versions', async () => {
     const user = userEvent.setup({ applyAccept: false })
     const calls: { url: string; method: string; body: unknown }[] = []

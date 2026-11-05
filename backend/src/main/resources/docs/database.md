@@ -36,6 +36,8 @@ erDiagram
     string slug "unique, 10 random chars"
     string status
     date retention_until
+    date active_until
+    int storage_quota_gb
     boolean live_gallery_enabled
     boolean client_gallery_enabled
   }
@@ -59,8 +61,8 @@ erDiagram
 
 | Table | Purpose | Added or changed | Code |
 | --- | --- | --- | --- |
-| `admin_users` | Studio and McreatiK logins: role, branding, plan, credits, reset fields, `token_version` | V1, V5, V6, V9, V10, V12, V13, V17 (`board_theme`), V18 (`main_credits`, `quick_credits`, `plan_paid_until`, `plan_since`, `plan_reminded_for`) | JPA `AdminUser`; SQL in `BillingService`, `PasswordResets` |
-| `events` | One wedding or event; `event_type` MAIN / QUICK | V1, V8, V13, V18 | JPA `Event` |
+| `admin_users` | Studio and McreatiK logins: role, branding, plan, credits, reset fields, `token_version` | V1, V5, V6, V9, V10, V12, V13, V17 (`board_theme`), V18 (`main_credits`, `quick_credits`, `plan_paid_until`, `plan_since`, `plan_reminded_for`), V19 (`client_credits`) | JPA `AdminUser`; SQL in `BillingService`, `PasswordResets` |
+| `events` | One wedding or event; `event_type` MAIN / QUICK / CLIENT; `active_until` (open 6 months, then deleted 30 days later via `retention_until`), `storage_quota_gb` (5 for live events, 0 for client galleries, plus GB bought), `storage_locked`, `expiry_warned_for` / `expiry_notified_for` | V1, V8, V13, V18, V19 | JPA `Event` |
 | `uploaders` | Camera connections (token hash, status, queue counts) | V1 | JPA `Uploader` |
 | `photos` | Every photo, and the processing queue | V1 to V4, V8 | JPA `Photo`, `AdminPhotoSearch`, worker SQL |
 | `guest_activity` | Anonymous views, downloads, shares | V7 | `GuestActivityService` |
@@ -68,8 +70,8 @@ erDiagram
 | `event_clients` | The couple's login | V8, V11, V12, V13 | `ClientController`, `AlbumService` |
 | `album_selections` | Photos the couple ticked | V8 | `AlbumService`, `ClientController` |
 | `event_charges` | How each event was covered: `FREE`, `QUOTA` (this month's pack), `CARRY` (last month's unused), `CREDIT` (bought); carry-over is worked out from these rows | V9, V18 | `BillingService` |
-| `event_payments` | Every purchase: `item` (MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN), quantity, `event_id`, `plan`; UPI ones wait for review (UTR unique) | V9, V14, V15, V18 | `BillingService`, `OnlinePaymentService` |
-| `billing_settings` | One row of UPI details and every price (Main, Quick, the four packs, upgrade) | V9, V18 | `BillingService` |
+| `event_payments` | Every purchase: `item` (MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN, STORAGE, CLIENT_SETUP, EXTEND), quantity, `event_id`, `plan`; UPI ones wait for review (UTR unique) | V9, V14, V15, V18 | `BillingService`, `OnlinePaymentService` |
+| `billing_settings` | One row of UPI details and every price (Main, Quick, the four packs, upgrade, storage per GB, free GB, client setup, active months) | V9, V18, V19 | `BillingService` |
 
 ## What happens on delete
 

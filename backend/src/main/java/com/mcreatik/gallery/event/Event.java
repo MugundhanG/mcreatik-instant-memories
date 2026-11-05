@@ -51,6 +51,18 @@ public class Event {
     @Column(name = "retention_until")
     private LocalDate retentionUntil;
 
+    /** The guests' and the couple's galleries are open until this day (null: no end); files go 30 days later. */
+    @Column(name = "active_until")
+    private LocalDate activeUntil;
+
+    /** GB of storage (web versions + originals) this event may use. */
+    @Column(name = "storage_quota_gb", nullable = false)
+    private int storageQuotaGb = 5;
+
+    /** The couple's gallery was turned off because a live event's storage went unpaid. */
+    @Column(name = "storage_locked", nullable = false)
+    private boolean storageLocked;
+
     /** Guests' QR gallery; only McreatiK (super admin) turns it off. */
     @Column(name = "live_gallery_enabled", nullable = false)
     private boolean liveGalleryEnabled = true;
@@ -161,6 +173,31 @@ public class Event {
 
     public void setRetentionUntil(LocalDate retentionUntil) {
         this.retentionUntil = retentionUntil;
+    }
+
+    public LocalDate getActiveUntil() {
+        return activeUntil;
+    }
+
+    public void setActiveUntil(LocalDate activeUntil) {
+        this.activeUntil = activeUntil;
+    }
+
+    public int getStorageQuotaGb() {
+        return storageQuotaGb;
+    }
+
+    public void setStorageQuotaGb(int storageQuotaGb) {
+        this.storageQuotaGb = storageQuotaGb;
+    }
+
+    public boolean isStorageLocked() {
+        return storageLocked;
+    }
+
+    /** Past its active period (in India): guests and the couple see "expired", the studio can still extend it. */
+    public boolean isExpired(LocalDate today) {
+        return activeUntil != null && today.isAfter(activeUntil);
     }
 
     public boolean isLiveGalleryEnabled() {
