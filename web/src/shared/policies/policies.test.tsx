@@ -40,5 +40,6 @@ describe('Policy pages', () => {
     }
     render(<ContactPage />)
     expect(screen.getAllByRole('link', { name: '+91 99527 58545' })[0]).toHaveAttribute('href', 'https://wa.me/919952758545')
+    expect(screen.getByText(/Ramapuram, Chennai, Tamil Nadu 600089/)).toBeInTheDocument()
   })
 })
