@@ -101,7 +101,7 @@ public record LiveState(Conn conn, Tone tone, String title, String detail,
 
         String autoUpload = switch (conn) {
             case ONLINE -> c.pending() > 0 ? "Uploading " + count(c.pending(), "photo") : "On · up to date";
-            case PAUSED -> "Paused" + (s.pausedPhotos() > 0 ? " · " + count(s.pausedPhotos(), "photo") + " kept here" : "");
+            case PAUSED -> "Paused" + (s.pausedPhotos() > 0 ? " · " + s.pausedPhotos() + " kept here" : "");
             case RECONNECTING, OFFLINE -> c.pending() > 0 ? "Paused · " + count(c.pending(), "photo") + " waiting"
                     : "Paused until online";
             case ERROR -> s.connection() == EngineStatus.Connection.BLOCKED ? "Paused" : "On";

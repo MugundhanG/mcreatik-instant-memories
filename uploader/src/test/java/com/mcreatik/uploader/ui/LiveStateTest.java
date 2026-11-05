@@ -137,7 +137,7 @@ class LiveStateTest {
         assertThat(s.tone()).isEqualTo(Tone.AMBER);
         assertThat(s.title()).contains("Paused");
         assertThat(s.detail()).startsWith("3 photos kept back.");
-        assertThat(s.autoUpload()).isEqualTo("Paused · 3 photos kept here");
+        assertThat(s.autoUpload()).isEqualTo("Paused · 3 kept here");
         assertThat(s.pipeline().get(1).status()).isEqualTo("Kept here");
         assertThat(s.pipeline().get(2).status()).isEqualTo("Paused");
     }

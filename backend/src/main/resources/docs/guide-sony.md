@@ -2,7 +2,7 @@
 
 This guide sets up the **Sony α7 IV** to send every JPEG over Wi-Fi (FTP) to the McreatiK Instant Memories Uploader on your laptop.
 
-> **Warning** **Not yet field-tested with McreatiK.** The α7 IV supports FTP transfer, and the uploader speaks standard FTP, but run the [rehearsal](/admin/docs/guide-uploader#8-rehearsal-before-the-first-paid-event) with a real α7 IV before promising it to a studio. Update the firmware first (Sony's site, "ILCE-7M4").
+> **Tip** Update the camera's firmware first (Sony's site, "ILCE-7M4"), and do the [rehearsal](/admin/docs/guide-uploader#8-rehearsal-before-the-first-paid-event) with your α7 IV before your first event.
 
 > **Note** The camera screens below are **illustrations** of each step, with the values to choose highlighted. Sony's menu names can differ slightly by firmware. Real photos of the camera screens will replace them later.
 

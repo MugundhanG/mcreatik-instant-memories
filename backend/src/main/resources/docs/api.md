@@ -114,12 +114,14 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 | --- | --- | --- | --- |
 | POST | `/api/admin/events/{eventId}/uploaders` | Admin | Returns token and `MCK1.` connection code, shown once |
 | POST | `/api/admin/uploaders/{uploaderId}/rotate-token` | Admin | Old token stops working |
-| PATCH / DELETE | `/api/admin/uploaders/{uploaderId}` | Admin | Rename, remove |
-| GET | `/api/uploader/me` | Uploader | Event and uploader details, including `eventDate` and `eventStartTime` (shown in the uploader; may be null) |
-| POST | `/api/uploader/cameras` | Uploader | "Add camera" in the app: a new uploader ("Camera N") in the caller's event → `{uploaderId, name, token}`; 409 `TOO_MANY_CAMERAS` (8 per event) or `EVENT_ARCHIVED` |
+| PATCH | `/api/admin/uploaders/{uploaderId}` | Admin | `{name?, paused?}`: rename (unique per event, 409 `CAMERA_NAME_TAKEN`) and/or pause / resume |
+| DELETE | `/api/admin/uploaders/{uploaderId}` | Admin | Remove |
+| GET | `/api/uploader/me` | Uploader | Event and uploader details, including `eventDate`, `eventStartTime` (may be null) and `paused` |
+| PATCH | `/api/uploader/me` | Uploader | `{name?, paused?}` from the app → `{name, paused}` |
+| POST | `/api/uploader/cameras` | Uploader | "Add camera" in the app: `{name?}` (blank: "Camera N") → a new uploader in the caller's event `{uploaderId, name, token}`; 409 `TOO_MANY_CAMERAS` (8 per event), `EVENT_ARCHIVED` or `CAMERA_NAME_TAKEN` |
 | DELETE | `/api/uploader/me` | Uploader | "Remove camera": the uploader deletes itself; its photos stay |
-| POST | `/api/uploader/heartbeat` | Uploader | Queue counts → `{eventStatus, acceptingUploads}` |
-| POST | `/api/uploader/uploads` | Uploader | `{fileName, fileSize, mimeType, checksumSha256, prepared?}` → presigned PUTs or `DUPLICATE` |
+| POST | `/api/uploader/heartbeat` | Uploader | Queue counts → `{eventStatus, acceptingUploads, paused, uploaderName}` |
+| POST | `/api/uploader/uploads` | Uploader | `{fileName, fileSize, mimeType, checksumSha256, prepared?}` → presigned PUTs or `DUPLICATE`; 409 `UPLOADER_PAUSED` while the camera is paused |
 | POST | `/api/uploader/uploads/{photoId}/complete` | Uploader | Safe to repeat |
 
 ## Guest gallery
