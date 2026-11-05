@@ -111,6 +111,10 @@ export const adminApi = {
   docs: () => request<DocPageSummary[]>('/api/admin/docs', {}, true),
   doc: (slug: string) => request<DocPage>(`/api/admin/docs/${encodeURIComponent(slug)}`, {}, true),
   docImage: (name: string) => requestBlob(`/api/admin/docs/images/${encodeURIComponent(name)}`),
+  /** The studio's own logo file, through the API (for the printed board). */
+  accountLogo: () => requestBlob('/api/admin/account/logo'),
+  /** The logo of the studio that owns an event (for its printed cards). */
+  eventLogo: (eventId: string) => requestBlob(`/api/admin/events/${encodeURIComponent(eventId)}/logo`),
   /** Emails a temporary password if the account exists; the answer is the same either way. */
   forgotPassword: (email: string) =>
     request<void>('/api/auth/forgot-password', { method: 'POST', body: json({ email }) }),

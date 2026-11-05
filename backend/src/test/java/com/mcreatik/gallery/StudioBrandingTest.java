@@ -165,4 +165,44 @@ class StudioBrandingTest extends IntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"boardTheme\":\"white\"}"))
                 .andExpect(jsonPath("$.boardTheme").value("white"));
     }
+
+    @Test
+    void theDashboardGetsTheLogoFileForPrintFiles() throws Exception {
+        // No logo yet: nothing to serve.
+        mvc.perform(get("/api/admin/account/logo").header("Authorization", bearer(studio))).andExpect(status().isNotFound());
+        byte[] logo = png();
+        mvc.perform(multipart("/api/admin/account/logo").file(new MockMultipartFile("logo", "logo.png", "image/png", logo))
+                .header("Authorization", bearer(studio))).andExpect(status().isOk());
+        mvc.perform(get("/api/admin/account/logo").header("Authorization", bearer(studio)))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().contentType("image/png"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().bytes(logo));
+
+        // The event's cards use the owning studio's logo: the studio and McreatiK get it, another studio does not.
+        String eventId = JsonPath.read(mvc.perform(post("/api/admin/events").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Logo test\",\"eventDate\":\"2026-11-21\",\"status\":\"UPCOMING\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        mvc.perform(get("/api/admin/events/" + eventId + "/logo").header("Authorization", bearer(studio)))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().bytes(logo));
+        mvc.perform(get("/api/admin/events/" + eventId + "/logo").header("Authorization", bearer(adminToken())))
+                .andExpect(status().isOk());
+        String other = "other-" + UUID.randomUUID().toString().substring(0, 8) + "@client.test";
+        mvc.perform(post("/api/admin/studios").header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Other\",\"email\":\"" + other + "\",\"password\":\"temporary-123\",\"plan\":\"MONTHLY\"}"))
+                .andExpect(status().isCreated());
+        int n = IPS.incrementAndGet();
+        String otherToken = JsonPath.read(mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + other + "\",\"password\":\"temporary-123\"}")
+                        .with(r -> {
+                            r.setRemoteAddr("10.88.1." + n);
+                            return r;
+                        }))
+                .andReturn().getResponse().getContentAsString(), "$.token");
+        mvc.perform(get("/api/admin/events/" + eventId + "/logo").header("Authorization", bearer(otherToken)))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/admin/account/logo")).andExpect(status().isUnauthorized());
+    }
 }

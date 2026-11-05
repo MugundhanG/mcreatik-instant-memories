@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ApiError } from '../../lib/api'
+import { adminApi, ApiError } from '../../lib/api'
 import type { Brand } from '../../lib/types'
 import { BOARD, boardSvg, downloadBlob, renderJpeg, type BoardTheme } from '../../shared/printDesign'
 import { Button, Card, ErrorText } from '../ui'
@@ -19,7 +19,7 @@ export function BoardCard({ brand, saveTheme, onSaved }: {
   const [saving, setSaving] = useState(false)
   const [making, setMaking] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const assets = usePrintAssets(brand)
+  const assets = usePrintAssets(brand, adminApi.accountLogo)
   const anchor = useRef<HTMLDivElement>(null)
 
   // Links to Account → Studio board (#board) land on this card.

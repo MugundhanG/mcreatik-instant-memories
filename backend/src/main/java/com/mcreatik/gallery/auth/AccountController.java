@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,6 +78,20 @@ public class AccountController {
         AdminUser user = access.current(auth);
         branding.uploadLogo(user, logo.getBytes());
         return account(user);
+    }
+
+    /** The studio's own logo file (for the printed board and cards); 404 when there is none. */
+    @GetMapping("/logo")
+    public ResponseEntity<byte[]> logo(Authentication auth) {
+        return logoResponse(branding.logoFile(access.current(auth).getId()));
+    }
+
+    public static ResponseEntity<byte[]> logoResponse(java.util.Optional<StudioBranding.LogoFile> logo) {
+        StudioBranding.LogoFile file = logo.orElseThrow(() -> com.mcreatik.gallery.common.ApiException.notFound("Logo"));
+        return ResponseEntity.ok()
+                .cacheControl(org.springframework.http.CacheControl.maxAge(java.time.Duration.ofMinutes(5)).cachePrivate())
+                .contentType(MediaType.parseMediaType(file.contentType()))
+                .body(file.data());
     }
 
     @DeleteMapping("/logo")

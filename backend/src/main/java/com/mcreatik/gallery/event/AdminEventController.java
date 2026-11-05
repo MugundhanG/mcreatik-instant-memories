@@ -24,9 +24,18 @@ import com.mcreatik.gallery.auth.CurrentAdmin;
 public class AdminEventController {
 
     private final EventService events;
+    private final com.mcreatik.gallery.auth.StudioBranding branding;
 
-    public AdminEventController(EventService events) {
+    public AdminEventController(EventService events, com.mcreatik.gallery.auth.StudioBranding branding) {
         this.events = events;
+        this.branding = branding;
+    }
+
+    /** The logo of the studio that owns the event (its printed event and table cards); 404 when there is none. */
+    @GetMapping("/{eventId}/logo")
+    public org.springframework.http.ResponseEntity<byte[]> logo(Authentication auth, @PathVariable UUID eventId) {
+        UUID owner = events.owned(CurrentAdmin.id(auth), eventId).getOwnerId();
+        return com.mcreatik.gallery.auth.AccountController.logoResponse(branding.logoFile(owner));
     }
 
     @GetMapping
