@@ -25,7 +25,7 @@ flowchart TB
   LY --> E3["events/:eventId → EventDashboardPage"]
   LY --> E4[studios → StudiosPage]
   LY --> E5[account → AccountPage]
-  RS --> D["docs/:slug → DocsPage (super admin)"]
+  RS --> D["docs/:slug → DocsPage (all pages for McreatiK, Guides for studios)"]
   C --> CL[login]
   C --> CP[password]
   C --> CR[index → RequireClient → ClientPortal]

@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { adminApi, ApiError } from '../../lib/api'
-import type { DocPage, DocPageSummary } from '../../lib/types'
+import type { Brand, DocPage, DocPageSummary } from '../../lib/types'
+import mkLogo from '../../assets/mk-logo.webp'
 import { ShutterLoader } from '../../shared/ShutterLoader'
+import { useSession } from '../auth'
 import { slugify } from './docsText'
 import { Markdown } from './Markdown'
+
+/** Guides written for the studio's clients: shown and printed under the studio's own name and logo. */
+const CLIENT_GUIDES = new Set(['sop-couple', 'sop-guest', 'qa-couples', 'qa-guests'])
+
+/** A4 with a margin while the docs are open (the QR poster prints edge to edge and sets margin 0). */
+const PRINT_PAGE_CSS = '@page { size: A4; margin: 14mm 14mm 16mm; }'
 
 interface TocEntry {
   id: string
@@ -37,7 +45,7 @@ function formatDate(iso: string) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-function Sidebar({ pages, current, onNavigate }: { pages: DocPageSummary[]; current: string; onNavigate?: () => void }) {
+function Sidebar({ pages, current, onNavigate, superAdmin }: { pages: DocPageSummary[]; current: string; onNavigate?: () => void; superAdmin: boolean }) {
   const [filter, setFilter] = useState('')
   const q = filter.trim().toLowerCase()
   const shown = q ? pages.filter((p) => `${p.title} ${p.group}`.toLowerCase().includes(q)) : pages
@@ -57,6 +65,9 @@ function Sidebar({ pages, current, onNavigate }: { pages: DocPageSummary[]; curr
                 <Link to={`/admin/docs/${p.slug}`} onClick={onNavigate} aria-current={p.slug === current ? 'page' : undefined}
                   className={`block rounded-lg px-2 py-1.5 text-sm ${p.slug === current ? 'bg-stone-200/70 font-medium text-ink' : 'text-stone-600 hover:bg-stone-100 hover:text-ink'}`}>
                   {p.title}
+                  {superAdmin && p.studio && (
+                    <span title="Studios see this page too" className="ml-1.5 rounded-full border border-line px-1.5 py-px align-middle text-[10px] text-muted">Studios</span>
+                  )}
                 </Link>
               </li>
             ))}
@@ -108,15 +119,55 @@ function Problem({ title, children }: { title: string; children?: ReactNode }) {
   )
 }
 
-/** McreatiK's internal documentation: sidebar, article with diagrams, "On this page". Super admin only. */
+/** Who a client guide is from: the studio's logo and name (McreatiK's own for the McreatiK login). */
+function ClientGuideHeader({ brand }: { brand: Brand | null }) {
+  const own = brand && !brand.mcreatik ? brand : null
+  const logo = own ? own.logoUrl : mkLogo
+  const name = own?.name ?? 'McreatiK Studios'
+  return (
+    <div data-testid="client-guide-brand" className="mb-8 rounded-2xl border border-line bg-white px-5 py-4 print:mb-6 print:rounded-none print:border-0 print:border-b print:px-0 print:pt-0">
+      <p className="no-print mb-3 text-xs text-muted">
+        A guide for your clients. Download the PDF and send it on WhatsApp or email; it carries your name and logo.
+      </p>
+      <div className="flex items-center gap-3">
+        {logo && <img src={logo} alt="" className="h-10 w-auto max-w-[9rem] object-contain" />}
+        <div>
+          <p className="font-display text-lg font-semibold text-ink">{name}</p>
+          {own?.instagram && <p className="text-xs text-muted">@{own.instagram.replace(/^@/, '')}</p>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The dashboard documentation: sidebar, article with diagrams, "On this page". McreatiK sees every page; a studio
+ * sees only its guides (the server decides), and the client guides carry the studio's brand.
+ */
 export default function DocsPage() {
-  const { slug = 'overview' } = useParams()
+  const session = useSession()
+  const superAdmin = session?.role === 'SUPER_ADMIN'
+  const home = superAdmin ? 'overview' : 'sop-studio'
+  const { slug = home } = useParams()
   const { hash } = useLocation()
   const [pages, setPages] = useState<DocPageSummary[] | null>(null)
   const [page, setPage] = useState<DocPage | null>(null)
   const [error, setError] = useState<{ slug: string; status: number; message: string } | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const [brand, setBrand] = useState<Brand | null>(null)
+
+  useEffect(() => {
+    adminApi.account().then((a) => setBrand(a.brand ?? null)).catch(() => setBrand(null))
+  }, [])
+
+  useEffect(() => {
+    const style = document.createElement('style')
+    style.dataset.docsPrint = ''
+    style.textContent = PRINT_PAGE_CSS
+    document.head.appendChild(style)
+    return () => style.remove()
+  }, [])
 
   useEffect(() => {
     adminApi.docs().then(setPages).catch((e: unknown) => {
@@ -170,9 +221,24 @@ export default function DocsPage() {
     }
   }, [current, hash])
 
+  const clientGuide = CLIENT_GUIDES.has(slug)
+  const brandName = brand && !brand.mcreatik ? brand.name : 'McreatiK'
+
+  // The saved PDF is named after the page (browsers use the document title as the file name).
+  useEffect(() => {
+    if (!current) return
+    const before = document.title
+    document.title = clientGuide ? `${current.title} guide - ${brandName}` : `${current.title} - McreatiK Instant Memories`
+    return () => {
+      document.title = before
+    }
+  }, [current, clientGuide, brandName])
+
   const shownError = error && (error.slug === slug || error.slug === '*') ? error : null
   if (shownError?.status === 403) {
-    return <Problem title="Only McreatiK can view the documentation">It explains how the system is built and where its weak points are, so it is kept to the McreatiK login.</Problem>
+    return superAdmin
+      ? <Problem title="Only McreatiK can view the documentation">It explains how the system is built and where its weak points are, so it is kept to the McreatiK login.</Problem>
+      : <Problem title="The guides aren't available here">{shownError.message}</Problem>
   }
 
   const index = pages?.findIndex((p) => p.slug === slug) ?? -1
@@ -185,22 +251,22 @@ export default function DocsPage() {
       <aside className="no-print hidden border-r border-line lg:block">
         <div className="sticky top-0 h-dvh overflow-y-auto px-4 py-6">
           <div className="mb-6 flex items-center justify-between px-2">
-            <p className="text-sm font-semibold text-ink">Documentation</p>
-            <span className="rounded-full border border-line px-2 py-0.5 text-[11px] text-muted">McreatiK only</span>
+            <p className="text-sm font-semibold text-ink">{superAdmin ? 'Documentation' : 'Guides'}</p>
+            {superAdmin && <span className="rounded-full border border-line px-2 py-0.5 text-[11px] text-muted">McreatiK only</span>}
           </div>
-          {pages && <Sidebar pages={pages} current={slug} />}
+          {pages && <Sidebar pages={pages} current={slug} superAdmin={superAdmin} />}
         </div>
       </aside>
 
       <div className="no-print sticky top-0 z-10 border-b border-line bg-paper/95 px-4 py-2.5 backdrop-blur lg:hidden">
         <button type="button" onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen}
           className="flex w-full items-center justify-between rounded-lg border border-line bg-white px-3 py-2 text-sm">
-          <span><span className="text-muted">Docs / </span><span className="font-medium text-ink">{title}</span></span>
+          <span><span className="text-muted">{superAdmin ? 'Docs' : 'Guides'} / </span><span className="font-medium text-ink">{title}</span></span>
           <span aria-hidden="true" className="text-muted">{menuOpen ? '×' : '☰'}</span>
         </button>
         {menuOpen && pages && (
           <div className="anim-drop-in mt-3 max-h-[70dvh] overflow-y-auto pb-2">
-            <Sidebar pages={pages} current={slug} onNavigate={() => setMenuOpen(false)} />
+            <Sidebar pages={pages} current={slug} superAdmin={superAdmin} onNavigate={() => setMenuOpen(false)} />
           </div>
         )}
       </div>
@@ -209,7 +275,7 @@ export default function DocsPage() {
         {shownError ? (
           shownError.status === 404 ? (
             <Problem title="This page doesn't exist">
-              <Link to="/admin/docs/overview" className="underline underline-offset-4">Go to the overview</Link>
+              <Link to={`/admin/docs/${home}`} className="underline underline-offset-4">{superAdmin ? 'Go to the overview' : 'Go to the studio guide'}</Link>
             </Problem>
           ) : (
             <Problem title="The documentation could not be loaded">
@@ -220,8 +286,23 @@ export default function DocsPage() {
           <div className="py-24"><ShutterLoader label="Loading documentation" /></div>
         ) : (
           <article className="mx-auto max-w-3xl" data-testid="doc-article">
-            <p className="mb-3 text-xs font-semibold tracking-[0.16em] text-muted uppercase">{current.group}</p>
-            <Markdown source={current.markdown} />
+            {clientGuide && <ClientGuideHeader brand={brand} />}
+            <div className="no-print mb-3 flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold tracking-[0.16em] text-muted uppercase">{current.group}</p>
+              <button type="button" onClick={() => window.print()}
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink hover:border-stone-400">
+                <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden="true">
+                  <path d="M8 2v8m0 0L5 7m3 3l3-3M3 13h10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Download PDF
+              </button>
+            </div>
+            <div className="doc-print">
+              <Markdown source={current.markdown} />
+            </div>
+            <p className="print-only mt-10 border-t border-line pt-3 text-xs text-muted">
+              {clientGuide ? `${brandName} · Live photos by McreatiK Instant Memories` : 'McreatiK Instant Memories'} · live.mcreatik.com
+            </p>
             <footer className="no-print mt-16 border-t border-line pt-6">
               <div className="grid gap-3 sm:grid-cols-2">
                 {prev ? (

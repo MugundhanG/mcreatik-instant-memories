@@ -152,6 +152,6 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 | --- | --- | --- | --- |
 | GET | `/api/public/downloads/{token}` | Link holder | Streams the ZIP; link valid 30 minutes; 3 at once, others queue up to 10 minutes |
 | GET | `/api/public/downloads/{token}/progress` | Link holder | `{state, done, total, percent}` |
-| GET | `/api/admin/docs` · `/api/admin/docs/{slug}` | Super | This documentation |
+| GET | `/api/admin/docs` · `/api/admin/docs/{slug}` · `/api/admin/docs/images/{name}` | Admin | This documentation. The super admin gets every page (each with a `studio` flag); a studio gets only the 10 studio guides and their images, and 404 for anything else |
 | GET | `/actuator/health` | Public | Used by `deploy.sh` |
 | PUT / GET | `/local-storage/**` | Development only | Exists only when `STORAGE_TYPE=local` |

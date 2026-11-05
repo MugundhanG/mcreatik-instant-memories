@@ -74,11 +74,13 @@ export interface Account {
   brand?: Brand
 }
 
-/** A page of McreatiK's internal documentation (super admin only). */
+/** A documentation page: McreatiK sees every page, a studio only the ones marked `studio`. */
 export interface DocPageSummary {
   slug: string
   title: string
   group: string
+  /** Shown to studio logins too (only McreatiK's list has pages without it). */
+  studio?: boolean
 }
 
 export interface DocPage extends DocPageSummary {
