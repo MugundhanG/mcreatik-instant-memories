@@ -10,6 +10,12 @@ import java.util.HexFormat;
 
 public final class PhotoFiles {
 
+    /**
+     * Inside each camera's folder: photos received while the camera is paused. Never uploaded, never scanned; the studio
+     * can still upload chosen ones later from the dashboard.
+     */
+    public static final String PAUSED_DIR = "Not uploaded (paused)";
+
     private PhotoFiles() {
     }
 

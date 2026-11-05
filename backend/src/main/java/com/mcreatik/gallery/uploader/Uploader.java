@@ -43,6 +43,9 @@ public class Uploader {
     @Column(name = "last_error")
     private String lastError;
 
+    @Column(nullable = false)
+    private boolean paused;
+
     @Column(name = "queue_pending", nullable = false)
     private int queuePending;
 
@@ -100,6 +103,16 @@ public class Uploader {
     public void rename(String name) {
         this.name = name;
         this.updatedAt = Instant.now();
+    }
+
+    /** Privacy pause: no uploads are accepted from this camera until it is resumed. */
+    public void setPaused(boolean paused) {
+        this.paused = paused;
+        this.updatedAt = Instant.now();
+    }
+
+    public boolean isPaused() {
+        return paused;
     }
 
     private static String truncate(String value, int max) {

@@ -40,6 +40,12 @@ public class FakeMcreatikServer implements AutoCloseable {
     public final AtomicInteger failNextPuts = new AtomicInteger();
     public volatile String rejectUploadsWithCode;
     public volatile String eventName = "Arun & Priya Wedding";
+    /** Privacy pause as the server sees it (the dashboard or the app's PATCH /me sets it). */
+    public volatile boolean paused;
+    public volatile String cameraName = "Camera 1";
+    public final AtomicInteger pauseUpdates = new AtomicInteger();
+    private static final Pattern NAME = Pattern.compile("\"name\"\\s*:\\s*\"([^\"]*)\"");
+    private static final Pattern PAUSED = Pattern.compile("\"paused\"\\s*:\\s*(true|false)");
     /** Sent in /me when set (newer servers); null leaves the field out, like an older server. */
     public volatile String eventDate;
     /** True = behaves like a server that accepts web/thumbnail versions prepared by the uploader. */
@@ -110,13 +116,27 @@ public class FakeMcreatikServer implements AutoCloseable {
         }
         switch (method + " " + path) {
             case "GET /api/uploader/me" -> respond(ex, 200, """
-                    {"uploaderId":"u1","uploaderName":"Camera 1","eventId":"e1","eventName":"%s",
+                    {"uploaderId":"u1","uploaderName":"%s","eventId":"e1","eventName":"%s",
                      "eventStatus":"LIVE","galleryUrl":"https://gallery.mcreatik.com/e/arun-priya-7k3d",
-                     "heartbeatIntervalSeconds":15,"maxFileSizeBytes":62914560%s}""".formatted(eventName,
-                    eventDate == null ? "" : ",\"eventDate\":\"" + eventDate + "\""));
+                     "heartbeatIntervalSeconds":15,"maxFileSizeBytes":62914560,"paused":%s%s}""".formatted(cameraName,
+                    eventName, paused, eventDate == null ? "" : ",\"eventDate\":\"" + eventDate + "\""));
             case "POST /api/uploader/heartbeat" -> {
                 heartbeats.incrementAndGet();
-                respond(ex, 200, "{\"eventStatus\":\"LIVE\",\"acceptingUploads\":true}");
+                respond(ex, 200, "{\"eventStatus\":\"LIVE\",\"acceptingUploads\":true,\"paused\":" + paused
+                        + ",\"uploaderName\":\"" + cameraName + "\"}");
+            }
+            case "PATCH /api/uploader/me" -> {
+                String json = new String(body, StandardCharsets.UTF_8);
+                Matcher p = PAUSED.matcher(json);
+                if (p.find()) {
+                    paused = Boolean.parseBoolean(p.group(1));
+                    pauseUpdates.incrementAndGet();
+                }
+                Matcher n = NAME.matcher(json);
+                if (n.find()) {
+                    cameraName = n.group(1);
+                }
+                respond(ex, 200, "{\"name\":\"" + cameraName + "\",\"paused\":" + paused + "}");
             }
             case "POST /api/uploader/uploads" -> {
                 String json = new String(body, StandardCharsets.UTF_8);
@@ -134,7 +154,9 @@ public class FakeMcreatikServer implements AutoCloseable {
                 int n = camerasIssued.incrementAndGet();
                 String t = "mku_camera-" + n;
                 tokens.add(t);
-                respond(ex, 201, "{\"uploaderId\":\"u" + n + "\",\"name\":\"Camera " + n + "\",\"token\":\"" + t + "\"}");
+                Matcher named = NAME.matcher(new String(body, StandardCharsets.UTF_8));
+                String name = named.find() ? named.group(1) : "Camera " + n;
+                respond(ex, 201, "{\"uploaderId\":\"u" + n + "\",\"name\":\"" + name + "\",\"token\":\"" + t + "\"}");
             }
             case "DELETE /api/uploader/me" -> {
                 tokens.remove(token);
@@ -174,6 +196,10 @@ public class FakeMcreatikServer implements AutoCloseable {
 
     private void createSession(HttpExchange ex, String json) throws IOException {
         sessionCalls.incrementAndGet();
+        if (paused) {
+            respond(ex, 409, "{\"code\":\"UPLOADER_PAUSED\",\"message\":\"This camera is paused.\"}");
+            return;
+        }
         if (rejectUploadsWithCode != null) {
             respond(ex, 400, "{\"code\":\"" + rejectUploadsWithCode + "\",\"message\":\"Rejected by test\"}");
             return;

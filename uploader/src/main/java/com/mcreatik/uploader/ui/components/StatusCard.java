@@ -65,6 +65,7 @@ public final class StatusCard extends Ui.Surface {
         // icon shape follows the state
         String iconName = switch (s.conn()) {
             case ONLINE -> "circle-check";
+            case PAUSED -> "circle-pause";
             case OFFLINE -> "wifi-off";
             case ERROR -> "circle-alert";
             case RECONNECTING -> "loader-circle";

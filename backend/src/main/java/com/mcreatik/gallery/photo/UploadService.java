@@ -45,9 +45,12 @@ public class UploadService {
     private final GalleryProperties properties;
     private final TransactionTemplate tx;
     private final ApplicationEventPublisher publisher;
+    private final com.mcreatik.gallery.uploader.UploaderRepository uploaders;
 
     public UploadService(PhotoRepository photos, EventRepository events, StorageService storage,
-                         GalleryProperties properties, TransactionTemplate tx, ApplicationEventPublisher publisher) {
+                         GalleryProperties properties, TransactionTemplate tx, ApplicationEventPublisher publisher,
+                         com.mcreatik.gallery.uploader.UploaderRepository uploaders) {
+        this.uploaders = uploaders;
         this.photos = photos;
         this.events = events;
         this.storage = storage;
@@ -95,6 +98,10 @@ public class UploadService {
         Event event = events.findById(uploader.eventId()).orElseThrow(() -> ApiException.notFound("Event"));
         if (!event.getStatus().acceptsUploads()) {
             throw ApiException.conflict("EVENT_CLOSED", "This event is archived and no longer accepts photos");
+        }
+        // Privacy pause: whatever the app believes, nothing from a paused camera reaches the gallery.
+        if (uploaders.findById(uploader.uploaderId()).map(com.mcreatik.gallery.uploader.Uploader::isPaused).orElse(false)) {
+            throw ApiException.conflict("UPLOADER_PAUSED", "This camera is paused. Resume it to upload new photos.");
         }
 
         var existing = photos.findByEventIdAndChecksumSha256(event.getId(), checksum);

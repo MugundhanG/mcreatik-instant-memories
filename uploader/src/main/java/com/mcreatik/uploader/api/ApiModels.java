@@ -15,7 +15,7 @@ public final class ApiModels {
     /** {@code eventDate}/{@code eventStartTime} are null with servers that don't send them yet. */
     public record Me(String uploaderId, String uploaderName, String eventId, String eventName, String eventStatus,
                      String galleryUrl, long heartbeatIntervalSeconds, long maxFileSizeBytes,
-                     String eventDate, String eventStartTime) {
+                     String eventDate, String eventStartTime, boolean paused) {
 
         /** The event date, or null when missing or unreadable. */
         public java.time.LocalDate eventDateValue() {
@@ -40,7 +40,22 @@ public final class ApiModels {
                                    String appVersion) {
     }
 
-    public record HeartbeatResponse(String eventStatus, boolean acceptingUploads) {
+    /** {@code paused}/{@code uploaderName} are false/null with servers that don't send them yet. */
+    public record HeartbeatResponse(String eventStatus, boolean acceptingUploads, boolean paused, String uploaderName) {
+        public HeartbeatResponse(String eventStatus, boolean acceptingUploads) {
+            this(eventStatus, acceptingUploads, false, null);
+        }
+    }
+
+    /** "Add camera" with the name the photographer typed (blank: the server picks "Camera N"). */
+    public record AddCameraRequest(String name) {
+    }
+
+    /** Rename and/or pause or resume this camera; a null field is left unchanged. */
+    public record UpdateSelfRequest(String name, Boolean paused) {
+    }
+
+    public record UpdateSelfResponse(String name, boolean paused) {
     }
 
     /** {@code prepared} is null when sending the original for server-side processing. */

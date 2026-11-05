@@ -151,6 +151,8 @@ export interface UploaderStats {
   queueFailed: number
   lastError: string | null
   lastUploadAt: string | null
+  /** Privacy pause: the camera's new photos stay on the laptop and none reach the gallery. */
+  paused: boolean
 }
 
 export interface AdminPhoto {

@@ -215,7 +215,7 @@ public class EventService {
                     return new EventDtos.UploaderStats(u.getId(), u.getName(),
                             u.effectiveStatus(now, properties.uploader().onlineThreshold()), u.getLastSeenAt(),
                             u.getDeviceIdentifier(), u.getTokenPrefix(), counts[0], counts[1], u.getQueuePending(),
-                            u.getQueueFailed(), u.getLastError(), lastUpload.get(u.getId()));
+                            u.getQueueFailed(), u.getLastError(), lastUpload.get(u.getId()), u.isPaused());
                 }).toList();
         int active = (int) uploaderStats.stream().filter(u -> u.status() != UploaderStatus.OFFLINE).count();
 

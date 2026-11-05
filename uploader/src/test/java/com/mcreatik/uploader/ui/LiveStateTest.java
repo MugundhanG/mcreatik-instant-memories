@@ -22,7 +22,7 @@ class LiveStateTest {
                                 List<EngineStatus.ActiveUpload> active) {
         return new EngineStatus(c, c == Connection.BLOCKED ? "This uploader was removed from the event." : null,
                 "Kavin & Nila Wedding", "Camera 1", "https://live.mcreatik.com/e/x", "folder", counts, active, null,
-                onlineSince, offlineSince, speed, null, null, "LIVE");
+                onlineSince, offlineSince, speed, null, null, "LIVE", false, 0);
     }
 
     private FtpPhotoSource.Status ftp(int received, Instant last, String error) {
@@ -124,5 +124,21 @@ class LiveStateTest {
         assertThat(PhotoInfo.cameraName("NIKON CORPORATION", "NIKON Z 6_2")).isEqualTo("NIKON Z 6_2");
         assertThat(PhotoInfo.cameraName("FUJIFILM", "X-T5")).isEqualTo("Fujifilm X-T5");
         assertThat(PhotoInfo.cameraName(null, null)).isNull();
+    }
+
+    @Test
+    void aPausedCameraIsAmberAndSaysItsPhotosStayOnTheLaptop() {
+        EngineStatus base = engine(Connection.ONLINE, NONE, now.minusSeconds(60), null, 0, List.of());
+        EngineStatus paused = new EngineStatus(base.connection(), null, base.eventName(), base.uploaderName(),
+                base.galleryUrl(), base.watchFolder(), base.counts(), base.active(), null, base.onlineSince(), null, 0,
+                null, null, "LIVE", true, 3);
+        LiveState s = LiveState.of(paused, ftp(5, now.minusSeconds(10), null), now.minusSeconds(10), now);
+        assertThat(s.conn()).isEqualTo(Conn.PAUSED);
+        assertThat(s.tone()).isEqualTo(Tone.AMBER);
+        assertThat(s.title()).contains("Paused");
+        assertThat(s.detail()).startsWith("3 photos kept back.");
+        assertThat(s.autoUpload()).isEqualTo("Paused · 3 photos kept here");
+        assertThat(s.pipeline().get(1).status()).isEqualTo("Kept here");
+        assertThat(s.pipeline().get(2).status()).isEqualTo("Paused");
     }
 }

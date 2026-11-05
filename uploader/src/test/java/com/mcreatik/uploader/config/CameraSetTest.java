@@ -63,4 +63,27 @@ class CameraSetTest {
         assertThat(c2.watchFolder()).isEqualTo(Path.of("/p/Event - Camera 2"));
         assertThat(c2.deviceId()).isEqualTo("dev");
     }
+
+    @Test
+    void inAnEventFolderEachCameraGetsASubfolderNamedAfterIt(@org.junit.jupiter.api.io.TempDir Path tmp) throws Exception {
+        Path root = tmp.resolve("McreatiK Photos");
+        Path c1 = root.resolve("Ananya & Rohit Wedding").resolve("Main - Karthik");
+        Path c2 = CameraSet.folderFor(c1, 2, "Candid / Divya", root);
+        assertThat(c2).isEqualTo(root.resolve("Ananya & Rohit Wedding").resolve("Candid Divya"));
+        assertThat(c2.startsWith(c1)).as("never inside Camera 1's folder").isFalse();
+        assertThat(CameraSet.folderFor(c1, 3, null, root)).isEqualTo(root.resolve("Ananya & Rohit Wedding").resolve("Camera 3"));
+
+        // a folder that already holds photos (a removed camera of the same name) is not reused
+        java.nio.file.Files.createDirectories(c2);
+        java.nio.file.Files.writeString(c2.resolve("IMG_1.JPG"), "x");
+        assertThat(CameraSet.folderFor(c1, 2, "Candid / Divya", root))
+                .isEqualTo(root.resolve("Ananya & Rohit Wedding").resolve("Candid Divya (2)"));
+    }
+
+    @Test
+    void olderOrHandPickedFoldersKeepCamerasBesideCamera1WithTheirName(@org.junit.jupiter.api.io.TempDir Path tmp) {
+        Path root = tmp.resolve("McreatiK Photos");
+        Path c1 = root.resolve("Old Wedding"); // the layout before cameras had their own sub-folders
+        assertThat(CameraSet.folderFor(c1, 2, "Drone", root)).isEqualTo(root.resolve("Old Wedding - Drone"));
+    }
 }

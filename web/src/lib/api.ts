@@ -244,5 +244,7 @@ export const adminApi = {
     request<Studio>('/api/admin/studios', { method: 'POST', body: json(input) }, true),
   updateStudio: (id: string, input: { name?: string; disabled?: boolean; newPassword?: string }) =>
     request<Studio>(`/api/admin/studios/${id}`, { method: 'PATCH', body: json(input) }, true),
+  updateUploader: (uploaderId: string, changes: { name?: string; paused?: boolean }) =>
+    request<void>(`/api/admin/uploaders/${uploaderId}`, { method: 'PATCH', body: json(changes) }, true),
   deleteUploader: (uploaderId: string) => request<void>(`/api/admin/uploaders/${uploaderId}`, { method: 'DELETE' }, true),
 }

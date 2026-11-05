@@ -100,7 +100,8 @@ public final class UploaderWindow implements AppContext.Actions {
         sidebar.select(visible);
 
         header = new HeaderBar(UiTheme.logo(30));
-        strip = new CameraStrip(this::selectCamera, this::addCamera, this::removeCamera);
+        strip = new CameraStrip(this::selectCamera, this::addCamera, this::removeCamera, this::togglePause,
+                this::renameCamera);
         JPanel stripBar = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(java.awt.Graphics g) {
@@ -184,15 +185,17 @@ public final class UploaderWindow implements AppContext.Actions {
     static int severity(LiveState s) {
         return switch (s.conn()) {
             case ONLINE -> 0;
-            case RECONNECTING -> 1;
-            case OFFLINE -> 2;
-            case ERROR -> 3;
+            case PAUSED -> 1;
+            case RECONNECTING -> 2;
+            case OFFLINE -> 3;
+            case ERROR -> 4;
         };
     }
 
     static String word(LiveState.Conn c) {
         return switch (c) {
             case ONLINE -> "Online";
+            case PAUSED -> "Paused";
             case RECONNECTING -> "Reconnecting";
             case OFFLINE -> "Offline";
             case ERROR -> "Needs attention";
@@ -217,6 +220,7 @@ public final class UploaderWindow implements AppContext.Actions {
             String n = inThatState + (inThatState == 1 ? " camera " : " cameras ");
             conn = n + switch (live.conn()) {
                 case ONLINE -> "online";
+                case PAUSED -> "paused";
                 case RECONNECTING -> "reconnecting";
                 case OFFLINE -> "offline";
                 case ERROR -> inThatState == 1 ? "needs attention" : "need attention";
@@ -268,12 +272,22 @@ public final class UploaderWindow implements AppContext.Actions {
         if (adding || !ctx.cameras().canAdd()) {
             return;
         }
+        int next = com.mcreatik.uploader.config.CameraSet.nextNumber(
+                ctx.cameras().all().stream().map(CameraRuntime::number).toList());
+        String typed = (String) JOptionPane.showInputDialog(frame,
+                "<html><body style='width:300px'>Name this camera, for example <b>Candid - Divya</b> or <b>Drone</b>."
+                        + " Its photos go into a folder with this name.</body></html>",
+                "Add camera", JOptionPane.PLAIN_MESSAGE, null, null, "Camera " + next);
+        if (typed == null) {
+            return; // cancelled
+        }
+        String cameraName = typed.trim().length() > 60 ? typed.trim().substring(0, 60) : typed.trim();
         adding = true;
         refresh();
         new javax.swing.SwingWorker<CameraRuntime, Void>() {
             @Override
             protected CameraRuntime doInBackground() throws Exception {
-                return ctx.cameras().add();
+                return ctx.cameras().add(cameraName);
             }
 
             @Override
@@ -283,8 +297,10 @@ public final class UploaderWindow implements AppContext.Actions {
                     CameraRuntime c = get();
                     ctx.select(c);
                     refresh();
-                    JOptionPane.showMessageDialog(frame, "<html><body style='width:320px'><b>Camera " + c.number()
-                            + " is ready.</b><br><br>In that camera's FTP settings use <b>Port " + c.config().ftp().port()
+                    String n = c.engine().status().uploaderName();
+                    JOptionPane.showMessageDialog(frame, "<html><body style='width:320px'><b>" + (n == null || n.isBlank()
+                            ? "Camera " + c.number() : n) + " is ready.</b><br><br>In that camera's FTP settings use <b>Port "
+                            + c.config().ftp().port()
                             + "</b>. The Server, User and Password are the same as Camera 1.</body></html>",
                             "Camera added", JOptionPane.INFORMATION_MESSAGE);
                 } catch (Exception e) {
@@ -330,6 +346,57 @@ public final class UploaderWindow implements AppContext.Actions {
         } catch (Exception e) {
             JOptionPane.showMessageDialog(frame, e.getMessage(), "Remove camera", JOptionPane.WARNING_MESSAGE);
         }
+    }
+
+    /** Privacy pause: new photos stay on this laptop; resume to upload again. */
+    @Override
+    public void togglePause(CameraRuntime camera) {
+        boolean pause = !camera.engine().isPaused();
+        if (pause) {
+            int ok = JOptionPane.showConfirmDialog(frame, "<html><body style='width:320px'><b>Pause this camera?</b><br><br>"
+                    + "Photos not uploaded yet, and every new photo, stay on this laptop in <b>Not uploaded (paused)</b>."
+                    + " None of them go to the gallery, even after you resume.<br><br>Use it for private moments, such as"
+                    + " the bride getting ready.</body></html>", "Pause camera", JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if (ok != JOptionPane.OK_OPTION) {
+                return;
+            }
+        }
+        camera.engine().setPaused(pause);
+        refresh();
+    }
+
+    @Override
+    public void renameCamera(CameraRuntime camera) {
+        String current = camera.engine().status().uploaderName();
+        String typed = (String) JOptionPane.showInputDialog(frame, "New name for this camera (shown here and in the"
+                + " dashboard; its folder keeps its name):", "Rename camera", JOptionPane.PLAIN_MESSAGE, null, null,
+                current == null ? "Camera " + camera.number() : current);
+        if (typed == null || typed.isBlank() || typed.trim().equals(current)) {
+            return;
+        }
+        String name = typed.trim().length() > 60 ? typed.trim().substring(0, 60) : typed.trim();
+        new javax.swing.SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                return camera.engine().rename(name);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    refresh();
+                } catch (Exception e) {
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    String msg = cause instanceof com.mcreatik.uploader.api.ApiException api
+                            && api.kind() == com.mcreatik.uploader.api.ApiException.Kind.TRANSIENT
+                            ? "McreatiK couldn't be reached. Check the internet and try again." : cause.getMessage();
+                    JOptionPane.showMessageDialog(frame, "<html><body style='width:300px'>" + msg + "</body></html>",
+                            "Rename camera", JOptionPane.WARNING_MESSAGE);
+                }
+            }
+        }.execute();
     }
 
     @Override

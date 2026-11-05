@@ -18,7 +18,7 @@ public record LiveState(Conn conn, Tone tone, String title, String detail,
                         String camera, String autoUpload, String lastPhoto, String speed, String duration,
                         List<Stage> pipeline, int uploaded, int total) {
 
-    public enum Conn { ONLINE, RECONNECTING, OFFLINE, ERROR }
+    public enum Conn { ONLINE, PAUSED, RECONNECTING, OFFLINE, ERROR }
 
     /** Colour families from the theme tokens (green, blue, grey, amber, red). */
     public enum Tone {
@@ -58,6 +58,12 @@ public record LiveState(Conn conn, Tone tone, String title, String detail,
             tone = Tone.RED;
             title = "The camera can't send photos";
             detail = ftp.error();
+        } else if (s.paused()) {
+            conn = Conn.PAUSED;
+            tone = Tone.AMBER;
+            title = "Paused — photos stay on this laptop";
+            detail = (s.pausedPhotos() > 0 ? count(s.pausedPhotos(), "photo") + " kept back. " : "")
+                    + "New photos go to “Not uploaded (paused)” and never reach the gallery. Press Resume to go live again.";
         } else if (s.connection() == EngineStatus.Connection.ONLINE) {
             conn = Conn.ONLINE;
             tone = Tone.GREEN;
@@ -95,6 +101,7 @@ public record LiveState(Conn conn, Tone tone, String title, String detail,
 
         String autoUpload = switch (conn) {
             case ONLINE -> c.pending() > 0 ? "Uploading " + count(c.pending(), "photo") : "On · up to date";
+            case PAUSED -> "Paused" + (s.pausedPhotos() > 0 ? " · " + count(s.pausedPhotos(), "photo") + " kept here" : "");
             case RECONNECTING, OFFLINE -> c.pending() > 0 ? "Paused · " + count(c.pending(), "photo") + " waiting"
                     : "Paused until online";
             case ERROR -> s.connection() == EngineStatus.Connection.BLOCKED ? "Paused" : "On";
@@ -105,7 +112,11 @@ public record LiveState(Conn conn, Tone tone, String title, String detail,
         String duration = s.onlineSince() != null ? "Online for " + span(s.onlineSince(), now)
                 : s.offlineSince() != null ? "Offline for " + span(s.offlineSince(), now) : "—";
 
-        List<Stage> pipeline = List.of(cameraStage(ftp, lastPhotoAt, now), computerStage(c), serverStage(s, conn),
+        List<Stage> pipeline = List.of(cameraStage(ftp, lastPhotoAt, now),
+                conn == Conn.PAUSED ? new Stage("Computer", "monitor", Tone.AMBER, "Kept here",
+                        s.pausedPhotos() > 0 ? count(s.pausedPhotos(), "photo") + " not uploaded" : "Nothing is uploaded")
+                        : computerStage(c),
+                serverStage(s, conn),
                 galleryStage(c));
         return new LiveState(conn, tone, title, detail, camera, autoUpload, lastPhoto, speed, duration, pipeline,
                 c.done() + c.duplicate(), c.total());
@@ -148,6 +159,7 @@ public record LiveState(Conn conn, Tone tone, String title, String detail,
                     ? new Stage("Upload server", "cloud-upload", Tone.GREY, "Connecting", "Reaching McreatiK…")
                     : new Stage("Upload server", "cloud-upload", Tone.RED, "Offline", "Reconnecting automatically");
             case OFFLINE -> new Stage("Upload server", "cloud-upload", Tone.RED, "Offline", "Retrying automatically");
+            case PAUSED -> new Stage("Upload server", "cloud-upload", Tone.GREY, "Paused", "Nothing is sent while paused");
             case ONLINE -> c.uploading() > 0 || !s.active().isEmpty()
                     ? new Stage("Upload server", "cloud-upload", Tone.BLUE, "Uploading",
                     s.bytesPerSecond() > 0 ? speed(s.bytesPerSecond()) : count(Math.max(1, c.uploading()), "photo") + " in progress")

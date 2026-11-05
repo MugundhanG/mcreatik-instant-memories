@@ -297,4 +297,88 @@ class UploadEngineTest {
         assertThat(server.stored.get(id)).isEqualTo(broken); // the server gets the real file and decides
         assertThat(server.preparedSessions).doesNotContainKey(id);
     }
+
+    // ---- privacy pause ----
+
+    private static long filesIn(Path dir) {
+        if (!java.nio.file.Files.isDirectory(dir)) {
+            return 0;
+        }
+        try (var f = java.nio.file.Files.list(dir)) {
+            return f.count();
+        } catch (java.io.IOException e) {
+            return -1;
+        }
+    }
+
+    @Test
+    void pausingHereKeepsNewPhotosOnTheLaptopAndResumingUploadsOnlyNewOnes() throws Exception {
+        startEngine();
+        engine.setPhotoFolder(folder);
+        await("online", () -> engine.status().connection() == EngineStatus.Connection.ONLINE);
+
+        engine.setPaused(true);
+        await("server told", () -> server.paused);
+        TestPhotos.write(folder, "IMG_PRIVATE.JPG");
+        Path held = folder.resolve(PhotoFiles.PAUSED_DIR);
+        await("kept back", () -> java.nio.file.Files.exists(held.resolve("IMG_PRIVATE.JPG")));
+        assertThat(engine.status().paused()).isTrue();
+        assertThat(engine.status().pausedPhotos()).isEqualTo(1);
+        Thread.sleep(400);
+        assertThat(server.sessionCalls.get()).as("nothing sent while paused").isZero();
+
+        engine.setPaused(false);
+        await("server told", () -> !server.paused);
+        TestPhotos.write(folder, "IMG_PUBLIC.JPG");
+        await("new photo uploaded", () -> queue.counts().done() == 1);
+        Thread.sleep(300);
+        assertThat(server.completedShas()).hasSize(1);
+        assertThat(filesIn(held)).as("the kept-back photo stays private").isEqualTo(1);
+    }
+
+    @Test
+    void aPauseInTheDashboardReachesTheLaptopAndKeepsBackWhatHasntUploaded() throws Exception {
+        server.offline.set(true); // photos wait in the queue
+        startEngine();
+        engine.setPhotoFolder(folder);
+        TestPhotos.write(folder, "IMG_A.JPG");
+        TestPhotos.write(folder, "IMG_B.JPG");
+        await("queued", () -> queue.counts().queued() == 2);
+
+        server.paused = true; // paused in the dashboard
+        server.offline.set(false);
+        await("paused here too", () -> engine.status().paused());
+        await("waiting photos kept back", () -> filesIn(folder.resolve(PhotoFiles.PAUSED_DIR)) == 2);
+        assertThat(queue.counts().pending()).isZero();
+        assertThat(server.completedShas()).isEmpty();
+
+        server.paused = false; // resumed in the dashboard
+        await("resumed here", () -> !engine.status().paused());
+        TestPhotos.write(folder, "IMG_C.JPG");
+        await("uploads again", () -> queue.counts().done() == 1);
+    }
+
+    @Test
+    void anUploadTheServerRefusesBecauseThePauseIsNewIsKeptBackToo() throws Exception {
+        startEngine();
+        engine.setPhotoFolder(folder);
+        await("online", () -> engine.status().connection() == EngineStatus.Connection.ONLINE);
+        server.paused = true; // the laptop hasn't heard yet; the server refuses the upload
+        TestPhotos.write(folder, "IMG_RACE.JPG");
+        await("kept back", () -> java.nio.file.Files.exists(folder.resolve(PhotoFiles.PAUSED_DIR).resolve("IMG_RACE.JPG")));
+        assertThat(engine.status().paused()).isTrue();
+        assertThat(queue.counts().failed()).isZero();
+        assertThat(server.completedShas()).isEmpty();
+    }
+
+    @Test
+    void aRenameIsSentToTheServerAndShownHere() throws Exception {
+        startEngine();
+        await("online", () -> engine.status().connection() == EngineStatus.Connection.ONLINE);
+        assertThat(engine.rename("Candid - Divya")).isEqualTo("Candid - Divya");
+        assertThat(server.cameraName).isEqualTo("Candid - Divya");
+        assertThat(engine.status().uploaderName()).isEqualTo("Candid - Divya");
+        server.cameraName = "Main"; // renamed in the dashboard
+        await("dashboard rename shown", () -> "Main".equals(engine.status().uploaderName()));
+    }
 }

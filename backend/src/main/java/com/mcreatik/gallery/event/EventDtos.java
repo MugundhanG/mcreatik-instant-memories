@@ -60,7 +60,8 @@ public final class EventDtos {
 
     public record UploaderStats(UUID id, String name, UploaderStatus status, Instant lastSeenAt,
                                 String deviceIdentifier, String tokenPrefix, long photosUploaded, long photosReady,
-                                int queuePending, int queueFailed, String lastError, Instant lastUploadAt) {
+                                int queuePending, int queueFailed, String lastError, Instant lastUploadAt,
+                                boolean paused) {
     }
 
     public record EventStats(long totalPhotos, long readyPhotos, long inProgressPhotos, long failedPhotos,

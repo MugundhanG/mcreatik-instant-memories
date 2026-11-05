@@ -18,7 +18,7 @@ import com.mcreatik.uploader.ui.LiveState;
 
 /**
  * The cameras of this laptop as tabs (status dot, name, port, photos uploaded), then "+ Add camera". Clicking a
- * tab shows that camera below; "Remove camera" appears for the selected camera (never Camera 1).
+ * tab shows that camera below. For the selected camera: Pause / Resume, Rename, and Remove (never Camera 1).
  */
 public final class CameraStrip extends JPanel {
 
@@ -29,11 +29,14 @@ public final class CameraStrip extends JPanel {
     private final JPanel tabs = Ui.clear(null);
     private final Ui.Btn add = new Ui.Btn("Add camera", Ui.Kind.SECONDARY, "camera");
     private final Ui.Btn remove = new Ui.Btn("Remove camera", Ui.Kind.GHOST, null);
+    private final Ui.Btn pause = new Ui.Btn("Pause", Ui.Kind.SECONDARY, "circle-pause");
+    private final Ui.Btn rename = new Ui.Btn("Rename", Ui.Kind.GHOST, "pencil");
     private final Consumer<CameraRuntime> onSelect;
     private final List<Tab> shown = new ArrayList<>();
     private CameraRuntime selected;
 
-    public CameraStrip(Consumer<CameraRuntime> onSelect, Runnable onAdd, Consumer<CameraRuntime> onRemove) {
+    public CameraStrip(Consumer<CameraRuntime> onSelect, Runnable onAdd, Consumer<CameraRuntime> onRemove,
+                       Consumer<CameraRuntime> onPause, Consumer<CameraRuntime> onRename) {
         super(new BorderLayout(12, 0));
         setOpaque(false);
         this.onSelect = onSelect;
@@ -45,12 +48,24 @@ public final class CameraStrip extends JPanel {
                 onRemove.accept(selected);
             }
         });
+        pause.addActionListener(e -> {
+            if (selected != null) {
+                onPause.accept(selected);
+            }
+        });
+        rename.addActionListener(e -> {
+            if (selected != null) {
+                onRename.accept(selected);
+            }
+        });
         remove.setForeground(com.mcreatik.uploader.ui.theme.Tok.c("red"));
         // one row that never wraps: tabs shrink (down to their minimum) when the window is narrow
         tabs.setLayout(new javax.swing.BoxLayout(tabs, javax.swing.BoxLayout.X_AXIS));
         tabs.add(add);
         add(tabs, BorderLayout.CENTER);
-        JPanel right = Ui.clear(new java.awt.GridBagLayout());
+        JPanel right = Ui.clear(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 6, 0));
+        right.add(pause);
+        right.add(rename);
         right.add(remove);
         add(right, BorderLayout.EAST);
     }
@@ -83,6 +98,13 @@ public final class CameraStrip extends JPanel {
         add.setEnabled(canAdd);
         add.setToolTipText(addHint);
         remove.setVisible(selectedCamera != null && selectedCamera.number() != 1);
+        boolean isPaused = selectedCamera != null && selectedCamera.engine().isPaused();
+        pause.setText(isPaused ? "Resume" : "Pause");
+        pause.setIcon(com.mcreatik.uploader.ui.theme.Icons.get(isPaused ? "circle-play" : "circle-pause", 15, "text"));
+        pause.setToolTipText(isPaused ? "Upload new photos from this camera again"
+                : "Keep this camera's new photos on this laptop (private moments). Nothing goes to the gallery.");
+        pause.setVisible(selectedCamera != null);
+        rename.setVisible(selectedCamera != null);
         remove.setForeground(com.mcreatik.uploader.ui.theme.Tok.c("red"));
     }
 
@@ -127,6 +149,7 @@ public final class CameraStrip extends JPanel {
             name.text(e.name());
             String word = switch (e.state().conn()) {
                 case ONLINE -> "Online";
+                case PAUSED -> "Paused";
                 case RECONNECTING -> "Reconnecting";
                 case OFFLINE -> "Offline";
                 case ERROR -> "Needs attention";

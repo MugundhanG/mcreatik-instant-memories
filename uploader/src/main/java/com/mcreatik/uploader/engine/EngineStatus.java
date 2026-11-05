@@ -13,11 +13,14 @@ import com.mcreatik.uploader.queue.QueueCounts;
  * @param offlineSince   when the connection was lost (null while not offline)
  * @param bytesPerSecond upload speed over the last 30 seconds, 0 when nothing finished in that time
  * @param eventDate      the event's date from the dashboard, null when the server doesn't send it yet
+ * @param paused         privacy pause: new photos stay on this computer and are not uploaded
+ * @param pausedPhotos   photos kept back while paused (in the camera's "Not uploaded (paused)" folder)
  */
 public record EngineStatus(Connection connection, String blockedReason, String eventName, String uploaderName,
                            String galleryUrl, String watchFolder, QueueCounts counts, List<ActiveUpload> active,
                            String lastError, Instant onlineSince, Instant offlineSince, long bytesPerSecond,
-                           LocalDate eventDate, Instant eventStartTime, String eventStatus) {
+                           LocalDate eventDate, Instant eventStartTime, String eventStatus, boolean paused,
+                           int pausedPhotos) {
 
     public enum Connection { CONNECTING, ONLINE, OFFLINE, BLOCKED }
 

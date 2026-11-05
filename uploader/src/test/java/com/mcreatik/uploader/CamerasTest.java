@@ -153,7 +153,9 @@ class CamerasTest {
                 assertThat(moved.token()).isNotEqualTo(oldToken);
                 assertThat(moved.ftp().port()).isEqualTo(base + 1);
                 assertThat(moved.ftp().password()).isEqualTo("pw234567");
-                assertThat(moved.watchFolder()).isEqualTo(photos.resolve("Event B - Camera 2").toAbsolutePath());
+                // named after the camera the server created in the new event (the fake numbers cameras across events)
+                assertThat(moved.watchFolder().getFileName().toString()).startsWith("Event B - Camera ");
+                assertThat(moved.watchFolder().getParent()).isEqualTo(photos.toAbsolutePath());
             } finally {
                 cameras.closeAll();
             }

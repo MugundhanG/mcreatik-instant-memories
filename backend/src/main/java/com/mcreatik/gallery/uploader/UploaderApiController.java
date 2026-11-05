@@ -50,11 +50,31 @@ public class UploaderApiController {
     public record CameraResponse(UUID uploaderId, String name, String token) {
     }
 
+    /** Older apps send no body: the server then names the camera "Camera N". */
+    public record AddCameraRequest(@Size(max = 120) String name) {
+    }
+
+    public record UpdateSelfRequest(@Size(max = 120) String name, Boolean paused) {
+    }
+
+    public record UpdateSelfResponse(String name, boolean paused) {
+    }
+
+    /** Rename this camera, or pause / resume it, from the app. */
+    @org.springframework.web.bind.annotation.PatchMapping("/me")
+    public UpdateSelfResponse updateSelf(@AuthenticationPrincipal UploaderPrincipal principal,
+                                         @Valid @RequestBody UpdateSelfRequest request) {
+        Uploader u = uploaderAdmin.updateSelf(principal, request.name(), request.paused());
+        return new UpdateSelfResponse(u.getName(), u.isPaused());
+    }
+
     /** "Add camera" in the app: another camera (uploader) in this uploader's event. */
     @PostMapping("/cameras")
     @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
-    public CameraResponse addCamera(@AuthenticationPrincipal UploaderPrincipal principal) {
-        UploaderAdminService.UploaderCredentials c = uploaderAdmin.createSibling(principal);
+    public CameraResponse addCamera(@AuthenticationPrincipal UploaderPrincipal principal,
+                                    @RequestBody(required = false) AddCameraRequest request) {
+        UploaderAdminService.UploaderCredentials c = uploaderAdmin.createSibling(principal,
+                request == null ? null : request.name());
         return new CameraResponse(c.uploaderId(), c.name(), c.token());
     }
 
@@ -67,7 +87,8 @@ public class UploaderApiController {
 
     public record MeResponse(UUID uploaderId, String uploaderName, UUID eventId, String eventName,
                              EventStatus eventStatus, String galleryUrl, long heartbeatIntervalSeconds,
-                             long maxFileSizeBytes, java.time.LocalDate eventDate, java.time.Instant eventStartTime) {
+                             long maxFileSizeBytes, java.time.LocalDate eventDate, java.time.Instant eventStartTime,
+                             boolean paused) {
     }
 
     @GetMapping("/me")
@@ -76,7 +97,7 @@ public class UploaderApiController {
         var event = events.findById(principal.eventId()).orElseThrow(() -> ApiException.notFound("Event"));
         return new MeResponse(uploader.getId(), uploader.getName(), event.getId(), event.getName(), event.getStatus(),
                 properties.galleryUrl(event.getSlug()), HEARTBEAT_INTERVAL.toSeconds(),
-                properties.upload().maxFileSizeBytes(), event.getEventDate(), event.getStartTime());
+                properties.upload().maxFileSizeBytes(), event.getEventDate(), event.getStartTime(), uploader.isPaused());
     }
 
     public record HeartbeatRequest(@Size(max = 200) String deviceIdentifier, @Min(0) int queuePending,
@@ -84,7 +105,8 @@ public class UploaderApiController {
                                    @Size(max = 40) String appVersion) {
     }
 
-    public record HeartbeatResponse(EventStatus eventStatus, boolean acceptingUploads) {
+    /** {@code paused}/{@code uploaderName}: so a pause or rename in the dashboard reaches the app within seconds. */
+    public record HeartbeatResponse(EventStatus eventStatus, boolean acceptingUploads, boolean paused, String uploaderName) {
     }
 
     @PostMapping("/heartbeat")
@@ -95,7 +117,8 @@ public class UploaderApiController {
         uploader.recordHeartbeat(request.deviceIdentifier(), request.queuePending(), request.queueFailed(),
                 request.lastError());
         var event = events.findById(principal.eventId()).orElseThrow(() -> ApiException.notFound("Event"));
-        return new HeartbeatResponse(event.getStatus(), event.getStatus().acceptsUploads());
+        return new HeartbeatResponse(event.getStatus(), event.getStatus().acceptsUploads(), uploader.isPaused(),
+                uploader.getName());
     }
 
     public record CreateUploadRequest(@NotBlank @Size(max = 1024) String fileName,

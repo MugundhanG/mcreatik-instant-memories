@@ -16,7 +16,7 @@ import com.mcreatik.uploader.ui.UiTheme;
 import com.mcreatik.uploader.ui.components.PageLayout;
 import com.mcreatik.uploader.ui.components.Ui;
 
-/** Version, support and licences. */
+/** Version and support. (Third-party licences ship with the app in THIRD-PARTY-NOTICES.txt.) */
 public final class AboutPage implements Page {
     public static final String ID = "about";
 
@@ -25,10 +25,9 @@ public final class AboutPage implements Page {
     public AboutPage(AppContext ctx) {
         Ui.Surface app = Ui.Surface.card(new BorderLayout(16, 0));
         app.add(new JLabel(UiTheme.logo(56)), BorderLayout.WEST);
-        JPanel t = Ui.clear(new GridLayout(3, 1, 0, 2));
+        JPanel t = Ui.clear(new GridLayout(2, 1, 0, 2));
         t.add(Ui.label(UiTheme.APP_NAME, Font.BOLD, 16f, "text"));
         t.add(Ui.label("Version " + ctx.version(), Font.PLAIN, 13f, "muted"));
-        t.add(Ui.label("Field-tested with Canon EOS R6 Mark II on Windows.", Font.PLAIN, 13f, "muted"));
         app.add(t, BorderLayout.CENTER);
         page.section(app);
 
@@ -48,13 +47,6 @@ public final class AboutPage implements Page {
         buttons.add(mail);
         help.add(buttons, BorderLayout.CENTER);
         page.section(help);
-
-        Ui.Surface lic = Ui.Surface.card(new BorderLayout(0, 8));
-        lic.add(Ui.label("Open-source parts", Font.BOLD, 14f, "text"), BorderLayout.NORTH);
-        lic.add(Ui.label("<html>FlatLaf (Apache 2.0) · Inter font (SIL OFL 1.1) · Lucide icons (ISC) · Apache FtpServer (Apache 2.0)"
-                + " · SQLite JDBC (Apache 2.0) · metadata-extractor (Apache 2.0) · TwelveMonkeys ImageIO (BSD)</html>",
-                Font.PLAIN, 12.5f, "muted"), BorderLayout.CENTER);
-        page.section(lic);
     }
 
     @Override

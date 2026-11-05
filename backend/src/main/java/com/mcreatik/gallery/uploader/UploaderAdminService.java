@@ -42,18 +42,29 @@ public class UploaderAdminService {
     @Transactional
     public UploaderCredentials create(UUID ownerId, UUID eventId, String name) {
         Event event = events.owned(ownerId, eventId);
+        String clean = cleanName(name);
+        if (clean == null) {
+            throw ApiException.badRequest("INVALID_NAME", "Enter a camera name");
+        }
+        if (uploaders.findByEventIdOrderByCreatedAtAsc(event.getId()).stream()
+                .anyMatch(u -> u.getName().trim().equalsIgnoreCase(clean))) {
+            throw nameTaken(clean);
+        }
         String token = newToken();
-        Uploader uploader = new Uploader(event.getId(), name.trim(), Tokens.sha256Hex(token), prefixOf(token));
+        Uploader uploader = new Uploader(event.getId(), clean, Tokens.sha256Hex(token), prefixOf(token));
         uploaders.save(uploader);
         return credentials(uploader, token);
     }
 
+    /** Longest camera name (the dashboard and the app both limit it). */
+    public static final int MAX_NAME = 60;
+
     /**
-     * "Add camera" in the uploader app: a new uploader in the caller's own event, named the next free "Camera N".
-     * Only the event of an uploader that is still valid; never another event.
+     * "Add camera" in the uploader app: a new uploader in the caller's own event, with the name the photographer typed
+     * or, when blank, the next free "Camera N". Only the event of an uploader that is still valid; never another event.
      */
     @Transactional
-    public UploaderCredentials createSibling(UploaderPrincipal caller) {
+    public UploaderCredentials createSibling(UploaderPrincipal caller, String requestedName) {
         Event event = eventRepository.findById(caller.eventId()).orElseThrow(() -> ApiException.notFound("Event"));
         if (event.getStatus() == com.mcreatik.gallery.event.EventStatus.ARCHIVED) {
             throw ApiException.conflict("EVENT_ARCHIVED", "This event is archived. Cameras can't be added to it.");
@@ -69,10 +80,71 @@ public class UploaderAdminService {
         while (names.contains(("camera " + n))) {
             n++;
         }
+        String name = cleanName(requestedName);
+        if (name == null) {
+            name = "Camera " + n;
+        } else if (names.contains(name.toLowerCase(java.util.Locale.ROOT))) {
+            throw nameTaken(name);
+        }
         String token = newToken();
-        Uploader uploader = new Uploader(event.getId(), "Camera " + n, Tokens.sha256Hex(token), prefixOf(token));
+        Uploader uploader = new Uploader(event.getId(), name, Tokens.sha256Hex(token), prefixOf(token));
         uploaders.save(uploader);
         return credentials(uploader, token);
+    }
+
+    /**
+     * Rename and/or pause or resume a camera from the dashboard (either field may be null: unchanged).
+     * Names are unique within an event so the photographer's folders and screens never mix two cameras up.
+     */
+    @Transactional
+    public void update(UUID ownerId, UUID uploaderId, String name, Boolean paused) {
+        apply(owned(ownerId, uploaderId), name, paused);
+    }
+
+    /** The same from the uploader app, for the camera making the call. */
+    @Transactional
+    public Uploader updateSelf(UploaderPrincipal caller, String name, Boolean paused) {
+        Uploader uploader = uploaders.findById(caller.uploaderId()).orElseThrow(() -> ApiException.notFound("Uploader"));
+        apply(uploader, name, paused);
+        return uploader;
+    }
+
+    private void apply(Uploader uploader, String name, Boolean paused) {
+        if (name != null) {
+            String clean = cleanName(name);
+            if (clean == null) {
+                throw ApiException.badRequest("INVALID_NAME", "Enter a camera name");
+            }
+            boolean taken = uploaders.findByEventIdOrderByCreatedAtAsc(uploader.getEventId()).stream()
+                    .anyMatch(u -> !u.getId().equals(uploader.getId()) && u.getName().trim().equalsIgnoreCase(clean));
+            if (taken) {
+                throw nameTaken(clean);
+            }
+            uploader.rename(clean);
+        }
+        if (paused != null) {
+            uploader.setPaused(paused);
+        }
+    }
+
+    /** Trimmed, single-spaced, at most {@link #MAX_NAME} characters; null when blank. */
+    static String cleanName(String name) {
+        if (name == null) {
+            return null;
+        }
+        String s = name.replaceAll("\\p{Cntrl}", " ").replaceAll("\\s+", " ").trim();
+        if (s.isEmpty()) {
+            return null;
+        }
+        if (s.length() > MAX_NAME) {
+            throw ApiException.badRequest("INVALID_NAME", "Camera names can be up to " + MAX_NAME + " characters");
+        }
+        return s;
+    }
+
+    private static ApiException nameTaken(String name) {
+        return ApiException.conflict("CAMERA_NAME_TAKEN", "Another camera in this event is already called \u201c" + name
+                + "\u201d. Choose a different name.");
     }
 
     /** "Remove camera" in the uploader app: the uploader deletes itself (its photos stay in the gallery). */
@@ -87,11 +159,6 @@ public class UploaderAdminService {
         String token = newToken();
         uploader.rotateToken(Tokens.sha256Hex(token), prefixOf(token));
         return credentials(uploader, token);
-    }
-
-    @Transactional
-    public void rename(UUID ownerId, UUID uploaderId, String name) {
-        owned(ownerId, uploaderId).rename(name.trim());
     }
 
     @Transactional

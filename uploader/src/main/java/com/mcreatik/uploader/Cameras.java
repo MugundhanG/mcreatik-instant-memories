@@ -89,6 +89,11 @@ public final class Cameras {
      * starts receiving at once.
      */
     public synchronized CameraRuntime add() throws ApiException, IOException {
+        return add(null);
+    }
+
+    /** "Add camera" with the name the photographer typed (blank: the server names it "Camera N"). */
+    public synchronized CameraRuntime add(String name) throws ApiException, IOException {
         if (!canAdd()) {
             throw new IllegalStateException(cameras.size() >= CameraSet.MAX
                     ? "One computer can serve up to " + CameraSet.MAX + " cameras."
@@ -98,8 +103,9 @@ public final class Cameras {
         List<Integer> ports = cameras.stream().map(c -> c.config().ftp().port()).toList();
         UploaderConfig camera1 = first().config();
         int port = CameraSet.portFor(camera1.ftp().port(), ports, CameraSet::portFree);
-        ApiModels.CameraCreated created = first().api().addCamera();
-        UploaderConfig cfg = CameraSet.newCamera(camera1, created.token(), number, port);
+        ApiModels.CameraCreated created = first().api().addCamera(name);
+        UploaderConfig cfg = CameraSet.newCamera(camera1, created.token(), number, port, created.name(),
+                EventSwitch.defaultRoot());
         Files.createDirectories(cfg.watchFolder());
         Path dir = CameraSet.dirFor(root, number);
         cfg.save(dir);
@@ -153,8 +159,15 @@ public final class Cameras {
                 continue;
             }
             try {
-                ApiModels.CameraCreated created = api.addCamera();
-                UploaderConfig cfg = CameraSet.newCamera(newCamera1, created.token(), c.number(), c.config().ftp().port());
+                String name = c.engine().status().uploaderName();
+                ApiModels.CameraCreated created;
+                try {
+                    created = api.addCamera(name); // keep the camera's name in the new event
+                } catch (ApiException e) {
+                    created = api.addCamera(); // the name is taken there: "Camera N"
+                }
+                UploaderConfig cfg = CameraSet.newCamera(newCamera1, created.token(), c.number(), c.config().ftp().port(),
+                        created.name(), EventSwitch.defaultRoot());
                 Files.createDirectories(cfg.watchFolder());
                 cfg.save(c.dir());
             } catch (ApiException | IOException e) {

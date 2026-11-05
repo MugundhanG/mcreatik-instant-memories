@@ -263,7 +263,7 @@ function stats(e: DemoEvent) {
       id: u.id, name: u.name, status: effectiveStatus(u), lastSeenAt: new Date(u.lastSeenAt).toISOString(),
       deviceIdentifier: `${u.name.toLowerCase().replace(/\s/g, '-')}-laptop`, tokenPrefix: u.tokenPrefix,
       photosUploaded: mine.length, photosReady: mine.length, queuePending: u.queued, queueFailed: 0, lastError: null,
-      lastUploadAt: mine[0]?.readyAt ?? null,
+      lastUploadAt: mine[0]?.readyAt ?? null, paused: false,
     }
   })
   return {

@@ -135,10 +135,10 @@ public final class SetupDialog {
                 protected UploaderConfig doInBackground() throws Exception {
                     ApiModels.Me me = UploaderMain.verify(config);
                     UploaderConfig saved = config;
-                    if (switching && config.ftp().enabled() && me != null) {
-                        // Each event in its own folder, unless the user picked a folder themselves.
-                        Path own = EventSwitch.folderFor(current.watchFolder(), chosen, me.eventName(),
-                                EventSwitch.defaultRoot());
+                    if (config.ftp().enabled() && me != null) {
+                        // McreatiK Photos/<event>/<camera>, unless the user picked a folder themselves.
+                        Path own = EventSwitch.folderFor(switching ? current.watchFolder() : chosen, chosen,
+                                me.eventName(), EventSwitch.defaultRoot(), me.uploaderName());
                         if (!own.equals(chosen)) {
                             Files.createDirectories(own);
                             saved = config.withWatchFolder(own);
