@@ -82,4 +82,4 @@ Tap **Forgot password?** on the login page and enter your login email. A tempora
 | A photo we saw at the event is missing | The studio may have hidden it (blurry or a duplicate). Ask them. |
 | The ZIP is slow | Big events take a few minutes. Keep the page open, or download one category at a time. |
 
-Questions? Contact your studio first. For login problems, email connect@mcreatik.com.
+Questions or login problems? Contact your studio: they can resend your login, raise your album limit and help with anything else.
