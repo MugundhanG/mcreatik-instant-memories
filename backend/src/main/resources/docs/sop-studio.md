@@ -190,6 +190,8 @@ Then send them the couple guide: **Guides → Couples (clients) → Download PDF
 
 The client guides show **your studio's name, logo and Instagram** (set in **Account**, step 2), with a small "Live photos by McreatiK Instant Memories" line at the end. Send the PDF on WhatsApp or email: your clients don't need a login to read it.
 
+The client guides send couples and guests to **you** for help, never to McreatiK. If you can't solve something (a login that won't work, a gallery that is switched off, a bug), contact McreatiK and we sort it out with you. The one exception: a guest who asks to have their own photo removed can also email McreatiK. We pass it to you, as privacy law requires.
+
 Table card text you can copy: "**Scan to see the photos live.** Point your phone camera at the code. No app needed. New photos appear on their own."
 
 ![Guides: the couple guide with your studio's name and logo, and the Download PDF button](images/s-guides.webp)
