@@ -144,4 +144,25 @@ class StudioBrandingTest extends IntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"instagram\":\"x\"}"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void studiosPickTheirBoardDesign() throws Exception {
+        mvc.perform(get("/api/admin/account").header("Authorization", bearer(studio)))
+                .andExpect(jsonPath("$.brand.boardTheme").value("cream"));
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"boardTheme\":\"dark\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.brand.boardTheme").value("dark"));
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"boardTheme\":\"neon\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_THEME"));
+        // Event pages (and so the event cards) use the owner's design.
+        mvc.perform(get("/api/public/events/" + studioEventSlug()))
+                .andExpect(jsonPath("$.brand.boardTheme").value("dark"));
+        // McreatiK can set it during onboarding.
+        mvc.perform(patch("/api/admin/studios/" + studioId + "/branding").header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"boardTheme\":\"white\"}"))
+                .andExpect(jsonPath("$.boardTheme").value("white"));
+    }
 }

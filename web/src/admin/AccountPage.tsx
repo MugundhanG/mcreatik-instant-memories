@@ -4,6 +4,7 @@ import { adminApi, ApiError } from '../lib/api'
 import type { Account } from '../lib/types'
 import { auth, useSession } from './auth'
 import { BrandingCard } from './BrandingCard'
+import { BoardCard } from './print/BoardCard'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
 import { PasswordInput } from '../shared/PasswordInput'
 
@@ -64,6 +65,13 @@ export default function AccountPage() {
             setAccount({ ...account, displayName: brand.name, brand })
             auth.update({ displayName: brand.name })
           }}
+        />
+      )}
+      {!forced && account && (
+        <BoardCard
+          brand={account.brand}
+          saveTheme={async (boardTheme) => (await adminApi.updateAccount({ boardTheme })).brand!}
+          onSaved={(brand) => setAccount({ ...account, brand })}
         />
       )}
       <Card title={forced ? 'Choose your own password' : 'Change password'}>

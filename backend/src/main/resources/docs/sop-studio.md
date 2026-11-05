@@ -85,19 +85,30 @@ Every camera needs its own **uploader**. One laptop with the McreatiK Instant Me
 
 Then set up the camera itself: [Canon EOS R6 Mark II](/admin/docs/guide-canon) · [Sony α7 IV](/admin/docs/guide-sony).
 
-## 5. QR code and poster
+## 5. QR code, studio board and cards
 
-The **Guest QR code** card on the Overview gives you:
+**Print your studio board once.** Go to **Account → Studio board** and pick a design: **Cream**, **Dark** or **White**. Then press **Download board (18 × 24 in)**. The board has your logo, studio name and Instagram, "Every moment, live." and a frame for the event card. It has no event details, so you can reuse it at every event. Have it printed on foam board or sunboard.
 
-- **Download PNG / SVG:** for invitations, screens or your own designs.
-- **Print poster:** a ready-made A4 poster (prints edge to edge on one page) with your logo, the couple's names and the QR code.
+![Account → Studio board: pick the design and download the board](images/s-board.webp)
+
+**For each event, print the cards.** On the event's Overview, the **Guest QR code** card gives you:
+
+- **Event & table cards (8 × 12 in):** opens the cards page.
+  - The **event card** (the couple's names, the date and the QR code) goes in your board's frame.
+  - The **table card** adds "Scan to see the photos live", so it can stand on its own on guest tables.
+
+  Both use your board's design. 8 × 12 in is a standard photo print size, so your photo lab can print them.
+- **Download PNG / SVG:** the QR code alone, for invitations, screens or your own designs.
+- **A4 poster:** the classic one-page poster, for an office printer.
 - **Copy link:** to share in WhatsApp groups.
 
 ![Guest QR code card](images/s-qr-card.webp)
 
-![The printable QR poster with the studio logo](images/s-print-poster.webp)
+![Event and table cards for one event, and how the event card looks in the board](images/s-cards.webp)
 
-> **Tip** Print at least 3 posters: entrance, stage side, and food area. Table cards with the QR work well too.
+All downloads are JPG files at 300 dpi, with 0.125 in extra on every side for trimming: the board file is 18.25 × 24.25 in and the cards are 8.25 × 12.25 in. Ask the printer to **print at 18 × 24 in (or 8 × 12 in) and trim to size**. All text is kept well inside the edges, so a slightly off cut won't touch it.
+
+> **Tip** Put the board at the entrance and a table card on every few tables. That's where most guests scan.
 
 ## 6. Event day
 

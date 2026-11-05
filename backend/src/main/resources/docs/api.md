@@ -36,7 +36,7 @@ All endpoints live under `https://im-api.mcreatik.com`. Requests and responses a
 | --- | --- | --- | --- |
 | POST | `/api/auth/login` | Public | `{email, password}` → `{token, expiresAt, email, displayName, role, mustChangePassword}` |
 | POST | `/api/auth/forgot-password` | Public | `{email}` → always 204 |
-| GET / PATCH | `/api/admin/account` | Admin | Account and branding |
+| GET / PATCH | `/api/admin/account` | Admin | Account and branding. PATCH takes any of `displayName`, `instagram`, `logoScale` (50–200) and `boardTheme` (`cream`, `dark` or `white`: the studio board and card design) |
 | POST / DELETE | `/api/admin/account/logo` | Admin | Multipart `logo`, PNG or JPEG up to 1 MB |
 | POST | `/api/admin/account/password` | Admin | `{currentPassword, newPassword}` → new token; other devices logged out |
 

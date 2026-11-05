@@ -10,7 +10,7 @@ import { ErrorText, EventStatusBadge } from './ui'
 
 const FIRST_STEPS = [
   { title: 'Create the event', body: 'Name and date. You get a private gallery address and its QR code.' },
-  { title: 'Print the QR poster', body: 'In the event, press QR code, then Print poster. Place it at the entrance and on the tables.' },
+  { title: 'Print the QR poster', body: 'In the event, open QR code, then Event & table cards. Put the event card in your studio board at the entrance and the table cards on the tables.' },
   { title: 'Connect a camera', body: 'In the event, under Cameras & uploaders, add an uploader and paste its code into the uploader app on the laptop.' },
 ]
 

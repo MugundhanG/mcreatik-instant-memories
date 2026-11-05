@@ -12,8 +12,8 @@ These are the questions photographers ask when they want to know how it works on
 | Can I upload edited photos after the event? | Yes. In the dashboard: Photos → Upload, either compressed (fast, for the gallery) or originals (full quality, for the couple). You can pick a category before uploading. |
 | Does the same photo upload twice? | No. Duplicates are recognized and skipped. |
 | Can I remove a bad photo from guests' phones? | Yes. Hide or delete it and it disappears from open galleries immediately. In Select mode you can hide, like or delete many at once. |
-| How do I give guests the link? | Every event has a unique QR code. Download it, or print the ready-made poster with your logo, and place it at the entrance and on tables. You can also copy the link. |
-| Does the gallery show my brand? | Yes: your studio name, logo and Instagram on the gallery and the poster. Set them in Account. |
+| How do I give guests the link? | Every event has a unique QR code. Print your studio board once, then for each event a small event card for the board and table cards, all with your logo and design. You can also download the QR code alone. You can also copy the link. |
+| Does the gallery show my brand? | Yes: your studio name, logo and Instagram on the gallery, the studio board and the cards. Set them in Account. |
 | How does the couple get their photos? | Create their login under the Couple tab and send it on WhatsApp in one tap. They pick album photos and download originals; you see their picks live. |
 | Can I see how many guests used it? | Yes. The Guests tab shows people, QR scans, photo views, downloads, peak hour and the most-loved photos. Guests stay anonymous. |
 | Can I sort photos into albums? | Yes. Each event starts with categories (Couple, Family & Groups, Rituals, Cake cutting, Main event, Candid), and you can add your own. Couples browse by them. |

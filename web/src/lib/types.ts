@@ -12,6 +12,8 @@ export interface Brand {
   mcreatik: boolean
   /** Poster logo size in percent of the standard size (50–200). */
   logoScale?: number
+  /** Design of the printed studio board and event cards. */
+  boardTheme?: 'cream' | 'dark' | 'white'
 }
 
 export interface PublicEvent {

@@ -193,7 +193,7 @@ export const adminApi = {
     request<UploaderCredentials>(`/api/admin/events/${eventId}/uploaders`, { method: 'POST', body: json({ name }) }, true),
   rotateUploader: (uploaderId: string) =>
     request<UploaderCredentials>(`/api/admin/uploaders/${uploaderId}/rotate-token`, { method: 'POST' }, true),
-  updateAccount: (input: { displayName?: string; instagram?: string; logoScale?: number }) =>
+  updateAccount: (input: { displayName?: string; instagram?: string; logoScale?: number; boardTheme?: 'cream' | 'dark' | 'white' }) =>
     request<Account>('/api/admin/account', { method: 'PATCH', body: json(input) }, true),
   uploadLogo: (png: Blob) => {
     const form = new FormData()
@@ -203,7 +203,7 @@ export const adminApi = {
   removeLogo: () => request<Account>('/api/admin/account/logo', { method: 'DELETE' }, true),
   analytics: (eventId: string) => request<GuestAnalytics>(`/api/admin/events/${eventId}/analytics`, {}, true),
   /** McreatiK sets up a studio's branding (onboarding). */
-  updateStudioBranding: (studioId: string, input: { displayName?: string; instagram?: string; logoScale?: number }) =>
+  updateStudioBranding: (studioId: string, input: { displayName?: string; instagram?: string; logoScale?: number; boardTheme?: 'cream' | 'dark' | 'white' }) =>
     request<Brand>(`/api/admin/studios/${studioId}/branding`, { method: 'PATCH', body: json(input) }, true),
   uploadStudioLogo: (studioId: string, png: Blob) => {
     const form = new FormData()

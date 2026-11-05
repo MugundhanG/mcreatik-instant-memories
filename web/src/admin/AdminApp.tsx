@@ -18,6 +18,7 @@ import StudiosPage from './StudiosPage'
 
 // McreatiK's documentation (diagrams, Markdown) is a separate download, fetched only when opened.
 const DocsPage = lazy(() => import('./docs/DocsPage'))
+const EventCardsPage = lazy(() => import('./print/EventCardsPage'))
 
 function RequireSession() {
   const session = useSession()
@@ -129,6 +130,7 @@ export default function AdminApp() {
           <Route index element={<EventsPage />} />
           <Route path="events/new" element={<NewEventPage />} />
           <Route path="events/:eventId" element={<EventDashboardPage />} />
+          <Route path="events/:eventId/cards" element={<Suspense fallback={<PageLoader />}><EventCardsPage /></Suspense>} />
           <Route path="studios" element={<StudiosPage />} />
           <Route path="account" element={<AccountPage />} />
           <Route path="install" element={<InstallUploaderPage />} />
