@@ -4,6 +4,7 @@ import { ApiError } from '../lib/api'
 import { ForgotPassword } from '../shared/ForgotPassword'
 import { clientApi, clientSession, useClientSession } from './clientApi'
 import ClientPortal from './ClientPortal'
+import { PasswordInput } from '../shared/PasswordInput'
 
 const inputClass = 'h-11 w-full rounded-xl border border-line bg-white px-3.5 text-[15px] outline-none focus:border-ink focus:ring-1 focus:ring-ink'
 
@@ -57,7 +58,7 @@ function LoginPage() {
           <input className={`${inputClass} mt-1.5`} type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label className="block text-sm font-medium">Password
-          <input className={`${inputClass} mt-1.5`} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput className={inputClass} wrapperClassName="mt-1.5" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         <button type="submit" disabled={busy} className="h-11 w-full rounded-xl bg-ink text-sm font-medium text-white disabled:opacity-60">
@@ -91,10 +92,10 @@ function PasswordPage() {
     <Shell title="Welcome!" subtitle="Choose your own password to continue.">
       <form onSubmit={submit} className="space-y-4">
         <label className="block text-sm font-medium">Temporary password
-          <input className={`${inputClass} mt-1.5`} type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
+          <PasswordInput className={inputClass} wrapperClassName="mt-1.5" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
         </label>
         <label className="block text-sm font-medium">New password <span className="font-normal text-muted">(at least 10 characters)</span>
-          <input className={`${inputClass} mt-1.5`} type="password" autoComplete="new-password" required value={next} onChange={(e) => setNext(e.target.value)} />
+          <PasswordInput className={inputClass} wrapperClassName="mt-1.5" autoComplete="new-password" required value={next} onChange={(e) => setNext(e.target.value)} />
         </label>
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         <button type="submit" className="h-11 w-full rounded-xl bg-ink text-sm font-medium text-white">Save and see my photos</button>

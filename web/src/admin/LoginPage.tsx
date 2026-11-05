@@ -6,6 +6,7 @@ import { ForgotPassword } from '../shared/ForgotPassword'
 import { PolicyLinks } from '../shared/policies/PolicyLayout'
 import { auth, useSession } from './auth'
 import { Button, ErrorText, Field, inputClass } from './ui'
+import { PasswordInput } from '../shared/PasswordInput'
 
 export default function LoginPage() {
   const session = useSession()
@@ -59,7 +60,7 @@ export default function LoginPage() {
           <input className={inputClass} type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <Field label="Password">
-          <input className={inputClass} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput className={inputClass} autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
         <ErrorText>{error}</ErrorText>
         <Button type="submit" variant="primary" disabled={busy} className="w-full">

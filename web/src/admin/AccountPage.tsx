@@ -5,6 +5,7 @@ import type { Account } from '../lib/types'
 import { auth, useSession } from './auth'
 import { BrandingCard } from './BrandingCard'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
+import { PasswordInput } from '../shared/PasswordInput'
 
 const MIN = 10
 
@@ -73,13 +74,13 @@ export default function AccountPage() {
         )}
         <form onSubmit={submit} className="space-y-4">
           <Field label={forced ? 'Temporary password' : 'Current password'}>
-            <input className={inputClass} type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
+            <PasswordInput className={inputClass} autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
           </Field>
           <Field label="New password" hint={`At least ${MIN} characters`}>
-            <input className={inputClass} type="password" autoComplete="new-password" required value={next} onChange={(e) => setNext(e.target.value)} />
+            <PasswordInput className={inputClass} autoComplete="new-password" required value={next} onChange={(e) => setNext(e.target.value)} />
           </Field>
           <Field label="Repeat new password">
-            <input className={inputClass} type="password" autoComplete="new-password" required value={repeat} onChange={(e) => setRepeat(e.target.value)} />
+            <PasswordInput className={inputClass} autoComplete="new-password" required value={repeat} onChange={(e) => setRepeat(e.target.value)} />
           </Field>
           <ErrorText>{error}</ErrorText>
           {done && <p role="status" className="text-sm text-emerald-700">Password changed.</p>}

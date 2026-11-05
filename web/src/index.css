@@ -142,3 +142,9 @@ select:focus-visible {
   [class*="anim-"] { animation: none !important; }
   .lift, .lift:hover { transition: none; transform: none; }
 }
+
+/* Edge draws its own "reveal password" eye; PasswordInput has one already. */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
