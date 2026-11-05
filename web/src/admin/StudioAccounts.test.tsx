@@ -81,10 +81,10 @@ describe('Studio accounts', () => {
     renderAt('')
     expect(await screen.findByText(/Choose your own to continue/)).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText('Temporary password'), 'temporary-123')
-    await user.type(screen.getByLabelText(/^New password/), 'my-own-password')
-    await user.type(screen.getByLabelText('Repeat new password'), 'my-own-password')
-    await user.click(screen.getByRole('button', { name: /password/i }))
+    await user.type(screen.getByLabelText('Temporary password', { selector: 'input' }), 'temporary-123')
+    await user.type(screen.getByLabelText(/^New password/, { selector: 'input' }), 'my-own-password')
+    await user.type(screen.getByLabelText('Repeat new password', { selector: 'input' }), 'my-own-password')
+    await user.click(screen.getByRole('button', { name: 'Save password' }))
 
     await waitFor(() => expect(auth.session()?.mustChangePassword).toBe(false))
     // The change logs out other devices; this one keeps working with the fresh login.
@@ -103,7 +103,7 @@ describe('Studio accounts', () => {
     await user.type(screen.getByLabelText(/^Studio name/), 'Lens & Light')
     await user.type(screen.getByLabelText('Login email'), 'owner@lenslight.in')
     await user.type(screen.getByLabelText(/^WhatsApp number/), '98765 43210')
-    const password = (screen.getByLabelText(/^Temporary password/) as HTMLInputElement).value
+    const password = (screen.getByLabelText(/^Temporary password/, { selector: 'input' }) as HTMLInputElement).value
     expect(password).toMatch(/^[a-zA-Z2-9]{12}$/)
     await user.click(screen.getByRole('button', { name: 'Create studio login' }))
 
