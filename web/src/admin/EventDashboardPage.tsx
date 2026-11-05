@@ -144,7 +144,9 @@ export default function EventDashboardPage() {
   const clientOnly = event.eventType === 'CLIENT'
   const galleryOff = event.liveGalleryEnabled === false || event.clientGalleryEnabled === false
   // A section fades in each time it is shown (CSS animations restart when an element stops being hidden).
-  const panel = (id: Tab) => ({ id: `panel-${id}`, role: 'tabpanel', 'aria-labelledby': `tab-${id}`, hidden: tab !== id })
+  // A client gallery has no guests: an old ?tab=guests link shows the Overview.
+  const shown: Tab = clientOnly && tab === 'guests' ? 'overview' : tab
+  const panel = (id: Tab) => ({ id: `panel-${id}`, role: 'tabpanel', 'aria-labelledby': `tab-${id}`, hidden: shown !== id })
 
   return (
     <div className="space-y-5">
@@ -187,12 +189,12 @@ export default function EventDashboardPage() {
       <div className="sticky top-0 z-20 -mx-4 bg-stone-50/95 px-4 backdrop-blur sm:-mx-6 sm:px-6">
         <Tabs<Tab>
           label="Event sections"
-          current={tab}
+          current={shown}
           onChange={openTab}
           tabs={[
             { id: 'overview', label: 'Overview' },
             { id: 'photos', label: 'Photos', badge: stats ? formatCount(stats.totalPhotos) : undefined },
-            { id: 'guests', label: 'Guests' },
+            ...(clientOnly ? [] : [{ id: 'guests' as Tab, label: 'Guests' }]),
             { id: 'couple', label: 'Couple', badge: client ? '✓' : undefined },
             { id: 'settings', label: 'Settings' },
           ]}
@@ -274,9 +276,11 @@ export default function EventDashboardPage() {
         />
       </section>
 
-      <section {...panel('guests')} className="anim-fade-in">
-        <AnalyticsPanel eventId={event.id} live={event.status === 'LIVE'} />
-      </section>
+      {!clientOnly && (
+        <section {...panel('guests')} className="anim-fade-in">
+          <AnalyticsPanel eventId={event.id} live={event.status === 'LIVE'} />
+        </section>
+      )}
 
       <section {...panel('couple')} className="anim-fade-in">
         <ClientsCard eventId={event.id} eventName={event.name} refreshKey={stats?.readyPhotos ?? 0} onClients={setEventClients} />

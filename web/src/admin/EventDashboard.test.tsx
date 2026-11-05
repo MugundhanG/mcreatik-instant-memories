@@ -21,7 +21,7 @@ function stats(over: Record<string, number> = {}) {
 const ok = (body: unknown, status = 200) =>
   new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
-function serve(statsBody = stats()) {
+function serve(statsBody = stats(), eventBody: Record<string, unknown> = event) {
   const patches: unknown[] = []
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = new URL(String(input)).pathname
@@ -30,9 +30,9 @@ function serve(statsBody = stats()) {
     if (path === '/api/admin/events/e1' && method === 'PATCH') {
       const body = JSON.parse(String(init?.body))
       patches.push(body)
-      return ok({ ...event, ...body })
+      return ok({ ...eventBody, ...body })
     }
-    if (path === '/api/admin/events/e1') return ok(event)
+    if (path === '/api/admin/events/e1') return ok(eventBody)
     if (path.endsWith('/stats')) return ok(statsBody)
     if (path.endsWith('/photos')) return ok({ photos: [], nextOffset: null })
     if (path.endsWith('/photo-facets')) return ok({ days: [], liked: 0, hidden: 0 })
@@ -63,6 +63,17 @@ describe('Event dashboard', () => {
   afterEach(() => {
     auth.signOut()
     vi.unstubAllGlobals()
+  })
+
+  it('a client gallery has no Guests tab, gallery link, QR or cameras', async () => {
+    serve(stats(), { ...event, eventType: 'CLIENT', liveGalleryEnabled: false })
+    open('/events/e1?tab=guests')
+    const tabs = await screen.findByRole('tablist', { name: 'Event sections' })
+    expect(within(tabs).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Photos19', 'Couple', 'Settings'])
+    expect(screen.getByRole('tabpanel', { name: 'Overview' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Copy gallery link' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'QR code' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('event-stats')).not.toHaveTextContent('cameras online')
   })
 
   it('splits the event into tabs and keeps the open tab in the address', async () => {
