@@ -69,6 +69,25 @@ async function requestBlob(path: string): Promise<Blob> {
   return response.blob()
 }
 
+/**
+ * A backend from before the packages (the website deploys first) sends no prices or typed credits: fill them in, so
+ * the dashboard keeps working until the backend is updated.
+ */
+export function withBillingDefaults(b: BillingSummary): BillingSummary {
+  return {
+    ...b,
+    mainCredits: b.mainCredits ?? b.credits ?? 0,
+    quickCredits: b.quickCredits ?? 0,
+    carryOver: b.carryOver ?? 0,
+    packActive: b.packActive ?? b.plan === 'MONTHLY',
+    planPaidUntil: b.planPaidUntil ?? null,
+    prices: b.prices ?? {
+      main: b.unitPrice, quick: b.unitPrice, main2: b.monthlyPrice, main4: b.monthlyPrice, quick2: b.monthlyPrice,
+      quick4: b.monthlyPrice, upgrade: 0, upgradeGuests: 300,
+    },
+  }
+}
+
 // ---- Guest API ----
 
 export const publicApi = {
@@ -217,7 +236,7 @@ export const adminApi = {
     return request<Brand>(`/api/admin/studios/${studioId}/logo`, { method: 'POST', body: form }, true)
   },
   removeStudioLogo: (studioId: string) => request<Brand>(`/api/admin/studios/${studioId}/logo`, { method: 'DELETE' }, true),
-  billing: () => request<BillingSummary>('/api/admin/billing', {}, true),
+  billing: () => request<BillingSummary>('/api/admin/billing', {}, true).then(withBillingDefaults),
   /** The studio paid by UPI: the events are usable at once, McreatiK checks the transaction later. */
   startOnlinePayment: (purchase: Purchase) =>
     request<OnlineOrder>('/api/admin/billing/online-orders', { method: 'POST', body: json(purchase) }, true),
