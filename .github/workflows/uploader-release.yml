@@ -59,6 +59,7 @@ jobs:
           mvn -B -q package -DskipTests
           # Only the runnable jar goes into the app (not classes, test output or the shade plugin's original jar).
           mkdir -p ../pkg && cp target/mcreatik-uploader.jar ../pkg/
+          cp packaging/THIRD-PARTY-NOTICES.txt ../pkg/  # licences of the bundled open-source parts
 
       - name: Windows installer (.msi)
         if: runner.os == 'Windows'

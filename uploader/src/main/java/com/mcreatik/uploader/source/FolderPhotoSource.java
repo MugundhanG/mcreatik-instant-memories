@@ -124,6 +124,9 @@ public class FolderPhotoSource implements PhotoSource {
             if (name.startsWith(".") || name.startsWith("~")) {
                 return false; // hidden files/folders, temp files
             }
+            if (name.equals(com.mcreatik.uploader.engine.PhotoFiles.PAUSED_DIR)) {
+                return false; // photos kept back while the camera was paused: never uploaded
+            }
         }
         String name = file.getFileName().toString();
         int dot = name.lastIndexOf('.');

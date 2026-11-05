@@ -31,6 +31,11 @@ public final class AppContext {
         void addCamera();
 
         void removeCamera(CameraRuntime camera);
+
+        /** Pause (privacy) or resume the camera. */
+        void togglePause(CameraRuntime camera);
+
+        void renameCamera(CameraRuntime camera);
     }
 
     private final Cameras cameras;

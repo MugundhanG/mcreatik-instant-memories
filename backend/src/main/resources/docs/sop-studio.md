@@ -65,7 +65,7 @@ The price is the same both ways. Bought events never expire. If a card or bank p
 
 Setting up a new laptop? Press **Install uploader** in the top bar of the dashboard and download the Windows or Mac version.
 
-Every camera needs its own **uploader**. One laptop with the McreatiK Instant Memories Uploader app can serve up to 4 cameras: add the extra cameras in the app with **+ Add camera**, and each one appears here as Camera 2, 3 or 4 by itself.
+Every camera needs its own **uploader**. One laptop with the McreatiK Instant Memories Uploader app can serve up to 4 cameras: add the extra cameras in the app with **+ Add camera** (you name each one there), and each appears here by itself. On the laptop, each event gets one folder with a sub-folder per camera.
 
 1. Open the event. On **Overview**, under **Cameras & uploaders**, type a name such as "Camera 1 · Canon R6 II" and press **Add uploader**.
 2. A **connection code** appears. **It's shown only once**, so press **Copy code** and paste it into the uploader (see the [Uploader guide](/admin/docs/guide-uploader)). A laptop already used for an earlier event: press **Change event…** in the uploader and paste the new code ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)).
@@ -76,6 +76,10 @@ Every camera needs its own **uploader**. One laptop with the McreatiK Instant Me
 
 ![Overview: photo counts, cameras online, latest photo, QR code](images/s-overview.webp)
 
+- **Pause / Resume:** a privacy pause for moments that shouldn't go live (for example the bride getting ready). While paused, that camera's photos stay on the laptop and **never** reach the gallery, even after you resume. The camera shows **Paused** in amber here and in the uploader. You can also pause it in the uploader.
+![Cameras: one paused for a private moment](images/s-cameras-paused.webp)
+
+- **Rename:** for example "Main - Karthik" or "Candid - Divya". The name shows here, in the uploader and on its photo folder.
 - **New code:** creates a fresh code if the old one was lost. The old one stops working.
 - **Remove:** disconnects that camera.
 

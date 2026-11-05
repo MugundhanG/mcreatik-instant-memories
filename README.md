@@ -101,7 +101,7 @@ The uploader receives photos in one of two ways:
   The camera sends each JPEG straight to the uploader; nothing else to install.
   Step-by-step: [docs/CAMERA-SETUP-CANON-R6-MARK-II.md](docs/CAMERA-SETUP-CANON-R6-MARK-II.md).
   The illustrated guides (uploader on Windows and Mac, Canon, Sony α7 IV, event day) and the SOPs for every role live in the McreatiK admin Docs: `backend/src/main/resources/docs/`.
-  On a Mac: [docs/UPLOADER-MACOS.md](docs/UPLOADER-MACOS.md) (Java 21, firewall, keeping the Mac awake; not yet field-tested).
+  On a Mac: [docs/UPLOADER-MACOS.md](docs/UPLOADER-MACOS.md) (Java 21, firewall, keeping the Mac awake).
 - **Folder.** Any camera app, tethering software or card reader that saves JPEGs into a folder.
 
 1. Set the camera to shoot **RAW+JPEG** (JPEGs are what guests see).

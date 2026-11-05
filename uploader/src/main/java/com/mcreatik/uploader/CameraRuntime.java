@@ -35,6 +35,7 @@ public final class CameraRuntime {
         PhotoSource source = ftp == null ? new FolderPhotoSource(config.watchFolder())
                 : new CompositePhotoSource(List.of(new FolderPhotoSource(config.watchFolder()), ftp));
         this.engine = new UploadEngine(api, queue, source, config.concurrency(), config.deviceId(), !uploadOriginals);
+        this.engine.setPhotoFolder(config.watchFolder());
     }
 
     /** Creates and starts a camera (its FTP server listens from now on). */

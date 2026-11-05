@@ -3,6 +3,7 @@ package com.mcreatik.gallery;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -179,5 +180,87 @@ class UploaderApiTest extends IntegrationTest {
         assertThat(jdbc.queryForObject("select count(*) from uploaders where event_id = ?::uuid", Integer.class,
                 eventId(event))).isEqualTo(1);
         mvc.perform(post("/api/uploader/cameras")).andExpect(status().isUnauthorized());
+    }
+
+    // ---- camera names and the privacy pause ----
+
+    @Test
+    void theAppNamesANewCameraAndNamesAreUniqueInAnEvent() throws Exception {
+        String token = createUploader(eventId(createEvent("Names", "LIVE")), "Main");
+        String body = mvc.perform(post("/api/uploader/cameras").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"  Candid   Divya \"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<String>read(body, "$.name")).isEqualTo("Candid Divya");
+        mvc.perform(post("/api/uploader/cameras").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"candid divya\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CAMERA_NAME_TAKEN"));
+        // a blank name still gets the next "Camera N"
+        String third = mvc.perform(post("/api/uploader/cameras").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\" \"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<String>read(third, "$.name")).isEqualTo("Camera 3");
+    }
+
+    @Test
+    void theDashboardRenamesAndPausesACameraAndTheAppSeesIt() throws Exception {
+        String eventId = eventId(createEvent("Pause", "LIVE"));
+        String token = createUploader(eventId, "Camera 1");
+        createUploader(eventId, "Drone");
+        String uploaderId = jdbc.queryForObject("select id::text from uploaders where name = 'Camera 1'", String.class);
+
+        mvc.perform(patch("/api/admin/uploaders/" + uploaderId).header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"drone\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CAMERA_NAME_TAKEN"));
+        mvc.perform(patch("/api/admin/uploaders/" + uploaderId).header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Main - Karthik\",\"paused\":true}"))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(post("/api/uploader/heartbeat").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"queuePending\":0,\"queueFailed\":0}"))
+                .andExpect(jsonPath("$.paused").value(true))
+                .andExpect(jsonPath("$.uploaderName").value("Main - Karthik"));
+        mvc.perform(get("/api/uploader/me").header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$.paused").value(true));
+        mvc.perform(get("/api/admin/events/" + eventId + "/stats").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.uploaders[0].paused").value(true))
+                .andExpect(jsonPath("$.uploaders[1].paused").value(false));
+
+        // Nothing from a paused camera reaches the gallery, whatever the app believes.
+        mvc.perform(post("/api/uploader/uploads").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(uploadRequestJson("IMG_9.JPG", jpeg(300, 200))))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("UPLOADER_PAUSED"));
+        assertThat(jdbc.queryForObject("select count(*) from photos", Integer.class)).isZero();
+
+        // The app resumes it itself; uploads work again.
+        mvc.perform(patch("/api/uploader/me").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"paused\":false}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.paused").value(false))
+                .andExpect(jsonPath("$.name").value("Main - Karthik"));
+        uploadPhoto(token, "IMG_10.JPG", jpeg(300, 200));
+        assertThat(jdbc.queryForObject("select count(*) from photos", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void aStudioCantRenameOrPauseAnotherStudiosCamera() throws Exception {
+        String eventId = eventId(createEvent("Mine", "LIVE"));
+        createUploader(eventId, "Camera 1");
+        String uploaderId = jdbc.queryForObject("select id::text from uploaders", String.class);
+        String email = "other-" + java.util.UUID.randomUUID().toString().substring(0, 6) + "@studio.test";
+        mvc.perform(post("/api/admin/studios").header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Other\",\"email\":\"" + email + "\",\"password\":\"temporary-123\",\"plan\":\"PER_EVENT\"}"))
+                .andExpect(status().isCreated());
+        String otherStudio = JsonPath.read(mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"temporary-123\"}")
+                        .with(r -> {
+                            r.setRemoteAddr("10.88.0.7");
+                            return r;
+                        }))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), "$.token");
+        mvc.perform(patch("/api/admin/uploaders/" + uploaderId).header("Authorization", bearer(otherStudio))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"paused\":true}"))
+                .andExpect(status().isNotFound());
+        assertThat(jdbc.queryForObject("select paused from uploaders", Boolean.class)).isFalse();
     }
 }

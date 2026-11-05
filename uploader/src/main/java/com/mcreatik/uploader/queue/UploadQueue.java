@@ -138,6 +138,11 @@ public class UploadQueue implements AutoCloseable {
         });
     }
 
+    /** Forgets a photo (it was kept back on the laptop because the camera is paused). */
+    public synchronized void remove(long id) {
+        update("DELETE FROM uploads WHERE id = ?", ps -> ps.setLong(1, id));
+    }
+
     public synchronized void markFailed(long id, String error) {
         update("UPDATE uploads SET status = 'FAILED', last_error = ?, updated_at = ? WHERE id = ?", ps -> {
             ps.setString(1, truncate(error));
@@ -225,6 +230,22 @@ public class UploadQueue implements AutoCloseable {
             ps.setLong(1, eventFloor);
             ps.setInt(2, limit);
             ps.setInt(3, offset);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    items.add(map(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
+        return items;
+    }
+
+    /** Photos waiting to upload (not the ones uploading right now). */
+    public synchronized List<QueueItem> waiting() {
+        List<QueueItem> items = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM uploads WHERE status = 'QUEUED' AND id > ? ORDER BY id")) {
+            ps.setLong(1, eventFloor);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     items.add(map(rs));

@@ -61,6 +61,32 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
   const [credentials, setCredentials] = useState<UploaderCredentials | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirm, confirmDialog] = useConfirm()
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+
+  const change = async (u: UploaderStats, changes: { name?: string; paused?: boolean }) => {
+    setError(null)
+    setBusy(u.id)
+    try {
+      await adminApi.updateUploader(u.id, changes)
+      setRenaming(null)
+      onChange()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update the camera')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const saveName = (e: FormEvent, u: UploaderStats) => {
+    e.preventDefault()
+    const next = renaming?.name.trim() ?? ''
+    if (!next || next === u.name) {
+      setRenaming(null)
+      return
+    }
+    void change(u, { name: next })
+  }
 
   const add = async (e: FormEvent) => {
     e.preventDefault()
@@ -100,15 +126,32 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
   return (
     <Card title="Cameras & uploaders">
       {uploaders.length === 0 && <p className="text-sm text-muted">No uploaders yet. Add one per camera.</p>}
+      {uploaders.length > 0 && (
+        <p className="mb-1 text-xs text-muted">Pause a camera for private moments: its new photos stay on the laptop and never reach the gallery.</p>
+      )}
       <ul className="divide-y divide-line">
         {uploaders.map((u) => (
           <li key={u.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3" data-testid="uploader-row">
             <div className="flex min-w-40 flex-1 items-center gap-3">
-              <UploaderStatusDot status={u.status} />
-              <div>
-                <p className="text-sm font-medium">{u.name}</p>
+              {u.paused ? <span className="inline-block size-2.5 rounded-full bg-amber-500" aria-hidden="true" /> : <UploaderStatusDot status={u.status} />}
+              <div className="min-w-0 flex-1">
+                {renaming?.id === u.id ? (
+                  <form onSubmit={(e) => saveName(e, u)} className="flex max-w-sm gap-2">
+                    <input className={`${inputClass} h-9`} value={renaming.name} maxLength={60} autoFocus aria-label={`New name for ${u.name}`}
+                      onChange={(e) => setRenaming({ id: u.id, name: e.target.value })}
+                      onKeyDown={(e) => e.key === 'Escape' && setRenaming(null)} />
+                    <Button type="submit" variant="primary" disabled={busy === u.id}>Save</Button>
+                    <Button variant="ghost" onClick={() => setRenaming(null)}>Cancel</Button>
+                  </form>
+                ) : (
+                  <p className="flex items-center gap-2 text-sm font-medium">
+                    {u.name}
+                    {u.paused && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">Paused</span>}
+                  </p>
+                )}
                 <p className="text-xs text-muted">
-                  {u.status === 'ONLINE' ? 'Online' : u.status === 'ERROR' ? 'Error' : 'Offline'} · last seen {timeAgo(u.lastSeenAt)}
+                  {u.paused ? 'Paused: new photos stay on the laptop, none go to the gallery'
+                    : `${u.status === 'ONLINE' ? 'Online' : u.status === 'ERROR' ? 'Error' : 'Offline'} · last seen ${timeAgo(u.lastSeenAt)}`}
                 </p>
               </div>
             </div>
@@ -118,7 +161,11 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
               {u.queuePending > 0 && <p className="text-xs text-amber-700">{formatCount(u.queuePending)} waiting on laptop</p>}
               {u.queueFailed > 0 && <p className="text-xs text-red-700">{formatCount(u.queueFailed)} failed on laptop</p>}
             </div>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
+              <Button variant={u.paused ? 'primary' : 'secondary'} disabled={busy === u.id} onClick={() => change(u, { paused: !u.paused })}>
+                {u.paused ? 'Resume' : 'Pause'}
+              </Button>
+              <Button variant="ghost" onClick={() => setRenaming({ id: u.id, name: u.name })}>Rename</Button>
               <Button variant="ghost" onClick={() => rotate(u)}>New code</Button>
               <Button variant="ghost" onClick={() => remove(u)}>Remove</Button>
             </div>
@@ -127,7 +174,7 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
         ))}
       </ul>
       <form onSubmit={add} className="mt-4 flex gap-2 border-t border-line pt-4">
-        <input className={inputClass} placeholder={`Camera ${uploaders.length + 1}`} value={name} maxLength={120} onChange={(e) => setName(e.target.value)} aria-label="Uploader name" />
+        <input className={inputClass} placeholder={`Camera ${uploaders.length + 1}`} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} aria-label="Uploader name" />
         <Button type="submit" variant="primary" className="shrink-0">Add uploader</Button>
       </form>
       <ErrorText>{error}</ErrorText>

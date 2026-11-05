@@ -1,0 +1,24 @@
+McreatiK Instant Memories Uploader
+Third-party software notices
+
+This app includes the open-source software listed below. Each is used under its own licence; the full licence
+texts are available at the addresses given (and, for most components, inside the app's mcreatik-uploader.jar under
+META-INF).
+
+FlatLaf, FlatLaf Extras        Apache License 2.0      https://github.com/JFormDesigner/FlatLaf
+Inter font (FlatLaf Fonts)     SIL Open Font Licence 1.1  https://github.com/rsms/inter
+JSVG (SVG rendering)           MIT License             https://github.com/weisJ/jsvg
+Lucide icons                   ISC License             https://lucide.dev/license
+Jackson                        Apache License 2.0      https://github.com/FasterXML/jackson
+SQLite JDBC                    Apache License 2.0      https://github.com/xerial/sqlite-jdbc
+SQLite                         Public domain           https://sqlite.org/copyright.html
+TwelveMonkeys ImageIO          BSD 3-Clause License    https://github.com/haraldk/TwelveMonkeys
+metadata-extractor             Apache License 2.0      https://github.com/drewnoakes/metadata-extractor
+Apache FtpServer, Apache MINA  Apache License 2.0      https://mina.apache.org/ftpserver-project/
+SLF4J                          MIT License             https://www.slf4j.org/license.html
+Eclipse Temurin (Java runtime) GPLv2 with Classpath Exception  https://adoptium.net/
+
+Lucide icons: Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT).
+All other copyright (c) for Lucide are held by Lucide Contributors 2022. Permission to use, copy, modify, and/or
+distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright
+notice and this permission notice appear in all copies.

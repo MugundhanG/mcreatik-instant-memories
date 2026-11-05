@@ -53,4 +53,19 @@ class EventSwitchTest {
                         "--data-dir", "/x", "--wait-for-lock")));
         assertEquals(List.of("--wait-for-lock"), EventSwitch.restartArgs(List.of()));
     }
+
+    @Test
+    void eachEventGetsAFolderWithOneSubfolderPerCamera() {
+        Path event = root.resolve("Meena 60th");
+        assertEquals(event.resolve("Main - Karthik"),
+                EventSwitch.folderFor(root, root, "Meena 60th", root, "Main - Karthik"), "first event, from the default folder");
+        Path previous = root.resolve("Arun & Priya Wedding").resolve("Camera 1");
+        assertEquals(event.resolve("Camera 1"), EventSwitch.folderFor(previous, previous, "Meena 60th", root, "Camera 1"),
+                "from an event folder of the new layout");
+        Path legacy = root.resolve("Arun & Priya Wedding");
+        assertEquals(event.resolve("Camera 1"), EventSwitch.folderFor(legacy, legacy, "Meena 60th", root, "Camera 1"),
+                "from an older event folder");
+        Path own = Path.of("/data/Camera1");
+        assertEquals(own, EventSwitch.folderFor(own, own, "Meena 60th", root, "Camera 1"), "a folder the user chose is kept");
+    }
 }

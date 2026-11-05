@@ -52,7 +52,20 @@ public class ApiClient {
 
     /** "Add camera": the server creates another camera (uploader) in this uploader's event. */
     public ApiModels.CameraCreated addCamera() throws ApiException {
-        return send(post("/api/uploader/cameras", null), ApiModels.CameraCreated.class);
+        return addCamera(null);
+    }
+
+    /** "Add camera" with a name (null or blank: the server names it "Camera N"). */
+    public ApiModels.CameraCreated addCamera(String name) throws ApiException {
+        return send(post("/api/uploader/cameras", name == null || name.isBlank() ? null
+                : new ApiModels.AddCameraRequest(name.trim())), ApiModels.CameraCreated.class);
+    }
+
+    /** Rename and/or pause or resume this camera on the server. */
+    public ApiModels.UpdateSelfResponse updateSelf(String name, Boolean paused) throws ApiException {
+        String json = JSON.writeValueAsString(new ApiModels.UpdateSelfRequest(name, paused));
+        return send(base("/api/uploader/me").header("Content-Type", "application/json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(json)).build(), ApiModels.UpdateSelfResponse.class);
     }
 
     /** "Remove camera": this uploader leaves its event on the server. */

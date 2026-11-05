@@ -44,11 +44,15 @@ public class AdminUploaderController {
         return service.rotateToken(CurrentAdmin.id(auth), uploaderId);
     }
 
+    /** Either field may be left out. {@code paused}: the privacy pause (no uploads from this camera). */
+    public record UploaderUpdateRequest(@Size(max = 120) String name, Boolean paused) {
+    }
+
     @PatchMapping("/uploaders/{uploaderId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void rename(Authentication auth, @PathVariable UUID uploaderId,
-                       @Valid @RequestBody UploaderNameRequest request) {
-        service.rename(CurrentAdmin.id(auth), uploaderId, request.name());
+    public void update(Authentication auth, @PathVariable UUID uploaderId,
+                       @Valid @RequestBody UploaderUpdateRequest request) {
+        service.update(CurrentAdmin.id(auth), uploaderId, request.name(), request.paused());
     }
 
     @DeleteMapping("/uploaders/{uploaderId}")

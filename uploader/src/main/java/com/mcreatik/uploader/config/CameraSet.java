@@ -51,18 +51,52 @@ public final class CameraSet {
         return -1;
     }
 
-    /**
-     * Next to Camera 1's folder, never inside it (the folder watcher looks into subfolders), for example
-     * {@code McreatiK Photos/Ananya & Rohit Wedding - Camera 2} (plain ASCII: any file system).
-     */
+    /** {@link #folderFor(Path, int, String, Path)} with the default name "Camera N" and the default root. */
     public static Path folderFor(Path camera1Folder, int number) {
+        return folderFor(camera1Folder, number, null, EventSwitch.defaultRoot());
+    }
+
+    /**
+     * A camera's photo folder, never inside Camera 1's (each folder watcher looks into its sub-folders):
+     * <ul>
+     *   <li>event folders ({@code <root>/<event>/<camera 1>}): a sibling named after the camera, for example
+     *       {@code McreatiK Photos/Ananya & Rohit Wedding/Candid - Divya};</li>
+     *   <li>older or hand-picked folders: next to Camera 1's, {@code <camera 1 folder> - <camera name>}.</li>
+     * </ul>
+     * A folder that already holds photos (a removed camera of the same name) is not reused: " (2)" is added.
+     */
+    public static Path folderFor(Path camera1Folder, int number, String cameraName, Path root) {
         if (number == 1) {
             return camera1Folder;
         }
+        String name = EventSwitch.safeName(cameraName == null || cameraName.isBlank() ? "Camera " + number : cameraName);
         Path abs = camera1Folder.toAbsolutePath().normalize();
-        String name = abs.getFileName() == null ? "McreatiK Photos" : abs.getFileName().toString();
         Path parent = abs.getParent() == null ? abs : abs.getParent();
-        return parent.resolve(name + " - Camera " + number);
+        Path rootNorm = root.toAbsolutePath().normalize();
+        if (rootNorm.equals(parent.getParent())) {
+            return unused(parent, name, abs);
+        }
+        String base = abs.getFileName() == null ? "McreatiK Photos" : abs.getFileName().toString();
+        return unused(parent, base + " - " + name, abs);
+    }
+
+    private static Path unused(Path dir, String name, Path camera1) {
+        Path p = dir.resolve(name);
+        for (int n = 2; p.equals(camera1) || hasFiles(p); n++) {
+            p = dir.resolve(name + " (" + n + ")");
+        }
+        return p;
+    }
+
+    private static boolean hasFiles(Path dir) {
+        if (!Files.isDirectory(dir)) {
+            return false;
+        }
+        try (var s = Files.list(dir)) {
+            return s.findAny().isPresent();
+        } catch (IOException e) {
+            return true;
+        }
     }
 
     /** The first port above Camera 1's that no other camera uses and that is free on this computer. */
@@ -88,7 +122,13 @@ public final class CameraSet {
 
     /** Settings for a new camera: its own token, folder and port; Camera 1's computer id and camera login. */
     public static UploaderConfig newCamera(UploaderConfig camera1, String token, int number, int port) {
-        return new UploaderConfig(camera1.serverUrl(), token, folderFor(camera1.watchFolder(), number),
+        return newCamera(camera1, token, number, port, null, EventSwitch.defaultRoot());
+    }
+
+    /** The same, with the camera's name (its folder is named after it). */
+    public static UploaderConfig newCamera(UploaderConfig camera1, String token, int number, int port, String name,
+                                           Path root) {
+        return new UploaderConfig(camera1.serverUrl(), token, folderFor(camera1.watchFolder(), number, name, root),
                 camera1.concurrency(), camera1.deviceId(), camera1.ftp().withPort(port));
     }
 

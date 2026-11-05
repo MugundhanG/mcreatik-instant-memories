@@ -27,19 +27,30 @@ public final class EventSwitch {
         return Path.of(System.getProperty("user.home"), "McreatiK Photos");
     }
 
-    /**
-     * The folder for the new event. When the current folder is the default one (or one event folder inside it), and
-     * the user didn't choose another, each event gets its own folder: {@code McreatiK Photos/<event name>}. A folder
-     * the user picked themselves is kept as it is.
-     */
+    /** The event folder only (no camera sub-folder): {@code McreatiK Photos/<event name>}. */
     public static Path folderFor(Path current, Path chosen, String newEventName, Path root) {
+        return folderFor(current, chosen, newEventName, root, null);
+    }
+
+    /**
+     * Camera 1's folder for the new event. When the current folder is the default one (or inside it), and the user
+     * didn't choose another, each event gets its own folder with one sub-folder per camera:
+     * {@code McreatiK Photos/<event name>/<camera name>}. A folder the user picked themselves is kept as it is.
+     */
+    public static Path folderFor(Path current, Path chosen, String newEventName, Path root, String cameraName) {
         if (newEventName == null || newEventName.isBlank() || !chosen.equals(current)) {
             return chosen;
         }
         Path normalized = current.toAbsolutePath().normalize();
         Path rootNorm = root.toAbsolutePath().normalize();
-        boolean inDefault = normalized.equals(rootNorm) || rootNorm.equals(normalized.getParent());
-        return inDefault ? rootNorm.resolve(safeName(newEventName)) : chosen;
+        Path parent = normalized.getParent();
+        boolean inDefault = normalized.equals(rootNorm) || rootNorm.equals(parent)
+                || (parent != null && rootNorm.equals(parent.getParent()));
+        if (!inDefault) {
+            return chosen;
+        }
+        Path event = rootNorm.resolve(safeName(newEventName));
+        return cameraName == null || cameraName.isBlank() ? event : event.resolve(safeName(cameraName));
     }
 
     /** A folder name that works on Windows and Mac. */

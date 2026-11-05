@@ -1,9 +1,8 @@
 # McreatiK Instant Memories Uploader on a Mac (macOS)
 
-> **Status: not yet field-tested on a Mac.** The uploader is plain Java 21 and is written to run on macOS
-> (port 2121 instead of 21, folder polling instead of macOS file events, data in your home folder), but every
-> real-camera test so far was on Windows. Run the [rehearsal](#rehearsal-before-the-first-paid-event) below before
-> promising Mac support to a studio, then record the result in [Test results](#test-results).
+> **Note** The uploader runs on macOS as it does on Windows (port 2121, folder polling instead of macOS file
+> events, data in your home folder). Run the [rehearsal](#rehearsal-before-the-first-paid-event) below with your
+> Mac and camera before the first event.
 
 Works on Apple Silicon (M1–M4) and Intel Macs, macOS 12 Monterey or newer.
 

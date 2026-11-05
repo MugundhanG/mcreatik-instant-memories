@@ -1,6 +1,6 @@
 # Canon EOS R6 Mark II setup
 
-This guide sets up the **Canon EOS R6 Mark II** to send every JPEG over Wi-Fi (FTP) to the McreatiK Instant Memories Uploader on your laptop. There's no cable and no extra software. It's **field-tested**: 2–3 seconds from shutter to laptop.
+This guide sets up the **Canon EOS R6 Mark II** to send every JPEG over Wi-Fi (FTP) to the McreatiK Instant Memories Uploader on your laptop. There's no cable and no extra software. Photos reach the laptop in about 2–3 seconds.
 
 > **Note** The camera screens below are **illustrations** of each step, with the values to choose highlighted. Canon's menu names can differ slightly by firmware. Real photos of the camera screens will replace them later.
 
