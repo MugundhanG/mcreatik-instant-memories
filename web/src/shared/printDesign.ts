@@ -315,7 +315,7 @@ export function boardSvg(themeName: BoardTheme, brand: BoardBrand, opts: { card?
 
 // ---- Fonts, images and export (browser only) ----
 
-async function dataUrl(blob: Blob): Promise<string> {
+export async function dataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))

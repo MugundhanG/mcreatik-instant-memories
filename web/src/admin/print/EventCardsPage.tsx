@@ -21,7 +21,7 @@ export default function EventCardsPage() {
   const [qr, setQr] = useState<string | null>(null)
   const [making, setMaking] = useState<Kind | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const assets = usePrintAssets(event?.brand)
+  const assets = usePrintAssets(event?.brand, () => adminApi.eventLogo(eventId))
 
   useEffect(() => {
     adminApi.event(eventId).then(setEvent).catch(() => setError('The event could not be loaded'))

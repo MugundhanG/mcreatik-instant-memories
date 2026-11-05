@@ -50,6 +50,21 @@ public class StudioBranding {
                 owner.getBoardTheme());
     }
 
+    /** A logo file as stored: its bytes and image type. */
+    public record LogoFile(byte[] data, String contentType) {
+    }
+
+    /**
+     * The owner's logo bytes, for the dashboard's print files. Served through the API (not the public media URL)
+     * so the browser may draw it into a downloadable image without the media domain's CORS settings.
+     */
+    public java.util.Optional<LogoFile> logoFile(UUID ownerId) {
+        return admins.findById(ownerId).map(AdminUser::getLogoKey).map(key -> {
+            String ext = key.substring(key.lastIndexOf('.') + 1);
+            return new LogoFile(storage.read(StorageArea.MEDIA, key), "image/" + ext);
+        });
+    }
+
     public Brand ofOwner(UUID ownerId) {
         return admins.findById(ownerId).map(this::of)
                 .orElseGet(() -> new Brand("McreatiK Studios", null, null, true, 100, "cream"));

@@ -37,7 +37,7 @@ All endpoints live under `https://im-api.mcreatik.com`. Requests and responses a
 | POST | `/api/auth/login` | Public | `{email, password}` → `{token, expiresAt, email, displayName, role, mustChangePassword}` |
 | POST | `/api/auth/forgot-password` | Public | `{email}` → always 204 |
 | GET / PATCH | `/api/admin/account` | Admin | Account and branding. PATCH takes any of `displayName`, `instagram`, `logoScale` (50–200) and `boardTheme` (`cream`, `dark` or `white`: the studio board and card design) |
-| POST / DELETE | `/api/admin/account/logo` | Admin | Multipart `logo`, PNG or JPEG up to 1 MB |
+| GET / POST / DELETE | `/api/admin/account/logo` | Admin | GET: the logo file itself (for the printed board; 404 without a logo). POST: multipart `logo`, PNG, JPEG or WebP up to 1 MB |
 | POST | `/api/admin/account/password` | Admin | `{currentPassword, newPassword}` → new token; other devices logged out |
 
 ## Studios
@@ -58,6 +58,7 @@ There is no delete endpoint for studios; they are only disabled.
 | GET | `/api/admin/events` | Admin | Own events (all for McreatiK), with photo counts |
 | POST | `/api/admin/events` | Admin | `{name, eventDate, status?, slug?, …, ownerId? (super)}` → 201, or 402 |
 | GET / PATCH / DELETE | `/api/admin/events/{eventId}` | Admin | Delete is permanent, files included |
+| GET | `/api/admin/events/{eventId}/logo` | Admin | The owning studio's logo file, for the event and table cards (404 without a logo) |
 | PATCH | `/api/admin/events/{eventId}/access` | Super | `{liveGallery?, clientGallery?}` |
 | GET | `/api/admin/events/{eventId}/stats` | Admin | Counts, storage, per-uploader status |
 | GET | `/api/admin/events/{eventId}/analytics` | Admin | Totals, hourly chart, top photos |
