@@ -59,7 +59,7 @@ erDiagram
 
 | Table | Purpose | Added or changed | Code |
 | --- | --- | --- | --- |
-| `admin_users` | Studio and McreatiK logins: role, branding, plan, credits, reset fields, `token_version` | V1, V5, V6, V9, V10, V12, V13 | JPA `AdminUser`; SQL in `BillingService`, `PasswordResets` |
+| `admin_users` | Studio and McreatiK logins: role, branding, plan, credits, reset fields, `token_version` | V1, V5, V6, V9, V10, V12, V13, V17 (`board_theme`) | JPA `AdminUser`; SQL in `BillingService`, `PasswordResets` |
 | `events` | One wedding or event | V1, V8, V13 | JPA `Event` |
 | `uploaders` | Camera connections (token hash, status, queue counts) | V1 | JPA `Uploader` |
 | `photos` | Every photo, and the processing queue | V1 to V4, V8 | JPA `Photo`, `AdminPhotoSearch`, worker SQL |

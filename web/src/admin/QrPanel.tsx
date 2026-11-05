@@ -60,10 +60,14 @@ export function QrPanel({ eventId, eventSlug, galleryUrl }: { eventId: string; e
           target={IS_DEMO ? undefined : '_blank'}
           className="inline-flex h-9 items-center justify-center rounded-lg border border-line bg-white px-3.5 text-sm font-medium hover:bg-stone-50"
         >
-          Print poster
+          A4 poster
         </Link>
         <Button onClick={copy}>{copied ? 'Copied' : 'Copy link'}</Button>
       </div>
+      <Link to={`/admin/events/${eventId}/cards`}
+        className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-lg bg-ink px-3.5 text-sm font-medium text-white hover:bg-stone-800">
+        Event & table cards (8 × 12 in)
+      </Link>
       {note && <p role="status" className="mt-3 text-center text-xs text-muted">{note}</p>}
     </Card>
   )

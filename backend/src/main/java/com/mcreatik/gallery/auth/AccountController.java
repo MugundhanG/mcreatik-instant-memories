@@ -60,14 +60,14 @@ public class AccountController {
 
     /** Studio name and Instagram (blank Instagram removes it). Fields left out stay as they are. */
     public record UpdateAccountRequest(@Size(min = 1, max = 120) String displayName, @Size(max = 200) String instagram,
-                                       Integer logoScale) {
+                                       Integer logoScale, String boardTheme) {
     }
 
     @PatchMapping
     @Transactional
     public Account update(Authentication auth, @Valid @RequestBody UpdateAccountRequest request) {
         AdminUser user = access.current(auth);
-        branding.edit(user, request.displayName(), request.instagram(), request.logoScale());
+        branding.edit(user, request.displayName(), request.instagram(), request.logoScale(), request.boardTheme());
         return account(user);
     }
 

@@ -9,7 +9,7 @@ Use this on the day. Print it, or keep it open on a phone. It works for the stud
 - [ ] Several cameras on one laptop: each camera is added (**+ Add camera**, with its name) and set to the **Port** on its tab.
 - [ ] Private moments (getting ready): **Pause** that camera, and **Resume** when it's time to go live again.
 - [ ] Every camera has been tested at home with a few shots ([Canon](/admin/docs/guide-canon) · [Sony](/admin/docs/guide-sony)).
-- [ ] QR posters are printed (Overview → QR code → **Print poster**), at least 3.
+- [ ] The event card is printed and in your studio board, and the table cards are printed (Overview → QR code → **Event & table cards**).
 - [ ] Laptops and phone hotspot are charged; chargers, a power bank and spare camera batteries are packed.
 - [ ] The hotspot phone has enough mobile data. Allow about **1 MB per photo**, so 1,500 photos ≈ 1.5 GB.
 - [ ] The couple's login is created, or planned for after the event.
@@ -20,7 +20,7 @@ Use this on the day. Print it, or keep it open on a phone. It works for the stud
 2. **Laptop:** join the hotspot, plug in the charger, start McreatiK Instant Memories Uploader. Check it shows green **Online** and this event's name and date.
 3. **Check the address.** Make sure the Server in the uploader matches the one in the camera's FTP settings.
 4. **Camera:** turn Wi-Fi/FTP on and take one test shot. The uploader should show **1 received this session**, and the pipeline turns green.
-5. **Phone:** scan the poster's QR code. The test photo should be in the gallery.
+5. **Phone:** scan the event card's QR code. The test photo should be in the gallery.
 6. **Hide the test shot** on the Photos tab if you don't want guests to see it.
 7. **Posters out:** entrance, stage side, food area.
 
@@ -73,7 +73,7 @@ The uploader is amber (**Offline**), so this laptop has no internet. Check the h
 
 | They see | Cause | Fix |
 | --- | --- | --- |
-| "This gallery isn't available" | Wrong or incomplete link, or the event is Draft or Archived | Scan the poster again; set the status to Upcoming or Live |
+| "This gallery isn't available" | Wrong or incomplete link, or the event is Draft or Archived | Scan the event card again; set the status to Upcoming or Live |
 | "This gallery is currently unavailable" | McreatiK switched the gallery off | McreatiK: Event → Settings → Gallery access |
 | The page opens but there are no photos | No photos uploaded yet, or all are hidden | Check the Photos tab |
 | Download doesn't save | Opened inside Instagram or WhatsApp | Open in Safari or Chrome, or press and hold the photo → Save image |

@@ -23,8 +23,12 @@ public class StudioBranding {
      * {@code mcreatik} is true for McreatiK's own events: the web app then shows McreatiK's built-in design.
      * For studios, {@code logoUrl} and {@code instagram} are null until the studio sets them.
      */
-    public record Brand(String name, String logoUrl, String instagram, boolean mcreatik, int logoScale) {
+    public record Brand(String name, String logoUrl, String instagram, boolean mcreatik, int logoScale,
+                        String boardTheme) {
     }
+
+    /** The designs a studio can pick for its printed board and event cards. */
+    static final java.util.Set<String> BOARD_THEMES = java.util.Set.of("cream", "dark", "white");
 
     /** The dashboard sends a resized PNG (<= 800 px); generous room for a JPEG/WebP logo too. */
     static final int MAX_LOGO_BYTES = 1024 * 1024;
@@ -42,12 +46,13 @@ public class StudioBranding {
     public Brand of(AdminUser owner) {
         return new Brand(owner.getDisplayName(),
                 owner.getLogoKey() == null ? null : storage.publicMediaUrl(owner.getLogoKey()),
-                owner.getInstagramHandle(), owner.isSuperAdmin(), owner.getLogoScale());
+                owner.getInstagramHandle(), owner.isSuperAdmin(), owner.getLogoScale(),
+                owner.getBoardTheme());
     }
 
     public Brand ofOwner(UUID ownerId) {
         return admins.findById(ownerId).map(this::of)
-                .orElseGet(() -> new Brand("McreatiK Studios", null, null, true, 100));
+                .orElseGet(() -> new Brand("McreatiK Studios", null, null, true, 100, "cream"));
     }
 
     /** Accepts "name", "@name" or a profile link; blank clears it. */
@@ -72,6 +77,14 @@ public class StudioBranding {
 
     /** Fields left null stay as they are; a blank Instagram removes it. */
     public void edit(AdminUser user, String displayName, String instagram, Integer logoScale) {
+        edit(user, displayName, instagram, logoScale, null);
+    }
+
+    /** As above, plus the board design ({@code cream}, {@code dark} or {@code white}). */
+    public void edit(AdminUser user, String displayName, String instagram, Integer logoScale, String boardTheme) {
+        if (boardTheme != null && !BOARD_THEMES.contains(boardTheme)) {
+            throw ApiException.badRequest("INVALID_THEME", "Pick the cream, dark or white board design");
+        }
         if (displayName != null) {
             if (displayName.isBlank() || displayName.trim().length() > 120) {
                 throw ApiException.badRequest("INVALID_NAME", "Enter the studio name");
@@ -87,6 +100,9 @@ public class StudioBranding {
                         + MAX_LOGO_SCALE + "%");
             }
             user.setLogoScale(logoScale);
+        }
+        if (boardTheme != null) {
+            user.setBoardTheme(boardTheme);
         }
     }
 

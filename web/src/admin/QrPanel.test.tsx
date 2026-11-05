@@ -35,6 +35,7 @@ describe('Event QR code', () => {
     expect(screen.getByText(URL_)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Download PNG' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Download SVG' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Print poster' })).toHaveAttribute('href', '/admin/events/e1/print')
+    expect(screen.getByRole('link', { name: 'A4 poster' })).toHaveAttribute('href', '/admin/events/e1/print')
+    expect(screen.getByRole('link', { name: /Event & table cards/ })).toHaveAttribute('href', '/admin/events/e1/cards')
   })
 })

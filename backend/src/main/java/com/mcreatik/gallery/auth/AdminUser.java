@@ -64,6 +64,10 @@ public class AdminUser {
     @Column(name = "logo_scale", nullable = false)
     private int logoScale = 100;
 
+    /** Design of the printed studio board and event cards: cream, dark or white. */
+    @Column(name = "board_theme", nullable = false)
+    private String boardTheme = "cream";
+
     protected AdminUser() {
     }
 
@@ -129,6 +133,14 @@ public class AdminUser {
 
     public void setLogoScale(int logoScale) {
         this.logoScale = logoScale;
+    }
+
+    public String getBoardTheme() {
+        return boardTheme;
+    }
+
+    public void setBoardTheme(String boardTheme) {
+        this.boardTheme = boardTheme;
     }
 
     public void rename(String displayName) {
