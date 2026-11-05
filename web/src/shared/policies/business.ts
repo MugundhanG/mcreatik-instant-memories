@@ -5,8 +5,8 @@ export const BUSINESS = {
   email: 'connect@mcreatik.com',
   whatsapp: '+91 99527 58545',
   whatsappLink: 'https://wa.me/919952758545',
-  /** TODO(owner): replace with the registered business address before going live with online payments. */
-  address: 'Address to be added',
+  /** Registered business address (shown on /contact). */
+  address: 'No. 5/6, Vanjinathan Street, Valluvar Salai, Ramapuram, Chennai, Tamil Nadu 600089',
 } as const
 
 export const POLICY_LINKS = [
