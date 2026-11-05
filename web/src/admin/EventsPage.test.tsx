@@ -12,7 +12,7 @@ function setUp(role: 'STUDIO' | 'SUPER_ADMIN') {
     const path = new URL(String(input)).pathname
     if (path === '/api/admin/account') return ok({ email: 'me@test', displayName: 'Lens & Light', role, mustChangePassword: false })
     if (path === '/api/admin/events') return ok([])
-    if (path === '/api/admin/billing') return ok({ plan: 'UNLIMITED', free: true, monthlyQuota: 0, usedThisMonth: 0, credits: 0, unitPrice: 0 })
+    if (path === '/api/admin/billing') return ok({ plan: 'UNLIMITED', free: true, monthlyQuota: 0, usedThisMonth: 0, credits: 0, unitPrice: 0, mainCredits: 0, quickCredits: 0, carryOver: 0, packActive: false, planPaidUntil: null, prices: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300 } })
     return ok(null)
   }))
   auth.signIn({ token: 't', expiresAt: new Date(Date.now() + 3_600_000).toISOString(), email: 'me@test', displayName: 'Lens & Light', role, mustChangePassword: false })

@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { adminApi } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
-import type { BillingSummary, EventSummary } from '../lib/types'
+import type { BillingSummary, EventSummary, Purchase } from '../lib/types'
 import { ShutterLoader } from '../shared/ShutterLoader'
 import { useSession } from './auth'
 import { BuyEventsDialog } from './BuyEventsDialog'
+import { isPack, PLAN_LABEL, rupees } from './plans'
 import { ErrorText, EventStatusBadge } from './ui'
 
 const FIRST_STEPS = [
@@ -14,13 +15,65 @@ const FIRST_STEPS = [
   { title: 'Connect a camera', body: 'In the event, under Cameras & uploaders, add an uploader and paste its code into the uploader app on the laptop.' },
 ]
 
+function formatDay(iso: string) {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+}
+
+/** The studio's plan at a glance: pack events left, carried over, bought events, renewal, and what to buy. */
+function PlanBar({ billing: b, onBuy }: { billing: BillingSummary; onBuy: (p: Purchase) => void }) {
+  const pack = isPack(b.plan)
+  const [now] = useState(() => Date.now())
+  const daysLeft = b.planPaidUntil ? Math.ceil((Date.parse(`${b.planPaidUntil}T23:59:59`) - now) / 86_400_000) : null
+  const renewSoon = pack && daysLeft !== null && daysLeft <= 5
+  const owed = b.mainCredits < 0 || b.quickCredits < 0
+  const bought = [
+    b.mainCredits > 0 && `${b.mainCredits} Main`,
+    b.quickCredits > 0 && `${b.quickCredits} Quick`,
+  ].filter(Boolean).join(' + ')
+  return (
+    <div className="space-y-2">
+      {pack && (renewSoon || !b.packActive) && (
+        <div role="status" data-testid="renew-banner"
+          className={`flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm ${b.packActive ? 'bg-amber-50 text-amber-900' : 'bg-red-50 text-red-900'}`}>
+          <p>
+            {b.packActive
+              ? <>Your {PLAN_LABEL[b.plan]} is paid until <b>{formatDay(b.planPaidUntil!)}</b>. Renew it to keep your monthly events.</>
+              : <>Your {PLAN_LABEL[b.plan]} ended on <b>{formatDay(b.planPaidUntil!)}</b>. New events are charged one by one until you renew.</>}
+          </p>
+          <button type="button" onClick={() => onBuy({ item: 'PLAN', plan: b.plan, quantity: 1 })}
+            className="inline-flex h-9 items-center rounded-lg bg-ink px-3.5 font-medium text-white">Renew pack · {rupees(b.monthlyPrice)}</button>
+        </div>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3" data-testid="plan-usage">
+        <p className="text-sm">
+          {pack || b.plan === 'MONTHLY'
+            ? <><span className="font-medium">{PLAN_LABEL[b.plan]}</span>{' · '}<b className="tabular-nums">{b.usedThisMonth} of {b.monthlyQuota}</b> used this month</>
+            : <span className="font-medium">Per-event plan</span>}
+          {b.carryOver > 0 && <span className="text-muted"> · {b.carryOver} carried over</span>}
+          {' · '}
+          <span className={owed ? 'text-red-700' : 'text-muted'}>
+            {owed ? 'payment not received for some events' : bought ? `${bought} event${b.credits === 1 ? '' : 's'} bought` : 'no bought events'}
+          </span>
+          {pack && b.planPaidUntil && b.packActive && !renewSoon && <span className="text-muted"> · paid until {formatDay(b.planPaidUntil)}</span>}
+        </p>
+        <div className="flex gap-4 text-sm font-medium text-[#8a5a1c]">
+          <button type="button" onClick={() => onBuy({ item: 'MAIN_EVENT', quantity: 1 })} className="hover:underline">Buy events</button>
+          <button type="button" onClick={() => onBuy({ item: 'PLAN', plan: pack ? b.plan : 'MAIN_4', quantity: 1 })} className="hover:underline">
+            {pack ? 'Renew or change pack' : 'Monthly packs'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function EventsPage() {
   const [events, setEvents] = useState<EventSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const superAdmin = useSession()?.role === 'SUPER_ADMIN'
 
   const [billing, setBilling] = useState<BillingSummary | null>(null)
-  const [buying, setBuying] = useState(false)
+  const [buying, setBuying] = useState<Purchase | null>(null)
   const loadBilling = () => adminApi.billing().then(setBilling).catch(() => {})
 
   useEffect(() => {
@@ -36,23 +89,10 @@ export default function EventsPage() {
           New event
         </Link>
       </div>
-      {billing && !billing.free && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3" data-testid="plan-usage">
-          <p className="text-sm">
-            {billing.plan === 'MONTHLY'
-              ? <><b className="tabular-nums">{billing.usedThisMonth} of {billing.monthlyQuota}</b> events used this month</>
-              : <>Per-event plan</>}
-            {' · '}
-            <span className={billing.credits < 0 ? 'text-red-700' : 'text-muted'}>
-              {billing.credits < 0 ? `${-billing.credits} event${billing.credits === -1 ? '' : 's'} owed (payment not received)` : `${billing.credits} extra event${billing.credits === 1 ? '' : 's'} available`}
-            </span>
-          </p>
-          <button type="button" onClick={() => setBuying(true)} className="text-sm font-medium text-[#8a5a1c] hover:underline">Buy events</button>
-        </div>
-      )}
+      {billing && !billing.free && <PlanBar billing={billing} onBuy={setBuying} />}
       {buying && billing && (
-        <BuyEventsDialog billing={billing} onClose={() => setBuying(false)} onPaid={() => {
-          setBuying(false)
+        <BuyEventsDialog billing={billing} purchase={buying} onClose={() => setBuying(null)} onPaid={() => {
+          setBuying(null)
           loadBilling()
         }} />
       )}
@@ -84,7 +124,10 @@ export default function EventsPage() {
                 <p className="font-medium">{e.name}</p>
                 <EventStatusBadge status={e.status} />
               </div>
-              <p className="mt-1 text-sm text-muted">{formatEventDate(e.eventDate)}</p>
+              <p className="mt-1 text-sm text-muted">
+                {formatEventDate(e.eventDate)}
+                {e.eventType === 'QUICK' && <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600">Quick</span>}
+              </p>
               {superAdmin && e.ownerName && <p className="mt-1 text-xs font-medium text-[#8a5a1c]">{e.ownerName}</p>}
               <p className="mt-4 text-sm">
                 <span className="font-semibold tabular-nums">{formatCount(e.readyPhotos)}</span> <span className="text-muted">photos</span>

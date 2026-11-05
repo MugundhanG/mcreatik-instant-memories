@@ -82,7 +82,8 @@ public class EventService {
         }
         return owned.stream().map(e -> new EventDtos.EventSummary(e.getId(), e.getName(), e.getSlug(),
                 e.getEventDate(), e.getStatus(), properties.galleryUrl(e.getSlug()),
-                counts.getOrDefault(e.getId(), 0L), e.getCreatedAt(), e.getOwnerId(), names.get(e.getOwnerId()))).toList();
+                counts.getOrDefault(e.getId(), 0L), e.getCreatedAt(), e.getOwnerId(), names.get(e.getOwnerId()),
+                e.getEventType())).toList();
     }
 
     @Transactional
@@ -100,10 +101,15 @@ public class EventService {
             owner = admins.findById(request.ownerId()).map(AdminUser::getId)
                     .orElseThrow(() -> ApiException.badRequest("INVALID_STUDIO", "Unknown studio"));
         }
-        // Plans: the monthly allowance, then bought events; otherwise 402 and the dashboard offers to pay.
-        String charge = billing.reserveEvent(owner);
+        EventType type = request.eventType() == null ? EventType.MAIN : request.eventType();
+        if (type == EventType.CLIENT) {
+            throw ApiException.badRequest("INVALID_TYPE", "Choose a Main or a Quick event");
+        }
+        // Plans: the pack's allowance (carried over first), then bought events; otherwise 402 and the dashboard offers to pay.
+        String charge = billing.reserveEvent(owner, type);
         Event event = new Event(owner, request.name().trim(), slug, request.eventDate(),
                 request.status() == null ? EventStatus.UPCOMING : request.status());
+        event.setEventType(type);
         event.setStartTime(request.startTime());
         event.setEndTime(request.endTime());
         validateTimes(event);
@@ -281,7 +287,7 @@ public class EventService {
                 e.getEndTime(), e.getStatus(), e.getCoverPhotoId(), coverUrl(e), properties.galleryUrl(e.getSlug()),
                 e.getRetentionUntil(), e.getCreatedAt(), e.getUpdatedAt(), e.getOwnerId(),
                 admins.findById(e.getOwnerId()).map(AdminUser::getDisplayName).orElse(null),
-                branding.ofOwner(e.getOwnerId()), e.isLiveGalleryEnabled(), e.isClientGalleryEnabled());
+                branding.ofOwner(e.getOwnerId()), e.isLiveGalleryEnabled(), e.isClientGalleryEnabled(), e.getEventType());
     }
 
     /** Guests and the couple see this when McreatiK has turned their gallery off. */

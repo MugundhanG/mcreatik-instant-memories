@@ -59,17 +59,17 @@ erDiagram
 
 | Table | Purpose | Added or changed | Code |
 | --- | --- | --- | --- |
-| `admin_users` | Studio and McreatiK logins: role, branding, plan, credits, reset fields, `token_version` | V1, V5, V6, V9, V10, V12, V13, V17 (`board_theme`) | JPA `AdminUser`; SQL in `BillingService`, `PasswordResets` |
-| `events` | One wedding or event | V1, V8, V13 | JPA `Event` |
+| `admin_users` | Studio and McreatiK logins: role, branding, plan, credits, reset fields, `token_version` | V1, V5, V6, V9, V10, V12, V13, V17 (`board_theme`), V18 (`main_credits`, `quick_credits`, `plan_paid_until`, `plan_since`, `plan_reminded_for`) | JPA `AdminUser`; SQL in `BillingService`, `PasswordResets` |
+| `events` | One wedding or event; `event_type` MAIN / QUICK | V1, V8, V13, V18 | JPA `Event` |
 | `uploaders` | Camera connections (token hash, status, queue counts) | V1 | JPA `Uploader` |
 | `photos` | Every photo, and the processing queue | V1 to V4, V8 | JPA `Photo`, `AdminPhotoSearch`, worker SQL |
 | `guest_activity` | Anonymous views, downloads, shares | V7 | `GuestActivityService` |
 | `event_categories` | Albums inside an event | V8 | `AlbumService` |
 | `event_clients` | The couple's login | V8, V11, V12, V13 | `ClientController`, `AlbumService` |
 | `album_selections` | Photos the couple ticked | V8 | `AlbumService`, `ClientController` |
-| `event_charges` | Events counted against plan or credits | V9 | `BillingService` |
-| `event_payments` | UPI payments waiting for review (UTR unique) | V9 | `BillingService` |
-| `billing_settings` | One row of UPI details and prices | V9 | `BillingService` |
+| `event_charges` | How each event was covered: `FREE`, `QUOTA` (this month's pack), `CARRY` (last month's unused), `CREDIT` (bought); carry-over is worked out from these rows | V9, V18 | `BillingService` |
+| `event_payments` | Every purchase: `item` (MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN), quantity, `event_id`, `plan`; UPI ones wait for review (UTR unique) | V9, V14, V15, V18 | `BillingService`, `OnlinePaymentService` |
+| `billing_settings` | One row of UPI details and every price (Main, Quick, the four packs, upgrade) | V9, V18 | `BillingService` |
 
 ## What happens on delete
 

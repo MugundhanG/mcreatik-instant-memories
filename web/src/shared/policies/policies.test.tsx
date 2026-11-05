@@ -8,14 +8,28 @@ import TermsPage from './TermsPage'
 describe('Policy pages', () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  it('shows the current prices from the server', async () => {
+  it('shows the current Main / Quick prices and the monthly packs from the server', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      perEventPrice: 2499, monthlyPrice: 5000, monthlyEvents: 4, extraEventPrice: 999, currency: 'INR',
+      packages: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300 },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    render(<PricingPage />)
+    expect((await screen.findAllByText('₹2,499')).length).toBeGreaterThan(0)
+    expect(screen.getByText('Main event').parentElement).toHaveTextContent('₹2,499')
+    expect(screen.getByText('Quick event').parentElement).toHaveTextContent('₹1,499')
+    expect(screen.getByText(/Upgrade it to Main for ₹1,000/)).toBeInTheDocument()
+    const main4 = screen.getByRole('row', { name: /Main · 4 events a month/ })
+    expect(main4).toHaveTextContent('₹4,999')
+    expect(main4).toHaveTextContent('₹1,250')
+    expect(screen.getByText(/carry over to the next month/)).toBeInTheDocument()
+  })
+
+  it('still shows the older single plan if the server sends no packages', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
       perEventPrice: 2500, monthlyPrice: 5000, monthlyEvents: 4, extraEventPrice: 999, currency: 'INR',
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
     render(<PricingPage />)
     expect(await screen.findByText('₹2,500')).toBeInTheDocument()
-    expect(screen.getByText('₹5,000')).toBeInTheDocument()
-    expect(screen.getByText(/4 events included/)).toBeInTheDocument()
     expect(screen.getByText(/Each extra event in a month: ₹999/)).toBeInTheDocument()
   })
 

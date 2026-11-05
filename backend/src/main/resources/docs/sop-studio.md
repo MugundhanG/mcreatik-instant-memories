@@ -40,19 +40,39 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 
 ## 3. Create an event
 
-1. **Events** shows all your events and how many your plan has left this month.
+1. **Events** shows all your events and, at the top, your plan: events left this month, any carried over from last month, and events you've bought.
 
 ![Events list with the monthly allowance](images/s-events.webp)
 
-2. Press **New event**. Enter the **Event name** guests will see (for example "Rahul & Sneha Engagement"), the **Date** and the **Status** (Upcoming for future events).
-3. **Gallery address** is optional. Leave it empty and you get a hard-to-guess address.
-4. Press **Create event**.
+2. Press **New event** and choose the **Event type**:
+   - **Main event:** weddings, receptions, big birthdays, big traditional functions and large corporate events.
+   - **Quick event:** engagements, small birthdays, baby showers and small corporate events, up to about 300 guests. If more guests turn up, the gallery keeps working and the event page offers **Upgrade to Main**.
+
+   Under the choice, the form tells you how this event is paid for: by your pack, by an event you bought, or the price to pay.
+3. Enter the **Event name** guests will see (for example "Rahul & Sneha Engagement"), the **Date** and the **Status** (Upcoming for future events).
+4. **Gallery address** is optional. Leave it empty and you get a hard-to-guess address.
+5. Press **Create event**.
 
 ![New event form](images/s-new-event.webp)
 
-### Need more events this month?
+### Packages and prices
 
-Press **Buy events** and choose how many. Then pay one of two ways:
+| | One event | 2 events a month | 4 events a month |
+| --- | --- | --- | --- |
+| **Main** | ₹2,499 | ₹3,499 | ₹4,999 |
+| **Quick** | ₹1,499 | ₹2,499 | ₹3,999 |
+
+- **Monthly packs:** a Main pack also covers Quick events; a Quick pack covers Quick events only.
+- **Carry-over:** unused events carry over to the next month (one month only).
+- **Renewing:** packs are renewed month by month from **Events → Renew pack** (you get an email and a banner a few days before). If you don't renew, nothing stops: new events are charged one by one.
+- **Upgrades:** a Quick event that grows past about 300 guests can be upgraded to Main for ₹1,000.
+- **Bought events** never expire.
+
+Current prices are always on [the pricing page](https://live.mcreatik.com/pricing).
+
+### Need more events?
+
+Press **Buy events**, choose **Main** or **Quick** and how many. **Monthly packs** (or **Renew or change pack**) opens the same window for a pack. Then pay one of two ways:
 
 - **Card, netbanking, UPI** (fastest): press **Pay ₹…**. A secure Razorpay window opens; pay by card, netbanking, UPI or wallet. The events are added **straight away** and your new event carries on. Closing the window without paying changes nothing.
 - **UPI QR**: press **Show UPI QR for ₹…**, then scan it with GPay, PhonePe, Paytm or any UPI app (on a phone, tap **Pay with UPI app**). The events are added **automatically within seconds** of paying; there is nothing to type. The QR works for 15 minutes; if it runs out, press **New UPI QR**.
@@ -205,7 +225,7 @@ Table card text you can copy: "**Scan to see the photos live.** Point your phone
 | The camera can't connect to the laptop | See the camera guide's troubleshooting ([Canon](/admin/docs/guide-canon#troubleshooting) · [Sony](/admin/docs/guide-sony#troubleshooting)). |
 | Guests say the page is empty | Status is Draft or Archived, or no photos yet. Set Upcoming or Live. |
 | "This gallery is currently unavailable" | McreatiK turned the gallery off. Contact McreatiK. |
-| Can't create an event (payment needed) | Your plan's events are used up. Use **Buy events**, or ask McreatiK. |
+| Can't create an event (payment needed) | Your pack's events are used up, your pack has ended (renew it), or it's a Main event on a Quick pack. The message says which. Use **Buy events** or **Renew pack**. |
 | Couple says the album limit is reached | Raise the **Album limit** on the Couple tab, or ask them to untick some. |
 
 More: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day).

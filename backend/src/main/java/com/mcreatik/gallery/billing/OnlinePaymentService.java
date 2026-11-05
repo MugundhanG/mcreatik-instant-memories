@@ -71,38 +71,49 @@ public class OnlinePaymentService {
         return props.enabled();
     }
 
-    /** Opens a Razorpay order for {@code events} at the studio's own price (never an amount from the browser). */
-    public CheckoutOrder start(UUID studioId, int events) {
+    /** What a purchase is called on the payment screen and in Razorpay. */
+    static String describe(BillingService.Quote q) {
+        int n = q.events();
+        return switch (q.item()) {
+            case MAIN_EVENT -> n + " Main event" + (n == 1 ? "" : "s");
+            case QUICK_EVENT -> n + " Quick event" + (n == 1 ? "" : "s");
+            case UPGRADE -> "Upgrade to Main event";
+            case PLAN -> n + " month" + (n == 1 ? "" : "s") + " of " + q.plan().label() + " pack";
+        };
+    }
+
+    /** Opens a Razorpay order for a purchase at the studio's own price (never an amount from the browser). */
+    public CheckoutOrder start(UUID studioId, BillingService.Purchase purchase) {
         if (!props.enabled()) {
             throw ApiException.conflict("ONLINE_PAYMENTS_OFF", "Online payment isn't set up yet. Please pay by UPI QR.");
         }
-        BillingService.Quote quote = billing.quote(studioId, events);
+        BillingService.Quote quote = billing.quote(studioId, purchase);
+        int events = quote.events();
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO event_payments (id, studio_id, events, unit_price, amount, method, status)"
-                + " VALUES (?, ?, ?, ?, ?, 'RAZORPAY', 'CREATED')", id, studioId, events, quote.unitPrice(), quote.amount());
+        billing.insertOnline(id, studioId, quote, "RAZORPAY", null);
         RazorpayClient.Order order = razorpay.createOrder((long) quote.amount() * 100, id.toString(),
-                Map.of("studioId", studioId.toString(), "events", Integer.toString(events), "product", "Instant Memories events"));
+                Map.of("studioId", studioId.toString(), "item", quote.item().name(), "events", Integer.toString(events),
+                        "product", "Instant Memories " + describe(quote)));
         jdbc.update("UPDATE event_payments SET razorpay_order_id = ? WHERE id = ?", order.id(), id);
         Map<String, Object> who = jdbc.queryForMap("SELECT display_name, email FROM admin_users WHERE id = ?", studioId);
         return new CheckoutOrder(id, order.id(), props.keyId(), order.amountPaise(), "INR", events, quote.amount(),
                 (String) who.get("display_name"), (String) who.get("email"));
     }
 
-    /** A single-use UPI QR for {@code events} at the studio's own price; paid in any UPI app, confirmed automatically. */
-    public UpiQrOrder startQr(UUID studioId, int events) {
+    /** A single-use UPI QR for a purchase at the studio's own price; paid in any UPI app, confirmed automatically. */
+    public UpiQrOrder startQr(UUID studioId, BillingService.Purchase purchase) {
         if (!props.enabled()) {
             throw ApiException.conflict("ONLINE_PAYMENTS_OFF", "Automatic UPI QR isn't set up yet.");
         }
-        BillingService.Quote quote = billing.quote(studioId, events);
+        BillingService.Quote quote = billing.quote(studioId, purchase);
+        int events = quote.events();
         UUID id = UUID.randomUUID();
         Instant expires = Instant.now().plus(QR_LIFETIME);
-        jdbc.update("INSERT INTO event_payments (id, studio_id, events, unit_price, amount, method, status, expires_at)"
-                        + " VALUES (?, ?, ?, ?, ?, 'UPI_AUTO', 'CREATED', ?)", id, studioId, events, quote.unitPrice(),
-                quote.amount(), Timestamp.from(expires));
+        billing.insertOnline(id, studioId, quote, "UPI_AUTO", Timestamp.from(expires));
         RazorpayClient.UpiQr qr = razorpay.createUpiQr((long) quote.amount() * 100, expires.getEpochSecond(),
-                events + " event" + (events == 1 ? "" : "s") + " · Instant Memories",
-                Map.of("paymentId", id.toString(), "studioId", studioId.toString(), "events", Integer.toString(events),
-                        "product", "Instant Memories events"));
+                describe(quote) + " · Instant Memories",
+                Map.of("paymentId", id.toString(), "studioId", studioId.toString(), "item", quote.item().name(),
+                        "events", Integer.toString(events), "product", "Instant Memories " + describe(quote)));
         jdbc.update("UPDATE event_payments SET razorpay_qr_id = ? WHERE id = ?", qr.id(), id);
         return new UpiQrOrder(id, qr.upiLink(), qr.imageUrl(), events, quote.amount(), expires);
     }
@@ -224,21 +235,15 @@ public class OnlinePaymentService {
         return new Result(row.id(), row.events(), credits(row.studioId()));
     }
 
-    /** One statement: marked paid and credited together, and only by whichever confirm/poll/webhook gets there first. */
+    /** Marked paid and applied together (one transaction), only by whichever confirm/poll/webhook gets there first. */
     private void credit(Row row, String razorpayPaymentId) {
-        int changed = jdbc.update("""
-                WITH paid AS (
-                    UPDATE event_payments SET status = 'APPROVED', razorpay_payment_id = ?, reviewed_at = now(), note = NULL
-                    WHERE id = ? AND status = 'CREATED' RETURNING studio_id, events)
-                UPDATE admin_users u SET event_credits = u.event_credits + paid.events FROM paid WHERE u.id = paid.studio_id""",
-                razorpayPaymentId, row.id());
-        if (changed == 1) {
-            log.info("Online payment " + razorpayPaymentId + ": " + row.events() + " event(s) credited");
+        if (billing.markPaid(row.id(), razorpayPaymentId)) {
+            log.info("Online payment " + razorpayPaymentId + " applied (payment " + row.id() + ")");
         }
     }
 
     private int credits(UUID studioId) {
-        return jdbc.queryForObject("SELECT event_credits FROM admin_users WHERE id = ?", Integer.class, studioId);
+        return billing.credits(studioId);
     }
 
     private Row row(String where, Object arg) {

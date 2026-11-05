@@ -42,7 +42,7 @@ export default function StudiosPage() {
   const [password, setPassword] = useState(temporaryPassword)
   const [busy, setBusy] = useState(false)
   const [credentials, setCredentials] = useState<Credentials | null>(null)
-  const [plan, setPlan] = useState<Plan>('MONTHLY')
+  const [plan, setPlan] = useState<Plan>('PER_EVENT')
   const [billing, setBilling] = useState<Map<string, StudioBilling>>(new Map())
   const [brandingFor, setBrandingFor] = useState<string | null>(null)
   const [confirm, confirmDialog] = useConfirm()
@@ -139,7 +139,7 @@ export default function StudiosPage() {
             </Field>
             <Field label="Plan" hint="Change it any time in the studio list">
               <select className={inputClass} value={plan} onChange={(e) => setPlan(e.target.value as Plan)}>
-                {(Object.keys(PLAN_LABEL) as Plan[]).map((p) => <option key={p} value={p}>{PLAN_LABEL[p]}</option>)}
+                {(Object.keys(PLAN_LABEL) as Plan[]).filter((p) => p !== 'MONTHLY').map((p) => <option key={p} value={p}>{PLAN_LABEL[p]}</option>)}
               </select>
             </Field>
             <Field label="Temporary password" hint="They must change it when they first log in">

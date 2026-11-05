@@ -43,6 +43,11 @@ public class Event {
     @Column(name = "cover_photo_id")
     private UUID coverPhotoId;
 
+    /** Main or Quick (decides what it costs); Client: a couple's gallery without a live guest gallery. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "event_type", nullable = false)
+    private EventType eventType = EventType.MAIN;
+
     @Column(name = "retention_until")
     private LocalDate retentionUntil;
 
@@ -124,6 +129,14 @@ public class Event {
 
     public void setEndTime(Instant endTime) {
         this.endTime = endTime;
+    }
+
+    public EventType getEventType() {
+        return eventType;
+    }
+
+    public void setEventType(EventType eventType) {
+        this.eventType = eventType;
     }
 
     public EventStatus getStatus() {

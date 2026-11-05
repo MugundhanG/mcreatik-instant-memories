@@ -95,13 +95,13 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 
 | Method | Path | Who | Notes |
 | --- | --- | --- | --- |
-| GET | `/api/admin/billing` | Admin | Plan, allowance used, credits, UPI details |
-| POST | `/api/admin/billing/payments` | Admin | `{events, utr}` → PENDING payment |
+| GET | `/api/admin/billing` | Admin | Plan, this month's pack usage, `carryOver`, `mainCredits` / `quickCredits` (`credits` = both), `packActive`, `planPaidUntil`, `prices`, UPI details |
+| POST | `/api/admin/billing/payments` | Admin | `{item, quantity, eventId?, plan?, utr}` → PENDING payment, applied at once. `item`: `MAIN_EVENT` / `QUICK_EVENT` (quantity = events), `UPGRADE` (`eventId` of a Quick event; 409 `NOT_QUICK`), `PLAN` (`plan` = a pack, quantity = months; a different pack starts today). The older `{events, utr}` still means Main events |
 | GET | `/api/admin/billing/payments?status=` | Super | Payments to check |
-| POST | `/api/admin/billing/payments/{id}/approve` · `/reject` | Super | Approve adds credits |
-| GET / PATCH | `/api/admin/billing/studios[/{studioId}]` | Super | `{plan?, monthlyQuota?, addCredits?}` |
+| POST | `/api/admin/billing/payments/{id}/approve` · `/reject` | Super | Reject reverses what the payment applied (credits, upgrade or pack month) |
+| GET / PATCH | `/api/admin/billing/studios[/{studioId}]` | Super | `{plan?, monthlyQuota?, addCredits?, addQuickCredits?, planPaidUntil?}`; moving onto a pack sets paid-until to a month from today unless given |
 | GET / PUT | `/api/admin/billing/settings` | Super | UPI ID, payee, prices |
-| POST | `/api/admin/billing/online-orders` | Admin | `{events}` → Razorpay order at the server's price `{paymentId, razorpayOrderId, keyId, amountPaise, …}` (201) |
+| POST | `/api/admin/billing/online-orders` · `/upi-qr` | Admin | The same purchase body as `/payments` (without `utr`) → Razorpay order at the server's price `{paymentId, razorpayOrderId, keyId, amountPaise, …}` (201) |
 | POST | `/api/admin/billing/online-orders/{paymentId}/confirm` | Admin | `{razorpayPaymentId, razorpaySignature}` → checks the signature and the captured amount, adds the events once |
 | POST | `/api/public/razorpay/webhook` | Razorpay | `X-Razorpay-Signature` over the raw body; `payment.captured` / `order.paid` / `qr_code.credited` add the events (idempotent; a QR is re-checked with Razorpay's API). 404 when online payment is off |
 | POST | `/api/admin/billing/upi-qr` | Admin | `{events}` → single-use Razorpay UPI QR at the server's price `{paymentId, upiLink, imageUrl, amount, expiresAt}` (201) |

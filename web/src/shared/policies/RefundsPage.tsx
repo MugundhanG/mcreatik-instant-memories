@@ -16,7 +16,7 @@ export default function RefundsPage() {
 
       <Section title="No refunds for bought events">
         <p>
-          Because events are delivered instantly and never expire, payments for events and for the Monthly plan are not
+          Because events are delivered instantly and never expire, payments for events, upgrades and monthly packs are not
           refunded, and events cannot be exchanged for cash.
         </p>
       </Section>
@@ -32,10 +32,11 @@ export default function RefundsPage() {
         </p>
       </Section>
 
-      <Section title="Cancelling the Monthly plan">
+      <Section title="Stopping a monthly pack">
         <p>
-          You can stop the Monthly plan at any time by telling us. It ends at the end of the month already paid for; that
-          month is not refunded. Events you bought separately stay in your account.
+          Monthly packs are paid month by month, so you can stop at any time simply by not renewing. A pack ends at the end
+          of the month already paid for; that month is not refunded. Unused events in it carry over one month only. Events
+          you bought separately stay in your account.
         </p>
       </Section>
 

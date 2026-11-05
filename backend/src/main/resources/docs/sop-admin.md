@@ -46,7 +46,7 @@ As the super admin you see extra menu items that studios never see: **Studios**,
 1. Go to **Studios** and press **Add studio**.
 2. Fill in **Studio name** (shown on their dashboard) and **Login email**.
 3. Optional: **WhatsApp number**. It is only used to open the chat for you; it is not saved.
-4. Choose the **Plan**: Monthly package, Per event or Unlimited. It can be changed any time.
+4. Choose the **Plan**: Per event, a monthly pack, or Unlimited. It can be changed any time.
 5. Keep the generated **Temporary password**, or press **New** for another.
 6. Press **Create studio login**.
 
@@ -81,16 +81,16 @@ Studios buy extra events from their Events page (see the Studio SOP), online or 
 
 Under **All logins**, each studio shows its events, photos and storage.
 
-- **Plan:** change between Monthly package, Per event and Unlimited.
-- **Monthly package:** set how many events are included per month. The line shows how many are used and how many extra events are available.
-- **Give / take events:** add or remove extra events (for example a free first event, or a refund).
+- **Plan:** Per event, one of the four monthly packs (Main or Quick, 2 or 4 events a month) or Unlimited. Studios still on the older Monthly package keep it until you change them.
+- **Packs:** the line shows this month's usage and the **paid until** date. Moving a studio onto a pack counts as its first month paid. If they renewed outside the app, set the date by hand. A pack whose date has passed (plus 3 days) shows **ended**, and new events are charged one by one.
+- **Give Main events / Give Quick events:** add or remove bought events (for example a free first event, or a refund). Use a minus number to take back.
 - **Edit branding:** fix the studio's name, Instagram or logo size if they need help.
 - **Reset password:** creates a new temporary password to send them.
 - **Disable:** blocks the studio's login. Their galleries keep working for guests and couples. Studios are never deleted.
 
 ### 4.3 Payment settings and prices
 
-Under **Payments & prices**, set your **UPI ID**, the **name shown in the UPI app**, and the three prices: per-event plan price, monthly package extra-event price and monthly package price. Studios see these in the Buy events dialog. Press **Save**.
+Under **Payments & prices**, set your **UPI ID**, the **name shown in the UPI app**, and every price: Main and Quick single events, the four monthly packs, the upgrade price, and after how many guests a Quick event is offered the upgrade. The older Monthly package prices only matter for studios still on it. Studios see the prices in Buy events, the new-event form and the public pricing page. Press **Save**.
 
 ## 5. Create an event for a studio
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { adminApi, ApiError } from '../lib/api'
-import type { UpiQrOrder } from '../lib/types'
+import type { Purchase, UpiQrOrder } from '../lib/types'
 import { qrSvg } from '../shared/qr'
 import { Button, ErrorText } from './ui'
 
@@ -8,7 +8,6 @@ import { Button, ErrorText } from './ui'
 export const POLL_MS = 3000
 
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`
-const plural = (n: number) => `${n} event${n === 1 ? '' : 's'}`
 
 function remaining(expiresAt: string, now: number) {
   const s = Math.max(0, Math.floor((Date.parse(expiresAt) - now) / 1000))
@@ -18,9 +17,15 @@ function remaining(expiresAt: string, now: number) {
 /**
  * UPI QR confirmed automatically: a single-use Razorpay QR for the exact amount. The studio scans it with any UPI app
  * and the events are added within seconds; there is no transaction ID to type and nothing for McreatiK to check.
- * Give it {@code key={events}}: a different number of events needs a new QR (the old one is closed on unmount).
+ * Give it a {@code key} that changes with the purchase: a different purchase needs a new QR (the old one is closed on
+ * unmount). {@code label}: what is bought, e.g. "2 Main events".
  */
-export function AutoUpiQr({ events, amount, onPaid }: { events: number; amount: number; onPaid: (events: number) => void }) {
+export function AutoUpiQr({ purchase, label, amount, onPaid }: {
+  purchase: Purchase
+  label: string
+  amount: number
+  onPaid: (events: number) => void
+}) {
   const [order, setOrder] = useState<UpiQrOrder | null>(null)
   const [svg, setSvg] = useState<string | null>(null)
   const [state, setState] = useState<'idle' | 'creating' | 'waiting' | 'expired'>('idle')
@@ -44,7 +49,7 @@ export function AutoUpiQr({ events, amount, onPaid }: { events: number; amount: 
     setState('creating')
     setError(null)
     try {
-      const o = await adminApi.startUpiQr(events)
+      const o = await adminApi.startUpiQr(purchase)
       open.current = o.paymentId
       setOrder(o)
       setSvg(o.upiLink ? await qrSvg(o.upiLink) : null)
@@ -104,7 +109,7 @@ export function AutoUpiQr({ events, amount, onPaid }: { events: number; amount: 
         </div>
         <p className="flex items-center gap-2 rounded-lg bg-stone-50 p-3 text-sm" role="status">
           <span className="size-2 shrink-0 animate-pulse rounded-full bg-amber-500" />
-          <span>Waiting for your payment… {plural(order.events)} {order.events === 1 ? 'is' : 'are'} added automatically. <span className="text-muted tabular-nums">QR valid {remaining(order.expiresAt, now)}</span></span>
+          <span>Waiting for your payment… {label}: added automatically. <span className="text-muted tabular-nums">QR valid {remaining(order.expiresAt, now)}</span></span>
         </p>
       </div>
     )
@@ -114,7 +119,7 @@ export function AutoUpiQr({ events, amount, onPaid }: { events: number; amount: 
     <div className="space-y-3">
       <p className="text-sm text-muted">
         {state === 'expired' ? 'That QR has expired and no payment was received. Make a new one to pay.'
-          : 'Scan a QR with any UPI app. Your events are added automatically the moment you pay; there is nothing to type.'}
+          : 'Scan a QR with any UPI app. It is added automatically the moment you pay; there is nothing to type.'}
       </p>
       <ErrorText>{error}</ErrorText>
       <Button variant="primary" className="w-full" disabled={state === 'creating'} onClick={show}>

@@ -7,6 +7,8 @@ import { BuyEventsDialog } from './BuyEventsDialog'
 const billing: BillingSummary = {
   plan: 'MONTHLY', free: false, monthlyQuota: 4, usedThisMonth: 4, credits: 0, unitPrice: 999, monthlyPrice: 5000,
   upiId: 'mcreatik@okicici', payeeName: 'McreatiK Studios', payments: [], onlinePayments: false,
+  mainCredits: 0, quickCredits: 0, carryOver: 0, packActive: true, planPaidUntil: null,
+  prices: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300 },
 }
 
 describe('Buy events by UPI', () => {
@@ -31,11 +33,42 @@ describe('Buy events by UPI', () => {
     expect(Object.fromEntries(pay.searchParams)).toMatchObject({ pa: 'mcreatik@okicici', am: '2997', cu: 'INR' })
 
     await user.type(screen.getByPlaceholderText(/418299301122/), '418299301122')
-    await user.click(screen.getByRole('button', { name: /I've paid ₹2,997: add 3 events/ }))
+    await user.click(screen.getByRole('button', { name: "I've paid ₹2,997" }))
     await waitFor(() => expect(onPaid).toHaveBeenCalled())
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toMatch(/\/api\/admin\/billing\/payments$/)
-    expect(JSON.parse(String(init.body))).toEqual({ events: 3, utr: '418299301122' })
+    expect(JSON.parse(String(init.body))).toEqual({ item: 'MAIN_EVENT', quantity: 3, utr: '418299301122' })
+  })
+
+  it('switches between Main and Quick events, and pays for a pack or an upgrade at the server prices', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: 'pay1' }), { status: 201, headers: { 'Content-Type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    const perEvent = { ...billing, plan: 'PER_EVENT' as const, unitPrice: 2499 }
+    const { unmount } = render(<BuyEventsDialog billing={perEvent} onPaid={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹2,499')
+    await user.click(screen.getByRole('radio', { name: /Quick/ }))
+    await user.click(screen.getByRole('button', { name: 'More events' }))
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹2,998')
+    await user.type(screen.getByPlaceholderText(/418299301122/), '418299301122')
+    await user.click(screen.getByRole('button', { name: "I've paid ₹2,998" }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body)))
+      .toEqual({ item: 'QUICK_EVENT', quantity: 2, utr: '418299301122' })
+    unmount()
+
+    const pack = render(<BuyEventsDialog billing={perEvent} purchase={{ item: 'PLAN', plan: 'MAIN_4' }} onPaid={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByRole('dialog', { name: 'Monthly pack' })).toBeInTheDocument()
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹4,999')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Pack' }), 'QUICK_2')
+    await user.click(screen.getByRole('button', { name: 'More months' }))
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹4,998')
+    pack.unmount()
+
+    render(<BuyEventsDialog billing={perEvent} purchase={{ item: 'UPGRADE', eventId: 'e-9' }} onPaid={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByRole('dialog', { name: 'Upgrade to a Main event' })).toBeInTheDocument()
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹1,000')
+    expect(screen.queryByRole('button', { name: 'More events' })).not.toBeInTheDocument()
   })
 
   it('says so when McreatiK has not set up a UPI ID yet', () => {
@@ -105,10 +138,10 @@ describe('Buy events online (card, netbanking, UPI, wallet)', () => {
     render(<BuyEventsDialog billing={online} onPaid={onPaid} onClose={vi.fn()} />)
     expect(screen.getByRole('tab', { name: /Card, netbanking/ })).toHaveAttribute('aria-selected', 'true')
     await user.click(screen.getByRole('button', { name: 'More events' }))
-    await user.click(screen.getByRole('button', { name: 'Pay ₹1,998 for 2 events' }))
+    await user.click(screen.getByRole('button', { name: 'Pay ₹1,998' }))
 
     expect(await screen.findByText('Paid ✓')).toBeInTheDocument()
-    expect(calls[0]).toEqual({ path: '/api/admin/billing/online-orders', body: { events: 2 } })
+    expect(calls[0]).toEqual({ path: '/api/admin/billing/online-orders', body: { item: 'MAIN_EVENT', quantity: 2 } })
     expect(seen[0]).toMatchObject({ key: 'rzp_test_key', order_id: 'order_ABC123', amount: 199800, currency: 'INR' })
     expect(calls[1]).toEqual({ path: '/api/admin/billing/online-orders/p-1/confirm',
       body: { razorpayPaymentId: 'pay_XYZ', razorpaySignature: 'sig' } })
@@ -121,8 +154,8 @@ describe('Buy events online (card, netbanking, UPI, wallet)', () => {
     stubRazorpay('close')
     const onPaid = vi.fn()
     render(<BuyEventsDialog billing={online} onPaid={onPaid} onClose={vi.fn()} />)
-    await user.click(screen.getByRole('button', { name: /Pay ₹999 for 1 event/ }))
-    await waitFor(() => expect(screen.getByRole('button', { name: /Pay ₹999 for 1 event/ })).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: 'Pay ₹999' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pay ₹999' })).toBeEnabled())
     expect(calls.map((c) => c.path)).toEqual(['/api/admin/billing/online-orders'])
     expect(onPaid).not.toHaveBeenCalled()
   })
@@ -132,7 +165,7 @@ describe('Buy events online (card, netbanking, UPI, wallet)', () => {
     mockServer()
     stubRazorpay('decline-then-close')
     render(<BuyEventsDialog billing={online} onPaid={vi.fn()} onClose={vi.fn()} />)
-    await user.click(screen.getByRole('button', { name: /Pay ₹999 for 1 event/ }))
+    await user.click(screen.getByRole('button', { name: 'Pay ₹999' }))
     expect(await screen.findByText(/Your card was declined\. No money was taken/)).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: 'UPI QR' }))
     expect(screen.getByRole('button', { name: /Show UPI QR for ₹999/ })).toBeInTheDocument()
@@ -177,7 +210,7 @@ describe('UPI QR confirmed automatically (Razorpay QR)', () => {
     expect(screen.queryByPlaceholderText(/418299301122/)).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Pay with UPI app' })).toHaveAttribute('href', 'upi://pay?pa=rzp.qr@icici&am=1998')
     expect(screen.getByText(/Waiting for your payment/)).toBeInTheDocument()
-    expect(calls[0]).toMatchObject({ path: '/api/admin/billing/upi-qr', body: { events: 2 } })
+    expect(calls[0]).toMatchObject({ path: '/api/admin/billing/upi-qr', body: { item: 'MAIN_EVENT', quantity: 2 } })
 
     await vi.advanceTimersByTimeAsync(3100)
     expect(screen.queryByText('Paid ✓')).not.toBeInTheDocument()

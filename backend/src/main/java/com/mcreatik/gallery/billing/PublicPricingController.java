@@ -10,7 +10,12 @@ public class PublicPricingController {
     /** Events in the Monthly plan unless McreatiK changes a studio's quota. */
     static final int MONTHLY_EVENTS = 4;
 
-    public record Pricing(int perEventPrice, int monthlyPrice, int monthlyEvents, int extraEventPrice, String currency) {
+    /**
+     * {@code perEventPrice} / {@code monthlyPrice} / {@code monthlyEvents} / {@code extraEventPrice}: the older single
+     * plan (kept for old pages); {@code packages}: Main and Quick prices and the monthly packs.
+     */
+    public record Pricing(int perEventPrice, int monthlyPrice, int monthlyEvents, int extraEventPrice, String currency,
+                          BillingService.Prices packages) {
     }
 
     private final BillingService billing;
@@ -22,6 +27,7 @@ public class PublicPricingController {
     @GetMapping("/api/public/pricing")
     public Pricing pricing() {
         BillingService.Settings s = billing.settings();
-        return new Pricing(s.perEventPrice(), s.monthlyPrice(), MONTHLY_EVENTS, s.extraEventPrice(), "INR");
+        return new Pricing(s.perEventPrice(), s.monthlyPrice(), MONTHLY_EVENTS, s.extraEventPrice(), "INR",
+                billing.publicPrices());
     }
 }
