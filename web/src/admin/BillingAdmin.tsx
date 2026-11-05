@@ -2,11 +2,22 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { adminApi, ApiError } from '../lib/api'
 import { timeAgo } from '../lib/format'
 import type { BillingSettings, EventPayment, Plan, StudioBilling } from '../lib/types'
-import { PLAN_LABEL } from './plans'
+import { isPack, PACKS, PLAN_LABEL } from './plans'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
 import { useConfirm } from './useConfirm'
 
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`
+
+/** What a payment bought, in a few words. */
+function paymentFor(p: EventPayment): string {
+  const n = p.events
+  switch (p.item) {
+    case 'QUICK_EVENT': return `${n} Quick event${n === 1 ? '' : 's'}`
+    case 'UPGRADE': return `Upgrade to Main${p.eventName ? `: ${p.eventName}` : ''}`
+    case 'PLAN': return `${n} month${n === 1 ? '' : 's'} · ${p.plan ? PLAN_LABEL[p.plan] : 'pack'}`
+    default: return `${n} Main event${n === 1 ? '' : 's'}`
+  }
+}
 
 /**
  * UPI payments studios reported, waiting for McreatiK to match them with the bank statement. The events were
@@ -28,7 +39,7 @@ export function PaymentsToCheck({ onChange }: { onChange: () => void }) {
   const reject = async (p: EventPayment) => {
     const ok = await confirm({
       title: `Reject ${rupees(p.amount)} from ${p.studioName}?`,
-      body: `Only if transaction ${p.utr} is not in your bank statement. Their ${p.events} event${p.events === 1 ? '' : 's'} are taken back.`,
+      body: `Only if transaction ${p.utr} is not in your bank statement. What they bought (${paymentFor(p)}) is taken back.`,
       confirmLabel: 'Reject payment',
       danger: true,
     })
@@ -48,7 +59,7 @@ export function PaymentsToCheck({ onChange }: { onChange: () => void }) {
           <li key={p.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 py-3">
             <div className="min-w-48 flex-1">
               <p className="font-medium">{p.studioName} · <span className="tabular-nums">{rupees(p.amount)}</span></p>
-              <p className="text-xs text-muted">{p.events} event{p.events === 1 ? '' : 's'} × {rupees(p.unitPrice)} · {timeAgo(p.createdAt)}</p>
+              <p className="text-xs text-muted">{paymentFor(p)} · {p.events} × {rupees(p.unitPrice)} · {timeAgo(p.createdAt)}</p>
             </div>
             <p className="font-mono text-sm" title="UPI transaction ID">UTR {p.utr}</p>
             <div className="flex gap-2">
@@ -94,13 +105,34 @@ export function BillingSettingsCard() {
         <Field label="Name shown in the UPI app">
           <input className={inputClass} value={s.payeeName ?? ''} onChange={(e) => setS({ ...s, payeeName: e.target.value })} placeholder="McreatiK Studios" />
         </Field>
-        <Field label="Per-event plan: price per event (₹)">
+        <Field label="Main event: single price (₹)">
           <input className={inputClass} inputMode="numeric" value={s.perEventPrice} onChange={num('perEventPrice')} />
         </Field>
-        <Field label="Monthly package: extra event price (₹)">
+        <Field label="Quick event: single price (₹)">
+          <input className={inputClass} inputMode="numeric" value={s.quickPrice} onChange={num('quickPrice')} />
+        </Field>
+        <Field label="Main pack · 2 events (₹/month)">
+          <input className={inputClass} inputMode="numeric" value={s.main2Price} onChange={num('main2Price')} />
+        </Field>
+        <Field label="Main pack · 4 events (₹/month)">
+          <input className={inputClass} inputMode="numeric" value={s.main4Price} onChange={num('main4Price')} />
+        </Field>
+        <Field label="Quick pack · 2 events (₹/month)">
+          <input className={inputClass} inputMode="numeric" value={s.quick2Price} onChange={num('quick2Price')} />
+        </Field>
+        <Field label="Quick pack · 4 events (₹/month)">
+          <input className={inputClass} inputMode="numeric" value={s.quick4Price} onChange={num('quick4Price')} />
+        </Field>
+        <Field label="Upgrade a Quick event to Main (₹)">
+          <input className={inputClass} inputMode="numeric" value={s.upgradePrice} onChange={num('upgradePrice')} />
+        </Field>
+        <Field label="Offer the upgrade after (guests)" hint="Unique guests on a Quick event">
+          <input className={inputClass} inputMode="numeric" value={s.upgradeGuests} onChange={num('upgradeGuests')} />
+        </Field>
+        <Field label="Older Monthly package: extra event (₹)">
           <input className={inputClass} inputMode="numeric" value={s.extraEventPrice} onChange={num('extraEventPrice')} />
         </Field>
-        <Field label="Monthly package price (₹/month)" hint="Collected by you; shown for reference">
+        <Field label="Older Monthly package (₹/month)" hint="Only for studios still on it">
           <input className={inputClass} inputMode="numeric" value={s.monthlyPrice} onChange={num('monthlyPrice')} />
         </Field>
         <div className="flex items-end justify-end gap-3">
@@ -113,22 +145,26 @@ export function BillingSettingsCard() {
   )
 }
 
-/** One studio's plan, monthly allowance, usage and event balance; McreatiK can give free events (e.g. a trial). */
+/**
+ * One studio's plan, this month's usage, pack paid-until date and bought events; McreatiK can give free Main or Quick
+ * events (e.g. a trial) and set the paid-until date after a renewal paid outside the app.
+ */
 export function StudioPlan({ billing, onChange }: { billing: StudioBilling; onChange: () => void }) {
   const [quota, setQuota] = useState(String(billing.monthlyQuota))
-  const update = async (input: { plan?: Plan; monthlyQuota?: number; addCredits?: number }) => {
+  const update = async (input: { plan?: Plan; monthlyQuota?: number; addCredits?: number; addQuickCredits?: number; planPaidUntil?: string }) => {
     await adminApi.updateStudioBilling(billing.studioId, input)
     onChange()
   }
-  const give = () => {
-    const n = Number(window.prompt('How many free events to give? (use a minus number to take back)', '1'))
-    if (Number.isInteger(n) && n !== 0) void update({ addCredits: n })
+  const give = (kind: 'Main' | 'Quick') => {
+    const n = Number(window.prompt(`How many free ${kind} events to give? (use a minus number to take back)`, '1'))
+    if (Number.isInteger(n) && n !== 0) void update(kind === 'Main' ? { addCredits: n } : { addQuickCredits: n })
   }
+  const plans: Plan[] = ['PER_EVENT', ...PACKS, 'UNLIMITED', ...(billing.plan === 'MONTHLY' ? ['MONTHLY' as Plan] : [])]
   return (
     <div className="flex w-full flex-wrap items-center gap-2 rounded-lg bg-stone-50 px-3 py-2 text-sm" data-testid={`plan-${billing.studioId}`}>
       <select aria-label="Plan" value={billing.plan} onChange={(e) => update({ plan: e.target.value as Plan })}
         className="h-8 rounded-md border border-line bg-white px-2 text-sm">
-        {(Object.keys(PLAN_LABEL) as Plan[]).map((p) => <option key={p} value={p}>{PLAN_LABEL[p]}</option>)}
+        {plans.map((p) => <option key={p} value={p}>{PLAN_LABEL[p]}</option>)}
       </select>
       {billing.plan === 'MONTHLY' && (
         <>
@@ -139,10 +175,24 @@ export function StudioPlan({ billing, onChange }: { billing: StudioBilling; onCh
           <span className="text-muted">events this month</span>
         </>
       )}
+      {isPack(billing.plan) && (
+        <>
+          <span className="tabular-nums text-muted">{billing.usedThisMonth} of {billing.monthlyQuota} this month · paid until</span>
+          <input type="date" aria-label="Paid until" value={billing.planPaidUntil ?? ''}
+            onChange={(e) => e.target.value && update({ planPaidUntil: e.target.value })}
+            className={`h-8 rounded-md border bg-white px-2 text-sm ${billing.packActive ? 'border-line' : 'border-red-300 text-red-700'}`} />
+          {!billing.packActive && <span className="text-xs font-medium text-red-700">ended</span>}
+        </>
+      )}
       {billing.plan !== 'UNLIMITED' && (
         <>
-          <span className={`tabular-nums ${billing.credits < 0 ? 'font-medium text-red-700' : 'text-muted'}`}>· {billing.credits} extra event{billing.credits === 1 ? '' : 's'}</span>
-          <button type="button" onClick={give} className="ml-auto text-xs font-medium text-[#8a5a1c] hover:underline">Give / take events</button>
+          <span className={`tabular-nums ${billing.mainCredits < 0 || billing.quickCredits < 0 ? 'font-medium text-red-700' : 'text-muted'}`}>
+            · {billing.mainCredits} Main + {billing.quickCredits} Quick bought
+          </span>
+          <span className="ml-auto flex gap-3">
+            <button type="button" onClick={() => give('Main')} className="text-xs font-medium text-[#8a5a1c] hover:underline">Give Main events</button>
+            <button type="button" onClick={() => give('Quick')} className="text-xs font-medium text-[#8a5a1c] hover:underline">Give Quick events</button>
+          </span>
         </>
       )}
     </div>

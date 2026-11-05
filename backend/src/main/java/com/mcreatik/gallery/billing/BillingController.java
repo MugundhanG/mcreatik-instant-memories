@@ -33,14 +33,22 @@ public class BillingController {
         this.online = online;
     }
 
-    public record OnlineOrderRequest(int events) {
+    /**
+     * What to buy. {@code item} defaults to Main events (the older API sent only {@code events}); {@code quantity}
+     * (or {@code events}) is the number of events or months; {@code eventId} for an upgrade; {@code plan} for a pack.
+     */
+    public record OnlineOrderRequest(Integer events, BillingService.Item item, Integer quantity, UUID eventId,
+                                     BillingService.Plan plan) {
+        BillingService.Purchase purchase() {
+            return BillingService.normalize(item, quantity != null ? quantity : events, eventId, plan);
+        }
     }
 
     /** Pay online (card, netbanking, UPI, wallet): opens a Razorpay order at the server's price. */
     @PostMapping("/online-orders")
     @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
     public OnlinePaymentService.CheckoutOrder startOnline(Authentication auth, @RequestBody OnlineOrderRequest request) {
-        return online.start(CurrentAdmin.id(auth), request.events());
+        return online.start(CurrentAdmin.id(auth), request.purchase());
     }
 
     public record ConfirmRequest(String razorpayPaymentId, String razorpaySignature) {
@@ -57,7 +65,7 @@ public class BillingController {
     @PostMapping("/upi-qr")
     @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
     public OnlinePaymentService.UpiQrOrder startUpiQr(Authentication auth, @RequestBody OnlineOrderRequest request) {
-        return online.startQr(CurrentAdmin.id(auth), request.events());
+        return online.startQr(CurrentAdmin.id(auth), request.purchase());
     }
 
     /** "Paid yet?" for a UPI QR (checks with Razorpay; adds the events once paid). */
@@ -79,13 +87,17 @@ public class BillingController {
         return billing.summary(CurrentAdmin.id(auth));
     }
 
-    public record PaymentRequest(int events, String utr) {
+    /** A UPI QR payment the studio made, with its transaction ID; the other fields as in {@link OnlineOrderRequest}. */
+    public record PaymentRequest(Integer events, String utr, BillingService.Item item, Integer quantity, UUID eventId,
+                                 BillingService.Plan plan) {
     }
 
     @PostMapping("/payments")
     @ResponseStatus(HttpStatus.CREATED)
     public BillingService.Payment pay(Authentication auth, @RequestBody PaymentRequest request) {
-        return billing.submitPayment(CurrentAdmin.id(auth), request.events(), request.utr());
+        return billing.submitPayment(CurrentAdmin.id(auth), BillingService.normalize(request.item(),
+                request.quantity() != null ? request.quantity() : request.events(), request.eventId(), request.plan()),
+                request.utr());
     }
 
     // ---- McreatiK (super admin) ----
@@ -119,14 +131,17 @@ public class BillingController {
         return billing.studios();
     }
 
-    public record StudioBillingRequest(BillingService.Plan plan, Integer monthlyQuota, Integer addCredits) {
+    /** {@code addCredits}: Main events to give (minus to take back); {@code addQuickCredits}: Quick events. */
+    public record StudioBillingRequest(BillingService.Plan plan, Integer monthlyQuota, Integer addCredits,
+                                       Integer addQuickCredits, java.time.LocalDate planPaidUntil) {
     }
 
     @PatchMapping("/studios/{studioId}")
     public BillingService.StudioBilling updateStudio(Authentication auth, @PathVariable UUID studioId,
                                                      @RequestBody StudioBillingRequest request) {
         access.requireSuperAdmin(auth);
-        return billing.updateStudio(studioId, request.plan(), request.monthlyQuota(), request.addCredits());
+        return billing.updateStudio(studioId, request.plan(), request.monthlyQuota(), request.addCredits(),
+                request.addQuickCredits(), request.planPaidUntil());
     }
 
     @GetMapping("/settings")

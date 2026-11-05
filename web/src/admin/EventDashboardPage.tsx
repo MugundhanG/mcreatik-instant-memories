@@ -11,6 +11,7 @@ import { GalleryAccessCard, GalleryAccessNotice } from './GalleryAccessCard'
 import { useSession } from './auth'
 import { PhotosPanel } from './PhotosPanel'
 import { QrPanel } from './QrPanel'
+import { UpgradeBanner } from './UpgradeBanner'
 import { EventStatusMenu } from './EventStatusMenu'
 import { Button, Card, ErrorText, Field, inputClass, Tabs } from './ui'
 import { useConfirm } from './useConfirm'
@@ -167,6 +168,7 @@ export default function EventDashboardPage() {
       </header>
 
       <ErrorText>{error}</ErrorText>
+      <UpgradeBanner event={event} onUpgraded={() => adminApi.event(event.id).then(setEvent).catch(() => {})} />
       {superAdmin ? (
         galleryOff && (
           <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">

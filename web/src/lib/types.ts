@@ -118,6 +118,7 @@ export interface EventSummary {
   ownerId: string
   /** The studio that owns the event (shown to the super admin). */
   ownerName: string | null
+  eventType?: EventType
 }
 
 export interface EventDetail {
@@ -140,6 +141,7 @@ export interface EventDetail {
   /** McreatiK (super admin) can turn these off; the studio only sees them. */
   liveGalleryEnabled?: boolean
   clientGalleryEnabled?: boolean
+  eventType?: EventType
 }
 
 export interface UploaderStats {
@@ -306,7 +308,35 @@ export interface AlbumSelection {
   selected: { photoId: string; fileName: string; thumbnailUrl: string | null; selectedAt: string; selectedBy: string | null; categoryId: string | null }[]
 }
 
-export type Plan = 'MONTHLY' | 'PER_EVENT' | 'UNLIMITED'
+/** PER_EVENT: every event bought. MAIN_2 … QUICK_4: monthly packs. MONTHLY: the older monthly plan. */
+export type Plan = 'PER_EVENT' | 'MAIN_2' | 'MAIN_4' | 'QUICK_2' | 'QUICK_4' | 'MONTHLY' | 'UNLIMITED'
+
+/** MAIN: weddings and big events. QUICK: up to ~300 guests. CLIENT: a couple's gallery without a live guest gallery. */
+export type EventType = 'MAIN' | 'QUICK' | 'CLIENT'
+
+/** What a payment buys. */
+export type PurchaseItem = 'MAIN_EVENT' | 'QUICK_EVENT' | 'UPGRADE' | 'PLAN'
+
+/** A purchase as the dashboard asks for it; the server sets the price. quantity: events or months. */
+export interface Purchase {
+  item: PurchaseItem
+  quantity?: number
+  eventId?: string
+  plan?: Plan
+}
+
+/** Every current price (₹). */
+export interface Prices {
+  main: number
+  quick: number
+  main2: number
+  main4: number
+  quick2: number
+  quick4: number
+  upgrade: number
+  /** Unique guests after which a Quick event is offered the upgrade. */
+  upgradeGuests: number
+}
 
 export interface EventPayment {
   id: string
@@ -324,6 +354,11 @@ export interface EventPayment {
   /** UPI_QR: checked by McreatiK. RAZORPAY: paid online. UPI_AUTO: Razorpay UPI QR. Both confirmed by Razorpay. */
   method: 'UPI_QR' | 'RAZORPAY' | 'UPI_AUTO'
   razorpayPaymentId: string | null
+  item: PurchaseItem
+  eventId: string | null
+  eventName: string | null
+  /** The pack a PLAN payment paid for. */
+  plan: Plan | null
 }
 
 /** A Razorpay order the server opened for "Pay online" (the amount is always the server's). */
@@ -363,6 +398,14 @@ export interface BillingSummary {
   payments: EventPayment[]
   /** Card / netbanking / UPI / wallet checkout (Razorpay) is set up. */
   onlinePayments: boolean
+  mainCredits: number
+  quickCredits: number
+  /** Last month's unused pack events, still usable this month. */
+  carryOver: number
+  /** The pack is paid up (or within its few days' grace). */
+  packActive: boolean
+  planPaidUntil: string | null
+  prices: Prices
 }
 
 export interface StudioBilling {
@@ -371,14 +414,27 @@ export interface StudioBilling {
   monthlyQuota: number
   usedThisMonth: number
   credits: number
+  mainCredits: number
+  quickCredits: number
+  planPaidUntil: string | null
+  packActive: boolean
 }
 
 export interface BillingSettings {
   upiId: string | null
   payeeName: string | null
+  /** The single Main event price. */
   perEventPrice: number
+  /** The older Monthly plan: extra events and its monthly price. */
   extraEventPrice: number
   monthlyPrice: number
+  quickPrice: number
+  main2Price: number
+  main4Price: number
+  quick2Price: number
+  quick4Price: number
+  upgradePrice: number
+  upgradeGuests: number
 }
 
 /** Current prices for the public /pricing page. */
@@ -388,6 +444,7 @@ export interface PublicPricing {
   monthlyEvents: number
   extraEventPrice: number
   currency: 'INR'
+  packages?: Prices
 }
 
 /** A single-use UPI QR for the exact amount, confirmed automatically (no transaction ID to type). */

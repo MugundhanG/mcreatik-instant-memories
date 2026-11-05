@@ -26,7 +26,9 @@ public final class EventDtos {
                                      EventStatus status,
                                      LocalDate retentionUntil,
                                      /* super admin only: create the event for this studio */
-                                     UUID ownerId) {
+                                     UUID ownerId,
+                                     /* MAIN (default) or QUICK */
+                                     EventType eventType) {
     }
 
     /** All fields optional; only non-null fields are applied. */
@@ -44,14 +46,14 @@ public final class EventDtos {
     /** {@code ownerName}: the studio, shown to the super admin. */
     public record EventSummary(UUID id, String name, String slug, LocalDate eventDate, EventStatus status,
                                String galleryUrl, long readyPhotos, Instant createdAt, UUID ownerId,
-                               String ownerName) {
+                               String ownerName, EventType eventType) {
     }
 
     public record EventDetail(UUID id, String name, String slug, LocalDate eventDate, Instant startTime,
                               Instant endTime, EventStatus status, UUID coverPhotoId, String coverUrl,
                               String galleryUrl, LocalDate retentionUntil, Instant createdAt, Instant updatedAt,
                               UUID ownerId, String ownerName, StudioBranding.Brand brand,
-                              boolean liveGalleryEnabled, boolean clientGalleryEnabled) {
+                              boolean liveGalleryEnabled, boolean clientGalleryEnabled, EventType eventType) {
     }
 
     /** McreatiK only: turn the guests' gallery and/or the couple's gallery on or off. Null leaves it as is. */

@@ -249,7 +249,7 @@ class OnlinePaymentTest extends IntegrationTest {
     }
 
     private int credits() {
-        return jdbc.queryForObject("SELECT event_credits FROM admin_users WHERE id = ?::uuid", Integer.class, studioId);
+        return jdbc.queryForObject("SELECT main_credits + quick_credits FROM admin_users WHERE id = ?::uuid", Integer.class, studioId);
     }
 
     private org.springframework.test.web.servlet.ResultActions confirm(String token, String paymentId, String payId,

@@ -4,8 +4,11 @@ These come up once a studio is interested. Lead every pricing conversation to a 
 
 | Question | Answer |
 | --- | --- |
-| How much does it cost? | It depends on how many events you shoot. We have per-event pricing and a monthly package. Let's do a 10-minute demo and I'll suggest the cheaper option for your volume. |
-| How do I pay? | By UPI. In the dashboard: Events → Buy events, pay, enter the UTR number, and we activate it after checking. |
+| How much does it cost? | A Main event (weddings, receptions, big functions) is ₹2,499; a Quick event (up to about 300 guests) is ₹1,499. Monthly packs bring it down to ₹1,250 per Main event or ₹1,000 per Quick event. Let's do a 10-minute demo and I'll suggest the cheapest option for your volume. |
+| What's the difference between Main and Quick? | The features are the same. Quick is for smaller events (about 300 guests). If a Quick event turns out bigger, the gallery never stops; you can upgrade it to Main for ₹1,000. |
+| What if I don't use all my pack's events? | They carry over to the next month (one month only). |
+| Do I need two packs for weddings and engagements? | No. A Main pack covers Quick events too. |
+| How do I pay? | In the dashboard: Events → Buy events (or Renew pack). Pay by UPI QR, or by card, netbanking, UPI or wallet once online payment is switched on. It's added straight away. |
 | Can I try it first? | Yes. We'll run a live demo with you, and you can open the sample gallery on your phone. **(Decide whether to offer a free first event.)** |
 | How long does setup take? | Creating an event takes a minute. Connecting a camera takes about 10 minutes the first time; we help with the first event. |
 | Do I need technical skills? | No. Create the event, print the QR poster, paste the connection code into the uploader. We set it up with you the first time. |

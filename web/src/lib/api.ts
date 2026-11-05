@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, DocPage, OnlineOrder, OnlinePaymentResult, OnlinePaymentStatus, UpiQrOrder, DocPageSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, PublicPricing, Studio, StudioBilling, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, EventType, DocPage, OnlineOrder, OnlinePaymentResult, OnlinePaymentStatus, UpiQrOrder, DocPageSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export type BulkPhotoAction = 'LIKE' | 'UNLIKE' | 'HIDE' | 'SHOW' | 'DELETE'
 
@@ -69,6 +69,25 @@ async function requestBlob(path: string): Promise<Blob> {
   return response.blob()
 }
 
+/**
+ * A backend from before the packages (the website deploys first) sends no prices or typed credits: fill them in, so
+ * the dashboard keeps working until the backend is updated.
+ */
+export function withBillingDefaults(b: BillingSummary): BillingSummary {
+  return {
+    ...b,
+    mainCredits: b.mainCredits ?? b.credits ?? 0,
+    quickCredits: b.quickCredits ?? 0,
+    carryOver: b.carryOver ?? 0,
+    packActive: b.packActive ?? b.plan === 'MONTHLY',
+    planPaidUntil: b.planPaidUntil ?? null,
+    prices: b.prices ?? {
+      main: b.unitPrice, quick: b.unitPrice, main2: b.monthlyPrice, main4: b.monthlyPrice, quick2: b.monthlyPrice,
+      quick4: b.monthlyPrice, upgrade: 0, upgradeGuests: 300,
+    },
+  }
+}
+
 // ---- Guest API ----
 
 export const publicApi = {
@@ -94,6 +113,8 @@ export interface CreateEventInput {
   slug?: string
   /** Super admin only: create the event for this studio. */
   ownerId?: string
+  /** MAIN (default) or QUICK. */
+  eventType?: EventType
 }
 
 export interface UpdateEventInput {
@@ -215,26 +236,27 @@ export const adminApi = {
     return request<Brand>(`/api/admin/studios/${studioId}/logo`, { method: 'POST', body: form }, true)
   },
   removeStudioLogo: (studioId: string) => request<Brand>(`/api/admin/studios/${studioId}/logo`, { method: 'DELETE' }, true),
-  billing: () => request<BillingSummary>('/api/admin/billing', {}, true),
+  billing: () => request<BillingSummary>('/api/admin/billing', {}, true).then(withBillingDefaults),
   /** The studio paid by UPI: the events are usable at once, McreatiK checks the transaction later. */
-  startOnlinePayment: (events: number) =>
-    request<OnlineOrder>('/api/admin/billing/online-orders', { method: 'POST', body: json({ events }) }, true),
+  startOnlinePayment: (purchase: Purchase) =>
+    request<OnlineOrder>('/api/admin/billing/online-orders', { method: 'POST', body: json(purchase) }, true),
   confirmOnlinePayment: (paymentId: string, razorpayPaymentId: string, razorpaySignature: string) =>
     request<OnlinePaymentResult>(`/api/admin/billing/online-orders/${paymentId}/confirm`,
       { method: 'POST', body: json({ razorpayPaymentId, razorpaySignature }) }, true),
-  startUpiQr: (events: number) =>
-    request<UpiQrOrder>('/api/admin/billing/upi-qr', { method: 'POST', body: json({ events }) }, true),
+  startUpiQr: (purchase: Purchase) =>
+    request<UpiQrOrder>('/api/admin/billing/upi-qr', { method: 'POST', body: json(purchase) }, true),
   onlinePaymentStatus: (paymentId: string) => request<OnlinePaymentStatus>(`/api/admin/billing/online-orders/${paymentId}`, {}, true),
   cancelOnlinePayment: (paymentId: string) => request<void>(`/api/admin/billing/online-orders/${paymentId}`, { method: 'DELETE' }, true),
-  payForEvents: (events: number, utr: string) =>
-    request<EventPayment>('/api/admin/billing/payments', { method: 'POST', body: json({ events, utr }) }, true),
+  /** The studio paid by UPI: what it bought is usable at once, McreatiK checks the transaction later. */
+  payByUpi: (purchase: Purchase, utr: string) =>
+    request<EventPayment>('/api/admin/billing/payments', { method: 'POST', body: json({ ...purchase, utr }) }, true),
   payments: (status?: EventPayment['status']) =>
     request<EventPayment[]>(`/api/admin/billing/payments${status ? `?status=${status}` : ''}`, {}, true),
   approvePayment: (id: string) => request<void>(`/api/admin/billing/payments/${id}/approve`, { method: 'POST' }, true),
   rejectPayment: (id: string, note?: string) =>
     request<void>(`/api/admin/billing/payments/${id}/reject`, { method: 'POST', body: json({ note: note ?? null }) }, true),
   studioBilling: () => request<StudioBilling[]>('/api/admin/billing/studios', {}, true),
-  updateStudioBilling: (studioId: string, input: { plan?: Plan; monthlyQuota?: number; addCredits?: number }) =>
+  updateStudioBilling: (studioId: string, input: { plan?: Plan; monthlyQuota?: number; addCredits?: number; addQuickCredits?: number; planPaidUntil?: string }) =>
     request<StudioBilling>(`/api/admin/billing/studios/${studioId}`, { method: 'PATCH', body: json(input) }, true),
   billingSettings: () => request<BillingSettings>('/api/admin/billing/settings', {}, true),
   updateBillingSettings: (s: BillingSettings) =>
