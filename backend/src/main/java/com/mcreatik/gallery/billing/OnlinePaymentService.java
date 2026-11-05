@@ -79,6 +79,9 @@ public class OnlinePaymentService {
             case QUICK_EVENT -> n + " Quick event" + (n == 1 ? "" : "s");
             case UPGRADE -> "Upgrade to Main event";
             case PLAN -> n + " month" + (n == 1 ? "" : "s") + " of " + q.plan().label() + " pack";
+            case STORAGE -> n + " GB of gallery storage";
+            case CLIENT_SETUP -> n + " client galler" + (n == 1 ? "y" : "ies");
+            case EXTEND -> "6 more months for a gallery";
         };
     }
 

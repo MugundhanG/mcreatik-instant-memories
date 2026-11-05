@@ -57,6 +57,17 @@ function Packages({ k }: { k: Prices }) {
         <li>Packs are paid month by month from your dashboard. If you don't renew, new events are simply charged one by one.</li>
         <li>Events you buy one by one never expire.</li>
       </ul>
+      <h2 className="mt-8 text-lg font-semibold text-ink">Client gallery only</h2>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <PriceCard name="Client gallery" price={k.clientSetup} unit={`setup per gallery + ${rupees(k.storageGb)} per GB`}
+          body={`No live event: a private gallery for the couple to pick album photos and download in full quality, with your branding. For example, a full wedding of about 2,000 photos (25 GB) is ${rupees(k.clientSetup + 25 * k.storageGb)}.`} />
+        <PriceCard name="Storage" price={k.storageGb} unit="per GB"
+          body={`Every live event includes ${k.freeStorageGb} GB for the couple's gallery. More is ${rupees(k.storageGb)} per GB, about 80 full-quality photos per GB. Uploads at a live event are never stopped.`} />
+      </div>
+      <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink/85">
+        <li>Galleries stay open for {k.activeMonths} months. Keep one longer for {rupees(k.storageGb)} per GB for {k.activeMonths} more months.</li>
+        <li>A gallery that isn't kept longer closes at the end of its period, and its photos are deleted 30 days later.</li>
+      </ul>
     </div>
   )
 }

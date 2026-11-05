@@ -10,6 +10,11 @@ import { Button, Card, ErrorText, Field, inputClass } from './ui'
 /** How this event will be paid for: the pack, a bought event, or a price to pay. */
 function coverage(b: BillingSummary, type: EventType): string {
   if (b.free) return 'Included in your plan.'
+  if (type === 'CLIENT') {
+    return b.clientCredits > 0
+      ? `Uses 1 of your ${b.clientCredits} paid client galler${b.clientCredits === 1 ? 'y' : 'ies'}. Then add storage for the photos.`
+      : `You'll be asked to pay ${rupees(b.prices.clientSetup)} to set it up, then add storage at ${rupees(b.prices.storageGb)} per GB.`
+  }
   const packCovers = b.packActive && (b.plan === 'MONTHLY' || b.plan.startsWith('MAIN') || (type === 'QUICK' && b.plan.startsWith('QUICK')))
   if (packCovers && b.carryOver > 0) return `Uses 1 of the ${b.carryOver} event${b.carryOver === 1 ? '' : 's'} carried over from last month.`
   if (packCovers && b.usedThisMonth < b.monthlyQuota) return `Included in your pack: ${b.monthlyQuota - b.usedThisMonth} of ${b.monthlyQuota} events left this month.`
@@ -53,7 +58,7 @@ export default function NewEventPage() {
       navigate(`/admin/events/${event.id}`, { replace: true })
     } catch (err) {
       // Out of events for this month (or a per-event plan): offer to buy, then create it straight after.
-      if (err instanceof ApiError && err.code === 'EVENT_PAYMENT_REQUIRED' && !ownerId) {
+      if (err instanceof ApiError && (err.code === 'EVENT_PAYMENT_REQUIRED' || err.code === 'CLIENT_PAYMENT_REQUIRED') && !ownerId) {
         try {
           setPayment({ billing: await adminApi.billing(), reason: err.message })
         } catch {
@@ -71,7 +76,7 @@ export default function NewEventPage() {
       {payment && (
         <BuyEventsDialog
           billing={payment.billing}
-          purchase={{ item: eventType === 'QUICK' ? 'QUICK_EVENT' : 'MAIN_EVENT', quantity: 1 }}
+          purchase={{ item: eventType === 'CLIENT' ? 'CLIENT_SETUP' : eventType === 'QUICK' ? 'QUICK_EVENT' : 'MAIN_EVENT', quantity: 1 }}
           reason={payment.reason}
           onClose={() => setPayment(null)}
           onPaid={() => {
@@ -95,16 +100,17 @@ export default function NewEventPage() {
           )}
           <fieldset>
             <legend className="mb-2 text-sm font-medium">Event type</legend>
-            <div role="radiogroup" aria-label="Event type" className="grid gap-2 sm:grid-cols-2">
+            <div role="radiogroup" aria-label="Event type" className="grid gap-2 sm:grid-cols-3">
               {([
                 ['MAIN', 'Main event', 'Weddings, receptions, big birthdays, big functions and corporate events.', billing?.unitPrice],
                 ['QUICK', 'Quick event', `Engagements, small birthdays, baby showers: up to about ${billing?.prices.upgradeGuests ?? 300} guests. Upgrade to Main later if it grows.`, billing?.prices.quick],
+                ['CLIENT', 'Client gallery only', 'No live event: a private gallery for the couple to pick album photos and download. You add the photos and storage.', billing?.prices.clientSetup],
               ] as const).map(([type, title, body, price]) => (
                 <button key={type} type="button" role="radio" aria-checked={eventType === type} onClick={() => setEventType(type)}
                   className={`rounded-xl border p-3 text-left transition-colors ${eventType === type ? 'border-ink bg-stone-50 ring-1 ring-ink' : 'border-line hover:border-stone-400'}`}>
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="font-medium">{title}</span>
-                    {price !== undefined && billing && !billing.free && <span className="text-sm tabular-nums text-muted">{rupees(price)}</span>}
+                    {price !== undefined && billing && !billing.free && <span className="text-sm tabular-nums text-muted">{rupees(price)}{type === 'CLIENT' ? ' + storage' : ''}</span>}
                   </span>
                   <span className="mt-1 block text-xs text-muted">{body}</span>
                 </button>

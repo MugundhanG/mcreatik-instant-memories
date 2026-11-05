@@ -1,7 +1,7 @@
 import { BUSINESS } from './business'
 import { PolicyLayout, Section } from './PolicyLayout'
 
-const UPDATED = '4 November 2026'
+const UPDATED = '5 November 2026'
 
 /** Terms of service for studios. Draft for the owner to review (ideally with a professional). */
 export default function TermsPage() {
@@ -28,7 +28,7 @@ export default function TermsPage() {
           <li>Your photos stay yours. You give us permission only to store, process and show them as needed to run the service for you.</li>
           <li>You confirm you have the right to upload and share each photo, and the consent your clients and guests need.</li>
           <li>Do not upload unlawful content. We act on removal requests as described in our <a className="underline underline-offset-4" href="/privacy">privacy notice</a>.</li>
-          <li>You decide how long each event is kept. Deleting an event permanently removes its photos.</li>
+          <li>Each gallery is open for 6 months (from the event date, or from creation for a client gallery) and can be kept open longer by paying for more months. A gallery that closes is deleted permanently 30 days later; we email you before it closes. Deleting an event yourself permanently removes its photos at once.</li>
           <li>Keep your own copy of your photos. The gallery is for sharing, not your only backup.</li>
         </ul>
       </Section>
@@ -37,7 +37,7 @@ export default function TermsPage() {
         <p>
           Prices are shown on the <a className="underline underline-offset-4" href="/pricing">pricing page</a> and in your
           dashboard, in Indian rupees, and are the final amount you pay. Online payments are processed by Razorpay; we never
-          see or store your card or bank details. Bought events are added to your account at once and never expire. See the{' '}
+          see or store your card or bank details. Bought events are added to your account at once and never expire. Storage is bought per event and lasts as long as that event's gallery. See the{' '}
           <a className="underline underline-offset-4" href="/refunds">refund policy</a>.
         </p>
       </Section>

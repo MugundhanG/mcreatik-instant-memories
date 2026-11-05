@@ -46,11 +46,32 @@ public class UploadService {
     private final TransactionTemplate tx;
     private final ApplicationEventPublisher publisher;
     private final com.mcreatik.gallery.uploader.UploaderRepository uploaders;
+    private final com.mcreatik.gallery.billing.BillingService billing;
+
+    /**
+     * A client gallery holds only the storage bought for it: a new file that doesn't fit is refused (409
+     * STORAGE_FULL). Live events (Main / Quick) are never stopped mid-event; their extra storage is settled after.
+     * McreatiK's own and unlimited studios' events have no limit.
+     */
+    void checkStorage(Event event, long incomingBytes) {
+        if (event.getEventType() != com.mcreatik.gallery.event.EventType.CLIENT || billing.freeAccount(event.getOwnerId())) {
+            return;
+        }
+        long used = billing.eventBytes(event.getId());
+        long quota = event.getStorageQuotaGb() * com.mcreatik.gallery.billing.BillingService.GB;
+        if (used + incomingBytes > quota) {
+            throw ApiException.conflict("STORAGE_FULL", String.format(Locale.ENGLISH,
+                    "This client gallery's storage is full (%.1f of %d GB used). Add storage to upload more.",
+                    used / (double) com.mcreatik.gallery.billing.BillingService.GB, event.getStorageQuotaGb()));
+        }
+    }
 
     public UploadService(PhotoRepository photos, EventRepository events, StorageService storage,
                          GalleryProperties properties, TransactionTemplate tx, ApplicationEventPublisher publisher,
-                         com.mcreatik.gallery.uploader.UploaderRepository uploaders) {
+                         com.mcreatik.gallery.uploader.UploaderRepository uploaders,
+                         com.mcreatik.gallery.billing.BillingService billing) {
         this.uploaders = uploaders;
+        this.billing = billing;
         this.photos = photos;
         this.events = events;
         this.storage = storage;
@@ -108,6 +129,8 @@ public class UploadService {
         if (existing.isPresent()) {
             return resumeOrDuplicate(existing.get().getId(), uploader, fileName, request);
         }
+        checkStorage(event, request.fileSize() + (request.prepared() == null ? 0
+                : request.prepared().webSize() + request.prepared().thumbnailSize()));
 
         UUID photoId = UUID.randomUUID();
         Photo photo = new Photo(photoId, event.getId(), uploader.uploaderId(), fileName,
@@ -253,6 +276,9 @@ public class UploadService {
         if (withOriginal && (existing.isEmpty() || !originalArrived(existing.get()))) {
             throw ApiException.conflict("UPLOAD_NOT_FOUND", "The original has not reached storage yet");
         }
+        if (existing.isEmpty()) {
+            checkStorage(event, web.length + (long) thumbnail.length);
+        }
         UUID photoId = existing.map(Photo::getId).orElseGet(UUID::randomUUID);
         String webKey = StorageKeys.optimized(eventId, photoId);
         String thumbKey = StorageKeys.thumbnail(eventId, photoId);
@@ -310,6 +336,7 @@ public class UploadService {
         if (existing.isPresent()) {
             Photo photo = existing.get();
             if (photo.getStatus() == PhotoStatus.READY && !photo.isOriginalStored()) {
+                checkStorage(event, photo.getFileSize());
                 return new OriginalSession(SessionOutcome.UPLOAD, photo.getId(), storage.presignOriginalUpload(
                         photo.getStorageKey(), photo.getMimeType(), photo.getFileSize(), ttl), false);
             }
@@ -324,6 +351,7 @@ public class UploadService {
             return new OriginalSession(SessionOutcome.UPLOAD, restarted.getId(), storage.presignOriginalUpload(
                     restarted.getStorageKey(), restarted.getMimeType(), fileSize, ttl), true);
         }
+        checkStorage(event, fileSize);
         UUID photoId = UUID.randomUUID();
         Photo photo = new Photo(photoId, eventId, null, fileName, StorageKeys.original(eventId, photoId, mimeType),
                 fileSize, mimeType, checksum);

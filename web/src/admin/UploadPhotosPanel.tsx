@@ -77,8 +77,15 @@ function reason(err: unknown) {
  * Manual upload: the admin adds photos from their computer (edited photos after the event, extra shots).
  * Each photo is compressed in the browser and appears in the guest gallery at once, behind the same QR.
  */
-export function UploadPhotosPanel({ eventId, onUploaded, categories = [] }: { eventId: string; onUploaded: () => void; categories?: Category[] }) {
+export function UploadPhotosPanel({ eventId, onUploaded, categories = [], onAddStorage }: {
+  eventId: string
+  onUploaded: () => void
+  categories?: Category[]
+  /** A client gallery ran out of storage: where to add more. */
+  onAddStorage?: () => void
+}) {
   const [items, setItems] = useState<Item[]>([])
+  const [storageFull, setStorageFull] = useState(false)
   const [categoryId, setCategoryId] = useState('')
   const queue = useRef<Item[]>([])
   const active = useRef(0)
@@ -126,6 +133,11 @@ export function UploadPhotosPanel({ eventId, onUploaded, categories = [] }: { ev
           }
         } catch (err) {
           set(item, 'failed', reason(err))
+          // A full client gallery: the rest would fail the same way, so stop and say what to do.
+          if (err instanceof ApiError && err.code === 'STORAGE_FULL') {
+            setStorageFull(true)
+            queue.current.splice(0).forEach((i) => set(i, 'failed', 'Storage full'))
+          }
         } finally {
           active.current--
           if (active.current === 0 && queue.current.length === 0) {
@@ -169,6 +181,7 @@ export function UploadPhotosPanel({ eventId, onUploaded, categories = [] }: { ev
 
   const retryFailed = () => {
     const failed = items.filter((i) => i.status === 'failed')
+    setStorageFull(false)
     failed.forEach((i) => set(i, 'waiting'))
     stopped.current = false
     queue.current.push(...failed)
@@ -249,6 +262,12 @@ export function UploadPhotosPanel({ eventId, onUploaded, categories = [] }: { ev
           </p>
           {failures.length > 0 && !running && (
             <div className="rounded-lg bg-red-50 p-3 text-sm text-red-800">
+              {storageFull && (
+                <p className="mb-2 font-medium" role="status" data-testid="storage-full">
+                  This client gallery's storage is full. Add storage, then press Retry failed.{' '}
+                  {onAddStorage && <button type="button" onClick={onAddStorage} className="underline underline-offset-4">Add storage</button>}
+                </p>
+              )}
               <ul className="max-h-28 space-y-0.5 overflow-auto">
                 {failures.slice(0, 50).map((i, n) => (
                   <li key={n}><span className="font-medium">{i.file.name}</span>: {i.error}</li>

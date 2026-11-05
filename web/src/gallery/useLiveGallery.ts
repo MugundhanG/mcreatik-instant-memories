@@ -101,7 +101,7 @@ function fromMessage(m: PhotoReadyMessage): PublicPhoto {
 
 /** Not found, turned off by McreatiK (with the server's message), or another error. */
 function failure(e: unknown): Action {
-  if (e instanceof ApiError && e.code === 'GALLERY_UNAVAILABLE') return { type: 'failed', status: 'unavailable', message: e.message }
+  if (e instanceof ApiError && (e.code === 'GALLERY_UNAVAILABLE' || e.code === 'GALLERY_EXPIRED')) return { type: 'failed', status: 'unavailable', message: e.message }
   return { type: 'failed', status: e instanceof ApiError && e.status === 404 ? 'not-found' : 'error' }
 }
 
@@ -167,7 +167,7 @@ export function useLiveGallery(slug: string, shouldShowImmediately: () => boolea
       arrive(page.photos)
     } catch (e) {
       // Turned off by McreatiK while open: show why. Anything else: the next reconnect / poll tries again.
-      if (e instanceof ApiError && e.code === 'GALLERY_UNAVAILABLE') dispatch(failure(e))
+      if (e instanceof ApiError && (e.code === 'GALLERY_UNAVAILABLE' || e.code === 'GALLERY_EXPIRED')) dispatch(failure(e))
     }
   }, [slug, arrive])
 

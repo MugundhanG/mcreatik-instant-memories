@@ -142,6 +142,14 @@ export interface EventDetail {
   liveGalleryEnabled?: boolean
   clientGalleryEnabled?: boolean
   eventType?: EventType
+  /** Open until this day (null: no end); deleted on retentionUntil. */
+  activeUntil?: string | null
+  /** GB this event may use, and what it uses now (bytes). */
+  storageQuotaGb?: number
+  storageBytes?: number
+  /** The couple's gallery is waiting for storage to be bought. */
+  storageLocked?: boolean
+  expired?: boolean
 }
 
 export interface UploaderStats {
@@ -315,7 +323,8 @@ export type Plan = 'PER_EVENT' | 'MAIN_2' | 'MAIN_4' | 'QUICK_2' | 'QUICK_4' | '
 export type EventType = 'MAIN' | 'QUICK' | 'CLIENT'
 
 /** What a payment buys. */
-export type PurchaseItem = 'MAIN_EVENT' | 'QUICK_EVENT' | 'UPGRADE' | 'PLAN'
+/** STORAGE: GB for one event; CLIENT_SETUP: client galleries; EXTEND: 6 more months for one event (per GB). */
+export type PurchaseItem = 'MAIN_EVENT' | 'QUICK_EVENT' | 'UPGRADE' | 'PLAN' | 'STORAGE' | 'CLIENT_SETUP' | 'EXTEND'
 
 /** A purchase as the dashboard asks for it; the server sets the price. quantity: events or months. */
 export interface Purchase {
@@ -336,6 +345,14 @@ export interface Prices {
   upgrade: number
   /** Unique guests after which a Quick event is offered the upgrade. */
   upgradeGuests: number
+  /** Storage price per GB (for 6 months). */
+  storageGb: number
+  /** GB included with every live (Main / Quick) event. */
+  freeStorageGb: number
+  /** Setting up one client gallery. */
+  clientSetup: number
+  /** How long a gallery stays open. */
+  activeMonths: number
 }
 
 export interface EventPayment {
@@ -406,6 +423,8 @@ export interface BillingSummary {
   packActive: boolean
   planPaidUntil: string | null
   prices: Prices
+  /** Client galleries paid for and not created yet. */
+  clientCredits: number
 }
 
 export interface StudioBilling {
@@ -418,6 +437,7 @@ export interface StudioBilling {
   quickCredits: number
   planPaidUntil: string | null
   packActive: boolean
+  clientCredits: number
 }
 
 export interface BillingSettings {
@@ -435,6 +455,10 @@ export interface BillingSettings {
   quick4Price: number
   upgradePrice: number
   upgradeGuests: number
+  storageGbPrice: number
+  freeStorageGb: number
+  clientSetupPrice: number
+  activeMonths: number
 }
 
 /** Current prices for the public /pricing page. */

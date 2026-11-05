@@ -47,6 +47,7 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 2. Press **New event** and choose the **Event type**:
    - **Main event:** weddings, receptions, big birthdays, big traditional functions and large corporate events.
    - **Quick event:** engagements, small birthdays, baby showers and small corporate events, up to about 300 guests. If more guests turn up, the gallery keeps working and the event page offers **Upgrade to Main**.
+   - **Client gallery only:** no live guest gallery and no camera. You upload the edited photos from the dashboard and the couple gets a private gallery to view, select and download. ₹250 per client gallery, plus storage (see 3.1).
 
    Under the choice, the form tells you how this event is paid for: by your pack, by an event you bought, or the price to pay.
 3. Enter the **Event name** guests will see (for example "Rahul & Sneha Engagement"), the **Date** and the **Status** (Upcoming for future events).
@@ -67,6 +68,23 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 - **Renewing:** packs are renewed month by month from **Events → Renew pack** (you get an email and a banner a few days before). If you don't renew, nothing stops: new events are charged one by one.
 - **Upgrades:** a Quick event that grows past about 300 guests can be upgraded to Main for ₹1,000.
 - **Bought events** never expire.
+
+### 3.1 Storage and how long galleries stay open
+
+| | Price |
+| --- | --- |
+| **Client gallery only** | ₹250 setup per gallery + storage |
+| **Storage** | ₹15 per GB (1 GB ≈ 80 full-quality photos) |
+| **Main or Quick event** | 5 GB included, then ₹15 per GB |
+| **Keep 6 more months** | ₹15 per GB the gallery uses |
+
+- **What counts:** everything stored for the event, both the gallery versions and the full-quality originals. A typical wedding of 2,000 photos with originals is about 25 GB.
+- **Event page → Overview → Gallery & storage** shows what the event uses, how many more photos fit, and when it closes. **Add storage** buys GB for that event (5, 10, 25, 50 or 100, or any number).
+- **Client galleries** start with 0 GB. Add storage before uploading; when it is full, uploads stop with "storage is full" until you add more.
+- **Main and Quick events** are never stopped during the event. If the event uses more than 5 GB, add the extra GB within **14 days of the event date**. If you don't, the couple's gallery is paused (the guests' gallery keeps working) until you add it.
+- **Every gallery is open 6 months**: from the event date for Main and Quick, from the day it was created for a client gallery. After that, guests and the couple see "This gallery has expired", and the photos are **deleted for good 30 days later**. We email you 14 days before and on the day.
+- **Keep 6 more months** on the same card extends it, at ₹15 for each GB it uses. You can do it any time until the deletion date.
+- **Selling it on:** you decide what to charge your couple for the digital gallery. For example, ₹250 + 25 GB = ₹625 to you; many studios charge ₹1,500 to ₹3,000 for a private online gallery.
 
 Current prices are always on [the pricing page](https://live.mcreatik.com/pricing).
 
@@ -173,9 +191,9 @@ Choose a category first if the batch belongs to one (for example "Cake cutting")
 
 ![Settings: photo categories and delete date](images/s-settings-full.webp)
 
-### 8.3 Delete date
+### 8.3 How long it stays open
 
-**Settings → Privacy & data → Delete everything after** sets when the event's photos are deleted permanently. The default is 90 days after the event. Tell the couple the date so they download in time.
+**Settings → Privacy & data** shows when the gallery closes and when its photos are deleted permanently (30 days later). To keep it longer, use **Keep 6 more months** on the Overview's **Gallery & storage** card (see 3.1). Tell the couple the date so they download in time.
 
 ## 9. Give the couple their login
 
@@ -225,6 +243,8 @@ Table card text you can copy: "**Scan to see the photos live.** Point your phone
 | The camera can't connect to the laptop | See the camera guide's troubleshooting ([Canon](/admin/docs/guide-canon#troubleshooting) · [Sony](/admin/docs/guide-sony#troubleshooting)). |
 | Guests say the page is empty | Status is Draft or Archived, or no photos yet. Set Upcoming or Live. |
 | "This gallery is currently unavailable" | McreatiK turned the gallery off. Contact McreatiK. |
+| Upload says "storage is full" | A client gallery has used its GB. Press **Add storage** (Overview → Gallery & storage), then **Retry failed**. |
+| Couple says "This gallery has expired" | Its 6 months have passed. Press **Keep 6 more months** on the Overview before the deletion date shown there. |
 | Can't create an event (payment needed) | Your pack's events are used up, your pack has ended (renew it), or it's a Main event on a Quick pack. The message says which. Use **Buy events** or **Renew pack**. |
 | Couple says the album limit is reached | Raise the **Album limit** on the Couple tab, or ask them to untick some. |
 

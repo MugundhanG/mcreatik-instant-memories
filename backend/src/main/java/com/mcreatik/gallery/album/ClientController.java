@@ -122,6 +122,9 @@ public class ClientController {
         if (!e.isClientGalleryEnabled()) {
             throw eventService.galleryUnavailable(e);
         }
+        if (e.isExpired(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata")))) {
+            throw eventService.galleryExpired(e);
+        }
         return e;
     }
 

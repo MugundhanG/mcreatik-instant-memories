@@ -102,9 +102,6 @@ public class EventService {
                     .orElseThrow(() -> ApiException.badRequest("INVALID_STUDIO", "Unknown studio"));
         }
         EventType type = request.eventType() == null ? EventType.MAIN : request.eventType();
-        if (type == EventType.CLIENT) {
-            throw ApiException.badRequest("INVALID_TYPE", "Choose a Main or a Quick event");
-        }
         // Plans: the pack's allowance (carried over first), then bought events; otherwise 402 and the dashboard offers to pay.
         String charge = billing.reserveEvent(owner, type);
         Event event = new Event(owner, request.name().trim(), slug, request.eventDate(),
@@ -113,8 +110,21 @@ public class EventService {
         event.setStartTime(request.startTime());
         event.setEndTime(request.endTime());
         validateTimes(event);
-        event.setRetentionUntil(request.retentionUntil() != null ? request.retentionUntil()
-                : request.eventDate().plusDays(properties.retention().defaultDays()));
+        BillingService.Settings prices = billing.settings();
+        if (type == EventType.CLIENT) {
+            // A gallery for the couple only: no guest QR gallery, storage bought for it, active from today.
+            event.setLiveGalleryEnabled(false);
+            event.setStorageQuotaGb(0);
+            event.setActiveUntil(today().plusMonths(prices.activeMonths()));
+        } else {
+            event.setStorageQuotaGb(prices.freeStorageGb());
+            event.setActiveUntil(request.eventDate().plusMonths(prices.activeMonths()));
+        }
+        // McreatiK and unlimited studios may choose the date themselves.
+        if (request.retentionUntil() != null && billing.freeAccount(ownerId)) {
+            event.setActiveUntil(request.retentionUntil());
+        }
+        event.setRetentionUntil(event.getActiveUntil().plusDays(DELETE_AFTER_DAYS));
         events.save(event);
         events.flush();
         billing.recordCharge(owner, event.getId(), charge);
@@ -142,6 +152,14 @@ public class EventService {
         }
         if (r.eventDate() != null) {
             event.setEventDate(r.eventDate());
+            // An event created long before its date keeps its full active period after the (new) date.
+            if (event.getEventType() != EventType.CLIENT && event.getActiveUntil() != null) {
+                LocalDate earliest = r.eventDate().plusMonths(billing.settings().activeMonths());
+                if (earliest.isAfter(event.getActiveUntil())) {
+                    event.setActiveUntil(earliest);
+                    event.setRetentionUntil(earliest.plusDays(DELETE_AFTER_DAYS));
+                }
+            }
         }
         if (r.startTime() != null) {
             event.setStartTime(r.startTime());
@@ -160,10 +178,19 @@ public class EventService {
                             "Cover must be a ready photo of this event that guests can see"));
             event.setCoverPhotoId(cover.getId());
         }
-        if (Boolean.TRUE.equals(r.clearRetention())) {
-            event.setRetentionUntil(null);
-        } else if (r.retentionUntil() != null) {
-            event.setRetentionUntil(r.retentionUntil());
+        if (Boolean.TRUE.equals(r.clearRetention()) || r.retentionUntil() != null) {
+            // Paying studios extend with "Keep 6 more months"; McreatiK and unlimited studios set the date by hand.
+            if (!billing.freeAccount(ownerId)) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "EXTEND_INSTEAD",
+                        "Use Keep 6 more months to keep this gallery open longer");
+            }
+            if (Boolean.TRUE.equals(r.clearRetention())) {
+                event.setActiveUntil(null);
+                event.setRetentionUntil(null);
+            } else {
+                event.setActiveUntil(r.retentionUntil());
+                event.setRetentionUntil(r.retentionUntil());
+            }
         }
         event.touch();
         if (previousStatus != event.getStatus()) {
@@ -269,8 +296,24 @@ public class EventService {
         if (!event.isLiveGalleryEnabled()) {
             throw galleryUnavailable(event);
         }
+        if (event.isExpired(today())) {
+            throw galleryExpired(event);
+        }
         return event;
     }
+
+    /** Guests and the couple see this once the gallery's active period has ended. */
+    public ApiException galleryExpired(Event e) {
+        return new ApiException(HttpStatus.FORBIDDEN, "GALLERY_EXPIRED",
+                "This gallery has expired. Please contact " + branding.ofOwner(e.getOwnerId()).name() + ".");
+    }
+
+    static LocalDate today() {
+        return LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
+    }
+
+    /** Files are kept this long after a gallery's active period ends, so the studio can still extend it. */
+    public static final int DELETE_AFTER_DAYS = 30;
 
     @Transactional(readOnly = true)
     public EventDtos.PublicEvent toPublic(Event event) {
@@ -287,7 +330,8 @@ public class EventService {
                 e.getEndTime(), e.getStatus(), e.getCoverPhotoId(), coverUrl(e), properties.galleryUrl(e.getSlug()),
                 e.getRetentionUntil(), e.getCreatedAt(), e.getUpdatedAt(), e.getOwnerId(),
                 admins.findById(e.getOwnerId()).map(AdminUser::getDisplayName).orElse(null),
-                branding.ofOwner(e.getOwnerId()), e.isLiveGalleryEnabled(), e.isClientGalleryEnabled(), e.getEventType());
+                branding.ofOwner(e.getOwnerId()), e.isLiveGalleryEnabled(), e.isClientGalleryEnabled(), e.getEventType(),
+                e.getActiveUntil(), e.getStorageQuotaGb(), billing.eventBytes(e.getId()), e.isStorageLocked(), e.isExpired(today()));
     }
 
     /** Guests and the couple see this when McreatiK has turned their gallery off. */

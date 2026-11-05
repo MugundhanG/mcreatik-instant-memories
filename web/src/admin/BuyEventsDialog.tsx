@@ -5,7 +5,7 @@ import type { BillingSummary, Plan, Purchase } from '../lib/types'
 import { qrSvg } from '../shared/qr'
 import { lastFailure, openCheckout, resetLastFailure } from '../shared/razorpay'
 import { AutoUpiQr } from './AutoUpiQr'
-import { describe, PACKS, PLAN_LABEL, packPrice, rupees, unitPrice } from './plans'
+import { describe, PACKS, photosPerGb, PLAN_LABEL, packPrice, rupees, unitPrice } from './plans'
 import { Button, ErrorText, inputClass } from './ui'
 
 type Method = 'online' | 'upi'
@@ -21,7 +21,12 @@ const TITLE: Record<Purchase['item'], string> = {
   QUICK_EVENT: 'Buy events',
   UPGRADE: 'Upgrade to a Main event',
   PLAN: 'Monthly pack',
+  STORAGE: 'Add storage',
+  CLIENT_SETUP: 'Client galleries',
+  EXTEND: 'Keep 6 more months',
 }
+
+const GB_PACKS = [5, 10, 25, 50, 100]
 
 /**
  * Buy Main or Quick events, pay for (or switch to) a monthly pack, or upgrade a Quick event to Main. Two ways to pay:
@@ -52,8 +57,10 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
   const link = billing.upiId ? upiLink(billing.upiId, billing.payeeName, amount, label) : null
   const [method, setMethod] = useState<Method>(billing.onlinePayments ? 'online' : 'upi')
   const isEvents = purchase.item === 'MAIN_EVENT' || purchase.item === 'QUICK_EVENT'
-  const max = purchase.item === 'PLAN' ? 12 : purchase.item === 'UPGRADE' ? 1 : 50
-  const unitWord = purchase.item === 'PLAN' ? 'month' : 'event'
+  const max = purchase.item === 'PLAN' ? 12 : purchase.item === 'UPGRADE' || purchase.item === 'EXTEND' ? 1
+    : purchase.item === 'STORAGE' ? 1000 : 50
+  const unitWord = purchase.item === 'PLAN' ? 'month' : purchase.item === 'STORAGE' ? 'GB'
+    : purchase.item === 'CLIENT_SETUP' ? 'gallery' : 'event'
   const change = (p: Partial<Purchase>) => {
     setPurchase((old) => ({ ...old, ...p }))
     setError(null)
@@ -102,7 +109,13 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
     }
   }
 
-  const defaultReason = purchase.item === 'UPGRADE'
+  const defaultReason = purchase.item === 'STORAGE'
+    ? `Storage for this gallery: ${rupees(billing.prices.storageGb)} per GB for its ${billing.prices.activeMonths} months. About ${photosPerGb(1)} full-quality photos per GB.`
+    : purchase.item === 'CLIENT_SETUP'
+      ? `A gallery for the couple only, without a live event: ${rupees(billing.prices.clientSetup)} each to set up, then storage at ${rupees(billing.prices.storageGb)} per GB.`
+      : purchase.item === 'EXTEND'
+        ? `Keeps the guests' and the couple's galleries open for ${billing.prices.activeMonths} more months: ${rupees(billing.prices.storageGb)} per GB it holds.`
+        : purchase.item === 'UPGRADE'
     ? `Bigger than planned? Upgrade this Quick event to Main for ${rupees(billing.prices.upgrade)}. The gallery keeps working either way.`
     : purchase.item === 'PLAN'
       ? 'A monthly pack gives you events every month at a lower price per event. Unused events carry over one month.'
@@ -138,6 +151,17 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
                 ))}
               </div>
             )}
+            {purchase.item === 'STORAGE' && (
+              <div role="radiogroup" aria-label="Storage" className="grid grid-cols-5 gap-1.5 text-sm">
+                {GB_PACKS.map((gb) => (
+                  <button key={gb} type="button" role="radio" aria-checked={quantity === gb} onClick={() => change({ quantity: gb })}
+                    className={`rounded-lg border px-1 py-2 text-center transition-colors ${quantity === gb ? 'border-ink bg-stone-50 font-medium' : 'border-line hover:border-stone-400'}`}>
+                    {gb} GB
+                    <span className="block text-[11px] text-muted">≈ {photosPerGb(gb).toLocaleString('en-IN')}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {purchase.item === 'PLAN' && (
               <label className="block text-sm">
                 <span className="font-medium">Pack</span>
@@ -151,9 +175,9 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
             <div className="flex items-center justify-between rounded-xl bg-stone-50 p-3">
               {max > 1 ? (
                 <div className="flex items-center gap-2">
-                  <button type="button" aria-label={`Fewer ${unitWord}s`} onClick={() => change({ quantity: Math.max(1, quantity - 1) })} className="size-9 rounded-full border border-line bg-white text-lg">−</button>
-                  <span className="w-24 text-center text-sm tabular-nums" data-testid="event-count"><b className="text-base">{quantity}</b> {unitWord}{quantity === 1 ? '' : 's'}</span>
-                  <button type="button" aria-label={`More ${unitWord}s`} onClick={() => change({ quantity: Math.min(max, quantity + 1) })} className="size-9 rounded-full border border-line bg-white text-lg">+</button>
+                  <button type="button" aria-label={`Fewer ${unitWord === 'gallery' ? 'galleries' : unitWord === 'GB' ? 'GB' : `${unitWord}s`}`} onClick={() => change({ quantity: Math.max(1, quantity - 1) })} className="size-9 rounded-full border border-line bg-white text-lg">−</button>
+                  <span className="w-24 text-center text-sm tabular-nums" data-testid="event-count"><b className="text-base">{quantity}</b> {unitWord === 'gallery' && quantity !== 1 ? 'galleries' : unitWord === 'GB' || quantity === 1 ? unitWord : `${unitWord}s`}</span>
+                  <button type="button" aria-label={`More ${unitWord === 'gallery' ? 'galleries' : unitWord === 'GB' ? 'GB' : `${unitWord}s`}`} onClick={() => change({ quantity: Math.min(max, quantity + 1) })} className="size-9 rounded-full border border-line bg-white text-lg">+</button>
                 </div>
               ) : <span className="text-sm font-medium">{label}</span>}
               <p className="text-right">

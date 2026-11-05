@@ -132,7 +132,8 @@ flowchart TB
 
 | Job | When | Purpose |
 | --- | --- | --- |
-| `RetentionJob.purgeExpired` | 03:17 UTC daily | Deletes events past `retention_until` (default event date + 90 days) and their files |
+| `RetentionJob.purgeExpired` | 03:17 UTC daily | Deletes events past `retention_until` (`active_until` + 30 days) and their files |
+| `GalleryLifecycleJob.run` | 04:15 UTC daily | Paying studios only: pauses the couple's gallery of a Main/Quick event still over its storage 14 days after its date; emails 14 days before and on the day a gallery closes |
 | `PhotoProcessingWorker.requeueStale` | Every 60 s | Rescues stuck photos |
 | `SseGalleryBroadcaster.heartbeat` | Every 20 s | Keeps connections alive |
 | `PublicRateLimitFilter.evictIdle` | Every 5 min | Frees idle buckets |

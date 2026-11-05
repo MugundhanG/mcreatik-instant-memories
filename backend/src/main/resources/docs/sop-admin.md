@@ -83,14 +83,15 @@ Under **All logins**, each studio shows its events, photos and storage.
 
 - **Plan:** Per event, one of the four monthly packs (Main or Quick, 2 or 4 events a month) or Unlimited. Studios still on the older Monthly package keep it until you change them.
 - **Packs:** the line shows this month's usage and the **paid until** date. Moving a studio onto a pack counts as its first month paid. If they renewed outside the app, set the date by hand. A pack whose date has passed (plus 3 days) shows **ended**, and new events are charged one by one.
-- **Give Main events / Give Quick events:** add or remove bought events (for example a free first event, or a refund). Use a minus number to take back.
+- **Give Main events / Give Quick events / Give client galleries:** add or remove bought events or client galleries (for example a free first event, or a refund). Use a minus number to take back.
+- **Storage and open dates:** studios buy storage and **Keep 6 more months** per event themselves. Your own and Unlimited studios have no storage limits and can set an event's open-until date by hand in Settings → Privacy & data.
 - **Edit branding:** fix the studio's name, Instagram or logo size if they need help.
 - **Reset password:** creates a new temporary password to send them.
 - **Disable:** blocks the studio's login. Their galleries keep working for guests and couples. Studios are never deleted.
 
 ### 4.3 Payment settings and prices
 
-Under **Payments & prices**, set your **UPI ID**, the **name shown in the UPI app**, and every price: Main and Quick single events, the four monthly packs, the upgrade price, and after how many guests a Quick event is offered the upgrade. The older Monthly package prices only matter for studios still on it. Studios see the prices in Buy events, the new-event form and the public pricing page. Press **Save**.
+Under **Payments & prices**, set your **UPI ID**, the **name shown in the UPI app**, and every price: Main and Quick single events, the four monthly packs, the upgrade price, after how many guests a Quick event is offered the upgrade, the storage price per GB, the GB included with live events, the client gallery setup price and how many months a gallery stays open. The older Monthly package prices only matter for studios still on it. Studios see the prices in Buy events, the new-event form and the public pricing page. Press **Save**.
 
 ## 5. Create an event for a studio
 

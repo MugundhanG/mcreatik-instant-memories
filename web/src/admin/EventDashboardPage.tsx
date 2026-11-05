@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
 import { formatBytes, formatCount, formatEventDate, timeAgo } from '../lib/format'
-import type { Category, EventClient, EventDetail, EventStats, EventStatus } from '../lib/types'
+import type { BillingSummary, Category, EventClient, EventDetail, EventStats, EventStatus } from '../lib/types'
 import { ShutterLoader } from '../shared/ShutterLoader'
 import { AnalyticsPanel } from './AnalyticsPanel'
 import { CategoriesCard } from './CategoriesCard'
@@ -12,6 +12,7 @@ import { useSession } from './auth'
 import { PhotosPanel } from './PhotosPanel'
 import { QrPanel } from './QrPanel'
 import { UpgradeBanner } from './UpgradeBanner'
+import { GalleryStorageCard } from './GalleryStorageCard'
 import { EventStatusMenu } from './EventStatusMenu'
 import { Button, Card, ErrorText, Field, inputClass, Tabs } from './ui'
 import { useConfirm } from './useConfirm'
@@ -27,11 +28,11 @@ const TABS: Tab[] = ['overview', 'photos', 'guests', 'couple', 'settings']
  * One line of numbers instead of a wall of tiles. Problems (photos still processing, or failed) appear only when
  * there are some, as a coloured chip, so the eye goes straight to them.
  */
-function StatStrip({ stats }: { stats: EventStats }) {
+function StatStrip({ stats, clientOnly = false }: { stats: EventStats; clientOnly?: boolean }) {
   const items = [
     [formatCount(stats.totalPhotos), 'photos'],
     [formatCount(stats.readyPhotos - stats.hiddenPhotos), 'in gallery'],
-    [`${stats.activeUploaders} / ${stats.uploaders.length}`, 'cameras online'],
+    ...(clientOnly ? [] : [[`${stats.activeUploaders} / ${stats.uploaders.length}`, 'cameras online']]),
     [formatBytes(stats.storageBytes), 'stored'],
   ]
   return (
@@ -55,6 +56,7 @@ export default function EventDashboardPage() {
   const { eventId = '' } = useParams()
   const navigate = useNavigate()
   const [event, setEvent] = useState<EventDetail | null>(null)
+  const [billing, setBilling] = useState<BillingSummary | null>(null)
   const [stats, setStats] = useState<EventStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const superAdmin = useSession()?.role === 'SUPER_ADMIN'
@@ -82,6 +84,7 @@ export default function EventDashboardPage() {
 
   useEffect(() => {
     adminApi.event(eventId).then(setEvent).catch((e: Error) => setError(e.message))
+    adminApi.billing().then(setBilling).catch(() => {})
     const load = () => adminApi.stats(eventId).then(setStats).catch(() => {})
     load()
     const timer = setInterval(load, POLL_MS)
@@ -138,6 +141,7 @@ export default function EventDashboardPage() {
   if (!event) return error ? <ErrorText>{error}</ErrorText> : <ShutterLoader label="Loading event" className="py-24" />
 
   const client = eventClients?.[0]
+  const clientOnly = event.eventType === 'CLIENT'
   const galleryOff = event.liveGalleryEnabled === false || event.clientGalleryEnabled === false
   // A section fades in each time it is shown (CSS animations restart when an element stops being hidden).
   const panel = (id: Tab) => ({ id: `panel-${id}`, role: 'tabpanel', 'aria-labelledby': `tab-${id}`, hidden: tab !== id })
@@ -155,16 +159,16 @@ export default function EventDashboardPage() {
           </div>
           <p className="mt-1 text-sm text-muted">
             {superAdmin && event.ownerName && <span className="font-medium text-[#8a5a1c]">{event.ownerName} · </span>}
-            {formatEventDate(event.eventDate)} ·{' '}
-            <Link to={`/e/${event.slug}`} className="inline-block max-w-full truncate align-bottom underline decoration-line underline-offset-4 hover:text-ink">
+            {formatEventDate(event.eventDate)}{clientOnly ? ' · Client gallery' : ' · '}
+            {!clientOnly && <Link to={`/e/${event.slug}`} className="inline-block max-w-full truncate align-bottom underline decoration-line underline-offset-4 hover:text-ink">
               {event.galleryUrl.replace(/^https?:\/\//, '')}
-            </Link>
+            </Link>}
           </p>
         </div>
-        <div className="flex gap-2">
+        {!clientOnly && <div className="flex gap-2">
           <Button onClick={copyLink}>{copied ? 'Copied ✓' : 'Copy gallery link'}</Button>
           <Button onClick={() => { openTab('overview'); document.getElementById('qr')?.scrollIntoView({ block: 'center' }) }}>QR code</Button>
-        </div>
+        </div>}
       </header>
 
       <ErrorText>{error}</ErrorText>
@@ -197,10 +201,26 @@ export default function EventDashboardPage() {
 
       {/* Every section stays mounted (only hidden), so an upload or a ZIP keeps going while you look elsewhere. */}
       <section {...panel('overview')} className="anim-fade-in space-y-6">
-        {stats && <StatStrip stats={stats} />}
+        {stats && <StatStrip stats={stats} clientOnly={clientOnly} />}
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <UploadersPanel eventId={event.id} uploaders={stats?.uploaders ?? []} onChange={loadStats} />
+            <GalleryStorageCard event={event} billing={billing} bytes={stats?.storageBytes ?? event.storageBytes ?? 0} onChanged={() => {
+              adminApi.event(event.id).then(setEvent).catch(() => {})
+              adminApi.billing().then(setBilling).catch(() => {})
+              loadStats()
+            }} />
+            {clientOnly ? (
+              <Card title="Client gallery">
+                <ol className="list-decimal space-y-1.5 pl-5 text-sm text-stone-700" data-testid="client-steps">
+                  <li>Add storage for the photos (above).</li>
+                  <li>Upload the photos in the <button type="button" onClick={() => openTab('photos')} className="font-medium underline underline-offset-4">Photos</button> tab, with full-quality originals.</li>
+                  <li>Create the couple's login in the <button type="button" onClick={() => openTab('couple')} className="font-medium underline underline-offset-4">Couple</button> tab and send it with the couple guide.</li>
+                </ol>
+                <p className="mt-3 text-xs text-muted">There's no guest QR gallery for a client gallery: only the couple can open it.</p>
+              </Card>
+            ) : (
+              <UploadersPanel eventId={event.id} uploaders={stats?.uploaders ?? []} onChange={loadStats} />
+            )}
             {stats?.latestPhoto && (
               <Card title="Latest photo" action={<button type="button" onClick={() => openTab('photos')} className="text-sm text-muted hover:text-ink">All photos →</button>}>
                 <div className="flex items-center gap-4">
@@ -225,7 +245,7 @@ export default function EventDashboardPage() {
               <span aria-hidden="true" className="text-muted">→</span>
             </button>
           </div>
-          <div id="qr"><QrPanel eventId={event.id} eventSlug={event.slug} galleryUrl={event.galleryUrl} /></div>
+          {!clientOnly && <div id="qr"><QrPanel eventId={event.id} eventSlug={event.slug} galleryUrl={event.galleryUrl} /></div>}
         </div>
       </section>
 
@@ -233,6 +253,7 @@ export default function EventDashboardPage() {
         <UploadPhotosPanel
           eventId={event.id}
           categories={categories}
+          onAddStorage={() => openTab('overview')}
           onUploaded={() => {
             loadStats()
             loadCategories()
@@ -266,14 +287,22 @@ export default function EventDashboardPage() {
         <CategoriesCard eventId={event.id} categories={categories} onChange={loadCategories} />
         <Card title="Privacy & data">
           <div className="flex flex-wrap items-end justify-between gap-4">
-            <Field label="Delete everything after" hint="Photos and files are permanently removed on this date. Leave empty to keep.">
-              <input
-                type="date"
-                className={`${inputClass} w-48`}
-                value={event.retentionUntil ?? ''}
-                onChange={(e) => update(e.target.value ? { retentionUntil: e.target.value } : { clearRetention: true })}
-              />
-            </Field>
+            {billing?.free ? (
+              <Field label="Open until" hint="Guests and the couple can open the gallery until this date; photos and files are permanently removed then. Leave empty to keep.">
+                <input
+                  type="date"
+                  className={`${inputClass} w-48`}
+                  value={event.activeUntil ?? event.retentionUntil ?? ''}
+                  onChange={(e) => update(e.target.value ? { retentionUntil: e.target.value } : { clearRetention: true })}
+                />
+              </Field>
+            ) : (
+              <p className="max-w-md text-sm text-muted">
+                {event.retentionUntil
+                  ? <>Photos and files are permanently removed on <b className="text-ink">{formatEventDate(event.retentionUntil)}</b>, 30 days after the gallery closes. To keep it longer, use <b className="text-ink">Keep 6 more months</b> on the Overview.</>
+                  : 'This event is kept with no end date.'}
+              </p>
+            )}
             <Button variant="danger" onClick={deleteEvent}>Delete event now</Button>
           </div>
         </Card>
