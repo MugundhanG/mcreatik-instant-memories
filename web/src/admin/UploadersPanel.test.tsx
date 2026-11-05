@@ -14,6 +14,18 @@ describe('UploadersPanel', () => {
       'https://github.com/MugundhanG/mcreatik-instant-memories/releases/latest/download/McreatiK-Instant-Memories-Uploader-Mac-Intel.dmg',
     ])
   })
+
+  it('says where the connection code comes from', () => {
+    const { rerender } = render(<UploadersPanel eventId="e1" uploaders={[]} onChange={() => {}} />)
+    expect(screen.getByTestId('code-hint')).toHaveTextContent('press Add camera & get code')
+    expect(screen.getByRole('button', { name: 'Add camera & get code' })).toBeInTheDocument()
+    rerender(<UploadersPanel eventId="e1" uploaders={[{
+      id: 'u1', name: 'Main', status: 'OFFLINE', lastSeenAt: null, deviceIdentifier: null, tokenPrefix: 'mku_abc',
+      photosUploaded: 0, photosReady: 0, queuePending: 0, queueFailed: 0, lastError: null, lastUploadAt: null, paused: false,
+    }]} onChange={() => {}} />)
+    expect(screen.getByTestId('code-hint')).toHaveTextContent('Press Get new code on a camera')
+    expect(screen.getByRole('button', { name: 'Get new code' })).toBeInTheDocument()
+  })
 })
 
 describe('Pause and rename a camera', () => {

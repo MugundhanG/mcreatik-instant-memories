@@ -67,10 +67,10 @@ Setting up a new laptop? Press **Install uploader** in the top bar of the dashbo
 
 Every camera needs its own **uploader**. One laptop with the McreatiK Instant Memories Uploader app can serve up to 4 cameras: add the extra cameras in the app with **+ Add camera** (you name each one there), and each appears here by itself. On the laptop, each event gets one folder with a sub-folder per camera.
 
-1. Open the event. On **Overview**, under **Cameras & uploaders**, type a name such as "Camera 1 · Canon R6 II" and press **Add uploader**.
+1. Open the event. On **Overview**, under **Cameras & uploaders**, type a name such as "Camera 1 · Canon R6 II" and press **Add camera & get code**.
 2. A **connection code** appears. **It's shown only once**, so press **Copy code** and paste it into the uploader (see the [Uploader guide](/admin/docs/guide-uploader)). A laptop already used for an earlier event: press **Change event…** in the uploader and paste the new code ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)).
 
-![Add uploader: the one-time connection code](images/s-add-uploader.webp)
+![Add camera & get code: the one-time connection code](images/s-add-uploader.webp)
 
 3. When the uploader is running, the camera shows **Online** with a green dot and its photo count.
 
@@ -80,7 +80,7 @@ Every camera needs its own **uploader**. One laptop with the McreatiK Instant Me
 ![Cameras: one paused for a private moment](images/s-cameras-paused.webp)
 
 - **Rename:** for example "Main - Karthik" or "Candid - Divya". The name shows here, in the uploader and on its photo folder.
-- **New code:** creates a fresh code if the old one was lost. The old one stops working.
+- **Get new code:** the code is shown only once, so use this whenever you need it again: a lost code, a new laptop, or an event you set up earlier and are moving the laptop to now. The old code stops working.
 - **Remove:** disconnects that camera.
 
 Then set up the camera itself: [Canon EOS R6 Mark II](/admin/docs/guide-canon) · [Sony α7 IV](/admin/docs/guide-sony).

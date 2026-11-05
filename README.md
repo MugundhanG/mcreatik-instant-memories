@@ -43,7 +43,7 @@ cd uploader && mvn -q package -DskipTests
 java -jar target/mcreatik-uploader.jar            # window: paste connection code, choose folder
 ```
 
-In the dashboard: **New event → Add uploader** (copy the connection code) → paste it into the uploader → drop JPEGs into the chosen folder → open the gallery link or scan the QR.
+In the dashboard: **New event → Add camera & get code** (copy the connection code) → paste it into the uploader → drop JPEGs into the chosen folder → open the gallery link or scan the QR.
 
 ### Simulate a real event (V1 acceptance test)
 

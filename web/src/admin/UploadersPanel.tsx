@@ -45,7 +45,7 @@ function CredentialsDialog({ credentials, onClose }: { credentials: UploaderCred
           onFocus={(e) => e.currentTarget.select()}
         />
         <p className="mt-2 text-xs text-amber-700">
-          This code is shown only once. Treat it like a password. If it leaks, use “New code” to revoke it.
+          This code is shown only once. Treat it like a password. Lost it, or need it for another laptop? Press “Get new code” (the old one stops working).
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <Button onClick={copy}>{copied ? 'Copied' : 'Copy code'}</Button>
@@ -102,8 +102,8 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
 
   const rotate = async (u: UploaderStats) => {
     const ok = await confirm({
-      title: `New code for “${u.name}”?`,
-      body: 'The current code stops working immediately. Paste the new code into the uploader on that laptop.',
+      title: `Get a new code for “${u.name}”?`,
+      body: 'Any earlier code for this camera stops working. Paste the new code into the uploader: in Setup, or with Change event… when moving the laptop to this event.',
       confirmLabel: 'Create new code',
     })
     if (!ok) return
@@ -125,7 +125,13 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
 
   return (
     <Card title="Cameras & uploaders">
-      {uploaders.length === 0 && <p className="text-sm text-muted">No uploaders yet. Add one per camera.</p>}
+      <p className="mb-2 rounded-lg bg-stone-50 px-3 py-2 text-xs text-stone-600" data-testid="code-hint">
+        <b className="text-ink">Connecting a laptop?</b>{' '}
+        {uploaders.length === 0
+          ? 'Type a camera name below and press Add camera & get code. Paste that code into the uploader (Setup, or Change event… for a new event).'
+          : 'Press Get new code on a camera and paste it into the uploader (Setup, or Change event… for a new event). Codes are shown only once, so get a new one whenever you need it.'}
+      </p>
+      {uploaders.length === 0 && <p className="text-sm text-muted">No cameras yet. Add one per camera.</p>}
       {uploaders.length > 0 && (
         <p className="mb-1 text-xs text-muted">Pause a camera for private moments: its new photos stay on the laptop and never reach the gallery.</p>
       )}
@@ -166,7 +172,7 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
                 {u.paused ? 'Resume' : 'Pause'}
               </Button>
               <Button variant="ghost" onClick={() => setRenaming({ id: u.id, name: u.name })}>Rename</Button>
-              <Button variant="ghost" onClick={() => rotate(u)}>New code</Button>
+              <Button variant="ghost" onClick={() => rotate(u)}>Get new code</Button>
               <Button variant="ghost" onClick={() => remove(u)}>Remove</Button>
             </div>
             {u.lastError && <p className="w-full text-xs text-red-700">{u.lastError}</p>}
@@ -175,7 +181,7 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
       </ul>
       <form onSubmit={add} className="mt-4 flex gap-2 border-t border-line pt-4">
         <input className={inputClass} placeholder={`Camera ${uploaders.length + 1}`} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} aria-label="Uploader name" />
-        <Button type="submit" variant="primary" className="shrink-0">Add uploader</Button>
+        <Button type="submit" variant="primary" className="shrink-0">Add camera &amp; get code</Button>
       </form>
       <ErrorText>{error}</ErrorText>
       <div className="mt-3"><DownloadLinks /></div>
