@@ -23,9 +23,9 @@ class EventApiTest extends IntegrationTest {
         assertThat(slug).matches("arun-priya-wedding-[a-z0-9]{10}");
         assertThat((String) JsonPath.read(json, "$.galleryUrl")).isEqualTo("https://gallery.mcreatik.test/e/" + slug);
         assertThat((String) JsonPath.read(json, "$.status")).isEqualTo("UPCOMING");
-        // Open for 6 months after the event, deleted 30 days later.
-        assertThat((String) JsonPath.read(json, "$.activeUntil")).isEqualTo("2027-04-10");
-        assertThat((String) JsonPath.read(json, "$.retentionUntil")).isEqualTo("2027-05-10");
+        // Open for 3 months after the event, deleted 30 days later.
+        assertThat((String) JsonPath.read(json, "$.activeUntil")).isEqualTo("2027-01-10");
+        assertThat((String) JsonPath.read(json, "$.retentionUntil")).isEqualTo("2027-02-09");
         assertThat((Integer) JsonPath.read(json, "$.storageQuotaGb")).isEqualTo(5);
         assertThat((String) JsonPath.read(json, "$.eventType")).isEqualTo("MAIN");
     }

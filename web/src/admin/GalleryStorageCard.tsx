@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { BillingSummary, EventDetail, Purchase } from '../lib/types'
 import { BuyEventsDialog } from './BuyEventsDialog'
-import { formatGb, photosPerGb, rupees } from './plans'
+import { formatGb, monthsLeft, photosPerGb, rupees } from './plans'
 import { Button, Card } from './ui'
 
 const GB = 1024 ** 3
@@ -17,7 +17,7 @@ function day(iso: string, plusDays = 0) {
 
 /**
  * Storage and the active period of one event: how much it uses of what it has, how long it stays open, and the
- * buttons to add storage or keep it 6 more months. McreatiK's own and unlimited studios have no limits here.
+ * buttons to add storage or keep it open more months. McreatiK's own and unlimited studios have no limits here.
  */
 export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
   event: EventDetail
@@ -36,6 +36,9 @@ export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
   const extendGb = Math.max(1, Math.ceil(bytes / GB))
   const percent = quotaBytes > 0 ? Math.min(100, Math.round((bytes / quotaBytes) * 100)) : bytes > 0 ? 100 : 0
   const free = billing.free
+  const { storageGb, activeMonths } = billing.prices
+  // Storage bought now is charged for the months the gallery has left.
+  const months = monthsLeft(event.activeUntil, activeMonths)
 
   return (
     <Card title="Gallery & storage">
@@ -65,7 +68,7 @@ export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
           <p data-testid="storage-over" role="status" className={`rounded-lg px-3 py-2 ${event.storageLocked ? 'bg-red-50 text-red-900' : 'bg-amber-50 text-amber-900'}`}>
             {event.storageLocked
               ? <><b>The couple's gallery is paused</b> until storage is added: this event uses {formatGb(over)} more than its {quota} GB. The guests' gallery and every photo are untouched.</>
-              : <>This event uses {formatGb(over)} more than the {quota} GB included. Add {neededGb} GB ({rupees(neededGb * billing.prices.storageGb)}) by <b>{day(event.eventDate, STORAGE_GRACE_DAYS)}</b> to keep the couple's gallery open. Uploads are never stopped.</>}
+              : <>This event uses {formatGb(over)} more than the {quota} GB included. Add {neededGb} GB ({rupees(neededGb * storageGb * months)}) by <b>{day(event.eventDate, STORAGE_GRACE_DAYS)}</b> to keep the couple's gallery open. Uploads are never stopped.</>}
           </p>
         )}
 
@@ -80,17 +83,17 @@ export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
         {!free && (
           <div className="flex flex-wrap gap-2">
             <Button variant={over > 0 || (client && quota === 0) ? 'primary' : 'secondary'}
-              onClick={() => setBuying({ item: 'STORAGE', eventId: event.id, quantity: over > 0 ? neededGb : client && quota === 0 ? 25 : 10 })}>
+              onClick={() => setBuying({ item: 'STORAGE', eventId: event.id, months, quantity: over > 0 ? neededGb : client && quota === 0 ? 25 : 10 })}>
               Add storage
             </Button>
             {event.activeUntil && (
               <Button variant={event.expired ? 'primary' : 'secondary'} onClick={() => setBuying({ item: 'EXTEND', eventId: event.id, quantity: extendGb })}>
-                Keep {billing.prices.activeMonths} more months · {rupees(extendGb * billing.prices.storageGb)}
+                Keep {activeMonths} more months · {rupees(extendGb * storageGb * activeMonths)}
               </Button>
             )}
           </div>
         )}
-        {!free && <p className="text-xs text-muted">Storage is {rupees(billing.prices.storageGb)} per GB, about {photosPerGb(1)} full-quality photos per GB. Live events include {billing.prices.freeStorageGb} GB.</p>}
+        {!free && <p className="text-xs text-muted">Storage is {rupees(storageGb)} per GB a month ({rupees(storageGb * months)} per GB for the {months} month{months === 1 ? '' : 's'} this gallery has left), about {photosPerGb(1)} full-quality photos per GB. Live events include {billing.prices.freeStorageGb} GB.</p>}
       </div>
     </Card>
   )

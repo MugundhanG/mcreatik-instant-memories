@@ -1,9 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BillingSummary, EventDetail } from '../lib/types'
 import { BuyEventsDialog } from './BuyEventsDialog'
 import { GalleryStorageCard } from './GalleryStorageCard'
+import { monthsLeft } from './plans'
 
 const GB = 1024 ** 3
 
@@ -12,7 +13,7 @@ const billing: BillingSummary = {
   upiId: 'mcreatik@okicici', payeeName: 'McreatiK', payments: [], onlinePayments: false,
   mainCredits: 0, quickCredits: 0, carryOver: 0, packActive: false, planPaidUntil: null, clientCredits: 0,
   prices: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300,
-    storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 6 },
+    storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3 },
 }
 
 const event = (over: Partial<EventDetail> = {}): EventDetail => ({
@@ -23,20 +24,39 @@ const event = (over: Partial<EventDetail> = {}): EventDetail => ({
 })
 
 describe('Gallery & storage', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  // Storage is charged per month for what is left of the gallery: fix "today" so the prices don't drift.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-06T10:00:00'))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('charges storage for the months a gallery has left, rounded up', () => {
+    const now = new Date('2026-11-06T10:00:00')
+    expect(monthsLeft('2027-05-06', 6, now)).toBe(6)
+    expect(monthsLeft('2027-05-01', 6, now)).toBe(6)
+    expect(monthsLeft('2027-01-07', 6, now)).toBe(3)
+    expect(monthsLeft('2026-11-09', 6, now)).toBe(1)
+    expect(monthsLeft('2026-10-01', 6, now)).toBe(1)
+    expect(monthsLeft(null, 6, now)).toBe(6)
+  })
 
   it('shows use of the included storage, how long it stays open, and what keeping it longer costs', () => {
     render(<GalleryStorageCard event={event()} billing={billing} bytes={2.5 * GB} onChanged={vi.fn()} />)
     expect(screen.getByTestId('storage-card')).toHaveTextContent('2.5 GB used of 5 GB')
     expect(screen.getByRole('progressbar', { name: 'Storage used' })).toHaveAttribute('aria-valuenow', '50')
     expect(screen.getByTestId('active-until')).toHaveTextContent('Open until 1 May 2027')
-    expect(screen.getByRole('button', { name: 'Keep 6 more months · ₹45' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Keep 3 more months · ₹135' })).toBeInTheDocument()
     expect(screen.queryByTestId('storage-over')).not.toBeInTheDocument()
+    expect(screen.getByTestId('storage-card')).toHaveTextContent('₹15 per GB a month (₹90 per GB for the 6 months this gallery has left)')
   })
 
   it('tells a live event over its free storage the GB, price and date, and a locked one that the couple waits', () => {
     const { rerender } = render(<GalleryStorageCard event={event()} billing={billing} bytes={8.2 * GB} onChanged={vi.fn()} />)
-    expect(screen.getByTestId('storage-over')).toHaveTextContent('Add 4 GB (₹60) by 15 November 2026')
+    expect(screen.getByTestId('storage-over')).toHaveTextContent('Add 4 GB (₹360) by 15 November 2026')
     expect(screen.getByTestId('storage-over')).toHaveTextContent('Uploads are never stopped')
     rerender(<GalleryStorageCard event={event({ storageLocked: true })} billing={billing} bytes={8.2 * GB} onChanged={vi.fn()} />)
     expect(screen.getByTestId('storage-over')).toHaveTextContent("The couple's gallery is paused")
@@ -66,12 +86,12 @@ describe('Buying storage, client galleries and 6 more months', () => {
     vi.stubGlobal('fetch', fetchMock)
     render(<BuyEventsDialog billing={billing} purchase={{ item: 'STORAGE', eventId: 'e1', quantity: 10 }} onPaid={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByRole('dialog', { name: 'Add storage' })).toBeInTheDocument()
-    expect(screen.getByTestId('amount')).toHaveTextContent('₹150')
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹450')
     await user.click(screen.getByRole('radio', { name: /25 GB/ }))
     expect(screen.getByRole('radio', { name: /25 GB/ })).toHaveTextContent('≈ 2,050')
-    expect(screen.getByTestId('amount')).toHaveTextContent('₹375')
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹1,125')
     await user.type(screen.getByPlaceholderText(/418299301122/), '418299301122')
-    await user.click(screen.getByRole('button', { name: "I've paid ₹375" }))
+    await user.click(screen.getByRole('button', { name: "I've paid ₹1,125" }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
     expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body)))
       .toEqual({ item: 'STORAGE', eventId: 'e1', quantity: 25, utr: '418299301122' })
@@ -84,8 +104,8 @@ describe('Buying storage, client galleries and 6 more months', () => {
     expect(screen.getByTestId('event-count')).toHaveTextContent('2 galleries')
     unmount()
     render(<BuyEventsDialog billing={billing} purchase={{ item: 'EXTEND', eventId: 'e1', quantity: 3 }} onPaid={vi.fn()} onClose={vi.fn()} />)
-    expect(screen.getByRole('dialog', { name: 'Keep 6 more months' })).toBeInTheDocument()
-    expect(screen.getByTestId('amount')).toHaveTextContent('₹45')
-    expect(screen.getByText('6 more months (3 GB)')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Keep 3 more months' })).toBeInTheDocument()
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹135')
+    expect(screen.getByText('3 more months (3 GB)')).toBeInTheDocument()
   })
 })

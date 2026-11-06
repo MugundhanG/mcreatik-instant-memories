@@ -8,7 +8,7 @@ const billing: BillingSummary = {
   plan: 'MONTHLY', free: false, monthlyQuota: 4, usedThisMonth: 4, credits: 0, unitPrice: 999, monthlyPrice: 5000,
   upiId: 'mcreatik@okicici', payeeName: 'McreatiK Studios', payments: [], onlinePayments: false,
   mainCredits: 0, quickCredits: 0, carryOver: 0, packActive: true, planPaidUntil: null,
-  prices: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300, storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 6 },
+  prices: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300, storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3 },
   clientCredits: 0,
 }
 

@@ -76,8 +76,9 @@ public class BillingService {
     }
 
     /**
-     * What a payment buys. STORAGE: GB for one event; CLIENT_SETUP: client galleries (one used per gallery created);
-     * EXTEND: 6 more months for one event, charged per GB it holds.
+     * What a payment buys. STORAGE: GB for one event, priced per GB per month for the months the gallery has left;
+     * CLIENT_SETUP: client galleries (one used per gallery created); EXTEND: another open period (active_months) for one event, per GB it
+     * holds per month.
      */
     public enum Item { MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN, STORAGE, CLIENT_SETUP, EXTEND }
 
@@ -303,7 +304,7 @@ public class BillingService {
             Settings s = settings();
             throw new ApiException(HttpStatus.PAYMENT_REQUIRED, "CLIENT_PAYMENT_REQUIRED",
                     "A client gallery is " + rupees(s.clientSetupPrice()) + " to set up, plus storage at "
-                            + rupees(s.storageGbPrice()) + " per GB. Buy one to create it.");
+                            + rupees(s.storageGbPrice()) + " per GB a month. Buy one to create it.");
         }
         LocalDate today = today();
         boolean packOk = a.packActive(today) && a.plan().covers(type);
@@ -436,7 +437,8 @@ public class BillingService {
                 if (p.quantity() < 1 || p.quantity() > MAX_GB_PER_PAYMENT) {
                     throw ApiException.badRequest("INVALID_GB", "Add between 1 and " + MAX_GB_PER_PAYMENT + " GB at a time");
                 }
-                yield new Quote(Item.STORAGE, p.quantity(), s.storageGbPrice(), p.quantity() * s.storageGbPrice(), p.eventId(), null);
+                int perGb = s.storageGbPrice() * monthsLeft(p.eventId(), s.activeMonths());
+                yield new Quote(Item.STORAGE, p.quantity(), perGb, p.quantity() * perGb, p.eventId(), null);
             }
             case EXTEND -> {
                 if (a.free()) {
@@ -449,7 +451,8 @@ public class BillingService {
                     throw ApiException.conflict("EVENT_DELETED", "This gallery's files have been deleted");
                 }
                 int gb = gbFor(eventBytes(p.eventId()));
-                yield new Quote(Item.EXTEND, gb, s.storageGbPrice(), gb * s.storageGbPrice(), p.eventId(), null);
+                int perGb = s.storageGbPrice() * s.activeMonths();
+                yield new Quote(Item.EXTEND, gb, perGb, gb * perGb, p.eventId(), null);
             }
         };
     }
@@ -461,6 +464,26 @@ public class BillingService {
         if (jdbc.queryForObject("SELECT count(*) FROM events WHERE id = ? AND owner_id = ?", Integer.class, eventId, studioId) == 0) {
             throw ApiException.notFound("Event");
         }
+    }
+
+    /**
+     * Months storage is charged for when bought now: what is left of the gallery's open period, whole months rounded
+     * up (a new gallery: its full period), at least 1. A gallery with no end date is charged the full period.
+     */
+    int monthsLeft(UUID eventId, int activeMonths) {
+        Date until = jdbc.queryForObject("SELECT active_until FROM events WHERE id = ?", Date.class, eventId);
+        return monthsLeft(until == null ? null : until.toLocalDate(), today(), activeMonths);
+    }
+
+    public static int monthsLeft(LocalDate activeUntil, LocalDate today, int activeMonths) {
+        if (activeUntil == null) {
+            return Math.max(1, activeMonths);
+        }
+        if (!activeUntil.isAfter(today)) {
+            return 1;
+        }
+        int months = (int) java.time.temporal.ChronoUnit.MONTHS.between(today, activeUntil);
+        return today.plusMonths(months).isBefore(activeUntil) ? months + 1 : Math.max(1, months);
     }
 
     /** Whole GB to charge for this many bytes (at least 1). */

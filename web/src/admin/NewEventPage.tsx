@@ -13,7 +13,7 @@ function coverage(b: BillingSummary, type: EventType): string {
   if (type === 'CLIENT') {
     return b.clientCredits > 0
       ? `Uses 1 of your ${b.clientCredits} paid client galler${b.clientCredits === 1 ? 'y' : 'ies'}. Then add storage for the photos.`
-      : `You'll be asked to pay ${rupees(b.prices.clientSetup)} to set it up, then add storage at ${rupees(b.prices.storageGb)} per GB.`
+      : `You'll be asked to pay ${rupees(b.prices.clientSetup)} to set it up, then add storage at ${rupees(b.prices.storageGb)} per GB a month.`
   }
   const packCovers = b.packActive && (b.plan === 'MONTHLY' || b.plan.startsWith('MAIN') || (type === 'QUICK' && b.plan.startsWith('QUICK')))
   if (packCovers && b.carryOver > 0) return `Uses 1 of the ${b.carryOver} event${b.carryOver === 1 ? '' : 's'} carried over from last month.`

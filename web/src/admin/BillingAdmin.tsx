@@ -17,7 +17,7 @@ function paymentFor(p: EventPayment): string {
     case 'PLAN': return `${n} month${n === 1 ? '' : 's'} · ${p.plan ? PLAN_LABEL[p.plan] : 'pack'}`
     case 'STORAGE': return `${n} GB storage${p.eventName ? `: ${p.eventName}` : ''}`
     case 'CLIENT_SETUP': return `${n} client galler${n === 1 ? 'y' : 'ies'}`
-    case 'EXTEND': return `6 more months (${n} GB)${p.eventName ? `: ${p.eventName}` : ''}`
+    case 'EXTEND': return `More months (${n} GB)${p.eventName ? `: ${p.eventName}` : ''}`
     default: return `${n} Main event${n === 1 ? '' : 's'}`
   }
 }
@@ -132,7 +132,7 @@ export function BillingSettingsCard() {
         <Field label="Offer the upgrade after (guests)" hint="Unique guests on a Quick event">
           <input className={inputClass} inputMode="numeric" value={s.upgradeGuests} onChange={num('upgradeGuests')} />
         </Field>
-        <Field label="Storage (₹ per GB, for the active period)">
+        <Field label="Storage (₹ per GB per month)">
           <input className={inputClass} inputMode="numeric" value={s.storageGbPrice} onChange={num('storageGbPrice')} />
         </Field>
         <Field label="Free storage with a live event (GB)">
@@ -160,21 +160,37 @@ export function BillingSettingsCard() {
   )
 }
 
+/** "Main events  − 3 +": the count a studio has to use, with one-click give / take back (never below 0). */
+function CreditStepper({ label, value, busy, onStep }: { label: string; value: number; busy: boolean; onStep: (delta: 1 | -1) => void }) {
+  const btn = 'flex size-7 items-center justify-center rounded-md border border-line bg-white text-base leading-none font-medium hover:bg-stone-100 disabled:opacity-40'
+  return (
+    <span className="inline-flex items-center gap-1.5" role="group" aria-label={label}>
+      <span className="text-xs text-muted">{label}</span>
+      <button type="button" className={btn} aria-label={`Take back one: ${label}`} disabled={busy || value <= 0} onClick={() => onStep(-1)}>−</button>
+      <b className={`min-w-6 text-center tabular-nums ${value < 0 ? 'text-red-700' : ''}`} data-testid={`count-${label}`}>{value}</b>
+      <button type="button" className={btn} aria-label={`Give one: ${label}`} disabled={busy} onClick={() => onStep(1)}>+</button>
+    </span>
+  )
+}
+
 /**
- * One studio's plan, this month's usage, pack paid-until date and bought events; McreatiK can give free Main or Quick
- * events (e.g. a trial) and set the paid-until date after a renewal paid outside the app.
+ * One studio's plan, this month's usage, pack paid-until date and the events it has to use; McreatiK can give or take
+ * back Main events, Quick events and client galleries with + / − (e.g. a free trial, or a refund) and set the
+ * paid-until date after a renewal paid outside the app.
  */
 export function StudioPlan({ billing, onChange }: { billing: StudioBilling; onChange: () => void }) {
   const [quota, setQuota] = useState(String(billing.monthlyQuota))
+  const [busy, setBusy] = useState(false)
   const update = async (input: { plan?: Plan; monthlyQuota?: number; addCredits?: number; addQuickCredits?: number; addClientCredits?: number; planPaidUntil?: string }) => {
-    await adminApi.updateStudioBilling(billing.studioId, input)
-    onChange()
+    setBusy(true)
+    try {
+      await adminApi.updateStudioBilling(billing.studioId, input)
+      onChange()
+    } finally {
+      setBusy(false)
+    }
   }
-  const give = (kind: 'Main' | 'Quick' | 'Client') => {
-    const what = kind === 'Client' ? 'client galleries' : `${kind} events`
-    const n = Number(window.prompt(`How many free ${what} to give? (use a minus number to take back)`, '1'))
-    if (Number.isInteger(n) && n !== 0) void update(kind === 'Main' ? { addCredits: n } : kind === 'Quick' ? { addQuickCredits: n } : { addClientCredits: n })
-  }
+  const packLeft = isPack(billing.plan) && billing.packActive ? Math.max(0, billing.monthlyQuota - billing.usedThisMonth) : 0
   const plans: Plan[] = ['PER_EVENT', ...PACKS, 'UNLIMITED', ...(billing.plan === 'MONTHLY' ? ['MONTHLY' as Plan] : [])]
   return (
     <div className="flex w-full flex-wrap items-center gap-2 rounded-lg bg-stone-50 px-3 py-2 text-sm" data-testid={`plan-${billing.studioId}`}>
@@ -201,16 +217,16 @@ export function StudioPlan({ billing, onChange }: { billing: StudioBilling; onCh
         </>
       )}
       {billing.plan !== 'UNLIMITED' && (
-        <>
-          <span className={`tabular-nums ${billing.mainCredits < 0 || billing.quickCredits < 0 ? 'font-medium text-red-700' : 'text-muted'}`}>
-            · {billing.mainCredits} Main + {billing.quickCredits} Quick + {billing.clientCredits} client bought
+        <div className="flex w-full flex-wrap items-center gap-x-5 gap-y-2 border-t border-line pt-2" data-testid={`available-${billing.studioId}`}>
+          <span className="text-xs font-medium">
+            Available: <b className="tabular-nums">{billing.mainCredits + billing.quickCredits + packLeft}</b> events
+            {packLeft > 0 && <span className="font-normal text-muted"> ({packLeft} left in pack this month)</span>}
+            {' '}+ <b className="tabular-nums">{billing.clientCredits}</b> client
           </span>
-          <span className="ml-auto flex gap-3">
-            <button type="button" onClick={() => give('Main')} className="text-xs font-medium text-[#8a5a1c] hover:underline">Give Main events</button>
-            <button type="button" onClick={() => give('Quick')} className="text-xs font-medium text-[#8a5a1c] hover:underline">Give Quick events</button>
-            <button type="button" onClick={() => give('Client')} className="text-xs font-medium text-[#8a5a1c] hover:underline">Give client galleries</button>
-          </span>
-        </>
+          <CreditStepper label="Main" value={billing.mainCredits} busy={busy} onStep={(d) => void update({ addCredits: d })} />
+          <CreditStepper label="Quick" value={billing.quickCredits} busy={busy} onStep={(d) => void update({ addQuickCredits: d })} />
+          <CreditStepper label="Client" value={billing.clientCredits} busy={busy} onStep={(d) => void update({ addClientCredits: d })} />
+        </div>
       )}
     </div>
   )

@@ -323,7 +323,7 @@ export type Plan = 'PER_EVENT' | 'MAIN_2' | 'MAIN_4' | 'QUICK_2' | 'QUICK_4' | '
 export type EventType = 'MAIN' | 'QUICK' | 'CLIENT'
 
 /** What a payment buys. */
-/** STORAGE: GB for one event; CLIENT_SETUP: client galleries; EXTEND: 6 more months for one event (per GB). */
+/** STORAGE: GB for one event; CLIENT_SETUP: client galleries; EXTEND: another open period for one event (per GB per month). */
 export type PurchaseItem = 'MAIN_EVENT' | 'QUICK_EVENT' | 'UPGRADE' | 'PLAN' | 'STORAGE' | 'CLIENT_SETUP' | 'EXTEND'
 
 /** A purchase as the dashboard asks for it; the server sets the price. quantity: events or months. */
@@ -332,6 +332,8 @@ export interface Purchase {
   quantity?: number
   eventId?: string
   plan?: Plan
+  /** STORAGE: the months the gallery has left, to show the price (the server works it out itself). */
+  months?: number
 }
 
 /** Every current price (₹). */
@@ -345,7 +347,7 @@ export interface Prices {
   upgrade: number
   /** Unique guests after which a Quick event is offered the upgrade. */
   upgradeGuests: number
-  /** Storage price per GB (for 6 months). */
+  /** Storage price per GB per month. */
   storageGb: number
   /** GB included with every live (Main / Quick) event. */
   freeStorageGb: number
