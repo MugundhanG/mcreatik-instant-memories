@@ -1,3 +1,5 @@
+import { formatPhone } from './phone'
+
 /**
  * Print files for the reusable studio board (18 × 24 in) and the per-event cards (8 × 12 in).
  *
@@ -218,7 +220,12 @@ export interface BoardBrand {
   /** Percent of the standard logo size (the studio's poster logo size, 50–200). */
   logoScale: number
   instagram: string | null
+  /** Contact number, printed above the Instagram handle. */
+  phone?: string | null
 }
+
+const PHONE_ICON = (x: number, y: number, s: number, color: string) =>
+  `<g transform="translate(${x} ${y}) scale(${s / 24})" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"><path d="M5 3.5h3.2l1.6 4.2-2.2 1.5a11.5 11.5 0 0 0 7.2 7.2l1.5-2.2 4.2 1.6V19a2 2 0 0 1-2.2 2A17 17 0 0 1 3 5.7 2 2 0 0 1 5 3.5Z"/></g>`
 
 const INSTAGRAM_ICON = (x: number, y: number, s: number, color: string) =>
   `<g transform="translate(${x} ${y}) scale(${s / 24})" fill="none" stroke="${color}" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.5"/><circle cx="17.6" cy="6.4" r="0.9" fill="${color}" stroke="none"/></g>`
@@ -298,14 +305,18 @@ export function boardSvg(themeName: BoardTheme, brand: BoardBrand, opts: { card?
   const footLs = footSize * 0.18
   parts.push(`<text x="${left}" y="${22.5 * I}" font-family="${SANS}" font-weight="500" font-size="${footSize}" letter-spacing="${footLs}" fill="${theme.muted}">NO APP · NO SIGN-UP NEEDED</text>`)
   parts.push(`<text x="${left}" y="${22.92 * I}" font-family="${SANS}" font-weight="500" font-size="${footSize}" letter-spacing="${footLs}" fill="${theme.muted}">POWERED BY MCREATIK INSTANT MEMORIES</text>`)
-  if (brand.instagram) {
-    const handle = `@${brand.instagram.replace(/^@/, '')}`
+  // Bottom right: the contact number above the Instagram handle (each optional; the lower slot is used first).
+  const contact: { text: string; icon: typeof INSTAGRAM_ICON }[] = []
+  if (brand.phone) contact.push({ text: formatPhone(brand.phone), icon: PHONE_ICON })
+  if (brand.instagram) contact.push({ text: `@${brand.instagram.replace(/^@/, '')}`, icon: INSTAGRAM_ICON })
+  contact.forEach(({ text, icon }, i) => {
     const size = 0.3 * I
     const right = W - 1.6 * I
-    const w = measure(handle, `500 ${size}px ${SANS}`)
-    parts.push(`<text x="${right}" y="${22.92 * I}" text-anchor="end" font-family="${SANS}" font-weight="500" font-size="${size}" fill="${theme.accent}">${esc(handle)}</text>`)
-    parts.push(INSTAGRAM_ICON(right - w - 0.45 * I, 22.92 * I - size * 0.88, size * 1.05, theme.accent))
-  }
+    const y = (contact.length === 2 && i === 0 ? 22.42 : 22.92) * I
+    const w = measure(text, `500 ${size}px ${SANS}`)
+    parts.push(`<text x="${right}" y="${y}" text-anchor="end" font-family="${SANS}" font-weight="500" font-size="${size}" fill="${theme.accent}">${esc(text)}</text>`)
+    parts.push(icon(right - w - 0.45 * I, y - size * 0.88, size * 1.05, theme.accent))
+  })
 
   return `${svgOpen(BOARD.width, BOARD.height, theme, opts.fonts ?? NO_FONTS)}
 <rect x="0" y="0" width="${BOARD.width}" height="${BOARD.height}" fill="${theme.boardBg}"/>

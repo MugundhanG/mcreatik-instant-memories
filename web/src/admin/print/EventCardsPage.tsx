@@ -48,7 +48,7 @@ export default function EventCardsPage() {
       board: boardSvg(theme, assets.boardBrand, { card: content, fonts }),
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- boardBrand is rebuilt each render from these values
-  }, [content, fonts, theme, assets.boardBrand.name, assets.boardBrand.logo, assets.boardBrand.logoScale, assets.boardBrand.instagram])
+  }, [content, fonts, theme, assets.boardBrand.name, assets.boardBrand.logo, assets.boardBrand.logoScale, assets.boardBrand.instagram, assets.boardBrand.phone])
 
   if (!event) return error ? <ErrorText>{error}</ErrorText> : <PageLoader label="Preparing cards" />
   const names = splitEventName(event.name).names

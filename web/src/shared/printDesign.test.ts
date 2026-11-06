@@ -41,6 +41,13 @@ describe('print designs', () => {
     }
   })
 
+  it('prints the contact number above the Instagram handle on the board', () => {
+    const board = boardSvg('cream', { ...brand, phone: '+919876543210' }, { measure })
+    expect(board).toContain('+91 98765 43210')
+    expect(board.indexOf('+91 98765 43210')).toBeLessThan(board.indexOf('@lensandlight.studio'))
+    expect(boardSvg('cream', brand, { measure })).not.toContain('+91')
+  })
+
   it('puts names, date and QR on the card, and the scan line only on the table card', () => {
     const event = cardSvg('cream', card, { table: false, measure })
     const table = cardSvg('cream', card, { table: true, measure })

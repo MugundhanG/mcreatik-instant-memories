@@ -30,7 +30,7 @@ export function BoardCard({ brand, saveTheme, onSaved }: {
   const svg = useMemo(
     () => (assets.fonts ? boardSvg(theme, assets.boardBrand, { fonts: assets.fonts }) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- boardBrand is rebuilt each render from these values
-    [theme, assets.fonts, assets.boardBrand.name, assets.boardBrand.logo, assets.boardBrand.logoScale, assets.boardBrand.instagram],
+    [theme, assets.fonts, assets.boardBrand.name, assets.boardBrand.logo, assets.boardBrand.logoScale, assets.boardBrand.instagram, assets.boardBrand.phone],
   )
 
   const pick = async (t: BoardTheme) => {

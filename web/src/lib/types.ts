@@ -14,6 +14,8 @@ export interface Brand {
   logoScale?: number
   /** Design of the printed studio board and event cards. */
   boardTheme?: 'cream' | 'dark' | 'white'
+  /** Contact number for guests (e.g. +919876543210), or null. */
+  phone?: string | null
 }
 
 export interface PublicEvent {
@@ -256,6 +258,8 @@ export interface GuestAnalytics {
     downloaders: number
     shares: number
     instagramClicks: number
+    /** Taps on the studio's WhatsApp / call buttons. */
+    contacts?: number
   }
   /** Hours with activity, India time, e.g. "2026-10-31T19:00". */
   hours: { hour: string; people: number; photoViews: number; downloads: number }[]

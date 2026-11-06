@@ -8,6 +8,8 @@ import { PhotoGrid } from './PhotoGrid'
 import { resolveBrand } from '../shared/brand'
 import { PageLoader, ShutterLoader } from '../shared/ShutterLoader'
 import { InstagramIcon, InstagramLink } from '../shared/StudioLogo'
+import { PhoneIcon, WhatsAppIcon } from '../shared/ContactIcons'
+import { formatPhone, telLink, waLink } from '../shared/phone'
 import { GalleryUnavailable } from '../shared/GalleryUnavailable'
 import { removalRequestLink } from '../shared/privacy'
 import { PhotoViewer } from './PhotoViewer'
@@ -112,6 +114,7 @@ export default function GalleryPage() {
   const { names, occasion } = splitEventName(event.name)
   const date = formatEventDate(event.eventDate)
   const brand = resolveBrand(event.brand)
+  const contactText = `Hi ${brand.name}, I saw your photos at ${event.name} and would like to know about booking you for an event.`
   // The photographer's chosen cover; until one is set, the newest photo.
   const cover = event.coverUrl ?? photos[0]?.webUrl ?? null
 
@@ -144,6 +147,13 @@ export default function GalleryPage() {
         <span className="shrink-0 text-xs whitespace-nowrap text-muted">
           {event.photoCount > 0 ? `${formatCount(event.photoCount)} photos` : 'Photos coming soon'}
         </span>
+        {brand.phone && (
+          <a href={waLink(brand.phone, contactText)} target="_blank" rel="noreferrer" onClick={() => onActivity('CONTACT')}
+            className={`-my-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[#b37a2c] hover:bg-stone-100 ${brand.instagram ? '-mr-2' : '-mr-1'}`}>
+            <WhatsAppIcon className="size-[18px]" />
+            <span className="sr-only">WhatsApp {brand.name}</span>
+          </a>
+        )}
         {brand.instagram && (
           <InstagramLink handle={brand.instagram} onClick={() => onActivity('INSTAGRAM')} className="-my-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[#b37a2c] hover:bg-stone-100">
             <InstagramIcon className="size-[18px]" />
@@ -177,6 +187,20 @@ export default function GalleryPage() {
       </main>
 
       <footer className="px-4 pt-10 pb-12 text-center">
+        {brand.phone && <div className="mx-auto mb-4 max-w-md rounded-2xl bg-white p-4 text-left shadow-[0_6px_24px_rgba(0,0,0,0.08)]" data-testid="contact-card">
+          <p className="text-sm font-semibold text-ink">Planning an event? Book {brand.name}</p>
+          <p className="mt-0.5 text-xs text-muted">The photographers behind this gallery · {formatPhone(brand.phone)}</p>
+          <div className="mt-3 flex gap-2">
+            <a href={waLink(brand.phone, contactText)} target="_blank" rel="noreferrer" onClick={() => onActivity('CONTACT')}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#1f9d55] px-4 py-2 text-sm font-medium text-white">
+              <WhatsAppIcon /> WhatsApp
+            </a>
+            <a href={telLink(brand.phone)} onClick={() => onActivity('CONTACT')}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-medium text-ink">
+              <PhoneIcon /> Call
+            </a>
+          </div>
+        </div>}
         {brand.instagram && <div className="mx-auto mb-6 flex max-w-md items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-[0_6px_24px_rgba(0,0,0,0.08)]">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(45deg,#f09433,#dc2743_50%,#bc1888)] text-white">
             <InstagramIcon className="size-6" />

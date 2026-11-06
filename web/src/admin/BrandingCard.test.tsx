@@ -20,8 +20,21 @@ describe('Studio branding', () => {
     expect(preview.style.height).toBe('63px')
 
     await user.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(update).toHaveBeenCalledWith({ displayName: 'Lens & Light', instagram: 'lenslight.in', logoScale: 150 }))
+    await waitFor(() => expect(update).toHaveBeenCalledWith({ displayName: 'Lens & Light', instagram: 'lenslight.in', phone: '', logoScale: 150 }))
     expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ logoScale: 150 }))
+  })
+
+  it('saves the contact number guests can WhatsApp or call, shown in Indian format', async () => {
+    const user = userEvent.setup()
+    const update = vi.fn(async () => ({ ...brand, phone: '+919876543210' }))
+    render(<BrandingCard brand={{ ...brand, phone: '+919000011111' }} actions={{ update, upload: vi.fn(), remove: vi.fn() }} onSaved={vi.fn()} />)
+    const field = screen.getByPlaceholderText('98765 43210')
+    expect(field).toHaveValue('+91 90000 11111')
+    await user.clear(field)
+    await user.type(field, '98765 43210')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(update).toHaveBeenCalledWith(expect.objectContaining({ phone: '98765 43210' })))
+    await waitFor(() => expect(field).toHaveValue('+91 98765 43210'))
   })
 
   it('has no size slider until there is a logo', () => {

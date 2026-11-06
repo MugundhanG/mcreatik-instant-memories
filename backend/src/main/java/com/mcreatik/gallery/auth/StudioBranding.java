@@ -21,10 +21,10 @@ public class StudioBranding {
 
     /**
      * {@code mcreatik} is true for McreatiK's own events: the web app then shows McreatiK's built-in design.
-     * For studios, {@code logoUrl} and {@code instagram} are null until the studio sets them.
+     * For studios, {@code logoUrl}, {@code instagram} and {@code phone} are null until the studio sets them.
      */
     public record Brand(String name, String logoUrl, String instagram, boolean mcreatik, int logoScale,
-                        String boardTheme) {
+                        String boardTheme, String phone) {
     }
 
     /** The designs a studio can pick for its printed board and event cards. */
@@ -47,7 +47,7 @@ public class StudioBranding {
         return new Brand(owner.getDisplayName(),
                 owner.getLogoKey() == null ? null : storage.publicMediaUrl(owner.getLogoKey()),
                 owner.getInstagramHandle(), owner.isSuperAdmin(), owner.getLogoScale(),
-                owner.getBoardTheme());
+                owner.getBoardTheme(), owner.getContactPhone());
     }
 
     /** A logo file as stored: its bytes and image type. */
@@ -67,7 +67,7 @@ public class StudioBranding {
 
     public Brand ofOwner(UUID ownerId) {
         return admins.findById(ownerId).map(this::of)
-                .orElseGet(() -> new Brand("McreatiK Studios", null, null, true, 100, "cream"));
+                .orElseGet(() -> new Brand("McreatiK Studios", null, null, true, 100, "cream", null));
     }
 
     /** Accepts "name", "@name" or a profile link; blank clears it. */
@@ -92,11 +92,16 @@ public class StudioBranding {
 
     /** Fields left null stay as they are; a blank Instagram removes it. */
     public void edit(AdminUser user, String displayName, String instagram, Integer logoScale) {
-        edit(user, displayName, instagram, logoScale, null);
+        edit(user, displayName, instagram, logoScale, null, null);
+    }
+
+    public void edit(AdminUser user, String displayName, String instagram, Integer logoScale, String boardTheme) {
+        edit(user, displayName, instagram, logoScale, boardTheme, null);
     }
 
     /** As above, plus the board design ({@code cream}, {@code dark} or {@code white}). */
-    public void edit(AdminUser user, String displayName, String instagram, Integer logoScale, String boardTheme) {
+    public void edit(AdminUser user, String displayName, String instagram, Integer logoScale, String boardTheme,
+                     String phone) {
         if (boardTheme != null && !BOARD_THEMES.contains(boardTheme)) {
             throw ApiException.badRequest("INVALID_THEME", "Pick the cream, dark or white board design");
         }
@@ -119,6 +124,36 @@ public class StudioBranding {
         if (boardTheme != null) {
             user.setBoardTheme(boardTheme);
         }
+        if (phone != null) {
+            user.setContactPhone(normalizePhone(phone));
+        }
+    }
+
+    /**
+     * A contact number as guests will see and dial it: blank removes it; spaces, dashes and brackets are dropped;
+     * a 10-digit Indian mobile number (or one starting 0) gets +91. 8 to 15 digits, optionally after a +.
+     */
+    static String normalizePhone(String raw) {
+        String s = raw.trim();
+        if (s.isEmpty()) {
+            return null;
+        }
+        String digits = s.replaceAll("[\\s().-]", "");
+        if (digits.startsWith("00")) {
+            digits = "+" + digits.substring(2);
+        }
+        if (digits.matches("0\\d{10}")) {
+            digits = digits.substring(1);
+        }
+        if (digits.matches("[6-9]\\d{9}")) {
+            digits = "+91" + digits;
+        } else if (digits.matches("91[6-9]\\d{9}")) {
+            digits = "+" + digits;
+        }
+        if (!digits.matches("\\+?\\d{8,15}")) {
+            throw ApiException.badRequest("INVALID_PHONE", "Enter a phone number, e.g. 98765 43210 or +91 98765 43210");
+        }
+        return digits;
     }
 
     public void uploadLogo(AdminUser user, byte[] data) {

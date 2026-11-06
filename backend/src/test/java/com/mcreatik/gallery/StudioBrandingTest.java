@@ -93,6 +93,30 @@ class StudioBrandingTest extends IntegrationTest {
     }
 
     @Test
+    void guestsSeeTheStudiosContactNumber() throws Exception {
+        // A 10-digit Indian mobile with spaces becomes +91…; guests get it with the event's brand.
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"098765 43210\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.brand.phone").value("+919876543210"));
+        String slug = studioEventSlug();
+        mvc.perform(get("/api/public/events/" + slug)).andExpect(jsonPath("$.brand.phone").value("+919876543210"));
+        // International numbers are kept; nonsense is refused.
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"+44 20 7946 0958\"}"))
+                .andExpect(jsonPath("$.brand.phone").value("+442079460958"));
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"call me\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_PHONE"));
+        // Leaving other fields out keeps it; a blank number removes it.
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"displayName\":\"Lens & Light\"}"))
+                .andExpect(jsonPath("$.brand.phone").value("+442079460958"));
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"\"}"));
+        mvc.perform(get("/api/public/events/" + slug)).andExpect(jsonPath("$.brand.phone").doesNotExist());
+    }
+
+    @Test
     void mcreatikEventsKeepTheMcreatikDesign() throws Exception {
         String slug = slug(createEvent("Own event", "LIVE"));
         mvc.perform(get("/api/public/events/" + slug)).andExpect(jsonPath("$.brand.mcreatik").value(true));

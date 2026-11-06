@@ -36,7 +36,7 @@ All endpoints live under `https://im-api.mcreatik.com`. Requests and responses a
 | --- | --- | --- | --- |
 | POST | `/api/auth/login` | Public | `{email, password}` → `{token, expiresAt, email, displayName, role, mustChangePassword}` |
 | POST | `/api/auth/forgot-password` | Public | `{email}` → always 204 |
-| GET / PATCH | `/api/admin/account` | Admin | Account and branding. PATCH takes any of `displayName`, `instagram`, `logoScale` (50–200) and `boardTheme` (`cream`, `dark` or `white`: the studio board and card design) |
+| GET / PATCH | `/api/admin/account` | Admin | Account and branding. PATCH takes any of `displayName`, `instagram`, `phone` (contact number for guests; a 10-digit Indian number gets +91, blank removes it, 400 `INVALID_PHONE`), `logoScale` (50–200) and `boardTheme` (`cream`, `dark` or `white`: the studio board and card design). Public events carry it as `brand.phone` |
 | GET / POST / DELETE | `/api/admin/account/logo` | Admin | GET: the logo file itself (for the printed board; 404 without a logo). POST: multipart `logo`, PNG, JPEG or WebP up to 1 MB |
 | POST | `/api/admin/account/password` | Admin | `{currentPassword, newPassword}` → new token; other devices logged out |
 
@@ -46,7 +46,7 @@ All endpoints live under `https://im-api.mcreatik.com`. Requests and responses a
 | --- | --- | --- | --- |
 | GET / POST | `/api/admin/studios` | Super | List; create with temporary password and plan |
 | PATCH | `/api/admin/studios/{studioId}` | Super | Rename, disable, reset password |
-| PATCH | `/api/admin/studios/{studioId}/branding` | Super | Name, Instagram, logo size |
+| PATCH | `/api/admin/studios/{studioId}/branding` | Super | Name, Instagram, contact number (`phone`), logo size |
 | POST / DELETE | `/api/admin/studios/{studioId}/logo` | Super | Studio logo |
 
 There is no delete endpoint for studios; they are only disabled.
@@ -132,7 +132,7 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 | GET | `/api/public/events/{slug}` | Event, cover, count, branding; 404 for draft/archived; 403 `GALLERY_UNAVAILABLE` when switched off |
 | GET | `/api/public/events/{slug}/photos` | `?before=` or `?after=` cursor; 40 default, 100 max, 200 for catch-up |
 | GET | `/api/public/events/{slug}/stream` | `text/event-stream`: `CONNECTED`, `PHOTO_READY`, `PHOTO_REMOVED`, `EVENT_STATUS`, `GALLERY_CLOSED` |
-| POST | `/api/public/events/{slug}/activity` | `{visitorId, items[]}`, max 50 items → 204 |
+| POST | `/api/public/events/{slug}/activity` | `{visitorId, items[]}`, max 50 items → 204. Types: `VISIT`, `PHOTO_VIEW`, `DOWNLOAD`, `SHARE`, `INSTAGRAM`, `CONTACT` (WhatsApp / call tap, counted as `totals.contacts`) |
 
 ## Couple portal
 

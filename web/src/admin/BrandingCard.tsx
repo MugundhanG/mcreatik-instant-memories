@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'r
 import { ApiError } from '../lib/api'
 import type { Brand } from '../lib/types'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
+import { formatPhone } from '../shared/phone'
 
 const LOGO_MAX_EDGE = 800
 
@@ -34,7 +35,7 @@ const message = (err: unknown, fallback: string) => (err instanceof ApiError || 
 
 /** Saving branding: the studio's own account, or McreatiK editing a studio (Studios page). */
 export interface BrandingActions {
-  update: (input: { displayName?: string; instagram?: string; logoScale?: number }) => Promise<Brand>
+  update: (input: { displayName?: string; instagram?: string; phone?: string; logoScale?: number }) => Promise<Brand>
   upload: (png: Blob) => Promise<Brand>
   remove: () => Promise<Brand>
 }
@@ -56,6 +57,7 @@ export function BrandingCard({ brand, actions, onSaved, title = 'Studio branding
 }) {
   const [name, setName] = useState(brand.name)
   const [instagram, setInstagram] = useState(brand.instagram ?? '')
+  const [phone, setPhone] = useState(brand.phone ? formatPhone(brand.phone) : '')
   const [scale, setScale] = useState(brand.logoScale ?? 100)
   const [busy, setBusy] = useState<'save' | 'logo' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -77,6 +79,7 @@ export function BrandingCard({ brand, actions, onSaved, title = 'Studio branding
       onSaved(b)
       if (kind === 'save') {
         setInstagram(b.instagram ?? '')
+        setPhone(b.phone ? formatPhone(b.phone) : '')
         setSaved(true)
       }
     } catch (err) {
@@ -88,7 +91,7 @@ export function BrandingCard({ brand, actions, onSaved, title = 'Studio branding
 
   const save = (e: FormEvent) => {
     e.preventDefault()
-    void run('save', () => actions.update({ displayName: name.trim(), instagram: instagram.trim(), logoScale: scale }), 'Could not save')
+    void run('save', () => actions.update({ displayName: name.trim(), instagram: instagram.trim(), phone: phone.trim(), logoScale: scale }), 'Could not save')
   }
 
   const pickLogo = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -139,6 +142,9 @@ export function BrandingCard({ brand, actions, onSaved, title = 'Studio branding
         </Field>
         <Field label="Instagram" hint="Guests get a Follow button. Leave empty to hide it.">
           <input className={inputClass} value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@yourstudio" />
+        </Field>
+        <Field label="Contact number (WhatsApp)" hint="Guests can WhatsApp or call you from your gallery, and it is printed on your studio board and QR poster. Leave empty to hide it.">
+          <input className={inputClass} type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="98765 43210" />
         </Field>
         <ErrorText>{error}</ErrorText>
         <div className="flex items-center justify-end gap-3">

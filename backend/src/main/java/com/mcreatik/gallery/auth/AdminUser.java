@@ -57,6 +57,10 @@ public class AdminUser {
     @Column(name = "instagram_handle")
     private String instagramHandle;
 
+    /** Contact number shown to guests (normalised, e.g. +919876543210), or null. */
+    @Column(name = "contact_phone")
+    private String contactPhone;
+
     @Column(name = "logo_key")
     private String logoKey;
 
@@ -116,6 +120,14 @@ public class AdminUser {
 
     public void setInstagramHandle(String instagramHandle) {
         this.instagramHandle = instagramHandle;
+    }
+
+    public String getContactPhone() {
+        return contactPhone;
+    }
+
+    public void setContactPhone(String contactPhone) {
+        this.contactPhone = contactPhone;
     }
 
     /** Media-storage key of the studio's logo; null shows the studio name only. */
