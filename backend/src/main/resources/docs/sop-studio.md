@@ -35,7 +35,7 @@ Open your studio name at the top right (**Account**).
 3. **Studio name** and **Instagram** (without the @).
 4. **Contact number (WhatsApp):** your booking number, for example 98765 43210 (+91 is added for you). Then **Save**.
 
-Guests see your name, logo and Instagram on the gallery and on the printed QR poster. With a contact number, the gallery also shows a **WhatsApp** button at the top and a **"Planning an event? Book …"** card with **WhatsApp** and **Call** at the bottom, and the number is printed on your studio board and A4 poster. Every guest at the event is a possible client: **Guests → Contacted you** counts how many tapped it. Leave the number empty to hide it.
+Guests see your name, logo and Instagram on the gallery and on the printed QR poster. With a contact number, the gallery also shows a **"Book … for your event"** bar right under the live bar, with **WhatsApp** and **Call** buttons, and the number is printed on your studio board and A4 poster. Every guest at the event is a possible client: **Guests → Contacted you** counts how many tapped it. Leave the number empty to hide it.
 
 ![Account page: logo, poster logo size, studio name, Instagram and password](images/s-account-full.webp)
 

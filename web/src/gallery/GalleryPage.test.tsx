@@ -88,12 +88,13 @@ describe('Live gallery', () => {
     await screen.findByRole('heading', { name: liveEvent.name })
     const card = screen.getByTestId('contact-card')
     expect(card).toHaveTextContent('Book Lens & Light')
+    // Right under the live bar, before the photos.
+    expect(card.compareDocumentPosition(document.querySelector('main')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(card).toHaveTextContent('+91 98765 43210')
     const wa = within(card).getByRole('link', { name: /WhatsApp/ })
     expect(wa.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/919876543210\?text=/)
     expect(decodeURIComponent(wa.getAttribute('href')!)).toContain(`I saw your photos at ${liveEvent.name}`)
     expect(within(card).getByRole('link', { name: /Call/ })).toHaveAttribute('href', 'tel:+919876543210')
-    expect(screen.getByRole('link', { name: 'WhatsApp Lens & Light' })).toBeInTheDocument() // header button
     wa.addEventListener('click', (e) => e.preventDefault())
     await user.click(wa)
     flushActivity()

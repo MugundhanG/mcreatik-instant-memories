@@ -147,13 +147,6 @@ export default function GalleryPage() {
         <span className="shrink-0 text-xs whitespace-nowrap text-muted">
           {event.photoCount > 0 ? `${formatCount(event.photoCount)} photos` : 'Photos coming soon'}
         </span>
-        {brand.phone && (
-          <a href={waLink(brand.phone, contactText)} target="_blank" rel="noreferrer" onClick={() => onActivity('CONTACT')}
-            className={`-my-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[#b37a2c] hover:bg-stone-100 ${brand.instagram ? '-mr-2' : '-mr-1'}`}>
-            <WhatsAppIcon className="size-[18px]" />
-            <span className="sr-only">WhatsApp {brand.name}</span>
-          </a>
-        )}
         {brand.instagram && (
           <InstagramLink handle={brand.instagram} onClick={() => onActivity('INSTAGRAM')} className="-my-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[#b37a2c] hover:bg-stone-100">
             <InstagramIcon className="size-[18px]" />
@@ -161,6 +154,23 @@ export default function GalleryPage() {
           </InstagramLink>
         )}
       </div>
+
+      {brand.phone && (
+        <div className="mx-3 mt-3 flex items-center gap-3 rounded-2xl bg-white px-4 py-2.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] sm:mx-auto sm:max-w-xl" data-testid="contact-card">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm leading-snug font-semibold text-ink">Book {brand.name} for your event</p>
+            <p className="text-xs text-muted tabular-nums">{formatPhone(brand.phone)}</p>
+          </div>
+          <a href={waLink(brand.phone, contactText)} target="_blank" rel="noreferrer" onClick={() => onActivity('CONTACT')} aria-label={`WhatsApp ${brand.name}`}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#1f9d55] text-white">
+            <WhatsAppIcon className="size-5" />
+          </a>
+          <a href={telLink(brand.phone)} onClick={() => onActivity('CONTACT')} aria-label={`Call ${brand.name}`}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-line text-ink">
+            <PhoneIcon className="size-5" />
+          </a>
+        </div>
+      )}
 
       {incoming.length > 0 && (
         <div className="anim-drop-in sticky top-3 z-30 flex justify-center">
@@ -187,20 +197,6 @@ export default function GalleryPage() {
       </main>
 
       <footer className="px-4 pt-10 pb-12 text-center">
-        {brand.phone && <div className="mx-auto mb-4 max-w-md rounded-2xl bg-white p-4 text-left shadow-[0_6px_24px_rgba(0,0,0,0.08)]" data-testid="contact-card">
-          <p className="text-sm font-semibold text-ink">Planning an event? Book {brand.name}</p>
-          <p className="mt-0.5 text-xs text-muted">The photographers behind this gallery · {formatPhone(brand.phone)}</p>
-          <div className="mt-3 flex gap-2">
-            <a href={waLink(brand.phone, contactText)} target="_blank" rel="noreferrer" onClick={() => onActivity('CONTACT')}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#1f9d55] px-4 py-2 text-sm font-medium text-white">
-              <WhatsAppIcon /> WhatsApp
-            </a>
-            <a href={telLink(brand.phone)} onClick={() => onActivity('CONTACT')}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-medium text-ink">
-              <PhoneIcon /> Call
-            </a>
-          </div>
-        </div>}
         {brand.instagram && <div className="mx-auto mb-6 flex max-w-md items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-[0_6px_24px_rgba(0,0,0,0.08)]">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(45deg,#f09433,#dc2743_50%,#bc1888)] text-white">
             <InstagramIcon className="size-6" />
