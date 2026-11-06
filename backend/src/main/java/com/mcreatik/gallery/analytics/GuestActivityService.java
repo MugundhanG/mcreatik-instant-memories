@@ -73,10 +73,11 @@ public class GuestActivityService {
                        count(*) FILTER (WHERE type = 'DOWNLOAD'),
                        count(DISTINCT visitor_id) FILTER (WHERE type = 'DOWNLOAD'),
                        count(*) FILTER (WHERE type = 'SHARE'),
-                       count(*) FILTER (WHERE type = 'INSTAGRAM')
+                       count(*) FILTER (WHERE type = 'INSTAGRAM'),
+                       count(*) FILTER (WHERE type = 'CONTACT')
                 FROM guest_activity WHERE event_id = ?""",
                 (rs, n) -> new GuestActivity.Totals(rs.getLong(1), rs.getLong(2), rs.getLong(3), rs.getLong(4),
-                        rs.getLong(5), rs.getLong(6), rs.getLong(7), rs.getLong(8)),
+                        rs.getLong(5), rs.getLong(6), rs.getLong(7), rs.getLong(8), rs.getLong(9)),
                 eventId);
 
         List<GuestActivity.Hour> hours = jdbc.query("""

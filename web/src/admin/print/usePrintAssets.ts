@@ -58,6 +58,7 @@ export function usePrintAssets(brand: Brand | undefined, logoFromApi?: () => Pro
     logo: ready ? state.logo : null,
     logoScale: resolved.posterLogoScale,
     instagram: resolved.instagram,
+    phone: resolved.phone,
   }
   return {
     ready,

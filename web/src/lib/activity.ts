@@ -5,7 +5,7 @@ import { API_BASE_URL } from './api'
  * The only identifier is a random id this browser makes up (to count distinct people); nothing personal.
  * Items are batched and sent every few seconds so a full venue on one Wi-Fi stays light on the server.
  */
-export type ActivityType = 'VISIT' | 'PHOTO_VIEW' | 'DOWNLOAD' | 'SHARE' | 'INSTAGRAM'
+export type ActivityType = 'VISIT' | 'PHOTO_VIEW' | 'DOWNLOAD' | 'SHARE' | 'INSTAGRAM' | 'CONTACT'
 
 interface Item {
   type: ActivityType

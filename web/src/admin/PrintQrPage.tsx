@@ -7,6 +7,8 @@ import type { EventDetail } from '../lib/types'
 import { resolveBrand } from '../shared/brand'
 import { scanUrl } from '../shared/qr'
 import { PageLoader } from '../shared/ShutterLoader'
+import { PhoneIcon } from '../shared/ContactIcons'
+import { formatPhone } from '../shared/phone'
 import { InstagramIcon } from '../shared/StudioLogo'
 import { QrCode } from './QrPanel'
 
@@ -114,10 +116,19 @@ export default function PrintQrPage() {
               <p className="text-[11px] tracking-[0.25em] text-[#8a7a66] uppercase">No app · No sign-up needed</p>
               {brand.poweredByMcreatik && <p className="mt-1.5 text-[11px] tracking-[0.2em] text-[#a8998a] uppercase">Powered by McreatiK</p>}
             </div>
-            {brand.instagram && (
-              <p className="inline-flex items-center gap-2 text-[17px] font-medium tracking-wide text-[#7a4f17]">
-                <InstagramIcon className="size-6" />@{brand.instagram}
-              </p>
+            {(brand.phone || brand.instagram) && (
+              <div className="flex flex-col items-end gap-1.5" data-testid="poster-contact">
+                {brand.phone && (
+                  <p className="inline-flex items-center gap-2 text-[17px] font-medium tracking-wide text-[#7a4f17]">
+                    <PhoneIcon className="size-6" />{formatPhone(brand.phone)}
+                  </p>
+                )}
+                {brand.instagram && (
+                  <p className="inline-flex items-center gap-2 text-[17px] font-medium tracking-wide text-[#7a4f17]">
+                    <InstagramIcon className="size-6" />@{brand.instagram}
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>

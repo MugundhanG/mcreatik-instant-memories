@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { liveEvent, mockFetch, MockEventSource, photo } from '../test/mocks'
+import { flushActivity } from '../lib/activity'
 import GalleryPage from './GalleryPage'
 
 const SLUG = 'arun-priya-7k3d'
@@ -75,6 +76,30 @@ describe('Live gallery', () => {
     const removal = decodeURIComponent(screen.getByRole('link', { name: 'Request a photo removal' }).getAttribute('href')!)
     expect(removal).toMatch(/^mailto:connect@mcreatik\.com\?subject=Photo removal request: /)
     expect(removal).toContain('Gallery: ')
+  })
+
+  it("lets guests WhatsApp or call the studio, and counts the tap for the studio's stats", async () => {
+    const user = userEvent.setup()
+    const calls = mockFetch({
+      [base]: () => ({ ...liveEvent, brand: { name: 'Lens & Light', logoUrl: null, instagram: null, mcreatik: false, phone: '+919876543210' } }),
+      [`${base}/photos`]: () => ({ photos: [photo(1)], nextCursor: null }),
+    })
+    renderGallery()
+    await screen.findByRole('heading', { name: liveEvent.name })
+    const card = screen.getByTestId('contact-card')
+    expect(card).toHaveTextContent('Book Lens & Light')
+    // Right under the live bar, before the photos.
+    expect(card.compareDocumentPosition(document.querySelector('main')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(card).toHaveTextContent('+91 98765 43210')
+    const wa = within(card).getByRole('link', { name: /WhatsApp/ })
+    expect(wa.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/919876543210\?text=/)
+    expect(decodeURIComponent(wa.getAttribute('href')!)).toContain(`I saw your photos at ${liveEvent.name}`)
+    expect(within(card).getByRole('link', { name: /Call/ })).toHaveAttribute('href', 'tel:+919876543210')
+    wa.addEventListener('click', (e) => e.preventDefault())
+    await user.click(wa)
+    flushActivity()
+    const sent = (calls.mock.calls as unknown as [string, RequestInit][]).filter(([url]) => String(url).endsWith('/activity')).map(([, init]) => String(init.body))
+    expect(sent.join()).toContain('"type":"CONTACT"')
   })
 
   it('hides the Instagram invites when the studio has no Instagram', async () => {

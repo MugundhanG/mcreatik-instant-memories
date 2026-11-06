@@ -8,6 +8,8 @@ import { PhotoGrid } from './PhotoGrid'
 import { resolveBrand } from '../shared/brand'
 import { PageLoader, ShutterLoader } from '../shared/ShutterLoader'
 import { InstagramIcon, InstagramLink } from '../shared/StudioLogo'
+import { PhoneIcon, WhatsAppIcon } from '../shared/ContactIcons'
+import { formatPhone, telLink, waLink } from '../shared/phone'
 import { GalleryUnavailable } from '../shared/GalleryUnavailable'
 import { removalRequestLink } from '../shared/privacy'
 import { PhotoViewer } from './PhotoViewer'
@@ -112,6 +114,7 @@ export default function GalleryPage() {
   const { names, occasion } = splitEventName(event.name)
   const date = formatEventDate(event.eventDate)
   const brand = resolveBrand(event.brand)
+  const contactText = `Hi ${brand.name}, I saw your photos at ${event.name} and would like to know about booking you for an event.`
   // The photographer's chosen cover; until one is set, the newest photo.
   const cover = event.coverUrl ?? photos[0]?.webUrl ?? null
 
@@ -151,6 +154,23 @@ export default function GalleryPage() {
           </InstagramLink>
         )}
       </div>
+
+      {brand.phone && (
+        <div className="mx-3 mt-3 flex items-center gap-3 rounded-2xl bg-white px-4 py-2.5 shadow-[0_6px_20px_rgba(0,0,0,0.06)] sm:mx-auto sm:max-w-xl" data-testid="contact-card">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm leading-snug font-semibold text-ink">Book {brand.name} for your event</p>
+            <p className="text-xs text-muted tabular-nums">{formatPhone(brand.phone)}</p>
+          </div>
+          <a href={waLink(brand.phone, contactText)} target="_blank" rel="noreferrer" onClick={() => onActivity('CONTACT')} aria-label={`WhatsApp ${brand.name}`}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#1f9d55] text-white">
+            <WhatsAppIcon className="size-5" />
+          </a>
+          <a href={telLink(brand.phone)} onClick={() => onActivity('CONTACT')} aria-label={`Call ${brand.name}`}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-line text-ink">
+            <PhoneIcon className="size-5" />
+          </a>
+        </div>
+      )}
 
       {incoming.length > 0 && (
         <div className="anim-drop-in sticky top-3 z-30 flex justify-center">

@@ -96,13 +96,14 @@ export function AnalyticsPanel({ eventId, live }: { eventId: string; live: boole
           {' · '}Anonymous: no names or numbers are collected.
         </p>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           <Stat label="People" value={formatCount(t.people)} />
           <Stat label="QR scans" value={formatCount(t.qrScans)} />
           <Stat label="Gallery visits" value={formatCount(t.visits)} />
           <Stat label="Photo views" value={formatCount(t.photoViews)} />
           <Stat label="Downloads" value={formatCount(t.downloads)} />
           <Stat label="Instagram taps" value={formatCount(t.instagramClicks)} />
+          <Stat label="Contacted you" value={formatCount(t.contacts ?? 0)} />
         </div>
 
         {t.people > 0 && (

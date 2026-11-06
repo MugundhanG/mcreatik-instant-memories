@@ -61,7 +61,7 @@ erDiagram
 
 | Table | Purpose | Added or changed | Code |
 | --- | --- | --- | --- |
-| `admin_users` | Studio and McreatiK logins: role, branding, plan, credits, reset fields, `token_version` | V1, V5, V6, V9, V10, V12, V13, V17 (`board_theme`), V18 (`main_credits`, `quick_credits`, `plan_paid_until`, `plan_since`, `plan_reminded_for`), V19 (`client_credits`) | JPA `AdminUser`; SQL in `BillingService`, `PasswordResets` |
+| `admin_users` | Studio and McreatiK logins: role, branding, plan, credits, reset fields, `token_version` | V1, V5, V6, V9, V10, V12, V13, V17 (`board_theme`), V18 (`main_credits`, `quick_credits`, `plan_paid_until`, `plan_since`, `plan_reminded_for`), V19 (`client_credits`), V21 (`contact_phone`) | JPA `AdminUser`; SQL in `BillingService`, `PasswordResets` |
 | `events` | One wedding or event; `event_type` MAIN / QUICK / CLIENT; `active_until` (open 3 months by default, `billing_settings.active_months`, then deleted 30 days later via `retention_until`), `storage_quota_gb` (5 for live events, 0 for client galleries, plus GB bought), `storage_locked`, `expiry_warned_for` / `expiry_notified_for` | V1, V8, V13, V18, V19 | JPA `Event` |
 | `uploaders` | Camera connections (token hash, status, queue counts) | V1 | JPA `Uploader` |
 | `photos` | Every photo, and the processing queue | V1 to V4, V8 | JPA `Photo`, `AdminPhotoSearch`, worker SQL |

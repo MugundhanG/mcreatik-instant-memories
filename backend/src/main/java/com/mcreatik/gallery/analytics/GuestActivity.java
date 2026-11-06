@@ -17,11 +17,13 @@ public final class GuestActivity {
         DOWNLOAD,
         SHARE,
         /** Tapped a "Follow on Instagram" link. */
-        INSTAGRAM
+        INSTAGRAM,
+        /** Tapped the studio's WhatsApp or call button (a booking lead). */
+        CONTACT
     }
 
     public record Totals(long people, long qrScans, long visits, long photoViews, long downloads, long downloaders,
-                         long shares, long instagramClicks) {
+                         long shares, long instagramClicks, long contacts) {
     }
 
     /** One hour (Asia/Kolkata wall clock) with activity. */

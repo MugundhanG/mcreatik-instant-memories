@@ -32,9 +32,10 @@ Open your studio name at the top right (**Account**).
 
 1. **Logo:** press **Change logo**. A PNG with a transparent background looks best.
 2. **Logo size on the QR poster:** drag until the preview looks right.
-3. **Studio name** and **Instagram** (without the @), then **Save**.
+3. **Studio name** and **Instagram** (without the @).
+4. **Contact number (WhatsApp):** your booking number, for example 98765 43210 (+91 is added for you). Then **Save**.
 
-Guests see your name, logo and Instagram on the gallery and on the printed QR poster.
+Guests see your name, logo and Instagram on the gallery and on the printed QR poster. With a contact number, the gallery also shows a **"Book … for your event"** bar right under the live bar, with **WhatsApp** and **Call** buttons, and the number is printed on your studio board and A4 poster. Every guest at the event is a possible client: **Guests → Contacted you** counts how many tapped it. Leave the number empty to hide it.
 
 ![Account page: logo, poster logo size, studio name, Instagram and password](images/s-account-full.webp)
 

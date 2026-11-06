@@ -31,7 +31,7 @@ class GuestAnalyticsTest extends IntegrationTest {
         report(slug, "visitor-aaaa-1111", "{\"type\":\"VISIT\",\"source\":\"qr\"},"
                 + "{\"type\":\"PHOTO_VIEW\",\"photoId\":\"" + photo + "\"},"
                 + "{\"type\":\"DOWNLOAD\",\"photoId\":\"" + photo + "\"},"
-                + "{\"type\":\"INSTAGRAM\"},{\"type\":\"NONSENSE\"}");
+                + "{\"type\":\"INSTAGRAM\"},{\"type\":\"CONTACT\"},{\"type\":\"NONSENSE\"}");
         report(slug, "visitor-bbbb-2222", "{\"type\":\"VISIT\",\"source\":\"link\"},"
                 + "{\"type\":\"PHOTO_VIEW\",\"photoId\":\"" + photo + "\"}");
 
@@ -44,6 +44,7 @@ class GuestAnalyticsTest extends IntegrationTest {
                 .andExpect(jsonPath("$.totals.downloads").value(1))
                 .andExpect(jsonPath("$.totals.downloaders").value(1))
                 .andExpect(jsonPath("$.totals.instagramClicks").value(1))
+                .andExpect(jsonPath("$.totals.contacts").value(1))
                 .andExpect(jsonPath("$.hours.length()").value(1))
                 .andExpect(jsonPath("$.hours[0].people").value(2))
                 .andExpect(jsonPath("$.topPhotos[0].photoId").value(photo))
