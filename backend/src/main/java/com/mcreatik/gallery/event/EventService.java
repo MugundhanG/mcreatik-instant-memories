@@ -179,10 +179,10 @@ public class EventService {
             event.setCoverPhotoId(cover.getId());
         }
         if (Boolean.TRUE.equals(r.clearRetention()) || r.retentionUntil() != null) {
-            // Paying studios extend with "Keep 6 more months"; McreatiK and unlimited studios set the date by hand.
+            // Paying studios extend with "Keep N more months"; McreatiK and unlimited studios set the date by hand.
             if (!billing.freeAccount(ownerId)) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "EXTEND_INSTEAD",
-                        "Use Keep 6 more months to keep this gallery open longer");
+                        "Use Keep more months on the event page to keep this gallery open longer");
             }
             if (Boolean.TRUE.equals(r.clearRetention())) {
                 event.setActiveUntil(null);

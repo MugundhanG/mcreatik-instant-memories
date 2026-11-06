@@ -76,7 +76,7 @@ async function requestBlob(path: string): Promise<Blob> {
 function fallbackPrices(b: BillingSummary): Prices {
   return {
     main: b.unitPrice, quick: b.unitPrice, main2: b.monthlyPrice, main4: b.monthlyPrice, quick2: b.monthlyPrice,
-    quick4: b.monthlyPrice, upgrade: 0, upgradeGuests: 300, storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 6,
+    quick4: b.monthlyPrice, upgrade: 0, upgradeGuests: 300, storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3,
   }
 }
 

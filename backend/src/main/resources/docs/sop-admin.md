@@ -84,7 +84,7 @@ Under **All logins**, each studio shows its events, photos and storage.
 - **Plan:** Per event, one of the four monthly packs (Main or Quick, 2 or 4 events a month) or Unlimited. Studios still on the older Monthly package keep it until you change them.
 - **Packs:** the line shows this month's usage and the **paid until** date. Moving a studio onto a pack counts as its first month paid. If they renewed outside the app, set the date by hand. A pack whose date has passed (plus 3 days) shows **ended**, and new events are charged one by one.
 - **Available:** each studio shows the events it can still use (bought Main and Quick events plus what is left in this month's pack) and its client galleries. Press **+** or **−** beside **Main**, **Quick** or **Client** to give or take back one at a time (for example a free first event, or a refund). A count never goes below 0.
-- **Storage and open dates:** studios buy storage and **Keep 6 more months** per event themselves. Your own and Unlimited studios have no storage limits and can set an event's open-until date by hand in Settings → Privacy & data.
+- **Storage and open dates:** studios buy storage and **Keep 3 more months** per event themselves. Your own and Unlimited studios have no storage limits and can set an event's open-until date by hand in Settings → Privacy & data.
 - **Edit branding:** fix the studio's name, Instagram or logo size if they need help.
 - **Reset password:** creates a new temporary password to send them.
 - **Disable:** blocks the studio's login. Their galleries keep working for guests and couples. Studios are never deleted.

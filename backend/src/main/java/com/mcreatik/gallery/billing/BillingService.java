@@ -77,7 +77,7 @@ public class BillingService {
 
     /**
      * What a payment buys. STORAGE: GB for one event, priced per GB per month for the months the gallery has left;
-     * CLIENT_SETUP: client galleries (one used per gallery created); EXTEND: 6 more months for one event, per GB it
+     * CLIENT_SETUP: client galleries (one used per gallery created); EXTEND: another open period (active_months) for one event, per GB it
      * holds per month.
      */
     public enum Item { MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN, STORAGE, CLIENT_SETUP, EXTEND }

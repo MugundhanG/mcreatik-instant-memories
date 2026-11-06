@@ -323,7 +323,7 @@ export type Plan = 'PER_EVENT' | 'MAIN_2' | 'MAIN_4' | 'QUICK_2' | 'QUICK_4' | '
 export type EventType = 'MAIN' | 'QUICK' | 'CLIENT'
 
 /** What a payment buys. */
-/** STORAGE: GB for one event; CLIENT_SETUP: client galleries; EXTEND: 6 more months for one event (per GB). */
+/** STORAGE: GB for one event; CLIENT_SETUP: client galleries; EXTEND: another open period for one event (per GB per month). */
 export type PurchaseItem = 'MAIN_EVENT' | 'QUICK_EVENT' | 'UPGRADE' | 'PLAN' | 'STORAGE' | 'CLIENT_SETUP' | 'EXTEND'
 
 /** A purchase as the dashboard asks for it; the server sets the price. quantity: events or months. */

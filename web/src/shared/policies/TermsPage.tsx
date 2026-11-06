@@ -1,7 +1,7 @@
 import { BUSINESS } from './business'
 import { PolicyLayout, Section } from './PolicyLayout'
 
-const UPDATED = '5 November 2026'
+const UPDATED = '6 November 2026'
 
 /** Terms of service for studios. Draft for the owner to review (ideally with a professional). */
 export default function TermsPage() {
@@ -28,7 +28,7 @@ export default function TermsPage() {
           <li>Your photos stay yours. You give us permission only to store, process and show them as needed to run the service for you.</li>
           <li>You confirm you have the right to upload and share each photo, and the consent your clients and guests need.</li>
           <li>Do not upload unlawful content. We act on removal requests as described in our <a className="underline underline-offset-4" href="/privacy">privacy notice</a>.</li>
-          <li>Each gallery is open for 6 months (from the event date, or from creation for a client gallery) and can be kept open longer by paying for more months. A gallery that closes is deleted permanently 30 days later; we email you before it closes. Deleting an event yourself permanently removes its photos at once.</li>
+          <li>Each gallery is open for 3 months, about 90 days (from the event date, or from creation for a client gallery) and can be kept open longer by paying for more months. A gallery that closes is deleted permanently 30 days later; we email you before it closes. Deleting an event yourself permanently removes its photos at once.</li>
           <li>Keep your own copy of your photos. The gallery is for sharing, not your only backup.</li>
         </ul>
       </Section>

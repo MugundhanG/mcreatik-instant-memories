@@ -24,7 +24,7 @@ import com.mcreatik.gallery.mail.Mailer;
  * {@value #STORAGE_GRACE_DAYS} days after its date has its couple's gallery paused (the guests' gallery is not
  * touched) and the studio is emailed; buying storage turns it back on.</li>
  * <li><b>Active period:</b> one email {@value #WARN_DAYS} days before a gallery closes and one when it has closed
- * (it is deleted {@value EventService#DELETE_AFTER_DAYS} days later unless kept for 6 more months).</li>
+ * (it is deleted {@value EventService#DELETE_AFTER_DAYS} days later unless kept open longer).</li>
  * </ul>
  */
 @Component
@@ -57,6 +57,12 @@ public class GalleryLifecycleJob {
         lockUnpaidStorage(today);
         warnBeforeExpiry(today);
         noticeExpired(today);
+    }
+
+    /** How many months "Keep more months" adds (McreatiK's setting). */
+    private int months() {
+        Integer m = jdbc.queryForObject("SELECT active_months FROM billing_settings LIMIT 1", Integer.class);
+        return m == null ? 3 : m;
     }
 
     private String dashboard() {
@@ -104,14 +110,14 @@ public class GalleryLifecycleJob {
                     Hello %s,
 
                     The galleries of "%s" (guests and couple) are open until %s.
-                    To keep them open for 6 more months, open the event and press Keep 6 more months:
+                    To keep them open for %d more months, open the event and press Keep %d more months:
                     %s%s
 
                     If you don't, the galleries close on that day and the photos are deleted for good on %s.
                     Remind your couple to download their photos before then.
 
                     McreatiK Instant Memories
-                    """.formatted(r.studio(), r.eventName(), DAY.format(r.date()), dashboard(), r.eventId(),
+                    """.formatted(r.studio(), r.eventName(), DAY.format(r.date()), months(), months(), dashboard(), r.eventId(),
                     DAY.format(r.date().plusDays(EventService.DELETE_AFTER_DAYS))));
         }
     }
@@ -130,12 +136,12 @@ public class GalleryLifecycleJob {
                     Hello %s,
 
                     The galleries of "%s" closed on %s. Guests and the couple now see "This gallery has expired".
-                    The photos are deleted for good on %s. You can still keep it for 6 more months until then:
+                    The photos are deleted for good on %s. You can still keep it for %d more months until then:
                     %s%s
 
                     McreatiK Instant Memories
                     """.formatted(r.studio(), r.eventName(), DAY.format(r.date()),
-                    DAY.format(r.date().plusDays(EventService.DELETE_AFTER_DAYS)), dashboard(), r.eventId()));
+                    DAY.format(r.date().plusDays(EventService.DELETE_AFTER_DAYS)), months(), dashboard(), r.eventId()));
         }
     }
 }

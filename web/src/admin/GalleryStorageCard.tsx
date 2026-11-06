@@ -17,7 +17,7 @@ function day(iso: string, plusDays = 0) {
 
 /**
  * Storage and the active period of one event: how much it uses of what it has, how long it stays open, and the
- * buttons to add storage or keep it 6 more months. McreatiK's own and unlimited studios have no limits here.
+ * buttons to add storage or keep it open more months. McreatiK's own and unlimited studios have no limits here.
  */
 export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
   event: EventDetail

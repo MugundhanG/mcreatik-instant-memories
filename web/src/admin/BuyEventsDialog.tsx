@@ -23,7 +23,7 @@ const TITLE: Record<Purchase['item'], string> = {
   PLAN: 'Monthly pack',
   STORAGE: 'Add storage',
   CLIENT_SETUP: 'Client galleries',
-  EXTEND: 'Keep 6 more months',
+  EXTEND: 'Keep more months',
 }
 
 const GB_PACKS = [5, 10, 25, 50, 100]
@@ -52,6 +52,7 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
   const [error, setError] = useState<string | null>(null)
   const [paidOnline, setPaidOnline] = useState(false)
   const unit = unitPrice(purchase.item, billing, purchase.plan, purchase.months)
+  const title = purchase.item === 'EXTEND' ? `Keep ${billing.prices.activeMonths} more months` : TITLE[purchase.item]
   const amount = quantity * unit
   const label = describe(purchase, billing)
   const link = billing.upiId ? upiLink(billing.upiId, billing.payeeName, amount, label) : null
@@ -122,11 +123,11 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
       : `A Main event is ${rupees(billing.unitPrice)}; a Quick event (up to about ${billing.prices.upgradeGuests} guests) is ${rupees(billing.prices.quick)}.`
 
   return (
-    <div className="anim-fade-in fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={TITLE[purchase.item]}>
+    <div className="anim-fade-in fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title}>
       <div className="anim-sheet-up max-h-[95dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-lg font-semibold">{TITLE[purchase.item]}</p>
+            <p className="text-lg font-semibold">{title}</p>
             <p className="mt-1 text-sm text-muted">{reason ?? defaultReason}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="-mt-1 -mr-1 flex size-9 items-center justify-center rounded-full text-xl text-muted hover:bg-stone-100">×</button>

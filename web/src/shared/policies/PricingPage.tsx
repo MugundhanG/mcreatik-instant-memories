@@ -4,7 +4,7 @@ import type { Prices, PublicPricing } from '../../lib/types'
 import { BUSINESS } from './business'
 import { PolicyLayout, Section } from './PolicyLayout'
 
-const UPDATED = '5 November 2026'
+const UPDATED = '6 November 2026'
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
 function PriceCard({ name, price, unit, body }: { name: string; price: number; unit: string; body: string }) {

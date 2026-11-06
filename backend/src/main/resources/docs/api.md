@@ -19,7 +19,7 @@ All endpoints live under `https://im-api.mcreatik.com`. Requests and responses a
 | 400 | `VALIDATION_FAILED`, `BAD_REQUEST`, `INVALID_SLUG` | Input is wrong |
 | 401 | none | Not logged in, expired, or password changed since login |
 | 402 | `EVENT_PAYMENT_REQUIRED`, `CLIENT_PAYMENT_REQUIRED` | Plan used up, or no client gallery paid for; payment needed |
-| 403 | `FORBIDDEN`, `GALLERY_UNAVAILABLE`, `GALLERY_EXPIRED`, `ACCOUNT_DISABLED`, `EXTEND_INSTEAD` | Not allowed (`EXTEND_INSTEAD`: studios can't set the delete date; they keep it 6 more months) |
+| 403 | `FORBIDDEN`, `GALLERY_UNAVAILABLE`, `GALLERY_EXPIRED`, `ACCOUNT_DISABLED`, `EXTEND_INSTEAD` | Not allowed (`EXTEND_INSTEAD`: studios can't set the delete date; they keep it open more months) |
 | 404 | `NOT_FOUND` | Missing, or not yours (deliberately the same) |
 | 409 | `EVENT_CLOSED`, `CLIENT_EXISTS`, `EMAIL_TAKEN`, `UPLOAD_NOT_FOUND`, `STORAGE_FULL` | Conflicts with current state |
 | 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header) |
@@ -96,7 +96,7 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 | Method | Path | Who | Notes |
 | --- | --- | --- | --- |
 | GET | `/api/admin/billing` | Admin | Plan, this month's pack usage, `carryOver`, `mainCredits` / `quickCredits` (`credits` = both), `packActive`, `planPaidUntil`, `prices`, UPI details |
-| POST | `/api/admin/billing/payments` | Admin | `{item, quantity, eventId?, plan?, utr}` → PENDING payment, applied at once. `item`: `MAIN_EVENT` / `QUICK_EVENT` (quantity = events), `UPGRADE` (`eventId` of a Quick event; 409 `NOT_QUICK`), `PLAN` (`plan` = a pack, quantity = months; a different pack starts today), `CLIENT_SETUP` (quantity = client galleries, 1–50), `STORAGE` (`eventId`, quantity = GB, 1–1000), `EXTEND` (`eventId`; quantity is set by the server to the event's GB, rounded up; adds 6 months). The older `{events, utr}` still means Main events |
+| POST | `/api/admin/billing/payments` | Admin | `{item, quantity, eventId?, plan?, utr}` → PENDING payment, applied at once. `item`: `MAIN_EVENT` / `QUICK_EVENT` (quantity = events), `UPGRADE` (`eventId` of a Quick event; 409 `NOT_QUICK`), `PLAN` (`plan` = a pack, quantity = months; a different pack starts today), `CLIENT_SETUP` (quantity = client galleries, 1–50), `STORAGE` (`eventId`, quantity = GB, 1–1000), `EXTEND` (`eventId`; quantity is set by the server to the event's GB, rounded up; adds `active_months`, 3 by default). The older `{events, utr}` still means Main events |
 | GET | `/api/admin/billing/payments?status=` | Super | Payments to check |
 | POST | `/api/admin/billing/payments/{id}/approve` · `/reject` | Super | Reject reverses what the payment applied (credits, upgrade or pack month) |
 | GET / PATCH | `/api/admin/billing/studios[/{studioId}]` | Super | `{plan?, monthlyQuota?, addCredits?, addQuickCredits?, addClientCredits?, planPaidUntil?}`; moving onto a pack sets paid-until to a month from today unless given |

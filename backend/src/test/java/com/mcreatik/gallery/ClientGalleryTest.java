@@ -45,7 +45,7 @@ class ClientGalleryTest extends IntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"upiId":"mcreatik@okicici","payeeName":"McreatiK","perEventPrice":2499,"extraEventPrice":999,
-                                 "monthlyPrice":5000,"storageGbPrice":15,"freeStorageGb":5,"clientSetupPrice":250,"activeMonths":6}"""))
+                                 "monthlyPrice":5000,"storageGbPrice":15,"freeStorageGb":5,"clientSetupPrice":250,"activeMonths":3}"""))
                 .andExpect(status().isOk());
         String email = "client-" + UUID.randomUUID().toString().substring(0, 8) + "@studio.test";
         studioId = JsonPath.read(mvc.perform(post("/api/admin/studios").header("Authorization", bearer(adminToken()))
@@ -101,8 +101,8 @@ class ClientGalleryTest extends IntegrationTest {
                 .andExpect(jsonPath("$.liveGalleryEnabled").value(false))
                 .andExpect(jsonPath("$.storageQuotaGb").value(0)).andReturn().getResponse().getContentAsString();
         LocalDate today = LocalDate.now(INDIA);
-        assertThat(LocalDate.parse(JsonPath.read(json, "$.activeUntil"))).isEqualTo(today.plusMonths(6));
-        assertThat(LocalDate.parse(JsonPath.read(json, "$.retentionUntil"))).isEqualTo(today.plusMonths(6).plusDays(30));
+        assertThat(LocalDate.parse(JsonPath.read(json, "$.activeUntil"))).isEqualTo(today.plusMonths(3));
+        assertThat(LocalDate.parse(JsonPath.read(json, "$.retentionUntil"))).isEqualTo(today.plusMonths(3).plusDays(30));
         // One setup fee is one gallery.
         event("CLIENT", "2026-11-01").andExpect(status().isPaymentRequired());
         // No guest QR gallery.
@@ -127,7 +127,7 @@ class ClientGalleryTest extends IntegrationTest {
         originalSession(id, 2_000_000).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STORAGE_FULL"));
 
         buy("{\"item\":\"STORAGE\",\"eventId\":\"" + id + "\",\"quantity\":10,\"utr\":\"" + utr() + "\"}")
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(900)); // 10 GB × ₹15 × 6 months
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(450)); // 10 GB × ₹15 × 3 months
         assertThat((Integer) JsonPath.read(detail(id), "$.storageQuotaGb")).isEqualTo(10);
         originalSession(id, 2_000_000).andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("UPLOAD"));
         // Storage can't be bought for someone else's event.
@@ -182,19 +182,19 @@ class ClientGalleryTest extends IntegrationTest {
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("contact Lens")));
         assertThat((Boolean) JsonPath.read(detail(id), "$.expired")).isTrue();
 
-        // Paying studios can't just move the date; they keep it open for 6 more months, at ₹15 per GB per month (at least 1 GB): ₹90.
+        // Paying studios can't just move the date; they keep it open for 3 more months, at ₹15 per GB per month (at least 1 GB): ₹45.
         mvc.perform(patch("/api/admin/events/" + id).header("Authorization", bearer(studio))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"retentionUntil\":\"2030-01-01\"}"))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("EXTEND_INSTEAD"));
         String pay = JsonPath.read(buy("{\"item\":\"EXTEND\",\"eventId\":\"" + id + "\",\"utr\":\"" + utr() + "\"}")
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.amount").value(90)).andReturn().getResponse().getContentAsString(), "$.id");
+                .andExpect(jsonPath("$.amount").value(45)).andReturn().getResponse().getContentAsString(), "$.id");
         String extended = detail(id);
-        assertThat(LocalDate.parse(JsonPath.read(extended, "$.activeUntil"))).isEqualTo(today.plusMonths(6));
-        assertThat(LocalDate.parse(JsonPath.read(extended, "$.retentionUntil"))).isEqualTo(today.plusMonths(6).plusDays(30));
+        assertThat(LocalDate.parse(JsonPath.read(extended, "$.activeUntil"))).isEqualTo(today.plusMonths(3));
+        assertThat(LocalDate.parse(JsonPath.read(extended, "$.retentionUntil"))).isEqualTo(today.plusMonths(3).plusDays(30));
         mvc.perform(get("/api/public/events/" + slug(json))).andExpect(status().isOk());
 
-        // McreatiK rejects the payment: the 6 months are taken back.
+        // McreatiK rejects the payment: the 3 months are taken back.
         mvc.perform(post("/api/admin/billing/payments/" + pay + "/reject").header("Authorization", bearer(adminToken()))
                 .contentType(MediaType.APPLICATION_JSON).content("{}"));
         assertThat(LocalDate.parse(JsonPath.read(detail(id), "$.activeUntil"))).isEqualTo(today);
@@ -225,7 +225,7 @@ class ClientGalleryTest extends IntegrationTest {
                 .andExpect(jsonPath("$.packages.storageGb").value(15))
                 .andExpect(jsonPath("$.packages.freeStorageGb").value(5))
                 .andExpect(jsonPath("$.packages.clientSetup").value(250))
-                .andExpect(jsonPath("$.packages.activeMonths").value(6));
+                .andExpect(jsonPath("$.packages.activeMonths").value(3));
         mvc.perform(patch("/api/admin/billing/studios/" + studioId).header("Authorization", bearer(adminToken()))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"addClientCredits\":2}"))
                 .andExpect(jsonPath("$.clientCredits").value(2));

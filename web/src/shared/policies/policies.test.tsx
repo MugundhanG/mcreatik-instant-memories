@@ -12,7 +12,7 @@ describe('Policy pages', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
       perEventPrice: 2499, monthlyPrice: 5000, monthlyEvents: 4, extraEventPrice: 999, currency: 'INR',
       packages: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300,
-        storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 6 },
+        storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3 },
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
     render(<PricingPage />)
     expect((await screen.findAllByText('₹2,499')).length).toBeGreaterThan(0)
@@ -24,10 +24,10 @@ describe('Policy pages', () => {
     expect(main4).toHaveTextContent('₹1,250')
     expect(screen.getByText(/carry over to the next month/)).toBeInTheDocument()
     expect(screen.getByText('Client gallery').parentElement).toHaveTextContent('₹250')
-    expect(screen.getByText(/a full wedding of about 2,000 photos \(25 GB\) kept for 6 months is ₹2,500/)).toBeInTheDocument()
+    expect(screen.getByText(/a full wedding of about 2,000 photos \(25 GB\) kept for 3 months is ₹1,375/)).toBeInTheDocument()
     expect(screen.getAllByText(/per GB per month/).length).toBeGreaterThan(0)
     expect(screen.getByText(/Every live event includes 5 GB/)).toBeInTheDocument()
-    expect(screen.getByText(/Galleries stay open for 6 months/)).toBeInTheDocument()
+    expect(screen.getByText(/Galleries stay open for 3 months/)).toBeInTheDocument()
   })
 
   it('still shows the older single plan if the server sends no packages', async () => {

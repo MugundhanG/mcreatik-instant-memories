@@ -70,6 +70,6 @@ export function describe(p: Purchase, billing: BillingSummary): string {
     case 'PLAN': return `${n} month${n === 1 ? '' : 's'} of ${PLAN_LABEL[p.plan ?? billing.plan]}`
     case 'STORAGE': { const m = p.months ?? billing.prices.activeMonths; return `${n} GB of storage for ${m} month${m === 1 ? '' : 's'}` }
     case 'CLIENT_SETUP': return `${n} client galler${n === 1 ? 'y' : 'ies'}`
-    case 'EXTEND': return `6 more months (${n} GB)`
+    case 'EXTEND': return `${billing.prices.activeMonths} more months (${n} GB)`
   }
 }
