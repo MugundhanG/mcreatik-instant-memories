@@ -91,7 +91,7 @@ Under **All logins**, each studio shows its events, photos and storage.
 
 ### 4.3 Payment settings and prices
 
-Under **Payments & prices**, set your **UPI ID**, the **name shown in the UPI app**, and every price: Main and Quick single events, the four monthly packs, the upgrade price, after how many guests a Quick event is offered the upgrade, the storage price per GB per month, the GB included with live events, the client gallery setup price and how many months a gallery stays open. The older Monthly package prices only matter for studios still on it. Studios see the prices in Buy events, the new-event form and the public pricing page. Press **Save**.
+Under **Payments & prices**, set your **UPI ID**, the **name shown in the UPI app**, and every price: Main and Quick single events, the four monthly packs and each pack's extra-event price (a Main pack's covers Quick events too), the upgrade price, after how many guests a Quick event is offered the upgrade, the storage price per GB per month, the GB included with live events, the client gallery setup price and how many months a gallery stays open. The older Monthly package prices only matter for studios still on it. Studios see the prices in Buy events, the new-event form and the public pricing page. Press **Save**.
 
 ## 5. Create an event for a studio
 

@@ -63,8 +63,11 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 | --- | --- | --- | --- |
 | **Main** | ₹2,499 | ₹3,499 | ₹4,999 |
 | **Quick** | ₹1,499 | ₹2,499 | ₹3,999 |
+| **Extra event on a Main pack** (Main or Quick) | | ₹1,499 | ₹999 |
+| **Extra Quick event on a Quick pack** | | ₹999 | ₹799 |
 
 - **Monthly packs:** a Main pack also covers Quick events; a Quick pack covers Quick events only.
+- **Extra events:** once this month's pack events (and any carried over) are used, each extra event costs the pack's extra price above, as long as the pack is paid up. **Buy events** and the new-event form show it. A Main event on a Quick pack is the normal ₹2,499. If the pack lapses, events go back to the normal prices.
 - **Carry-over:** unused events carry over to the next month (one month only).
 - **Renewing:** packs are renewed month by month from **Events → Renew pack** (you get an email and a banner a few days before). If you don't renew, nothing stops: new events are charged one by one.
 - **Upgrades:** a Quick event that grows past about 300 guests can be upgraded to Main for ₹1,000.

@@ -31,7 +31,7 @@ export function packPrice(plan: Plan, prices: Prices): number {
 export function unitPrice(item: PurchaseItem, billing: BillingSummary, plan?: Plan, months?: number): number {
   switch (item) {
     case 'MAIN_EVENT': return billing.unitPrice
-    case 'QUICK_EVENT': return billing.prices.quick
+    case 'QUICK_EVENT': return billing.quickUnitPrice
     case 'UPGRADE': return billing.prices.upgrade
     case 'PLAN': return packPrice(plan ?? billing.plan, billing.prices)
     case 'STORAGE': return billing.prices.storageGb * (months ?? billing.prices.activeMonths)

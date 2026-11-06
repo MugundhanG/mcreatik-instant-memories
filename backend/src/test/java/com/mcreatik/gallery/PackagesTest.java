@@ -129,13 +129,73 @@ class PackagesTest extends IntegrationTest {
     }
 
     @Test
+    void extraEventsOnAPaidUpPackCostThePacksExtraPrice() throws Exception {
+        // Main 4: ₹999 for an extra Main or Quick event.
+        setPlan("MAIN_4");
+        for (int i = 0; i < 4; i++) {
+            event("MAIN").andExpect(status().isCreated());
+        }
+        event("QUICK").andExpect(status().isPaymentRequired())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Main 4-event pack are ₹999 each")));
+        String s = summary();
+        assertThat((Integer) JsonPath.read(s, "$.unitPrice")).isEqualTo(999);
+        assertThat((Integer) JsonPath.read(s, "$.quickUnitPrice")).isEqualTo(999);
+        buy("{\"item\":\"MAIN_EVENT\",\"quantity\":2,\"utr\":\"" + utr() + "\"}").andExpect(jsonPath("$.amount").value(1998));
+        event("QUICK").andExpect(status().isCreated());
+
+        // Main 2: ₹1,499.
+        setPlan("MAIN_2");
+        assertThat((Integer) JsonPath.read(summary(), "$.unitPrice")).isEqualTo(1499);
+        assertThat((Integer) JsonPath.read(summary(), "$.quickUnitPrice")).isEqualTo(1499);
+
+        // Quick packs: Quick extras only; a Main event stays at the full price.
+        setPlan("QUICK_4");
+        s = summary();
+        assertThat((Integer) JsonPath.read(s, "$.quickUnitPrice")).isEqualTo(799);
+        assertThat((Integer) JsonPath.read(s, "$.unitPrice")).isEqualTo(2499);
+        buy("{\"item\":\"QUICK_EVENT\",\"quantity\":1,\"utr\":\"" + utr() + "\"}").andExpect(jsonPath("$.amount").value(799));
+        buy("{\"item\":\"MAIN_EVENT\",\"quantity\":1,\"utr\":\"" + utr() + "\"}").andExpect(jsonPath("$.amount").value(2499));
+        setPlan("QUICK_2");
+        assertThat((Integer) JsonPath.read(summary(), "$.quickUnitPrice")).isEqualTo(999);
+
+        // A lapsed pack is back to the full prices.
+        jdbc.update("UPDATE admin_users SET plan_paid_until = ? WHERE id = ?::uuid", Date.valueOf(LocalDate.now(INDIA).minusDays(4)), studioId);
+        s = summary();
+        assertThat((Integer) JsonPath.read(s, "$.quickUnitPrice")).isEqualTo(1499);
+        assertThat((Integer) JsonPath.read(s, "$.unitPrice")).isEqualTo(2499);
+        buy("{\"item\":\"QUICK_EVENT\",\"quantity\":1,\"utr\":\"" + utr() + "\"}").andExpect(jsonPath("$.amount").value(1499));
+    }
+
+    @Test
+    void packExtraPricesAreSavedPublicAndMustBePositive() throws Exception {
+        String body = """
+                {"upiId":"mcreatik@okicici","payeeName":"McreatiK","perEventPrice":2499,"extraEventPrice":999,"monthlyPrice":5000,
+                 "main2ExtraPrice":%d,"main4ExtraPrice":999,"quick2ExtraPrice":999,"quick4ExtraPrice":799}""";
+        mvc.perform(put("/api/admin/billing/settings").header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body.formatted(1399)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.main2ExtraPrice").value(1399));
+        mvc.perform(get("/api/public/pricing"))
+                .andExpect(jsonPath("$.packages.main2Extra").value(1399))
+                .andExpect(jsonPath("$.packages.main4Extra").value(999))
+                .andExpect(jsonPath("$.packages.quick2Extra").value(999))
+                .andExpect(jsonPath("$.packages.quick4Extra").value(799));
+        mvc.perform(put("/api/admin/billing/settings").header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body.formatted(0)))
+                .andExpect(status().isBadRequest());
+        mvc.perform(put("/api/admin/billing/settings").header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON).content(body.formatted(1499)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void aNewPackStartsWithItsWholeAllowanceEvenAfterEventsOnTheOldPlanThisMonth() throws Exception {
         setPlan("MAIN_2");
         event("MAIN").andExpect(status().isCreated());
         event("MAIN").andExpect(status().isCreated());
         // Earlier today: those two were on the old pack (moved back a day so they fall before the new plan started).
         jdbc.update("UPDATE event_charges SET created_at = created_at - interval '1 day' WHERE owner_id = ?::uuid", studioId);
-        jdbc.update("UPDATE admin_users SET plan_since = CURRENT_DATE WHERE id = ?::uuid", studioId);
+        // The app's "today" is India's date (the database's CURRENT_DATE is UTC and lags it after 6:30 pm UTC).
+        jdbc.update("UPDATE admin_users SET plan_since = ? WHERE id = ?::uuid", Date.valueOf(LocalDate.now(INDIA)), studioId);
         boolean sameMonth = jdbc.queryForObject("SELECT date_trunc('month', now() - interval '1 day') = date_trunc('month', now())", Boolean.class);
         String s = summary();
         if (sameMonth) {

@@ -120,7 +120,9 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
     ? `Bigger than planned? Upgrade this Quick event to Main for ${rupees(billing.prices.upgrade)}. The gallery keeps working either way.`
     : purchase.item === 'PLAN'
       ? 'A monthly pack gives you events every month at a lower price per event. Unused events carry over one month.'
-      : `A Main event is ${rupees(billing.unitPrice)}; a Quick event (up to about ${billing.prices.upgradeGuests} guests) is ${rupees(billing.prices.quick)}.`
+      : billing.unitPrice < billing.prices.main || billing.quickUnitPrice < billing.prices.quick
+        ? `Extra events at your pack's price: Main ${rupees(billing.unitPrice)}, Quick ${rupees(billing.quickUnitPrice)} (normally ${rupees(billing.prices.main)} and ${rupees(billing.prices.quick)}).`
+        : `A Main event is ${rupees(billing.unitPrice)}; a Quick event (up to about ${billing.prices.upgradeGuests} guests) is ${rupees(billing.quickUnitPrice)}.`
 
   return (
     <div className="anim-fade-in fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title}>
@@ -144,7 +146,7 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
           <div className="mt-4 space-y-4">
             {isEvents && (
               <div role="radiogroup" aria-label="Event type" className="grid grid-cols-2 gap-1 rounded-xl bg-stone-100 p-1 text-sm">
-                {([['MAIN_EVENT', 'Main', billing.unitPrice], ['QUICK_EVENT', 'Quick', billing.prices.quick]] as const).map(([item, name, price]) => (
+                {([['MAIN_EVENT', 'Main', billing.unitPrice], ['QUICK_EVENT', 'Quick', billing.quickUnitPrice]] as const).map(([item, name, price]) => (
                   <button key={item} type="button" role="radio" aria-checked={purchase.item === item} onClick={() => change({ item })}
                     className={`h-10 rounded-lg font-medium transition-colors ${purchase.item === item ? 'bg-white text-ink shadow-sm' : 'text-muted hover:text-ink'}`}>
                     {name} <span className="font-normal text-muted">· {rupees(price)}</span>

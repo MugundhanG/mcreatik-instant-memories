@@ -77,6 +77,7 @@ function fallbackPrices(b: BillingSummary): Prices {
   return {
     main: b.unitPrice, quick: b.unitPrice, main2: b.monthlyPrice, main4: b.monthlyPrice, quick2: b.monthlyPrice,
     quick4: b.monthlyPrice, upgrade: 0, upgradeGuests: 300, storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3,
+    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799,
   }
 }
 
@@ -90,6 +91,7 @@ export function withBillingDefaults(b: BillingSummary): BillingSummary {
     planPaidUntil: b.planPaidUntil ?? null,
     clientCredits: b.clientCredits ?? 0,
     prices: { ...fallbackPrices(b), ...(b.prices as Partial<Prices> | undefined) },
+    quickUnitPrice: b.quickUnitPrice ?? b.prices?.quick ?? b.unitPrice,
   }
 }
 

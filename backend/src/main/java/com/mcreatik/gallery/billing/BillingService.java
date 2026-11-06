@@ -94,12 +94,26 @@ public class BillingService {
 
     /**
      * Prices and the UPI details. {@code perEventPrice} is the single Main event price; {@code extraEventPrice} and
-     * {@code monthlyPrice} belong to the older MONTHLY plan. When saving, a missing (null) newer price keeps its value.
+     * {@code monthlyPrice} belong to the older MONTHLY plan; {@code main2ExtraPrice} etc. are what an extra event costs on
+     * a paid-up pack. When saving, a missing (null) newer price keeps its value.
      */
     public record Settings(String upiId, String payeeName, int perEventPrice, int extraEventPrice, int monthlyPrice,
                            Integer quickPrice, Integer main2Price, Integer main4Price, Integer quick2Price,
                            Integer quick4Price, Integer upgradePrice, Integer upgradeGuests, Integer storageGbPrice,
-                           Integer freeStorageGb, Integer clientSetupPrice, Integer activeMonths) {
+                           Integer freeStorageGb, Integer clientSetupPrice, Integer activeMonths,
+                           Integer main2ExtraPrice, Integer main4ExtraPrice, Integer quick2ExtraPrice,
+                           Integer quick4ExtraPrice) {
+
+        /** What one event past the pack's monthly allowance costs while the pack is paid up. */
+        int extraPrice(Plan plan) {
+            return switch (plan) {
+                case MAIN_2 -> main2ExtraPrice;
+                case MAIN_4 -> main4ExtraPrice;
+                case QUICK_2 -> quick2ExtraPrice;
+                case QUICK_4 -> quick4ExtraPrice;
+                default -> 0;
+            };
+        }
 
         int packPrice(Plan plan) {
             return switch (plan) {
@@ -121,19 +135,21 @@ public class BillingService {
 
     /** Every current price, for the dashboard (the server prices each purchase again). */
     public record Prices(int main, int quick, int main2, int main4, int quick2, int quick4, int upgrade, int upgradeGuests,
-                         int storageGb, int freeStorageGb, int clientSetup, int activeMonths) {
+                         int storageGb, int freeStorageGb, int clientSetup, int activeMonths,
+                         int main2Extra, int main4Extra, int quick2Extra, int quick4Extra) {
     }
 
     /**
      * {@code free}: McreatiK itself or an unlimited studio. {@code monthlyQuota} / {@code usedThisMonth}: the pack's
      * events this month; {@code carryOver}: last month's unused events still usable. {@code credits} is
-     * {@code mainCredits + quickCredits}; {@code unitPrice} is what one more Main event costs; {@code monthlyPrice}
+     * {@code mainCredits + quickCredits}; {@code unitPrice} / {@code quickUnitPrice} are what one more Main / Quick event costs this studio
+     * (the pack's extra price while a pack is paid up); {@code monthlyPrice}
      * what this plan costs a month. {@code packActive}: paid up (or within the grace days).
      */
     public record Summary(Plan plan, boolean free, int monthlyQuota, int usedThisMonth, int credits, int unitPrice,
                           int monthlyPrice, String upiId, String payeeName, List<Payment> payments, boolean onlinePayments,
                           int mainCredits, int quickCredits, int carryOver, boolean packActive, LocalDate planPaidUntil,
-                          Prices prices, int clientCredits) {
+                          Prices prices, int clientCredits, int quickUnitPrice) {
     }
 
     /** What a purchase costs this studio right now. {@code events}: how many (events or months). */
@@ -231,10 +247,12 @@ public class BillingService {
         return jdbc.queryForObject("""
                 SELECT upi_id, payee_name, per_event_price, extra_event_price, monthly_price, quick_price, main2_price,
                        main4_price, quick2_price, quick4_price, upgrade_price, upgrade_guests, storage_gb_price,
-                       free_storage_gb, client_setup_price, active_months FROM billing_settings""",
+                       free_storage_gb, client_setup_price, active_months, main2_extra_price, main4_extra_price,
+                       quick2_extra_price, quick4_extra_price FROM billing_settings""",
                 (rs, n) -> new Settings(rs.getString(1), rs.getString(2), rs.getInt(3), rs.getInt(4), rs.getInt(5),
                         rs.getInt(6), rs.getInt(7), rs.getInt(8), rs.getInt(9), rs.getInt(10), rs.getInt(11), rs.getInt(12),
-                        rs.getInt(13), rs.getInt(14), rs.getInt(15), rs.getInt(16)));
+                        rs.getInt(13), rs.getInt(14), rs.getInt(15), rs.getInt(16), rs.getInt(17), rs.getInt(18),
+                        rs.getInt(19), rs.getInt(20)));
     }
 
     private static int orKeep(Integer value, int current) {
@@ -252,7 +270,9 @@ public class BillingService {
                 orKeep(s.quick2Price(), now.quick2Price()), orKeep(s.quick4Price(), now.quick4Price()),
                 orKeep(s.upgradePrice(), now.upgradePrice()), orKeep(s.upgradeGuests(), now.upgradeGuests()),
                 orKeep(s.storageGbPrice(), now.storageGbPrice()), orKeep(s.freeStorageGb(), now.freeStorageGb()),
-                orKeep(s.clientSetupPrice(), now.clientSetupPrice()), orKeep(s.activeMonths(), now.activeMonths())};
+                orKeep(s.clientSetupPrice(), now.clientSetupPrice()), orKeep(s.activeMonths(), now.activeMonths()),
+                orKeep(s.main2ExtraPrice(), now.main2ExtraPrice()), orKeep(s.main4ExtraPrice(), now.main4ExtraPrice()),
+                orKeep(s.quick2ExtraPrice(), now.quick2ExtraPrice()), orKeep(s.quick4ExtraPrice(), now.quick4ExtraPrice())};
         for (int i = 0; i < prices.length; i++) {
             // The free storage may be 0 GB; everything else must be at least 1.
             if (prices[i] < (i == 11 ? 0 : 1)) {
@@ -263,19 +283,26 @@ public class BillingService {
                 UPDATE billing_settings SET upi_id = ?, payee_name = ?, per_event_price = ?, extra_event_price = ?,
                        monthly_price = ?, quick_price = ?, main2_price = ?, main4_price = ?, quick2_price = ?, quick4_price = ?,
                        upgrade_price = ?, upgrade_guests = ?, storage_gb_price = ?, free_storage_gb = ?,
-                       client_setup_price = ?, active_months = ?""",
+                       client_setup_price = ?, active_months = ?, main2_extra_price = ?, main4_extra_price = ?,
+                       quick2_extra_price = ?, quick4_extra_price = ?""",
                 upi == null || upi.isEmpty() ? null : upi, s.payeeName() == null ? null : s.payeeName().trim(),
                 prices[0], prices[1], prices[2], prices[3], prices[4], prices[5], prices[6], prices[7], prices[8], prices[9],
-                prices[10], prices[11], prices[12], prices[13]);
+                prices[10], prices[11], prices[12], prices[13], prices[14], prices[15], prices[16], prices[17]);
         return settings();
     }
 
-    /** What one event of this type costs as a single purchase on this plan. */
-    private static int eventPrice(Plan plan, EventType type, Settings s) {
+    /**
+     * What one event of this type costs this studio as a single purchase. On a paid-up pack an extra event costs the
+     * pack's extra price (a Main pack's covers Quick events too); the older MONTHLY plan keeps its Main extra price.
+     */
+    private static int eventPrice(Account a, EventType type, Settings s, LocalDate today) {
+        if (a.plan().pack() && a.packActive(today) && a.plan().covers(type)) {
+            return s.extraPrice(a.plan());
+        }
         if (type == EventType.QUICK) {
             return s.quickPrice();
         }
-        return plan == Plan.MONTHLY ? s.extraEventPrice() : s.perEventPrice();
+        return a.plan() == Plan.MONTHLY ? s.extraEventPrice() : s.perEventPrice();
     }
 
     private static String rupees(int amount) {
@@ -323,7 +350,7 @@ public class BillingService {
             return "CREDIT";
         }
         Settings s = settings();
-        String price = "A " + kindName(type) + " event is " + rupees(eventPrice(a.plan(), type, s)) + ".";
+        String price = "A " + kindName(type) + " event is " + rupees(eventPrice(a, type, s, today)) + ".";
         String why;
         if (a.plan() == Plan.MONTHLY && type == EventType.MAIN) {
             why = "You have used your " + a.monthlyEvents() + (a.monthlyEvents() == 1 ? " event" : " events")
@@ -332,7 +359,10 @@ public class BillingService {
             why = "Your " + a.plan().label() + " pack ended on " + a.paidUntil() + ". Renew it, or buy this event. " + price;
         } else if (a.plan().pack() && !a.plan().covers(type)) {
             why = "Your Quick pack covers Quick events only. " + price;
-        } else if (a.plan().pack() || a.plan() == Plan.MONTHLY) {
+        } else if (a.plan().pack()) {
+            why = "You have used your " + a.monthlyEvents() + " events for this month. Extra events on your "
+                    + a.plan().label() + " pack are " + rupees(eventPrice(a, type, s, today)) + " each.";
+        } else if (a.plan() == Plan.MONTHLY) {
             why = "You have used your " + a.monthlyEvents() + " events for this month. " + price;
         } else {
             why = price + " Buy one to create it.";
@@ -348,7 +378,8 @@ public class BillingService {
     private static Prices prices(Settings s) {
         return new Prices(s.perEventPrice(), s.quickPrice(), s.main2Price(), s.main4Price(), s.quick2Price(),
                 s.quick4Price(), s.upgradePrice(), s.upgradeGuests(), s.storageGbPrice(), s.freeStorageGb(),
-                s.clientSetupPrice(), s.activeMonths());
+                s.clientSetupPrice(), s.activeMonths(), s.main2ExtraPrice(), s.main4ExtraPrice(), s.quick2ExtraPrice(),
+                s.quick4ExtraPrice());
     }
 
     /** The current prices for the public /pricing page. */
@@ -361,10 +392,10 @@ public class BillingService {
         Settings s = settings();
         LocalDate today = today();
         return new Summary(a.plan(), a.free(), a.monthlyEvents(), usedThisMonth(studioId, a), a.mainCredits() + a.quickCredits(),
-                eventPrice(a.plan(), EventType.MAIN, s), a.plan() == Plan.MONTHLY ? s.monthlyPrice() : s.packPrice(a.plan()),
+                eventPrice(a, EventType.MAIN, s, today), a.plan() == Plan.MONTHLY ? s.monthlyPrice() : s.packPrice(a.plan()),
                 s.upiId(), s.payeeName(), payments("p.studio_id = ?", studioId, 20), razorpay.enabled(),
                 a.mainCredits(), a.quickCredits(), carryOver(studioId, a), a.packActive(today), a.paidUntil(), prices(s),
-                a.clientCredits());
+                a.clientCredits(), eventPrice(a, EventType.QUICK, s, today));
     }
 
     /** Fills the defaults: a missing item is Main events (the older API sent only a count). */
@@ -389,7 +420,7 @@ public class BillingService {
                 if (p.quantity() < 1 || p.quantity() > MAX_EVENTS_PER_PAYMENT) {
                     throw ApiException.badRequest("INVALID_EVENTS", "Buy between 1 and " + MAX_EVENTS_PER_PAYMENT + " events at a time");
                 }
-                int price = eventPrice(a.plan(), p.item() == Item.QUICK_EVENT ? EventType.QUICK : EventType.MAIN, s);
+                int price = eventPrice(a, p.item() == Item.QUICK_EVENT ? EventType.QUICK : EventType.MAIN, s, today());
                 yield new Quote(p.item(), p.quantity(), price, p.quantity() * price, null, null);
             }
             case UPGRADE -> {

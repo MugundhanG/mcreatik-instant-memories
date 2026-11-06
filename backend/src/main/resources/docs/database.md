@@ -71,7 +71,7 @@ erDiagram
 | `album_selections` | Photos the couple ticked | V8 | `AlbumService`, `ClientController` |
 | `event_charges` | How each event was covered: `FREE`, `QUOTA` (this month's pack), `CARRY` (last month's unused), `CREDIT` (bought); carry-over is worked out from these rows | V9, V18 | `BillingService` |
 | `event_payments` | Every purchase: `item` (MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN, STORAGE, CLIENT_SETUP, EXTEND), quantity, `event_id`, `plan`; UPI ones wait for review (UTR unique) | V9, V14, V15, V18 | `BillingService`, `OnlinePaymentService` |
-| `billing_settings` | One row of UPI details and every price (Main, Quick, the four packs, upgrade, storage per GB, free GB, client setup, active months) | V9, V18, V19, V20 | `BillingService` |
+| `billing_settings` | One row of UPI details and every price (Main, Quick, the four packs and their extra-event prices, upgrade, storage per GB, free GB, client setup, active months) | V9, V18, V19, V20, V22 | `BillingService` |
 
 ## What happens on delete
 

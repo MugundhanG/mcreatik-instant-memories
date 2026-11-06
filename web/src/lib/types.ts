@@ -359,6 +359,11 @@ export interface Prices {
   clientSetup: number
   /** How long a gallery stays open. */
   activeMonths: number
+  /** An extra event on a paid-up pack (past its monthly events). A Main pack's covers Quick events too. */
+  main2Extra: number
+  main4Extra: number
+  quick2Extra: number
+  quick4Extra: number
 }
 
 export interface EventPayment {
@@ -413,8 +418,10 @@ export interface BillingSummary {
   usedThisMonth: number
   /** Bought (or given) events left; carry over month to month. */
   credits: number
-  /** What one more event costs on this plan. */
+  /** What one more Main event costs this studio (the pack's extra price while a pack is paid up). */
   unitPrice: number
+  /** What one more Quick event costs this studio. */
+  quickUnitPrice: number
   monthlyPrice: number
   upiId: string | null
   payeeName: string | null
@@ -465,6 +472,10 @@ export interface BillingSettings {
   freeStorageGb: number
   clientSetupPrice: number
   activeMonths: number
+  main2ExtraPrice: number
+  main4ExtraPrice: number
+  quick2ExtraPrice: number
+  quick4ExtraPrice: number
 }
 
 /** Current prices for the public /pricing page. */

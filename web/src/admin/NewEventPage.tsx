@@ -20,7 +20,9 @@ function coverage(b: BillingSummary, type: EventType): string {
   if (packCovers && b.usedThisMonth < b.monthlyQuota) return `Included in your pack: ${b.monthlyQuota - b.usedThisMonth} of ${b.monthlyQuota} events left this month.`
   if (type === 'QUICK' && b.quickCredits > 0) return `Uses 1 of your ${b.quickCredits} bought Quick event${b.quickCredits === 1 ? '' : 's'}.`
   if (b.mainCredits > 0) return `Uses 1 of your ${b.mainCredits} bought Main event${b.mainCredits === 1 ? '' : 's'}.`
-  return `You'll be asked to pay ${rupees(type === 'QUICK' ? b.prices.quick : b.unitPrice)} for this event.`
+  const price = type === 'QUICK' ? b.quickUnitPrice : b.unitPrice
+  const extra = price < (type === 'QUICK' ? b.prices.quick : b.prices.main) ? ' (extra event at your pack price)' : ''
+  return `You'll be asked to pay ${rupees(price)} for this event${extra}.`
 }
 
 export default function NewEventPage() {
@@ -103,7 +105,7 @@ export default function NewEventPage() {
             <div role="radiogroup" aria-label="Event type" className="grid gap-2 sm:grid-cols-3">
               {([
                 ['MAIN', 'Main event', 'Weddings, receptions, big birthdays, big functions and corporate events.', billing?.unitPrice],
-                ['QUICK', 'Quick event', `Engagements, small birthdays, baby showers: up to about ${billing?.prices.upgradeGuests ?? 300} guests. Upgrade to Main later if it grows.`, billing?.prices.quick],
+                ['QUICK', 'Quick event', `Engagements, small birthdays, baby showers: up to about ${billing?.prices.upgradeGuests ?? 300} guests. Upgrade to Main later if it grows.`, billing?.quickUnitPrice],
                 ['CLIENT', 'Client gallery only', 'No live event: a private gallery for the couple to pick album photos and download. You add the photos and storage.', billing?.prices.clientSetup],
               ] as const).map(([type, title, body, price]) => (
                 <button key={type} type="button" role="radio" aria-checked={eventType === type} onClick={() => setEventType(type)}
