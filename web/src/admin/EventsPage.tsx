@@ -51,6 +51,9 @@ function PlanBar({ billing: b, onBuy }: { billing: BillingSummary; onBuy: (p: Pu
             ? <><span className="font-medium">{PLAN_LABEL[b.plan]}</span>{' · '}<b className="tabular-nums">{b.usedThisMonth} of {b.monthlyQuota}</b> used this month</>
             : <span className="font-medium">Per-event plan</span>}
           {b.carryOver > 0 && <span className="text-muted"> · {b.carryOver} carried over</span>}
+          {pack && b.packActive && b.carryOver === 0 && b.usedThisMonth >= b.monthlyQuota && (
+            <span className="text-muted" data-testid="extra-price"> · extra events {rupees(b.plan.startsWith('QUICK') ? b.quickUnitPrice : b.unitPrice)} each</span>
+          )}
           {' · '}
           <span className={owed ? 'text-red-700' : 'text-muted'}>
             {owed ? 'payment not received for some events' : bought ? `${bought} bought` : 'no bought events'}

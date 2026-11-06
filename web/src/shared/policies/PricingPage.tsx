@@ -21,10 +21,10 @@ function PriceCard({ name, price, unit, body }: { name: string; price: number; u
 /** Main and Quick events, the monthly packs and how they work. */
 function Packages({ k }: { k: Prices }) {
   const packs = [
-    ['Main · 2 events a month', k.main2, 2, k.main],
-    ['Main · 4 events a month', k.main4, 4, k.main],
-    ['Quick · 2 events a month', k.quick2, 2, k.quick],
-    ['Quick · 4 events a month', k.quick4, 4, k.quick],
+    ['Main · 2 events a month', k.main2, 2, k.main2Extra],
+    ['Main · 4 events a month', k.main4, 4, k.main4Extra],
+    ['Quick · 2 events a month', k.quick2, 2, k.quick2Extra],
+    ['Quick · 4 events a month', k.quick4, 4, k.quick4Extra],
   ] as const
   return (
     <div data-testid="prices">
@@ -38,14 +38,15 @@ function Packages({ k }: { k: Prices }) {
       <div className="mt-3 overflow-hidden rounded-2xl border border-line bg-white">
         <table className="w-full text-sm">
           <thead className="bg-stone-50 text-left text-xs text-muted">
-            <tr><th className="px-4 py-2 font-medium">Pack</th><th className="px-4 py-2 text-right font-medium">Per month</th><th className="px-4 py-2 text-right font-medium">Per event</th></tr>
+            <tr><th className="px-4 py-2 font-medium">Pack</th><th className="px-4 py-2 text-right font-medium">Per month</th><th className="px-4 py-2 text-right font-medium">Per event</th><th className="px-4 py-2 text-right font-medium">Extra event</th></tr>
           </thead>
           <tbody>
-            {packs.map(([name, price, events]) => (
+            {packs.map(([name, price, events, extra]) => (
               <tr key={name} className="border-t border-line">
                 <td className="px-4 py-2.5">{name}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums">{rupees(price)}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums">{rupees(Math.round(price / events))}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">{extra ? rupees(extra) : '–'}</td>
               </tr>
             ))}
           </tbody>
@@ -53,6 +54,7 @@ function Packages({ k }: { k: Prices }) {
       </div>
       <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink/85">
         <li>A Main pack also covers Quick events; a Quick pack covers Quick events only.</li>
+        <li>Need more events in a month? While your pack is paid up, each extra event costs the pack's extra price (a Main pack's extra price covers Quick events too).</li>
         <li>Unused events in a month carry over to the next month (one month only).</li>
         <li>Packs are paid month by month from your dashboard. If you don't renew, new events are simply charged one by one.</li>
         <li>Events you buy one by one never expire.</li>

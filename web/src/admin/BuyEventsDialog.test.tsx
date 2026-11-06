@@ -5,10 +5,11 @@ import type { BillingSummary } from '../lib/types'
 import { BuyEventsDialog } from './BuyEventsDialog'
 
 const billing: BillingSummary = {
-  plan: 'MONTHLY', free: false, monthlyQuota: 4, usedThisMonth: 4, credits: 0, unitPrice: 999, monthlyPrice: 5000,
+  plan: 'MONTHLY', free: false, monthlyQuota: 4, usedThisMonth: 4, credits: 0, unitPrice: 999, quickUnitPrice: 1499, monthlyPrice: 5000,
   upiId: 'mcreatik@okicici', payeeName: 'McreatiK Studios', payments: [], onlinePayments: false,
   mainCredits: 0, quickCredits: 0, carryOver: 0, packActive: true, planPaidUntil: null,
-  prices: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300, storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3 },
+  prices: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300, storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3,
+    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799 },
   clientCredits: 0,
 }
 
@@ -70,6 +71,17 @@ describe('Buy events by UPI', () => {
     expect(screen.getByRole('dialog', { name: 'Upgrade to a Main event' })).toBeInTheDocument()
     expect(screen.getByTestId('amount')).toHaveTextContent('₹1,000')
     expect(screen.queryByRole('button', { name: 'More events' })).not.toBeInTheDocument()
+  })
+
+  it('prices extra events at the pack price while a Main pack is paid up', async () => {
+    const user = userEvent.setup()
+    const main4 = { ...billing, plan: 'MAIN_4' as const, unitPrice: 999, quickUnitPrice: 999 }
+    render(<BuyEventsDialog billing={main4} onPaid={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByText(/Extra events at your pack's price: Main ₹999, Quick ₹999 \(normally ₹2,499 and ₹1,499\)/)).toBeInTheDocument()
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹999')
+    await user.click(screen.getByRole('radio', { name: /Quick/ }))
+    expect(screen.getByRole('radio', { name: /Quick/ })).toHaveTextContent('₹999')
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹999')
   })
 
   it('says so when McreatiK has not set up a UPI ID yet', () => {

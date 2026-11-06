@@ -12,7 +12,8 @@ describe('Policy pages', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
       perEventPrice: 2499, monthlyPrice: 5000, monthlyEvents: 4, extraEventPrice: 999, currency: 'INR',
       packages: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300,
-        storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3 },
+        storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3,
+    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799 },
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
     render(<PricingPage />)
     expect((await screen.findAllByText('₹2,499')).length).toBeGreaterThan(0)
@@ -22,6 +23,9 @@ describe('Policy pages', () => {
     const main4 = screen.getByRole('row', { name: /Main · 4 events a month/ })
     expect(main4).toHaveTextContent('₹4,999')
     expect(main4).toHaveTextContent('₹1,250')
+    expect(main4).toHaveTextContent('₹999') // extra event
+    expect(screen.getByRole('row', { name: /Quick · 4 events a month/ })).toHaveTextContent('₹799')
+    expect(screen.getByText(/each extra event costs the pack's extra price/)).toBeInTheDocument()
     expect(screen.getByText(/carry over to the next month/)).toBeInTheDocument()
     expect(screen.getByText('Client gallery').parentElement).toHaveTextContent('₹250')
     expect(screen.getByText(/a full wedding of about 2,000 photos \(25 GB\) kept for 3 months is ₹1,375/)).toBeInTheDocument()

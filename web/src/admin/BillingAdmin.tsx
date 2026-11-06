@@ -126,6 +126,18 @@ export function BillingSettingsCard() {
         <Field label="Quick pack · 4 events (₹/month)">
           <input className={inputClass} inputMode="numeric" value={s.quick4Price} onChange={num('quick4Price')} />
         </Field>
+        <Field label="Main pack · 2 events: extra event (₹)" hint="Main or Quick, once the month's events are used">
+          <input className={inputClass} inputMode="numeric" value={s.main2ExtraPrice} onChange={num('main2ExtraPrice')} />
+        </Field>
+        <Field label="Main pack · 4 events: extra event (₹)" hint="Main or Quick, once the month's events are used">
+          <input className={inputClass} inputMode="numeric" value={s.main4ExtraPrice} onChange={num('main4ExtraPrice')} />
+        </Field>
+        <Field label="Quick pack · 2 events: extra Quick event (₹)">
+          <input className={inputClass} inputMode="numeric" value={s.quick2ExtraPrice} onChange={num('quick2ExtraPrice')} />
+        </Field>
+        <Field label="Quick pack · 4 events: extra Quick event (₹)">
+          <input className={inputClass} inputMode="numeric" value={s.quick4ExtraPrice} onChange={num('quick4ExtraPrice')} />
+        </Field>
         <Field label="Upgrade a Quick event to Main (₹)">
           <input className={inputClass} inputMode="numeric" value={s.upgradePrice} onChange={num('upgradePrice')} />
         </Field>
