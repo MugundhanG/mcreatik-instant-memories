@@ -51,7 +51,7 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [paidOnline, setPaidOnline] = useState(false)
-  const unit = unitPrice(purchase.item, billing, purchase.plan)
+  const unit = unitPrice(purchase.item, billing, purchase.plan, purchase.months)
   const amount = quantity * unit
   const label = describe(purchase, billing)
   const link = billing.upiId ? upiLink(billing.upiId, billing.payeeName, amount, label) : null
@@ -110,11 +110,11 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
   }
 
   const defaultReason = purchase.item === 'STORAGE'
-    ? `Storage for this gallery: ${rupees(billing.prices.storageGb)} per GB for its ${billing.prices.activeMonths} months. About ${photosPerGb(1)} full-quality photos per GB.`
+    ? `Storage for this gallery until it closes: ${rupees(billing.prices.storageGb)} per GB a month × ${purchase.months ?? billing.prices.activeMonths} months = ${rupees(unit)} per GB. About ${photosPerGb(1)} full-quality photos per GB.`
     : purchase.item === 'CLIENT_SETUP'
-      ? `A gallery for the couple only, without a live event: ${rupees(billing.prices.clientSetup)} each to set up, then storage at ${rupees(billing.prices.storageGb)} per GB.`
+      ? `A gallery for the couple only, without a live event: ${rupees(billing.prices.clientSetup)} each to set up, then storage at ${rupees(billing.prices.storageGb)} per GB a month.`
       : purchase.item === 'EXTEND'
-        ? `Keeps the guests' and the couple's galleries open for ${billing.prices.activeMonths} more months: ${rupees(billing.prices.storageGb)} per GB it holds.`
+        ? `Keeps the guests' and the couple's galleries open for ${billing.prices.activeMonths} more months: ${rupees(billing.prices.storageGb)} per GB a month for each GB it holds (${rupees(unit)} per GB).`
         : purchase.item === 'UPGRADE'
     ? `Bigger than planned? Upgrade this Quick event to Main for ${rupees(billing.prices.upgrade)}. The gallery keeps working either way.`
     : purchase.item === 'PLAN'

@@ -74,17 +74,18 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 | | Price |
 | --- | --- |
 | **Client gallery only** | ₹250 setup per gallery + storage |
-| **Storage** | ₹15 per GB (1 GB ≈ 80 full-quality photos) |
-| **Main or Quick event** | 5 GB included, then ₹15 per GB |
-| **Keep 6 more months** | ₹15 per GB the gallery uses |
+| **Storage** | ₹15 per GB per month (1 GB ≈ 80 full-quality photos) |
+| **Main or Quick event** | 5 GB included, then ₹15 per GB per month |
+| **Keep 6 more months** | ₹15 per GB per month: ₹90 per GB the gallery uses |
 
 - **What counts:** everything stored for the event, both the gallery versions and the full-quality originals. A typical wedding of 2,000 photos with originals is about 25 GB.
 - **Event page → Overview → Gallery & storage** shows what the event uses, how many more photos fit, and when it closes. **Add storage** buys GB for that event (5, 10, 25, 50 or 100, or any number).
 - **Client galleries** start with 0 GB. Add storage before uploading; when it is full, uploads stop with "storage is full" until you add more.
 - **Main and Quick events** are never stopped during the event. If the event uses more than 5 GB, add the extra GB within **14 days of the event date**. If you don't, the couple's gallery is paused (the guests' gallery keeps working) until you add it.
 - **Every gallery is open 6 months**: from the event date for Main and Quick, from the day it was created for a client gallery. After that, guests and the couple see "This gallery has expired", and the photos are **deleted for good 30 days later**. We email you 14 days before and on the day.
-- **Keep 6 more months** on the same card extends it, at ₹15 for each GB it uses. You can do it any time until the deletion date.
-- **Selling it on:** you decide what to charge your couple for the digital gallery. For example, ₹250 + 25 GB = ₹625 to you; many studios charge ₹1,500 to ₹3,000 for a private online gallery.
+- **Keep 6 more months** on the same card extends it, at ₹15 per GB a month (₹90 for each GB it uses). You can do it any time until the deletion date.
+- **How storage is charged:** when you add storage, you pay for the months the gallery has left (rounded up to whole months). For a new gallery that is its full 6 months: ₹90 per GB.
+- **Selling it on:** you decide what to charge your couple for the digital gallery. For example, a 25 GB wedding gallery for 6 months is ₹250 + 25 × ₹15 × 6 = ₹2,500 to you, so price it above that. Uploading only the edited finals (not every original) keeps the GB, and your cost, down.
 
 Current prices are always on [the pricing page](https://live.mcreatik.com/pricing).
 

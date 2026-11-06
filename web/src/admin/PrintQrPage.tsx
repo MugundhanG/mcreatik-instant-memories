@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router'
 import { IS_DEMO } from '../demo/isDemo'
 import { adminApi } from '../lib/api'
@@ -17,6 +17,23 @@ function namesSize(names: string) {
   return 'text-[40px]'
 }
 
+/** The poster's real size in CSS pixels (210 × 297 mm at 96 dpi). */
+const POSTER_W = 794
+const POSTER_H = 1123
+
+/** How much to shrink the poster so it fits the screen (1 on a desktop); printing always uses the real size. */
+const fit = () => (typeof window === 'undefined' ? 1 : Math.min(1, (window.innerWidth - 32) / POSTER_W))
+
+function useFitScale() {
+  const [scale, setScale] = useState(fit)
+  useEffect(() => {
+    const onResize = () => setScale(fit())
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return scale
+}
+
 const CORNERS = [
   'top-5 left-5 border-t-4 border-l-4',
   'top-5 right-5 border-t-4 border-r-4',
@@ -28,6 +45,7 @@ const CORNERS = [
 export default function PrintQrPage() {
   const { eventId = '' } = useParams()
   const [event, setEvent] = useState<EventDetail | null>(null)
+  const scale = useFitScale()
 
   useEffect(() => {
     adminApi.event(eventId).then(setEvent)
@@ -39,8 +57,23 @@ export default function PrintQrPage() {
   const brand = resolveBrand(event.brand)
 
   return (
-    <div className="flex min-h-dvh flex-col items-center gap-6 overflow-x-auto bg-stone-200 py-8 print:block print:bg-white print:p-0">
-      <div className="poster relative h-[297mm] w-[210mm] shrink-0 overflow-hidden text-center shadow-2xl print:shadow-none" data-testid="poster">
+    <div className="flex min-h-dvh flex-col items-center gap-5 bg-stone-200 px-4 py-6 print:block print:bg-white print:p-0">
+      <div className="no-print flex w-full max-w-[794px] flex-wrap items-center justify-between gap-3">
+        <Link to={`/admin/events/${event.id}`} className="text-sm text-muted hover:text-ink">← Back to event</Link>
+        {!IS_DEMO && (
+          <button type="button" onClick={() => window.print()} className="rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-white">
+            Print
+          </button>
+        )}
+        {scale < 1 && (
+          <p className="w-full text-xs text-muted">
+            Shown smaller to fit your screen; it prints at full A4. On a phone, Print → Save as PDF, then print the PDF.
+          </p>
+        )}
+      </div>
+      {/* On screen the poster is shrunk to fit (phones); the frame takes the shrunk size so nothing is cut off. */}
+      <div className="poster-frame shrink-0" style={{ '--fit': scale, width: POSTER_W * scale, height: POSTER_H * scale } as CSSProperties}>
+      <div className="poster poster-fit relative h-[297mm] w-[210mm] shrink-0 overflow-hidden text-center shadow-2xl print:shadow-none" data-testid="poster">
         {/* Double gold frame with corner accents */}
         <div className="absolute inset-[28px] border-2 border-[#c9a35a]" />
         <div className="absolute inset-[38px] border border-[#e3cc9a]" />
@@ -89,14 +122,6 @@ export default function PrintQrPage() {
           </div>
         </div>
       </div>
-
-      <div className="no-print flex items-center gap-4">
-        <Link to={`/admin/events/${event.id}`} className="text-sm text-muted hover:text-ink">← Back to event</Link>
-        {!IS_DEMO && (
-          <button type="button" onClick={() => window.print()} className="rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-white">
-            Print
-          </button>
-        )}
       </div>
     </div>
   )

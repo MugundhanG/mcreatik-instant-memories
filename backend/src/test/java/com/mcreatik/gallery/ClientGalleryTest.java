@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import com.jayway.jsonpath.JsonPath;
 import com.mcreatik.gallery.common.Tokens;
+import com.mcreatik.gallery.billing.BillingService;
 import com.mcreatik.gallery.billing.GalleryLifecycleTestAccess;
 import com.mcreatik.gallery.support.IntegrationTest;
 
@@ -110,13 +111,23 @@ class ClientGalleryTest extends IntegrationTest {
     }
 
     @Test
+    void storageIsChargedForTheMonthsAGalleryHasLeft() {
+        LocalDate d = LocalDate.of(2026, 11, 6);
+        assertThat(BillingService.monthsLeft(d.plusMonths(6), d, 6)).isEqualTo(6);
+        assertThat(BillingService.monthsLeft(d.plusMonths(2).plusDays(1), d, 6)).isEqualTo(3);
+        assertThat(BillingService.monthsLeft(d.plusDays(3), d, 6)).isEqualTo(1);
+        assertThat(BillingService.monthsLeft(d.minusDays(3), d, 6)).isEqualTo(1);
+        assertThat(BillingService.monthsLeft(null, d, 6)).isEqualTo(6);
+    }
+
+    @Test
     void aFullClientGalleryRefusesUploadsUntilStorageIsBought() throws Exception {
         buy("{\"item\":\"CLIENT_SETUP\",\"utr\":\"" + utr() + "\"}");
         String id = eventId(event("CLIENT", "2026-11-01").andReturn().getResponse().getContentAsString());
         originalSession(id, 2_000_000).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STORAGE_FULL"));
 
         buy("{\"item\":\"STORAGE\",\"eventId\":\"" + id + "\",\"quantity\":10,\"utr\":\"" + utr() + "\"}")
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(150));
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(900)); // 10 GB × ₹15 × 6 months
         assertThat((Integer) JsonPath.read(detail(id), "$.storageQuotaGb")).isEqualTo(10);
         originalSession(id, 2_000_000).andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("UPLOAD"));
         // Storage can't be bought for someone else's event.
@@ -171,13 +182,13 @@ class ClientGalleryTest extends IntegrationTest {
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("contact Lens")));
         assertThat((Boolean) JsonPath.read(detail(id), "$.expired")).isTrue();
 
-        // Paying studios can't just move the date; they keep it open for 6 more months, at ₹15 per GB (at least 1).
+        // Paying studios can't just move the date; they keep it open for 6 more months, at ₹15 per GB per month (at least 1 GB): ₹90.
         mvc.perform(patch("/api/admin/events/" + id).header("Authorization", bearer(studio))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"retentionUntil\":\"2030-01-01\"}"))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("EXTEND_INSTEAD"));
         String pay = JsonPath.read(buy("{\"item\":\"EXTEND\",\"eventId\":\"" + id + "\",\"utr\":\"" + utr() + "\"}")
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.amount").value(15)).andReturn().getResponse().getContentAsString(), "$.id");
+                .andExpect(jsonPath("$.amount").value(90)).andReturn().getResponse().getContentAsString(), "$.id");
         String extended = detail(id);
         assertThat(LocalDate.parse(JsonPath.read(extended, "$.activeUntil"))).isEqualTo(today.plusMonths(6));
         assertThat(LocalDate.parse(JsonPath.read(extended, "$.retentionUntil"))).isEqualTo(today.plusMonths(6).plusDays(30));

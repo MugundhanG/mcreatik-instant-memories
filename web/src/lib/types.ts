@@ -332,6 +332,8 @@ export interface Purchase {
   quantity?: number
   eventId?: string
   plan?: Plan
+  /** STORAGE: the months the gallery has left, to show the price (the server works it out itself). */
+  months?: number
 }
 
 /** Every current price (₹). */
@@ -345,7 +347,7 @@ export interface Prices {
   upgrade: number
   /** Unique guests after which a Quick event is offered the upgrade. */
   upgradeGuests: number
-  /** Storage price per GB (for 6 months). */
+  /** Storage price per GB per month. */
   storageGb: number
   /** GB included with every live (Main / Quick) event. */
   freeStorageGb: number
