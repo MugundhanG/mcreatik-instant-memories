@@ -1,4 +1,4 @@
-import type { BillingSummary, Plan, Prices, Purchase, PurchaseItem } from '../lib/types'
+import type { BillingSummary, EventType, Plan, Prices, Purchase, PurchaseItem } from '../lib/types'
 
 export const PLAN_LABEL: Record<Plan, string> = {
   PER_EVENT: 'Per event',
@@ -72,4 +72,13 @@ export function describe(p: Purchase, billing: BillingSummary): string {
     case 'CLIENT_SETUP': return `${n} client galler${n === 1 ? 'y' : 'ies'}`
     case 'EXTEND': return `${billing.prices.activeMonths} more months (${n} GB)`
   }
+}
+
+/** Whether creating an event of this type costs nothing more: free plan, this month's pack, carried-over or bought events. */
+export function eventCovered(b: BillingSummary, type: EventType): boolean {
+  if (b.free) return true
+  if (type === 'CLIENT') return b.clientCredits > 0
+  const packCovers = b.packActive && (b.plan === 'MONTHLY' || b.plan.startsWith('MAIN') || (type === 'QUICK' && b.plan.startsWith('QUICK')))
+  if (packCovers && (b.carryOver > 0 || b.usedThisMonth < b.monthlyQuota)) return true
+  return (type === 'QUICK' && b.quickCredits > 0) || b.mainCredits > 0
 }
