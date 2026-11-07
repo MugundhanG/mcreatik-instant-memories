@@ -4,7 +4,7 @@ import { adminApi, ApiError } from '../lib/api'
 import type { BillingSummary, EventStatus, EventType, Studio } from '../lib/types'
 import { useSession } from './auth'
 import { BuyEventsDialog } from './BuyEventsDialog'
-import { rupees } from './plans'
+import { eventCovered, rupees } from './plans'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
 
 /** How this event will be paid for: the pack, a bought event, or a price to pay. */
@@ -112,7 +112,11 @@ export default function NewEventPage() {
                   className={`rounded-xl border p-3 text-left transition-colors ${eventType === type ? 'border-ink bg-stone-50 ring-1 ring-ink' : 'border-line hover:border-stone-400'}`}>
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="font-medium">{title}</span>
-                    {price !== undefined && billing && !billing.free && <span className="text-sm tabular-nums text-muted">{rupees(price)}{type === 'CLIENT' ? ' + storage' : ''}</span>}
+                    {price !== undefined && billing && !billing.free && (
+                      <span className="text-sm tabular-nums text-muted" data-testid={`price-${type}`}>
+                        {eventCovered(billing, type) ? (type === 'CLIENT' ? 'Paid · + storage' : 'Included') : `${rupees(price)}${type === 'CLIENT' ? ' + storage' : ''}`}
+                      </span>
+                    )}
                   </span>
                   <span className="mt-1 block text-xs text-muted">{body}</span>
                 </button>
