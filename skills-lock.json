@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "earshot": {
+      "source": "Leonxlnx/earshot",
+      "sourceType": "github",
+      "skillPath": "skills/earshot/SKILL.md",
+      "computedHash": "b4bc7033d45acf9816f45f5402d5de19b9eafde6689f6a435d8f1cc7fabf0b0d"
+    },
+    "real-sound": {
+      "source": "Leonxlnx/earshot",
+      "sourceType": "github",
+      "skillPath": "skills/real-sound/SKILL.md",
+      "computedHash": "0376c695fdcdd5d2ff0a50f6be5f21c9981e68a6bcafc8f337563cc8856e38b2"
+    },
     "untangle-codebase": {
       "source": "caldoai/skills",
       "sourceType": "github",
