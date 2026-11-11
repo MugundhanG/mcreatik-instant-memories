@@ -278,7 +278,7 @@ export default function GalleryPage() {
           onRequestHd={requestHd}
           actions={(p) => (
             <a href={removalRequestLink(event.name, p.id)}
-              className="inline-flex h-12 items-center justify-center rounded-full px-4 text-xs text-white/70 underline-offset-4 hover:text-white hover:underline">
+              className="inline-flex h-10 items-center justify-center rounded-full px-4 text-xs text-white/70 underline-offset-4 hover:text-white hover:underline">
               Request removal
             </a>
           )}

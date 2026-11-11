@@ -221,7 +221,16 @@ export function PhotoViewer({
           </span>
           {caption && <div className="truncate text-xs text-white/50">{caption(photo)}</div>}
         </div>
-        <span className="size-11" aria-hidden="true" />
+        {liked && onToggleLike && <button
+          type="button"
+          onClick={() => onToggleLike(photo.id)}
+          aria-pressed={isLiked}
+          aria-label="Like photo"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-white/10"
+        >
+          <svg viewBox="0 0 24 24" className={`size-6 ${isLiked ? 'text-red-500' : ''}`} fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.7 8 3.4 5 6.6 5c2 0 3.7 1.2 5.4 3 1.7-1.8 3.4-3 5.4-3 3.2 0 4.9 3 3.8 6.2-1.7 4.7-9.2 9.3-9.2 9.3Z" /></svg>
+        </button>}
+        {!(liked && onToggleLike) && <span className="size-11" aria-hidden="true" />}
       </div>
 
       <div ref={stageRef} data-testid="viewer-stage" className="relative min-h-0 flex-1 touch-none overflow-hidden" {...handlers}>
@@ -259,46 +268,42 @@ export function PhotoViewer({
         )}
       </div>
 
-      <div className="flex items-center justify-center gap-3 px-4 pt-3 pb-[max(env(safe-area-inset-bottom),1rem)]">
+      <div className={`flex items-center justify-center gap-3 px-4 pt-3 ${onRequestHd ? 'pb-1' : 'pb-[max(env(safe-area-inset-bottom),1rem)]'}`}>
         {!hideDownload && <button
           type="button"
           onClick={() => void onDownload()}
           disabled={busy !== null}
-          className="inline-flex h-12 min-w-28 items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-medium text-ink disabled:opacity-60"
+          className="inline-flex h-12 min-w-0 flex-1 max-w-48 items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-medium text-ink disabled:opacity-60"
         >
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" /></svg>
           {busy === 'download' ? 'Saving…' : 'Download'}
         </button>}
-        {liked && onToggleLike && <button
-          type="button"
-          onClick={() => onToggleLike(photo.id)}
-          aria-pressed={isLiked}
-          aria-label="Like photo"
-          className="inline-flex size-12 shrink-0 items-center justify-center rounded-full border border-white/40"
-        >
-          <svg viewBox="0 0 24 24" className={`size-6 ${isLiked ? 'text-red-500' : ''}`} fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.7 8 3.4 5 6.6 5c2 0 3.7 1.2 5.4 3 1.7-1.8 3.4-3 5.4-3 3.2 0 4.9 3 3.8 6.2-1.7 4.7-9.2 9.3-9.2 9.3Z" /></svg>
-        </button>}
-        {onRequestHd && <button
-          type="button"
-          onClick={() => {
-            setHdError(null)
-            setHdOpen(true)
-          }}
-          className="inline-flex h-12 shrink-0 items-center justify-center rounded-full border border-white/40 px-4 text-sm font-medium"
-        >
-          Get HD photo
-        </button>}
-        {actions?.(photo)}
+        {!onRequestHd && actions?.(photo)}
         {shareCaption && <button
           type="button"
           onClick={onShare}
           disabled={busy !== null}
-          className="inline-flex h-12 min-w-36 items-center justify-center gap-2 rounded-full border border-white/40 px-6 text-sm font-medium disabled:opacity-60"
+          className="inline-flex h-12 min-w-0 flex-1 max-w-48 items-center justify-center gap-2 rounded-full border border-white/40 px-5 text-sm font-medium disabled:opacity-60"
         >
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M5 13v6h14v-6" /></svg>
           {busy === 'share' ? 'Sharing…' : 'Share'}
         </button>}
       </div>
+      {onRequestHd && (
+        <div className="flex items-center justify-center gap-2 px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+          {<button
+            type="button"
+            onClick={() => {
+              setHdError(null)
+              setHdOpen(true)
+            }}
+            className="inline-flex h-10 items-center justify-center rounded-full bg-white/15 px-4 text-xs font-medium"
+          >
+            Get HD photo
+          </button>}
+          {actions?.(photo)}
+        </div>
+      )}
 
       {toast && (
         <div
