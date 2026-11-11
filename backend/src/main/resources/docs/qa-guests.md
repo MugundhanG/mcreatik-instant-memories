@@ -5,14 +5,16 @@ These are people at the event who scan the QR code. They never log in.
 | Question | Answer |
 | --- | --- |
 | Do I need to install an app? | No. Scan the QR code with your phone camera and the gallery opens in your browser. Nothing to install, no sign-up. |
-| Do I have to give my name, number or email? | No. We never ask for them. |
+| Do I have to give my name, number or email? | No. Only if you ask for an HD photo: then you leave an email or WhatsApp number so the studio can send it. |
 | How soon do photos appear? | Usually within seconds to a minute of the photographer taking them. New photos appear by themselves while the page is open. |
 | The page isn't showing new photos. | Keep the page open: they arrive on their own. If you've scrolled down, tap the "new photos" button at the top. If the venue Wi-Fi is weak, switch to mobile data and refresh. |
 | Can I download photos? | Yes. Open a photo and tap Download. On iPhone it saves to Photos. In Instagram or WhatsApp's built-in browser, open the link in Safari or Chrome first. |
-| Can I share a photo on WhatsApp? | Yes. Open the photo and tap Share, then choose WhatsApp (or any app). The photo goes with the studio's name as the caption; the gallery link is never shared, so the gallery stays private. On a laptop, Share saves the photo and copies the caption to paste. |
-| What quality are the photos? | Sharp phone-and-screen quality (2048 px on the long side), ideal for WhatsApp, Instagram and phone wallpapers. Full-resolution originals go to the couple. |
+| Can I like a photo? | Yes. Tap the heart on the photo. The studio sees which photos guests love most. |
+| Can I get the full-quality photo? | Yes. Open the photo, tap Get HD photo and leave your email or WhatsApp number. The studio sends it to you. |
+| Can I find photos from one moment? | Yes. If the studio sorted the photos, tabs at the top show each moment, such as Rituals or Candid. |
+| What quality are the photos? | Sharp phone-and-screen quality (2048 px on the long side), ideal for WhatsApp, Instagram and phone wallpapers. Full-quality photos go to the couple, and you can ask the studio for one with Get HD photo. |
 | Can I see the photos after the event? | Yes. The same link works after the event until the gallery's delete date, usually 90 days after the event unless the studio sets otherwise. |
-| I'm in a photo and want it removed. | Open the photo and tap "Request removal", or email connect@mcreatik.com with the gallery link. We pass it to the studio and aim to remove it within 3 working days. The studio can also hide it instantly. |
+| I'm in a photo and want it removed. | Open the photo and tap "Request removal": an email opens with the photo's file name (like IMG_1234.JPG). You can also email connect@mcreatik.com with the gallery link. We pass it to the studio and aim to remove it within 3 working days. The studio can also hide it instantly. |
 | Can strangers see these photos? | Only people with the link or QR code can open the gallery. The address can't be guessed and isn't on Google. If you forward the link, whoever you send it to can see the gallery. |
 | Does the photo show where it was taken? | No. Location (GPS) data is removed from every gallery photo. |
 | Are you tracking me? | No. To show the studio how many people viewed and saved photos, your browser keeps a random number, never your name or contacts. |

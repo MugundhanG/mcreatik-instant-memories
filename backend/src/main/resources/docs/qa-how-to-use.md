@@ -5,7 +5,7 @@ Copy an answer into WhatsApp or say it on a call, and adjust the names. Every an
 **Five facts to remember:**
 
 1. Guests need no app and no sign-up. They scan the QR code and photos appear on their phone within seconds of the shot.
-2. Gallery copies have location (GPS) removed. Full-quality originals are only for the couple and the studio.
+2. Gallery copies have location (GPS) removed. Guests get compressed photos. Full-quality photos are only for the couple (the Client gallery) and the studio.
 3. Each gallery address ends in 10 random characters, and galleries are hidden from Google.
 4. Photos are kept until the delete date. The default is the event date + 90 days, and the studio can change it.
 5. Removal requests go to connect@mcreatik.com, and we aim to take the photo down within 3 working days.

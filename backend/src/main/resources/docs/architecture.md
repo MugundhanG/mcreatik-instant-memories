@@ -37,6 +37,10 @@ There are three ways a photo enters the system:
 | Camera uploader, original only | Uploader app (fallback) | Original goes to R2 originals; the server's worker makes the versions |
 | Dashboard | Studio in the browser | Browser resizes (`prepareUpload.ts`) and posts both versions; originals optional via presigned PUT |
 
+## Guest gallery and Client gallery
+
+Every photo has a `gallery` value, `GUEST` or `CLIENT` (`photos.gallery`), and so does every category. Camera uploads and compressed dashboard uploads are `GUEST`. Full-quality finals uploaded by the studio are `CLIENT`. Guests are served only `GUEST` photos. On events with `split_galleries = true` the couple's portal, album picks and ZIPs use only `CLIENT` photos; older events keep showing the couple every photo. Uploads are stored even while a gallery is switched off. See the Database and API reference pages.
+
 ## Live updates
 
 ```mermaid

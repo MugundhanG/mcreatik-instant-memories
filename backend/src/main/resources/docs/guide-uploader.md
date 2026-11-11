@@ -2,6 +2,8 @@
 
 The **McreatiK Instant Memories Uploader** runs on a laptop at the venue. It receives each photo from the camera over Wi-Fi (or from a folder), makes a light, sharp copy, and uploads it to the live gallery. If the internet drops, photos wait safely on the laptop and upload by themselves later.
 
+The current version is **1.0.19**. Connect it with the connection code from the event dashboard. There is no studio sign-in. Freelancers need only the code and the download link.
+
 ![How a photo reaches every guest](images/flow-photo-journey.svg)
 
 | | Windows | Mac |
@@ -44,7 +46,7 @@ The first time, the **Setup** window opens:
 
 ![Uploader setup window](images/uploader-setup-empty.webp)
 
-1. **Connection code:** copy the code from the event dashboard (Overview → Cameras & uploaders → **Add camera & get code** → **Copy code**; for a camera you already added, **Get new code**), then press **Paste**.
+1. **Connection code:** the code is all the app asks for. There is no studio sign-in. Copy the code from the event dashboard (Overview → Cameras & uploaders → **Add camera & get code** → **Copy code**; for a camera you already added, **Get new code**), then press **Paste**.
 2. **Folder for photos on this computer:** the default "McreatiK Photos" in your home folder is fine.
 3. **How photos arrive:** keep **"Receive photos from the camera over Wi-Fi"** ticked for Canon or Sony FTP. Untick it only if your camera software already saves into a folder.
 4. Press **Connect**. If something is wrong, the reason appears in red under the form:
@@ -190,7 +192,7 @@ Select its tab and press **Pause** (or press **Pause** next to the camera in the
 
 ![A paused camera: its photos stay on this laptop](images/uploader-paused.webp)
 
-Press **Resume** to go live again: only photos taken after resuming upload. Use it for moments that shouldn't go live, such as the bride getting ready. To share some of the paused photos later, upload them from the dashboard (**Photos → Upload photos**).
+Press **Resume** to go live again: only photos taken after resuming upload. Use it for moments that shouldn't go live, such as the bride getting ready. To share some of the paused photos later, upload them from the dashboard (**Photos → Guest gallery**).
 
 **Remove a camera**
 Select its tab and press **Remove camera** (Camera 1 can't be removed). It is allowed only when that camera's Waiting and Uploading are 0. Its photos stay in the gallery and in its folder.

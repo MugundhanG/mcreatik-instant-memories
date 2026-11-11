@@ -1,8 +1,8 @@
 # Database
 
-The database is PostgreSQL on Supabase: 11 tables created by Flyway migrations `V1` to `V13` in `backend/src/main/resources/db/migration`. Hibernate only validates the schema (`ddl-auto: validate`) and never changes it.
+The database is PostgreSQL on Supabase: 11 tables created by Flyway migrations `V1` to `V25` in `backend/src/main/resources/db/migration`. Hibernate only validates the schema (`ddl-auto: validate`) and never changes it.
 
-> **Warning** Never edit a migration that has already run. Add the next numbered file (`V14__…`) instead.
+> **Warning** Never edit a migration that has already run. Add the next numbered file (`V26__…`) instead.
 
 ## Entity relationships
 
@@ -64,9 +64,10 @@ erDiagram
 | `admin_users` | Studio and McreatiK logins: role, branding, plan, credits, reset fields, `token_version` | V1, V5, V6, V9, V10, V12, V13, V17 (`board_theme`), V18 (`main_credits`, `quick_credits`, `plan_paid_until`, `plan_since`, `plan_reminded_for`), V19 (`client_credits`), V21 (`contact_phone`) | JPA `AdminUser`; SQL in `BillingService`, `PasswordResets` |
 | `events` | One wedding or event; `event_type` MAIN / QUICK / CLIENT; `active_until` (open 3 months by default, `billing_settings.active_months`, then deleted 30 days later via `retention_until`), `storage_quota_gb` (5 for live events, 0 for client galleries, plus GB bought), `storage_locked`, `expiry_warned_for` / `expiry_notified_for` | V1, V8, V13, V18, V19 | JPA `Event` |
 | `uploaders` | Camera connections (token hash, status, queue counts) | V1 | JPA `Uploader` |
-| `photos` | Every photo, and the processing queue | V1 to V4, V8 | JPA `Photo`, `AdminPhotoSearch`, worker SQL |
-| `guest_activity` | Anonymous views, downloads, shares | V7 | `GuestActivityService` |
-| `event_categories` | Albums inside an event | V8 | `AlbumService` |
+| `photos` | Every photo, and the processing queue; `gallery` (`GUEST` / `CLIENT`) | V1 to V4, V8, V25 | JPA `Photo`, `AdminPhotoSearch`, worker SQL |
+| `guest_activity` | Anonymous views, downloads, likes (`LIKE` / `UNLIKE`, with a partial index for finding a visitor's like) | V7, V24 | `GuestActivityService` |
+| `event_categories` | Albums inside an event; `gallery` (`GUEST` / `CLIENT`) gives each gallery its own list | V8, V25 |
+| `hq_requests` | Guests' "Get HD photo" requests: `photo_id`, `contact`, `kind` (`EMAIL` / `WHATSAPP`), `visitor_id`, `done` | V24 | `HqRequests`, `GuestActivityController` | `AlbumService` |
 | `event_clients` | The couple's login | V8, V11, V12, V13 | `ClientController`, `AlbumService` |
 | `album_selections` | Photos the couple ticked | V8 | `AlbumService`, `ClientController` |
 | `event_charges` | How each event was covered: `FREE`, `QUOTA` (this month's pack), `CARRY` (last month's unused), `CREDIT` (bought); carry-over is worked out from these rows | V9, V18 | `BillingService` |
@@ -99,7 +100,8 @@ stateDiagram-v2
 ## Design choices
 
 - **Queue in a table:** the partial index `ix_photos_work ON (status, uploaded_at) WHERE status IN ('UPLOADED','PROCESSING')` stays tiny, so claiming the next job is instant.
-- **Duplicates blocked by the database:** `UNIQUE (event_id, checksum_sha256)` holds even when two uploads race.
+- **Duplicates blocked by the database:** `UNIQUE (event_id, gallery, checksum_sha256)` (V25) holds even when two uploads race. The same file may sit once in each gallery.
+- **Gallery split flag:** `events.split_galleries` (V25). `true` for events created from 11 Nov 2026 and for client-only events: the couple sees only `CLIENT` photos. `false` for older events: the couple sees every photo.
 - **Feed index matches the query:** `ix_photos_feed ON (event_id, ready_at DESC, id DESC) WHERE status = 'READY' AND NOT hidden` serves infinite scroll without sorting.
 - **Emails ignore case:** a unique index on `lower(email)` for studio logins.
 - **Single-row settings:** `billing_settings` has `CHECK (id = 1)`.

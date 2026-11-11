@@ -9,7 +9,7 @@ This guide is for everyone at the event who scans the QR code. There's no app, n
 
 ![The guest gallery on a phone, with the LIVE badge](images/g-gallery-top.webp)
 
-There's nothing to install, and you're never asked for your name, number or email.
+There's nothing to install, and you're never asked for your name, number or email. The only time is if you ask for an HD photo, so the studio can send it.
 
 ## 2. Watch photos arrive
 
@@ -22,7 +22,8 @@ Keep the page open. New photos appear by themselves, usually within seconds of b
 ## 3. View and save a photo
 
 1. Tap a photo to see it full screen. Swipe for the next one, and pinch to zoom.
-2. Tap **Download** to save it to your phone, or **Share** to send it.
+2. Tap **Download** to save it to your phone, or the heart (**Like**) to show you love it. The bottom row has **Download** and **Like**.
+3. Want the full-quality picture? Tap **Get HD photo** and leave your email or WhatsApp number. The studio sends it to you.
 
 ![A photo full screen with Download and Request removal](images/g-viewer.webp)
 
@@ -30,7 +31,7 @@ Keep the page open. New photos appear by themselves, usually within seconds of b
 
 > **Note** Opened the link inside Instagram or WhatsApp? If Download doesn't save, open the link in Safari or Chrome. On some iPhones, press and hold the photo and tap **Save image**.
 
-**Share** sends the photo straight to WhatsApp, Instagram or any app, with the studio's name as the caption. Only the photo is shared, never the gallery link, so the gallery stays private to the guests. On a laptop, Share saves the photo and copies the caption for you to paste.
+**Categories:** if the studio sorted the photos, tabs at the top (for example Rituals or Candid) let you jump to one moment.
 
 ## 4. Photos after the event
 
@@ -52,7 +53,7 @@ The full notice: **live.mcreatik.com/privacy**.
 
 ## 6. Ask for a photo to be removed
 
-Open the photo and tap **Request removal**, or email **connect@mcreatik.com** with the gallery link. We pass it to the studio and aim to remove it within **3 working days**. The studio can also hide it instantly.
+Open the photo and tap **Request removal**. An email opens with the photo's file name in it, for example IMG_1234.JPG. Send it, or email **connect@mcreatik.com** with the gallery link. We pass it to the studio and aim to remove it within **3 working days**. The studio can also hide it instantly.
 
 ## Troubleshooting
 
