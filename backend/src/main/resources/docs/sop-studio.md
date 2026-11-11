@@ -47,7 +47,7 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 
 2. Press **New event** and choose the **Event type**:
    - **Main event:** weddings, receptions, big birthdays, big traditional functions and large corporate events.
-   - **Quick event:** engagements, small birthdays, baby showers and small corporate events, up to about 300 guests. If more guests turn up, the gallery keeps working and the event page offers **Upgrade to Main**.
+   - **Quick event:** engagements, small birthdays, baby showers and small corporate events, up to about 200 guests. If more guests turn up, the gallery keeps working and the event page offers **Upgrade to Main**.
    - **Client gallery only:** no live guest gallery and no camera. You upload the edited photos from the dashboard and the couple gets a private gallery to view, select and download. ₹250 per client gallery, plus storage (see 3.1).
 
    Under the choice, the form tells you how this event is paid for: by your pack, by an event you bought, or the price to pay.
@@ -70,8 +70,11 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 - **Extra events:** once this month's pack events (and any carried over) are used, each extra event costs the pack's extra price above, as long as the pack is paid up. **Buy events** and the new-event form show it. A Main event on a Quick pack is the normal ₹2,499. If the pack lapses, events go back to the normal prices.
 - **Carry-over:** unused events carry over to the next month (one month only).
 - **Renewing:** packs are renewed month by month from **Events → Renew pack** (you get an email and a banner a few days before). If you don't renew, nothing stops: new events are charged one by one.
-- **Upgrades:** a Quick event that grows past about 300 guests can be upgraded to Main for ₹1,000.
+- **Upgrades:** a Quick event that grows past about 200 guests can be upgraded to Main for ₹1,000.
 - **Bought events** never expire.
+- **Main event on a Quick pack:** while your Quick pack is paid up, a Main event costs ₹1,499 instead of ₹2,499.
+- **Check the event name and date before creating an event.** They are printed on your QR cards and can't be changed afterwards (contact McreatiK if you made a mistake). Events can't be deleted; you can delete photos.
+- **Client gallery storage:** when you pay the ₹250 setup, you can add the gallery's storage in the same payment.
 
 ### 3.1 Storage and how long galleries stay open
 
