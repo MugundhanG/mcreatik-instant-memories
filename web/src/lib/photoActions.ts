@@ -49,15 +49,29 @@ export async function downloadPhoto(url: string, eventSlug: string, photoId: str
   const name = fileNameFor(eventSlug, photoId)
 
   if (isIOS()) {
+    // iPhone: the share sheet's "Save Image" puts it in Photos. Where that can't open (photo not fetched in
+    // time, older iOS), the file downloads straight to Files instead; never the press-and-hold hint.
     const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean }
-    if (!prefetched || !nav.share || !nav.canShare) return 'hint'
-    const file = new File([prefetched], name, { type: 'image/jpeg' })
-    if (!nav.canShare({ files: [file] })) return 'hint'
+    let blob = prefetched ?? null
     try {
-      await nav.share({ files: [file] })
-      return 'save-sheet'
-    } catch (e) {
-      return e instanceof DOMException && e.name === 'AbortError' ? 'cancelled' : 'hint'
+      blob ??= await fetchPhoto(url)
+    } catch {
+      return 'hint'
+    }
+    const file = new File([blob], name, { type: 'image/jpeg' })
+    if (nav.share && nav.canShare?.({ files: [file] })) {
+      try {
+        await nav.share({ files: [file] })
+        return 'save-sheet'
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return 'cancelled'
+      }
+    }
+    try {
+      saveBlob(blob, name)
+      return 'saved'
+    } catch {
+      return 'hint'
     }
   }
 

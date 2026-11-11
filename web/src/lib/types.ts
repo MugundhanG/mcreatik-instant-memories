@@ -39,6 +39,8 @@ export interface PublicPhoto {
   cursor: string
   /** The photo's category; absent from older servers. */
   categoryId?: string | null
+  /** The camera's file name (e.g. IMG_1234.JPG); absent from older servers. */
+  fileName?: string | null
 }
 
 export interface PublicPhotoPage {
@@ -220,6 +222,8 @@ export interface AdminPhotoQuery {
   category?: string
   /** Only photos the couple selected for the album. */
   selected?: boolean
+  /** Part of the camera's file name, any case. */
+  q?: string
   offset?: number
   limit?: number
 }

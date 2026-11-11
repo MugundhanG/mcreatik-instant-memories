@@ -28,11 +28,17 @@ public class AdminPhotoSearch {
     }
 
     /** {@code category}: a category id, or {@link #UNSORTED} for photos not in any; {@code selected}: in the album. */
-    public record Filter(UUID uploaderId, Boolean liked, Boolean hidden, LocalDate day, String category, Boolean selected) {
-        public static final Filter NONE = new Filter(null, null, null, null, null, null);
+    /** {@code fileName}: part of the camera's file name, any case (e.g. "1234" finds IMG_1234.JPG). */
+    public record Filter(UUID uploaderId, Boolean liked, Boolean hidden, LocalDate day, String category, Boolean selected,
+                         String fileName) {
+        public static final Filter NONE = new Filter(null, null, null, null, null, null, null);
+
+        public Filter(UUID uploaderId, Boolean liked, Boolean hidden, LocalDate day, String category, Boolean selected) {
+            this(uploaderId, liked, hidden, day, category, selected, null);
+        }
 
         public Filter(UUID uploaderId, Boolean liked, Boolean hidden, LocalDate day) {
-            this(uploaderId, liked, hidden, day, null, null);
+            this(uploaderId, liked, hidden, day, null, null, null);
         }
     }
 
@@ -105,6 +111,10 @@ public class AdminPhotoSearch {
         if (f.day() != null) {
             w.append(" AND ").append(DAY).append(" = :day");
             params.put("day", f.day());
+        }
+        if (f.fileName() != null && !f.fileName().isBlank()) {
+            w.append(" AND p.original_file_name ILIKE :fileName ESCAPE '\\'");
+            params.put("fileName", "%" + f.fileName().trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
         }
         if (UNSORTED.equals(f.category())) {
             w.append(" AND p.category_id IS NULL");

@@ -11,7 +11,7 @@ public final class PhotoDtos {
 
     /** What guests see. No uploader ids, no storage keys, no original URLs. */
     public record PublicPhoto(UUID id, String thumbnailUrl, String webUrl, Integer width, Integer height,
-                              Instant readyAt, String cursor, UUID categoryId) {
+                              Instant readyAt, String cursor, UUID categoryId, String fileName) {
     }
 
     public record PublicPhotoPage(List<PublicPhoto> photos, String nextCursor) {
