@@ -87,8 +87,9 @@ class BillingTest extends IntegrationTest {
     void monthlyAllowanceThenPaidExtraEvents() throws Exception {
         String first = eventId(createEvent(studio).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
         createEvent(studio).andExpect(status().isCreated());
-        // Deleting an event does not give the allowance back.
-        mvc.perform(delete("/api/admin/events/" + first).header("Authorization", bearer(studio))).andExpect(status().isNoContent());
+        // A studio can't delete an event; McreatiK deleting it does not give the allowance back.
+        mvc.perform(delete("/api/admin/events/" + first).header("Authorization", bearer(studio))).andExpect(status().isForbidden());
+        mvc.perform(delete("/api/admin/events/" + first).header("Authorization", bearer(adminToken()))).andExpect(status().isNoContent());
         createEvent(studio).andExpect(status().isPaymentRequired())
                 .andExpect(jsonPath("$.code").value("EVENT_PAYMENT_REQUIRED"));
         mvc.perform(get("/api/admin/billing").header("Authorization", bearer(studio)))

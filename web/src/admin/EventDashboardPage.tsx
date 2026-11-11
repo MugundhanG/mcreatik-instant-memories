@@ -307,7 +307,9 @@ export default function EventDashboardPage() {
                   : 'This event is kept with no end date.'}
               </p>
             )}
-            <Button variant="danger" onClick={deleteEvent}>Delete event now</Button>
+            {superAdmin
+              ? <Button variant="danger" onClick={deleteEvent}>Delete event now</Button>
+              : <p className="max-w-xs text-xs text-muted" data-testid="no-delete">Events can't be deleted. You can delete photos from the Photos tab, or ask McreatiK to remove the event.</p>}
           </div>
         </Card>
       </section>

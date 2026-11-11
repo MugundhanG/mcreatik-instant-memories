@@ -148,13 +148,15 @@ class PackagesTest extends IntegrationTest {
         assertThat((Integer) JsonPath.read(summary(), "$.unitPrice")).isEqualTo(1499);
         assertThat((Integer) JsonPath.read(summary(), "$.quickUnitPrice")).isEqualTo(1499);
 
-        // Quick packs: Quick extras only; a Main event stays at the full price.
+        // Quick packs: Quick extras at the pack's price; a Main event at the lower Quick-pack price (₹1,499).
         setPlan("QUICK_4");
         s = summary();
         assertThat((Integer) JsonPath.read(s, "$.quickUnitPrice")).isEqualTo(799);
-        assertThat((Integer) JsonPath.read(s, "$.unitPrice")).isEqualTo(2499);
+        assertThat((Integer) JsonPath.read(s, "$.unitPrice")).isEqualTo(1499);
+        assertThat((Integer) JsonPath.read(s, "$.prices.quickPackMain")).isEqualTo(1499);
+        assertThat((Integer) JsonPath.read(s, "$.prices.upgradeGuests")).isEqualTo(300); // this test's own setting
         buy("{\"item\":\"QUICK_EVENT\",\"quantity\":1,\"utr\":\"" + utr() + "\"}").andExpect(jsonPath("$.amount").value(799));
-        buy("{\"item\":\"MAIN_EVENT\",\"quantity\":1,\"utr\":\"" + utr() + "\"}").andExpect(jsonPath("$.amount").value(2499));
+        buy("{\"item\":\"MAIN_EVENT\",\"quantity\":1,\"utr\":\"" + utr() + "\"}").andExpect(jsonPath("$.amount").value(1499));
         setPlan("QUICK_2");
         assertThat((Integer) JsonPath.read(summary(), "$.quickUnitPrice")).isEqualTo(999);
 

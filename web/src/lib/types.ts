@@ -323,7 +323,7 @@ export interface AlbumSelection {
 /** PER_EVENT: every event bought. MAIN_2 … QUICK_4: monthly packs. MONTHLY: the older monthly plan. */
 export type Plan = 'PER_EVENT' | 'MAIN_2' | 'MAIN_4' | 'QUICK_2' | 'QUICK_4' | 'MONTHLY' | 'UNLIMITED'
 
-/** MAIN: weddings and big events. QUICK: up to ~300 guests. CLIENT: a couple's gallery without a live guest gallery. */
+/** MAIN: weddings and big events. QUICK: up to ~200 guests. CLIENT: a couple's gallery without a live guest gallery. */
 export type EventType = 'MAIN' | 'QUICK' | 'CLIENT'
 
 /** What a payment buys. */
@@ -338,6 +338,8 @@ export interface Purchase {
   plan?: Plan
   /** STORAGE: the months the gallery has left, to show the price (the server works it out itself). */
   months?: number
+  /** CLIENT_SETUP: storage (GB) bought together with one gallery's setup; the new gallery starts with it. */
+  storageGb?: number
 }
 
 /** Every current price (₹). */
@@ -364,6 +366,8 @@ export interface Prices {
   main4Extra: number
   quick2Extra: number
   quick4Extra: number
+  /** A Main event for a studio on a paid-up Quick pack. */
+  quickPackMain: number
 }
 
 export interface EventPayment {
@@ -476,6 +480,7 @@ export interface BillingSettings {
   main4ExtraPrice: number
   quick2ExtraPrice: number
   quick4ExtraPrice: number
+  quickPackMainPrice: number
 }
 
 /** Current prices for the public /pricing page. */

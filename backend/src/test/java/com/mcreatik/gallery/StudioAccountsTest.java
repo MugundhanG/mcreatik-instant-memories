@@ -1,6 +1,7 @@
 package com.mcreatik.gallery;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -135,6 +136,24 @@ class StudioAccountsTest extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("STUDIO"))
                 .andExpect(jsonPath("$.mustChangePassword").value(false));
+    }
+
+    @Test
+    void mcreatikDeletesAStudioWithItsEventsAndStudiosCannotDeleteEvents() throws Exception {
+        String studio = studioLogin("temporary-123");
+        String eventId = com.jayway.jsonpath.JsonPath.read(createEventAs(adminToken(), "Arun & Priya", ",\"ownerId\":\"" + studioId + "\""), "$.id");
+        // A studio keeps every event: only McreatiK can delete one.
+        mvc.perform(delete("/api/admin/events/" + eventId).header("Authorization", bearer(studio))).andExpect(status().isForbidden());
+        // Only McreatiK deletes studios, and never its own login.
+        mvc.perform(delete("/api/admin/studios/" + studioId).header("Authorization", bearer(studio))).andExpect(status().isForbidden());
+        java.util.List<String> admins = com.jayway.jsonpath.JsonPath.read(mvc.perform(get("/api/admin/studios").header("Authorization", bearer(adminToken())))
+                .andReturn().getResponse().getContentAsString(), "$[?(@.role == 'SUPER_ADMIN')].id");
+        String me = admins.getFirst();
+        mvc.perform(delete("/api/admin/studios/" + me).header("Authorization", bearer(adminToken()))).andExpect(status().isBadRequest());
+        mvc.perform(delete("/api/admin/studios/" + studioId).header("Authorization", bearer(adminToken()))).andExpect(status().isNoContent());
+        mvc.perform(get("/api/admin/events/" + eventId).header("Authorization", bearer(adminToken()))).andExpect(status().isNotFound());
+        mvc.perform(loginRequest(email, "temporary-123")).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/admin/studios/" + studioId).header("Authorization", bearer(adminToken()))).andExpect(status().isNotFound());
     }
 
     @Test

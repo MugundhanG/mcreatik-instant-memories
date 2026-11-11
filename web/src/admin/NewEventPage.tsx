@@ -105,7 +105,7 @@ export default function NewEventPage() {
             <div role="radiogroup" aria-label="Event type" className="grid gap-2 sm:grid-cols-3">
               {([
                 ['MAIN', 'Main event', 'Weddings, receptions, big birthdays, big functions and corporate events.', billing?.unitPrice],
-                ['QUICK', 'Quick event', `Engagements, small birthdays, baby showers: up to about ${billing?.prices.upgradeGuests ?? 300} guests. Upgrade to Main later if it grows.`, billing?.quickUnitPrice],
+                ['QUICK', 'Quick event', `Engagements, small birthdays, baby showers: up to about ${billing?.prices.upgradeGuests ?? 200} guests. Upgrade to Main later if it grows.`, billing?.quickUnitPrice],
                 ['CLIENT', 'Client gallery only', 'No live event: a private gallery for the couple to pick album photos and download. You add the photos and storage.', billing?.prices.clientSetup],
               ] as const).map(([type, title, body, price]) => (
                 <button key={type} type="button" role="radio" aria-checked={eventType === type} onClick={() => setEventType(type)}
@@ -142,6 +142,9 @@ export default function NewEventPage() {
           <Field label="Gallery address (optional)" hint="Leave empty for a hard-to-guess address like arun-priya-7k3dqx9mzp. A custom address is easier for strangers to guess.">
             <input className={inputClass} value={slug} placeholder="auto" onChange={(e) => setSlug(e.target.value.toLowerCase())} />
           </Field>
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="check-note">
+            <b>Check the event name and date before you create it.</b> They are printed on your QR cards and shown to guests, and can't be changed afterwards.
+          </p>
           <ErrorText>{error}</ErrorText>
           <div className="flex justify-end gap-2">
             <Button onClick={() => navigate('/admin')}>Cancel</Button>

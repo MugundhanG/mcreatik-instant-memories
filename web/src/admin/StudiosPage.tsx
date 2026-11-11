@@ -106,6 +106,23 @@ export default function StudiosPage() {
     load()
   }
 
+  const deleteStudio = async (s: Studio) => {
+    const ok = await confirm({
+      title: `Delete ${s.name} for good?`,
+      body: `Their login, all ${formatCount(s.events)} events with ${formatCount(s.photos)} photos, guest and couple galleries, and their payment history are deleted. This cannot be undone. To only stop them logging in, use Disable instead.`,
+      confirmLabel: 'Delete studio',
+      danger: true,
+      requireText: s.name,
+    })
+    if (!ok) return
+    try {
+      await adminApi.deleteStudio(s.id)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Could not delete the studio')
+    }
+    load()
+  }
+
   return (
     <div className="space-y-6">
       {confirmDialog}
@@ -184,9 +201,10 @@ export default function StudiosPage() {
                     <Button onClick={() => setBrandingFor((id) => (id === s.id ? null : s.id))} aria-expanded={brandingFor === s.id}>Edit branding</Button>
                     <Button onClick={() => resetPassword(s)}>Reset password</Button>
                     <Button variant={s.disabled ? 'secondary' : 'danger'} onClick={() => toggleDisabled(s)}>{s.disabled ? 'Enable' : 'Disable'}</Button>
+                    <Button variant="danger" onClick={() => void deleteStudio(s)}>Delete</Button>
                   </div>
                 )}
-                {!me && billing.get(s.id) && <StudioPlan billing={billing.get(s.id)!} onChange={load} />}
+                {!me && billing.get(s.id) && <StudioPlan key={JSON.stringify(billing.get(s.id))} billing={billing.get(s.id)!} onChange={load} />}
                 {!me && brandingFor === s.id && s.brand && (
                   <div className="w-full rounded-xl border border-line p-4">
                     <BrandingCard

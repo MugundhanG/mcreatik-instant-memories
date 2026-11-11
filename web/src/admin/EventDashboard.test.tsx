@@ -87,7 +87,9 @@ describe('Event dashboard', () => {
 
     await user.click(screen.getByRole('tab', { name: /Settings/ }))
     expect(screen.getByTestId('where')).toHaveTextContent('/events/e1?tab=settings')
-    expect(screen.getByRole('tabpanel', { name: 'Settings' })).toHaveTextContent('Delete event now')
+    // A studio keeps every event: no delete button, only McreatiK can remove one.
+    expect(screen.getByRole('tabpanel', { name: 'Settings' })).not.toHaveTextContent('Delete event now')
+    expect(screen.getByTestId('no-delete')).toHaveTextContent("Events can't be deleted")
     expect(screen.queryByRole('tabpanel', { name: 'Overview' })).not.toBeInTheDocument() // hidden, not removed
 
     // Arrow keys move between tabs.

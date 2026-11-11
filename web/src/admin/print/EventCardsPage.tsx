@@ -20,6 +20,7 @@ export default function EventCardsPage() {
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [qr, setQr] = useState<string | null>(null)
   const [making, setMaking] = useState<Kind | null>(null)
+  const [percent, setPercent] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const assets = usePrintAssets(event?.brand, () => adminApi.eventLogo(eventId))
 
@@ -56,9 +57,10 @@ export default function EventCardsPage() {
   const download = async (kind: Kind) => {
     if (!svgs) return
     setMaking(kind)
+    setPercent(0)
     setError(null)
     try {
-      const blob = await renderJpeg(svgs[kind], CARD.width, CARD.height)
+      const blob = await renderJpeg(svgs[kind], CARD.width, CARD.height, setPercent)
       downloadBlob(blob, `${kind === 'event' ? 'event-card' : 'table-card'}-${fileSlug(names)}-8x12in.jpg`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not make the print file')
@@ -93,7 +95,7 @@ export default function EventCardsPage() {
           <p className="mb-4 text-sm text-muted">Goes in the frame of your studio board.</p>
           <div className="mx-auto max-w-48"><DesignPreview svg={svgs?.event ?? null} label="Event card" /></div>
           <Button variant="primary" className="mt-4 w-full" onClick={() => download('event')} disabled={!svgs || making !== null}>
-            {making === 'event' ? 'Making print file…' : 'Download event card'}
+            {making === 'event' ? `Making print file… ${percent}%` : 'Download event card'}
           </Button>
           <p className="mt-2 text-xs text-muted">{printNote}</p>
         </Card>
@@ -101,7 +103,7 @@ export default function EventCardsPage() {
           <p className="mb-4 text-sm text-muted">Stands on its own on guest tables, with "Scan to see the photos live".</p>
           <div className="mx-auto max-w-48"><DesignPreview svg={svgs?.table ?? null} label="Table card" /></div>
           <Button variant="primary" className="mt-4 w-full" onClick={() => download('table')} disabled={!svgs || making !== null}>
-            {making === 'table' ? 'Making print file…' : 'Download table card'}
+            {making === 'table' ? `Making print file… ${percent}%` : 'Download table card'}
           </Button>
           <p className="mt-2 text-xs text-muted">{printNote}</p>
         </Card>

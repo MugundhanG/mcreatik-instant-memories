@@ -114,7 +114,7 @@ public class EventService {
         if (type == EventType.CLIENT) {
             // A gallery for the couple only: no guest QR gallery, storage bought for it, active from today.
             event.setLiveGalleryEnabled(false);
-            event.setStorageQuotaGb(0);
+            event.setStorageQuotaGb("CLIENT".equals(charge) ? billing.takeClientStorage(owner) : 0);
             event.setActiveUntil(today().plusMonths(prices.activeMonths()));
         } else {
             event.setStorageQuotaGb(prices.freeStorageGb());
@@ -141,6 +141,13 @@ public class EventService {
     public EventDtos.EventDetail update(UUID ownerId, UUID eventId, EventDtos.UpdateEventRequest r) {
         Event event = owned(ownerId, eventId);
         EventStatus previousStatus = event.getStatus();
+        // The name and date are printed on the QR cards and shown to guests: only McreatiK can change them later.
+        boolean renames = r.name() != null && !r.name().trim().equals(event.getName());
+        boolean redates = r.eventDate() != null && !r.eventDate().equals(event.getEventDate());
+        if ((renames || redates) && !isSuperAdmin(ownerId)) {
+            throw ApiException.conflict("EVENT_LOCKED",
+                    "The event name and date can't be changed after the event is created. Please contact McreatiK.");
+        }
         if (r.name() != null) {
             if (r.name().isBlank()) {
                 throw ApiException.badRequest("INVALID_NAME", "Name cannot be empty");
@@ -201,7 +208,15 @@ public class EventService {
 
     /** Permanently deletes the event, its uploaders, its photos and every stored file. */
     public void delete(UUID ownerId, UUID eventId) {
-        Event event = owned(ownerId, eventId);
+        if (!isSuperAdmin(ownerId)) {
+            throw new ApiException(org.springframework.http.HttpStatus.FORBIDDEN, "FORBIDDEN",
+                    "Events can't be deleted. You can delete its photos, or ask McreatiK to remove the event.");
+        }
+        remove(owned(ownerId, eventId));
+    }
+
+    /** Removes the event and every stored file (expiry, a deleted studio, or McreatiK deleting it). */
+    public void remove(Event event) {
         String prefix = StorageKeys.eventPrefix(event.getId());
         storage.deletePrefix(StorageArea.ORIGINALS, prefix);
         storage.deletePrefix(StorageArea.MEDIA, prefix);
@@ -424,6 +439,6 @@ public class EventService {
     }
 
     public void deleteExpired(Event event) {
-        delete(event.getOwnerId(), event.getId());
+        remove(event);
     }
 }

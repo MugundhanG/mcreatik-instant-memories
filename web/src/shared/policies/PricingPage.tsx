@@ -53,7 +53,7 @@ function Packages({ k }: { k: Prices }) {
         </table>
       </div>
       <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink/85">
-        <li>A Main pack also covers Quick events; a Quick pack covers Quick events only.</li>
+        <li>A Main pack also covers Quick events; a Quick pack covers Quick events only{k.quickPackMain && k.quickPackMain < k.main ? `, and a Main event costs ${rupees(k.quickPackMain)} instead of ${rupees(k.main)} while the Quick pack is paid up` : ''}.</li>
         <li>Need more events in a month? While your pack is paid up, each extra event costs the pack's extra price (a Main pack's extra price covers Quick events too).</li>
         <li>Unused events in a month carry over to the next month (one month only).</li>
         <li>Packs are paid month by month from your dashboard. If you don't renew, new events are simply charged one by one.</li>

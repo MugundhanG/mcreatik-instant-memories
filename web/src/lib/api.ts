@@ -76,8 +76,8 @@ async function requestBlob(path: string): Promise<Blob> {
 function fallbackPrices(b: BillingSummary): Prices {
   return {
     main: b.unitPrice, quick: b.unitPrice, main2: b.monthlyPrice, main4: b.monthlyPrice, quick2: b.monthlyPrice,
-    quick4: b.monthlyPrice, upgrade: 0, upgradeGuests: 300, storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3,
-    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799,
+    quick4: b.monthlyPrice, upgrade: 0, upgradeGuests: 200, storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3,
+    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799, quickPackMain: 1499,
   }
 }
 
@@ -275,6 +275,7 @@ export const adminApi = {
   studios: () => request<Studio[]>('/api/admin/studios', {}, true),
   createStudio: (input: { name: string; email: string; password: string; plan?: Plan }) =>
     request<Studio>('/api/admin/studios', { method: 'POST', body: json(input) }, true),
+  deleteStudio: (id: string) => request<void>(`/api/admin/studios/${id}`, { method: 'DELETE' }, true),
   updateStudio: (id: string, input: { name?: string; disabled?: boolean; newPassword?: string }) =>
     request<Studio>(`/api/admin/studios/${id}`, { method: 'PATCH', body: json(input) }, true),
   updateUploader: (uploaderId: string, changes: { name?: string; paused?: boolean }) =>

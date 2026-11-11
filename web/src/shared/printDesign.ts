@@ -1,3 +1,4 @@
+import { jpegStripEncoder } from './jpegEncoder'
 import { formatPhone } from './phone'
 
 /**
@@ -398,25 +399,39 @@ export function withPrintDpi(bytes: Uint8Array, dpi = DPI): Uint8Array {
   return out
 }
 
-/** Draws the SVG at full print size and returns a high-quality JPEG (300 dpi). */
-export async function renderJpeg(svg: string, width: number, height: number): Promise<Blob> {
+/** Rows drawn and encoded at a time: small enough for any phone's canvas, a multiple of 8 for the encoder. */
+const STRIP_ROWS = 512
+
+/**
+ * Draws the SVG at full print size and returns a very high-quality JPEG (300 ppi, full colour). It is drawn and
+ * encoded a strip at a time, so phones (which cannot hold a canvas this large) get the same full-size file as a
+ * computer. {@code onProgress} gets 0 to 100.
+ */
+export async function renderJpeg(svg: string, width: number, height: number, onProgress?: (percent: number) => void): Promise<Blob> {
   const url = svgUrl(svg)
+  const canvas = document.createElement('canvas')
   try {
     const img = new Image()
     img.src = url
     await img.decode()
-    const canvas = document.createElement('canvas')
     canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')
+    canvas.height = Math.min(STRIP_ROWS, height)
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
     if (!ctx) throw new Error('This browser cannot make the print file. Try Chrome or Edge on a computer.')
-    ctx.drawImage(img, 0, 0, width, height)
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.93))
+    const encoder = jpegStripEncoder(width, height, { quality: 95, dpi: DPI })
+    for (let y = 0; y < height; y += STRIP_ROWS) {
+      const rows = Math.min(STRIP_ROWS, height - y)
+      ctx.fillStyle = '#fff'
+      ctx.fillRect(0, 0, width, rows)
+      ctx.drawImage(img, 0, -y, width, height)
+      encoder.addStrip(ctx.getImageData(0, 0, width, rows).data, rows)
+      onProgress?.(Math.round(((y + rows) / height) * 100))
+      await new Promise((resolve) => setTimeout(resolve, 0)) // let the page repaint (the percentage) between strips
+    }
+    return encoder.finish()
+  } finally {
     canvas.width = 0
     canvas.height = 0
-    if (!blob) throw new Error('This device ran out of memory making the print file. Try Chrome or Edge on a computer.')
-    return new Blob([withPrintDpi(new Uint8Array(await blob.arrayBuffer())) as BlobPart], { type: 'image/jpeg' })
-  } finally {
     URL.revokeObjectURL(url)
   }
 }

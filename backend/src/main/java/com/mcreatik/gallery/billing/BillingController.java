@@ -38,9 +38,9 @@ public class BillingController {
      * (or {@code events}) is the number of events or months; {@code eventId} for an upgrade; {@code plan} for a pack.
      */
     public record OnlineOrderRequest(Integer events, BillingService.Item item, Integer quantity, UUID eventId,
-                                     BillingService.Plan plan) {
+                                     BillingService.Plan plan, Integer storageGb) {
         BillingService.Purchase purchase() {
-            return BillingService.normalize(item, quantity != null ? quantity : events, eventId, plan);
+            return BillingService.normalize(item, quantity != null ? quantity : events, eventId, plan, storageGb);
         }
     }
 
@@ -89,14 +89,15 @@ public class BillingController {
 
     /** A UPI QR payment the studio made, with its transaction ID; the other fields as in {@link OnlineOrderRequest}. */
     public record PaymentRequest(Integer events, String utr, BillingService.Item item, Integer quantity, UUID eventId,
-                                 BillingService.Plan plan) {
+                                 BillingService.Plan plan, Integer storageGb) {
     }
 
     @PostMapping("/payments")
     @ResponseStatus(HttpStatus.CREATED)
     public BillingService.Payment pay(Authentication auth, @RequestBody PaymentRequest request) {
         return billing.submitPayment(CurrentAdmin.id(auth), BillingService.normalize(request.item(),
-                request.quantity() != null ? request.quantity() : request.events(), request.eventId(), request.plan()),
+                request.quantity() != null ? request.quantity() : request.events(), request.eventId(), request.plan(),
+                request.storageGb()),
                 request.utr());
     }
 

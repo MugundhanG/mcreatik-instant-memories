@@ -53,12 +53,15 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
   const [paidOnline, setPaidOnline] = useState(false)
   const unit = unitPrice(purchase.item, billing, purchase.plan, purchase.months)
   const title = purchase.item === 'EXTEND' ? `Keep ${billing.prices.activeMonths} more months` : TITLE[purchase.item]
-  const amount = quantity * unit
+  // A client gallery can be paid together with its storage for the whole open period (one gallery at a time).
+  const setupGb = purchase.item === 'CLIENT_SETUP' ? purchase.storageGb ?? 0 : 0
+  const perSetupGb = billing.prices.storageGb * billing.prices.activeMonths
+  const amount = quantity * unit + setupGb * perSetupGb
   const label = describe(purchase, billing)
   const link = billing.upiId ? upiLink(billing.upiId, billing.payeeName, amount, label) : null
   const [method, setMethod] = useState<Method>(billing.onlinePayments ? 'online' : 'upi')
   const isEvents = purchase.item === 'MAIN_EVENT' || purchase.item === 'QUICK_EVENT'
-  const max = purchase.item === 'PLAN' ? 12 : purchase.item === 'UPGRADE' || purchase.item === 'EXTEND' ? 1
+  const max = purchase.item === 'PLAN' ? 12 : purchase.item === 'UPGRADE' || purchase.item === 'EXTEND' || setupGb > 0 ? 1
     : purchase.item === 'STORAGE' ? 1000 : 50
   const unitWord = purchase.item === 'PLAN' ? 'month' : purchase.item === 'STORAGE' ? 'GB'
     : purchase.item === 'CLIENT_SETUP' ? 'gallery' : 'event'
@@ -165,6 +168,23 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
                 ))}
               </div>
             )}
+            {purchase.item === 'CLIENT_SETUP' && (
+              <div>
+                <p className="mb-1.5 text-sm font-medium">Storage for this gallery <span className="font-normal text-muted">· {rupees(billing.prices.storageGb)} per GB a month × {billing.prices.activeMonths} months</span></p>
+                <div role="radiogroup" aria-label="Storage for this gallery" className="grid grid-cols-5 gap-1.5 text-sm">
+                  {[0, 5, 10, 25, 50].map((gb) => (
+                    <button key={gb} type="button" role="radio" aria-checked={setupGb === gb} onClick={() => change({ storageGb: gb, ...(gb > 0 ? { quantity: 1 } : {}) })}
+                      className={`rounded-lg border px-1 py-2 text-center transition-colors ${setupGb === gb ? 'border-ink bg-stone-50 font-medium' : 'border-line hover:border-stone-400'}`}>
+                      {gb === 0 ? 'Later' : `${gb} GB`}
+                      <span className="block text-[11px] text-muted">{gb === 0 ? 'add after' : `≈ ${photosPerGb(gb).toLocaleString('en-IN')}`}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-muted">
+                  {setupGb > 0 ? 'The new gallery starts with this storage, ready for your photos.' : 'A gallery needs storage before you can add photos. Choose it now, or add it after creating the gallery.'}
+                </p>
+              </div>
+            )}
             {purchase.item === 'PLAN' && (
               <label className="block text-sm">
                 <span className="font-medium">Pack</span>
@@ -184,7 +204,7 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
                 </div>
               ) : <span className="text-sm font-medium">{label}</span>}
               <p className="text-right">
-                <span className="block text-xs text-muted">{formatCount(quantity)} × {rupees(unit)}</span>
+                <span className="block text-xs text-muted" data-testid="breakdown">{formatCount(quantity)} × {rupees(unit)}{setupGb > 0 ? ` + ${setupGb} GB × ${rupees(perSetupGb)}` : ''}</span>
                 <span className="text-xl font-semibold tabular-nums" data-testid="amount">{rupees(amount)}</span>
               </p>
             </div>
