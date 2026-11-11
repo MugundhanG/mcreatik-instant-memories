@@ -276,4 +276,36 @@ describe('Live gallery', () => {
     renderGallery()
     expect(await screen.findByTestId('gallery-unavailable')).toHaveTextContent('Please contact Lens & Light.')
   })
+
+  it('filters by category chips and reloads from the start', async () => {
+    const user = userEvent.setup()
+    const calls: string[] = []
+    mockFetch({
+      [base]: () => liveEvent,
+      [`${base}/categories`]: () => [{ id: 'c1', name: 'Couple', position: 0, photos: 1 }],
+      [`${base}/photos`]: (url) => {
+        calls.push(url.searchParams.get('category') ?? '')
+        return url.searchParams.get('category') ? { photos: [photo(1)], nextCursor: null } : { photos: [photo(3), photo(2), photo(1)], nextCursor: null }
+      },
+    })
+    renderGallery()
+    const chip = await screen.findByRole('tab', { name: 'Couple' })
+    expect(screen.getByRole('tab', { name: 'All' })).toHaveClass('bg-ink')
+    await waitFor(() => expect(tiles()).toHaveLength(3))
+    await user.click(chip)
+    await waitFor(() => expect(tiles()).toHaveLength(1))
+    expect(calls).toContain('c1')
+    expect(chip).toHaveClass('bg-ink')
+  })
+
+  it('hides the chip row when there are no categories', async () => {
+    mockFetch({
+      [base]: () => liveEvent,
+      [`${base}/categories`]: () => [],
+      [`${base}/photos`]: () => ({ photos: [photo(1)], nextCursor: null }),
+    })
+    renderGallery()
+    await screen.findByRole('heading', { name: liveEvent.name })
+    expect(screen.queryByRole('tab', { name: 'All' })).not.toBeInTheDocument()
+  })
 })

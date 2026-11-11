@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { GuestAnalytics } from '../lib/types'
 import { AnalyticsPanel } from './AnalyticsPanel'
@@ -33,5 +34,47 @@ describe('Guest analytics', () => {
     expect(bars.map((b) => b.getAttribute('aria-label')?.split(':')[0])).toEqual(['7 PM', '8 PM', '9 PM', '10 PM'])
     expect(bars[1]).toHaveAttribute('aria-label', '8 PM: 0 people, 0 photo views, 0 downloads')
     expect(within(screen.getByTestId('top-photos')).getByRole('img', { name: 'IMG_1.JPG' })).toBeInTheDocument()
+  })
+
+  it('shows likes, switches the top-photo tabs and lists HD requests with a Done toggle', async () => {
+    const user = userEvent.setup()
+    const top = (id: string, likes: number) => ({ photoId: id, thumbnailUrl: `https://media.test/t/${id}.jpg`, fileName: `${id}.JPG`, views: 5, downloads: 2, likes })
+    const full = { ...analytics, totals: { ...analytics.totals, likes: 12 }, mostLiked: [top('liked', 9)], mostDownloaded: [top('dl', 0)], mostViewed: [top('vw', 0)] }
+    const requests = [
+      { id: 'r1', photoId: 'p1', thumbnailUrl: null, fileName: 'a.jpg', name: 'Asha', contact: '9876543210', kind: 'WHATSAPP', done: false, createdAt: '2026-10-31T10:00:00Z' },
+      { id: 'r2', photoId: 'p2', thumbnailUrl: null, fileName: 'b.jpg', name: null, contact: 'x@y.co', kind: 'EMAIL', done: false, createdAt: '2026-10-31T10:00:00Z' },
+    ]
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('/hq-requests/r1')) return new Response(null, { status: 204 })
+      if (url.endsWith('/hq-requests')) return new Response(JSON.stringify(requests), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      void init
+      return new Response(JSON.stringify(full), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<AnalyticsPanel eventId="e1" live={false} eventName="Arun & Priya" />)
+    const panel = await screen.findByTestId('analytics')
+    expect(within(panel).getByText('Likes').parentElement).toHaveTextContent('12')
+    expect(within(screen.getByTestId('top-photos')).getByRole('img', { name: 'liked.JPG' })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Most downloaded' }))
+    expect(within(screen.getByTestId('top-photos')).getByRole('img', { name: 'dl.JPG' })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Most viewed' }))
+    expect(within(screen.getByTestId('top-photos')).getByRole('img', { name: 'vw.JPG' })).toBeInTheDocument()
+
+    const hq = await screen.findByTestId('hq-requests')
+    const wa = await within(hq).findByRole('link', { name: '9876543210' })
+    expect(wa.getAttribute('href')).toContain('https://wa.me/9876543210?text=')
+    expect(decodeURIComponent(wa.getAttribute('href')!)).toContain('Hi Asha, here is your HD photo from Arun & Priya')
+    expect(within(hq).getByRole('link', { name: 'x@y.co' })).toHaveAttribute('href', 'mailto:x@y.co')
+    const [done] = within(hq).getAllByRole('checkbox')
+    fireEvent.click(done)
+    expect(done).toBeChecked()
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => String(u).endsWith('/hq-requests/r1') && (i as RequestInit).method === 'PATCH')).toBe(true))
+  })
+
+  it('says when there are no HD requests', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(String(input).endsWith('/hq-requests') ? [] : analytics), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    render(<AnalyticsPanel eventId="e1" live={false} />)
+    expect(await screen.findByText('No requests yet')).toBeInTheDocument()
   })
 })

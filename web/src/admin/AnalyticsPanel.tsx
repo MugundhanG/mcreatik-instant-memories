@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { adminApi } from '../lib/api'
 import { formatCount, timeAgo } from '../lib/format'
-import type { GuestAnalytics } from '../lib/types'
+import type { GuestAnalytics, HqRequest, TopPhoto } from '../lib/types'
+import { waLink } from '../shared/phone'
 import { ShutterLoader } from '../shared/ShutterLoader'
-import { Card, Stat } from './ui'
+import { Card, Stat, Tabs } from './ui'
 
 const REFRESH_MS = 30_000
 /** Longer than this, the chart shows days instead of hours. */
@@ -61,7 +62,7 @@ const plural = (n: number, word: string) => `${formatCount(n)} ${word}${n === 1 
 const percent = (part: number, whole: number) => (whole > 0 ? `${Math.round((part / whole) * 100)}%` : '–')
 
 /** Guest analytics for one event: how many people opened the gallery, what they viewed and saved. */
-export function AnalyticsPanel({ eventId, live }: { eventId: string; live: boolean }) {
+export function AnalyticsPanel({ eventId, live, eventName = 'the event' }: { eventId: string; live: boolean; eventName?: string }) {
   const [data, setData] = useState<GuestAnalytics | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -96,12 +97,13 @@ export function AnalyticsPanel({ eventId, live }: { eventId: string; live: boole
           {' · '}Anonymous: no names or numbers are collected.
         </p>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
           <Stat label="People" value={formatCount(t.people)} />
           <Stat label="QR scans" value={formatCount(t.qrScans)} />
           <Stat label="Gallery visits" value={formatCount(t.visits)} />
           <Stat label="Photo views" value={formatCount(t.photoViews)} />
           <Stat label="Downloads" value={formatCount(t.downloads)} />
+          <Stat label="Likes" value={formatCount(t.likes ?? 0)} />
           <Stat label="Instagram taps" value={formatCount(t.instagramClicks)} />
           <Stat label="Contacted you" value={formatCount(t.contacts ?? 0)} />
         </div>
@@ -117,23 +119,8 @@ export function AnalyticsPanel({ eventId, live }: { eventId: string; live: boole
 
         <ActivityChart hours={data.hours} />
 
-        {data.topPhotos.length > 0 && (
-          <div>
-            <p className="mb-2 text-sm font-medium">Most loved photos</p>
-            <ul className="grid grid-cols-4 gap-2 sm:grid-cols-8" data-testid="top-photos">
-              {data.topPhotos.map((p) => (
-                <li key={p.photoId} className="text-center">
-                  {p.thumbnailUrl
-                    ? <img src={p.thumbnailUrl} alt={p.fileName} loading="lazy" className="aspect-square w-full rounded-lg object-cover" />
-                    : <div className="aspect-square w-full rounded-lg bg-stone-100" />}
-                  <p className="mt-1 text-xs leading-tight text-muted tabular-nums">
-                    {plural(p.views, 'view')}<br />{plural(p.downloads, 'save')}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <TopPhotos data={data} />
+        <HqRequests eventId={eventId} eventName={eventName} />
       </div>
     </Card>
   )
@@ -201,6 +188,84 @@ function ActivityChart({ hours }: { hours: GuestAnalytics['hours'] }) {
           </tbody>
         </table>
       </details>
+    </div>
+  )
+}
+
+type TopTab = 'loved' | 'downloaded' | 'viewed'
+
+/** The photos guests loved, saved and viewed most, one tab each. */
+function TopPhotos({ data }: { data: GuestAnalytics }) {
+  const [tab, setTab] = useState<TopTab>('loved')
+  const lists: Record<TopTab, { photos: TopPhoto[]; count: (p: TopPhoto) => string }> = {
+    loved: { photos: data.mostLiked ?? data.topPhotos, count: (p) => plural(p.likes ?? 0, 'like') },
+    downloaded: { photos: data.mostDownloaded ?? data.topPhotos, count: (p) => plural(p.downloads, 'save') },
+    viewed: { photos: data.mostViewed ?? data.topPhotos, count: (p) => plural(p.views, 'view') },
+  }
+  const { photos, count } = lists[tab]
+  if (!data.topPhotos.length && !photos.length) return null
+  return (
+    <div>
+      <Tabs label="Top photos" current={tab} onChange={setTab} tabs={[
+        { id: 'loved', label: 'Most loved' }, { id: 'downloaded', label: 'Most downloaded' }, { id: 'viewed', label: 'Most viewed' },
+      ]} />
+      {photos.length === 0 ? <p className="mt-3 text-sm text-muted">Nothing yet.</p> : (
+        <ul className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-8" data-testid="top-photos">
+          {photos.map((p) => (
+            <li key={p.photoId} className="text-center">
+              {p.thumbnailUrl
+                ? <img src={p.thumbnailUrl} alt={p.fileName} loading="lazy" className="aspect-square w-full rounded-lg object-cover" />
+                : <div className="aspect-square w-full rounded-lg bg-stone-100" />}
+              <p className="mt-1 text-xs leading-tight text-muted tabular-nums">{count(p)}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/** Guests asking for a full-quality photo: contact them, then tick Done. */
+function HqRequests({ eventId, eventName }: { eventId: string; eventName: string }) {
+  const [rows, setRows] = useState<HqRequest[] | null>(null)
+  useEffect(() => {
+    adminApi.hqRequests(eventId).then((r) => setRows(Array.isArray(r) ? r : [])).catch(() => setRows([]))
+  }, [eventId])
+
+  const toggle = (r: HqRequest) => {
+    const set = (done: boolean) => setRows((cur) => cur?.map((x) => (x.id === r.id ? { ...x, done } : x)) ?? cur)
+    set(!r.done)
+    adminApi.setHqDone(eventId, r.id, !r.done).catch(() => set(r.done))
+  }
+
+  return (
+    <div data-testid="hq-requests">
+      <p className="mb-2 text-sm font-medium">HD photo requests</p>
+      {rows === null ? null : rows.length === 0 ? <p className="text-sm text-muted">No requests yet</p> : (
+        <ul className="divide-y divide-line rounded-xl border border-line">
+          {rows.map((r) => {
+            const who = r.name || 'there'
+            const href = r.kind === 'WHATSAPP'
+              ? waLink(r.contact, `Hi ${who}, here is your HD photo from ${eventName}`)
+              : `mailto:${r.contact}`
+            return (
+              <li key={r.id} className="flex items-center gap-3 p-2.5">
+                {r.thumbnailUrl
+                  ? <img src={r.thumbnailUrl} alt={r.fileName} className="size-12 shrink-0 rounded-lg object-cover" />
+                  : <div className="size-12 shrink-0 rounded-lg bg-stone-100" />}
+                <div className="min-w-0 flex-1 text-sm">
+                  <p className="truncate font-medium">{r.name || 'No name'}</p>
+                  <a href={href} target={r.kind === 'WHATSAPP' ? '_blank' : undefined} rel="noreferrer" className="block truncate text-muted underline underline-offset-2">{r.contact}</a>
+                </div>
+                <label className="flex shrink-0 items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={r.done} onChange={() => toggle(r)} className="size-4" />
+                  Done
+                </label>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </div>
   )
 }

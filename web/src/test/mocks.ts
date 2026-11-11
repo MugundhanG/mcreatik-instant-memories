@@ -48,6 +48,7 @@ export function photo(n: number, readyAt = `2026-10-10T18:${String(n).padStart(2
     height: 1365,
     readyAt,
     cursor: `cursor-${n}`,
+    categoryId: null,
   }
 }
 

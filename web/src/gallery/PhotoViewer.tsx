@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode, RefObject } from 'react'
+import type { CSSProperties, FormEvent, ReactNode, RefObject } from 'react'
+import { ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
 import { downloadPhoto, fetchPhoto, isIOS, sharePhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
@@ -29,6 +30,11 @@ interface Props {
   shareCaption?: string
   /** Guest analytics (the public gallery only): photo shown, downloaded, shared, Instagram tapped. */
   onActivity?: (type: 'PHOTO_VIEW' | 'DOWNLOAD' | 'SHARE' | 'INSTAGRAM', photoId?: string) => void
+  /** Guest-only: whether this guest liked the photo, and toggling it (a heart button shows when both are set). */
+  liked?: (photoId: string) => boolean
+  onToggleLike?: (photoId: string) => void
+  /** Guest-only: asks the studio for the full-quality photo ("Get HD photo" shows when set). Rejects with the reason. */
+  onRequestHd?: (photoId: string, name: string, contact: string) => Promise<void>
   /** Shown under the counter, e.g. the file name in the dashboard. */
   caption?: (photo: PublicPhoto) => ReactNode
 }
@@ -54,7 +60,7 @@ function markFollowInviteShown() {
 }
 
 export function PhotoViewer({
-  photos, index, total, eventSlug, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity, hideDownload = false, shareCaption,
+  photos, index, total, eventSlug, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity, hideDownload = false, shareCaption, liked, onToggleLike, onRequestHd,
 }: Props) {
   const photo = photos[index]
   const count = Math.max(total, photos.length)
@@ -63,6 +69,11 @@ export function PhotoViewer({
   // iPhone: the photo must already be fetched when Download is tapped (see downloadPhoto).
   const [prefetched, setPrefetched] = useState<{ id: string; blob: Blob } | null>(null)
   const [busy, setBusy] = useState<'download' | 'share' | null>(null)
+  const [hdOpen, setHdOpen] = useState(false)
+  const [hdName, setHdName] = useState('')
+  const [hdContact, setHdContact] = useState('')
+  const [hdError, setHdError] = useState<string | null>(null)
+  const [hdBusy, setHdBusy] = useState(false)
   const stageRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
 
@@ -171,6 +182,24 @@ export function PhotoViewer({
     await onDownload('Photo saved. The caption is copied: paste it when you post.')
   }
 
+  const sendHd = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!onRequestHd) return
+    setHdBusy(true)
+    setHdError(null)
+    try {
+      await onRequestHd(photo.id, hdName.trim(), hdContact.trim())
+      setHdOpen(false)
+      setHdContact('')
+      setToast({ text: 'Request sent. The studio will send it to you.', ms: 4000 })
+    } catch (err) {
+      setHdError(err instanceof ApiError || err instanceof Error ? err.message : 'Could not send the request')
+    } finally {
+      setHdBusy(false)
+    }
+  }
+  const isLiked = liked?.(photo.id) ?? false
+
   return (
     <div
       role="dialog"
@@ -235,10 +264,29 @@ export function PhotoViewer({
           type="button"
           onClick={() => void onDownload()}
           disabled={busy !== null}
-          className="inline-flex h-12 min-w-36 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-medium text-ink disabled:opacity-60"
+          className="inline-flex h-12 min-w-28 items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-medium text-ink disabled:opacity-60"
         >
           <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" /></svg>
           {busy === 'download' ? 'Saving…' : 'Download'}
+        </button>}
+        {liked && onToggleLike && <button
+          type="button"
+          onClick={() => onToggleLike(photo.id)}
+          aria-pressed={isLiked}
+          aria-label="Like photo"
+          className="inline-flex size-12 shrink-0 items-center justify-center rounded-full border border-white/40"
+        >
+          <svg viewBox="0 0 24 24" className={`size-6 ${isLiked ? 'text-red-500' : ''}`} fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.7 8 3.4 5 6.6 5c2 0 3.7 1.2 5.4 3 1.7-1.8 3.4-3 5.4-3 3.2 0 4.9 3 3.8 6.2-1.7 4.7-9.2 9.3-9.2 9.3Z" /></svg>
+        </button>}
+        {onRequestHd && <button
+          type="button"
+          onClick={() => {
+            setHdError(null)
+            setHdOpen(true)
+          }}
+          className="inline-flex h-12 shrink-0 items-center justify-center rounded-full border border-white/40 px-4 text-sm font-medium"
+        >
+          Get HD photo
         </button>}
         {actions?.(photo)}
         {shareCaption && <button
@@ -258,6 +306,32 @@ export function PhotoViewer({
           className="anim-drop-in pointer-events-none absolute top-16 left-1/2 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-white px-4 py-2 text-center text-sm text-ink shadow-lg"
         >
           {toast.text}
+        </div>
+      )}
+
+      {hdOpen && onRequestHd && (
+        <div className="absolute inset-0 z-20 flex items-end justify-center bg-black/50 p-3 sm:items-center" onPointerDown={(e) => e.stopPropagation()}>
+          <form
+            role="dialog"
+            aria-label="Get HD photo"
+            onSubmit={sendHd}
+            className="w-full max-w-sm space-y-3 rounded-2xl bg-white p-4 text-ink shadow-xl"
+          >
+            <p className="text-sm text-muted">The studio will send you the full-quality photo.</p>
+            <label className="block text-sm font-medium">
+              Your name (optional)
+              <input value={hdName} onChange={(e) => setHdName(e.target.value)} autoComplete="name" className="mt-1 block h-10 w-full rounded-lg border border-line px-3 text-sm font-normal" />
+            </label>
+            <label className="block text-sm font-medium">
+              Email or WhatsApp number
+              <input value={hdContact} onChange={(e) => setHdContact(e.target.value)} required autoComplete="email" className="mt-1 block h-10 w-full rounded-lg border border-line px-3 text-sm font-normal" />
+            </label>
+            {hdError && <p role="alert" className="text-sm text-red-700">{hdError}</p>}
+            <div className="flex gap-2">
+              <button type="submit" disabled={hdBusy} className="flex-1 rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60">{hdBusy ? 'Sending…' : 'Send'}</button>
+              <button type="button" onClick={() => setHdOpen(false)} className="rounded-full px-4 py-2.5 text-sm text-muted hover:bg-stone-100">Cancel</button>
+            </div>
+          </form>
         </div>
       )}
 

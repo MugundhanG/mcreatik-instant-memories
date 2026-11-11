@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { track, trackVisit, type ActivityType } from '../lib/activity'
+import { track, trackVisit, visitorId, type ActivityType } from '../lib/activity'
+import { publicApi } from '../lib/api'
+import { loadLikes, saveLikes } from '../lib/likes'
 import { formatCount, formatEventDate, splitEventName } from '../lib/format'
-import type { PublicPhoto } from '../lib/types'
+import type { Category, PublicPhoto } from '../lib/types'
 import { StatusBadge } from './StatusBadge'
 import { PhotoGrid } from './PhotoGrid'
 import { resolveBrand } from '../shared/brand'
@@ -32,7 +34,16 @@ export default function GalleryPage() {
     viewerOpen.current = selectedId !== null
   }, [selectedId])
   const shouldShowImmediately = useCallback(() => window.scrollY < AUTO_INSERT_SCROLL_PX && !viewerOpen.current, [])
-  const gallery = useLiveGallery(slug, shouldShowImmediately)
+  const [category, setCategory] = useState<string | null>(null)
+  const [categories, setCategories] = useState<Category[]>([])
+  useEffect(() => {
+    let cancelled = false
+    publicApi.categories(slug).then((c) => !cancelled && setCategories(c)).catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [slug])
+  const gallery = useLiveGallery(slug, shouldShowImmediately, category)
   const { event, photos, incoming, status, connection, nextCursor, loadMore, showIncoming } = gallery
 
   // Analytics: one visit per tab, marked as a QR scan when the poster's QR (…?src=qr) opened it.
@@ -52,6 +63,22 @@ export default function GalleryPage() {
   }, [eventLoaded, slug, source])
   const onActivity = useCallback(
     (type: ActivityType, photoId?: string) => track(slug, { type, photoId }),
+    [slug],
+  )
+
+  const [likes, setLikes] = useState<Set<string>>(() => loadLikes(slug))
+  const isLiked = useCallback((id: string) => likes.has(id), [likes])
+  const toggleLike = useCallback((id: string) => {
+    const next = new Set(likes)
+    const liked = !next.delete(id)
+    if (liked) next.add(id)
+    setLikes(next)
+    saveLikes(slug, next)
+    track(slug, { type: liked ? 'LIKE' : 'UNLIKE', photoId: id })
+  }, [likes, slug])
+  const requestHd = useCallback(
+    (photoId: string, name: string, contact: string) =>
+      publicApi.requestHq(slug, { photoId, name: name || undefined, contact, visitorId: visitorId() }),
     [slug],
   )
 
@@ -185,6 +212,19 @@ export default function GalleryPage() {
       )}
 
       <main className="pt-4">
+        {categories.length > 0 && (
+          <div role="tablist" aria-label="Photo categories" className="mb-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none]">
+            {[{ id: null, name: 'All' }, ...categories].map((c) => {
+              const selected = c.id === category
+              return (
+                <button key={c.id ?? 'all'} type="button" role="tab" aria-selected={selected} onClick={() => setCategory(c.id)}
+                  className={`shrink-0 rounded-full border px-4 py-1.5 text-sm whitespace-nowrap ${selected ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink'}`}>
+                  {c.name}
+                </button>
+              )
+            })}
+          </div>
+        )}
         {photos.length === 0 ? (
           <div className="px-8 py-24 text-center">
             <p className="font-display text-2xl">The first photos will appear here soon</p>
@@ -233,6 +273,9 @@ export default function GalleryPage() {
           instagram={brand.instagram}
           shareCaption={shareCaption(brand)}
           onActivity={onActivity}
+          liked={isLiked}
+          onToggleLike={toggleLike}
+          onRequestHd={requestHd}
           actions={(p) => (
             <a href={removalRequestLink(event.name, p.id)}
               className="inline-flex h-12 items-center justify-center rounded-full px-4 text-xs text-white/70 underline-offset-4 hover:text-white hover:underline">

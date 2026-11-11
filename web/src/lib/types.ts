@@ -37,6 +37,8 @@ export interface PublicPhoto {
   height: number | null
   readyAt: string
   cursor: string
+  /** The photo's category; absent from older servers. */
+  categoryId?: string | null
 }
 
 export interface PublicPhotoPage {
@@ -54,6 +56,7 @@ export interface PhotoReadyMessage {
   height: number | null
   readyAt: string
   cursor: string
+  categoryId?: string | null
 }
 
 // ---- Admin ----
@@ -247,6 +250,35 @@ export interface UploaderCredentials {
   connectionCode: string
 }
 
+export interface TopPhoto {
+  photoId: string
+  thumbnailUrl: string | null
+  fileName: string
+  views: number
+  downloads: number
+  likes?: number
+}
+
+/** A guest's request for the full-quality version of a photo. */
+export interface HqRequest {
+  id: string
+  photoId: string
+  thumbnailUrl: string | null
+  fileName: string
+  name: string | null
+  contact: string
+  kind: 'EMAIL' | 'WHATSAPP'
+  done: boolean
+  createdAt: string
+}
+
+export interface HqRequestInput {
+  photoId: string
+  name?: string
+  contact: string
+  visitorId: string
+}
+
 /** Anonymous guest activity on an event's gallery (dashboard analytics). */
 export interface GuestAnalytics {
   totals: {
@@ -260,10 +292,14 @@ export interface GuestAnalytics {
     instagramClicks: number
     /** Taps on the studio's WhatsApp / call buttons. */
     contacts?: number
+    likes?: number
   }
   /** Hours with activity, India time, e.g. "2026-10-31T19:00". */
   hours: { hour: string; people: number; photoViews: number; downloads: number }[]
-  topPhotos: { photoId: string; thumbnailUrl: string | null; fileName: string; views: number; downloads: number }[]
+  topPhotos: TopPhoto[]
+  mostLiked?: TopPhoto[]
+  mostDownloaded?: TopPhoto[]
+  mostViewed?: TopPhoto[]
   lastActivityAt: string | null
 }
 
