@@ -15,7 +15,6 @@ import { formatPhone, telLink, waLink } from '../shared/phone'
 import { GalleryUnavailable } from '../shared/GalleryUnavailable'
 import { removalRequestLink } from '../shared/privacy'
 import { PhotoViewer } from './PhotoViewer'
-import { shareCaption } from '../lib/photoActions'
 import { useLiveGallery } from './useLiveGallery'
 
 /** Guests closer than this to the top see new photos inserted immediately. */
@@ -271,7 +270,6 @@ export default function GalleryPage() {
           onClose={close}
           onNearEnd={loadMore}
           instagram={brand.instagram}
-          shareCaption={shareCaption(brand)}
           onActivity={onActivity}
           liked={isLiked}
           onToggleLike={toggleLike}

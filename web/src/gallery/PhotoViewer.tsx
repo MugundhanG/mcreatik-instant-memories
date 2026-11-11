@@ -221,16 +221,7 @@ export function PhotoViewer({
           </span>
           {caption && <div className="truncate text-xs text-white/50">{caption(photo)}</div>}
         </div>
-        {liked && onToggleLike && <button
-          type="button"
-          onClick={() => onToggleLike(photo.id)}
-          aria-pressed={isLiked}
-          aria-label="Like photo"
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-white/10"
-        >
-          <svg viewBox="0 0 24 24" className={`size-6 ${isLiked ? 'text-red-500' : ''}`} fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.7 8 3.4 5 6.6 5c2 0 3.7 1.2 5.4 3 1.7-1.8 3.4-3 5.4-3 3.2 0 4.9 3 3.8 6.2-1.7 4.7-9.2 9.3-9.2 9.3Z" /></svg>
-        </button>}
-        {!(liked && onToggleLike) && <span className="size-11" aria-hidden="true" />}
+        <span className="size-11" aria-hidden="true" />
       </div>
 
       <div ref={stageRef} data-testid="viewer-stage" className="relative min-h-0 flex-1 touch-none overflow-hidden" {...handlers}>
@@ -279,6 +270,16 @@ export function PhotoViewer({
           {busy === 'download' ? 'Saving…' : 'Download'}
         </button>}
         {!onRequestHd && actions?.(photo)}
+        {liked && onToggleLike && <button
+          type="button"
+          onClick={() => onToggleLike(photo.id)}
+          aria-pressed={isLiked}
+          aria-label="Like photo"
+          className="inline-flex h-12 min-w-0 flex-1 max-w-48 items-center justify-center gap-2 rounded-full border border-white/40 px-5 text-sm font-medium"
+        >
+          <svg viewBox="0 0 24 24" className={`size-6 ${isLiked ? 'text-red-500' : ''}`} fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.7 8 3.4 5 6.6 5c2 0 3.7 1.2 5.4 3 1.7-1.8 3.4-3 5.4-3 3.2 0 4.9 3 3.8 6.2-1.7 4.7-9.2 9.3-9.2 9.3Z" /></svg>
+          {isLiked ? 'Liked' : 'Like'}
+        </button>}
         {shareCaption && <button
           type="button"
           onClick={onShare}
