@@ -64,6 +64,7 @@ public class AdminPhotoController {
     @Transactional(readOnly = true)
     public PhotoDtos.AdminPhotoPage list(Authentication auth, @PathVariable UUID eventId,
                                          @RequestParam(defaultValue = "NEWEST") AdminPhotoSearch.Sort sort,
+                                         @RequestParam(required = false) String gallery,
                                          @RequestParam(required = false) UUID uploaderId,
                                          @RequestParam(required = false) Boolean liked,
                                          @RequestParam(required = false) Boolean hidden,
@@ -73,7 +74,7 @@ public class AdminPhotoController {
                                          @RequestParam(required = false) String q,
                                          @RequestParam(defaultValue = "0") int offset,
                                          @RequestParam(defaultValue = "60") int limit) {
-        events.owned(CurrentAdmin.id(auth), eventId);
+        Gallery which = Gallery.resolve(gallery, events.owned(CurrentAdmin.id(auth), eventId));
         int size = Math.clamp(limit, 1, 200);
         int from = Math.max(0, offset);
         // One extra row tells whether another page exists.
@@ -84,7 +85,7 @@ public class AdminPhotoController {
                 throw ApiException.badRequest("INVALID_CATEGORY", "Unknown category");
             }
         }
-        List<Photo> rows = search.find(eventId,
+        List<Photo> rows = search.find(eventId, which,
                 new AdminPhotoSearch.Filter(uploaderId, liked, hidden, day, category, selected,
                         q == null ? null : q.substring(0, Math.min(q.length(), 100))), sort, from, size + 1);
         boolean more = rows.size() > size;
@@ -107,11 +108,15 @@ public class AdminPhotoController {
                                                     @RequestParam int width, @RequestParam int height,
                                                     @RequestParam(required = false) Instant capturedAt,
                                                     @RequestParam(defaultValue = "false") boolean original,
-                                                    @RequestParam(required = false) UUID categoryId)
+                                                    @RequestParam(required = false) UUID categoryId,
+                                                    @RequestParam(required = false) String gallery)
             throws IOException {
+        // Older callers omit the gallery: an original means the client gallery, otherwise the event's default.
+        Gallery which = original && (gallery == null || gallery.isBlank()) ? Gallery.CLIENT
+                : Gallery.resolve(gallery, events.owned(CurrentAdmin.id(auth), eventId));
         events.owned(CurrentAdmin.id(auth), eventId);
-        album.requireCategory(eventId, categoryId);
-        var res = uploads.adminUpload(eventId, new UploadService.AdminUpload(fileName, fileSize, mimeType,
+        album.requireCategory(eventId, categoryId, which);
+        var res = uploads.adminUpload(eventId, which, new UploadService.AdminUpload(fileName, fileSize, mimeType,
                 checksumSha256, width, height, capturedAt), web.getBytes(), thumbnail.getBytes(), original);
         intoCategory(eventId, res.photoId(), categoryId);
         return res;
@@ -124,8 +129,9 @@ public class AdminPhotoController {
         }
     }
 
+    /** {@code gallery}: GUEST or CLIENT; an original always goes to the client gallery (the default here). */
     public record OriginalUploadRequest(String fileName, long fileSize, String mimeType, String checksumSha256,
-                                        UUID categoryId) {
+                                        UUID categoryId, String gallery) {
     }
 
     /**
@@ -137,8 +143,11 @@ public class AdminPhotoController {
     public UploadService.OriginalSession originalUpload(Authentication auth, @PathVariable UUID eventId,
                                                         @RequestBody OriginalUploadRequest request) {
         events.owned(CurrentAdmin.id(auth), eventId);
-        album.requireCategory(eventId, request.categoryId());
-        var session = uploads.adminOriginalSession(eventId, request.fileName(), request.fileSize(), request.mimeType(),
+        // Originals only ever go to the client gallery; asking for GUEST is refused by the service.
+        Gallery which = request.gallery() == null || request.gallery().isBlank() ? Gallery.CLIENT
+                : Gallery.resolve(request.gallery(), null);
+        album.requireCategory(eventId, request.categoryId(), which);
+        var session = uploads.adminOriginalSession(eventId, which, request.fileName(), request.fileSize(), request.mimeType(),
                 request.checksumSha256());
         if (session.outcome() == UploadService.SessionOutcome.DUPLICATE || !session.needsVersions()) {
             intoCategory(eventId, session.photoId(), request.categoryId());
@@ -156,10 +165,11 @@ public class AdminPhotoController {
     /** Counts for the dashboard's filters: days with photos, liked and hidden totals. */
     @GetMapping("/events/{eventId}/photo-facets")
     @Transactional(readOnly = true)
-    public PhotoDtos.PhotoFacets facets(Authentication auth, @PathVariable UUID eventId) {
-        events.owned(CurrentAdmin.id(auth), eventId);
-        Object[] counts = photos.countHiddenAndLiked(eventId).getFirst();
-        return new PhotoDtos.PhotoFacets(search.days(eventId), ((Number) counts[1]).longValue(),
+    public PhotoDtos.PhotoFacets facets(Authentication auth, @PathVariable UUID eventId,
+                                        @RequestParam(required = false) String gallery) {
+        Gallery which = Gallery.resolve(gallery, events.owned(CurrentAdmin.id(auth), eventId));
+        Object[] counts = photos.countHiddenAndLikedIn(eventId, which.name()).getFirst();
+        return new PhotoDtos.PhotoFacets(search.days(eventId, which), ((Number) counts[1]).longValue(),
                 ((Number) counts[0]).longValue());
     }
 
@@ -258,7 +268,7 @@ public class AdminPhotoController {
         if (hidden) {
             events.clearCoverIf(photo.getEventId(), photo.getId());
         }
-        if (photo.getStatus() == PhotoStatus.READY) {
+        if (photo.getStatus() == PhotoStatus.READY && photo.getGallery() == Gallery.GUEST) {
             if (hidden) {
                 broadcaster.photoRemoved(photo.getEventId(), photo.getId());
             } else {

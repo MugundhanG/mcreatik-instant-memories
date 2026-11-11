@@ -363,7 +363,8 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
   if ((m = path.match(/^\/api\/public\/events\/[^/]+\/activity$/)) && method === 'POST') return new Response(null, { status: 204 })
   // Phase 2 screens in the demo: the default categories, no client logins, an empty album.
   if ((m = path.match(/^\/api\/admin\/events\/[^/]+\/categories$/)) && method === 'GET') {
-    return json(['Couple', 'Family & Groups', 'Rituals', 'Cake cutting', 'Main event', 'Candid'].map((name, i) => ({ id: `cat-${i}`, name, position: i + 1, photos: 0 })))
+    const gallery = q.get('gallery') === 'CLIENT' ? 'CLIENT' : 'GUEST'
+    return json(['Couple', 'Family & Groups', 'Rituals', 'Cake cutting', 'Main event', 'Candid'].map((name, i) => ({ id: `cat-${gallery}-${i}`, name, position: i + 1, photos: 0, gallery })))
   }
   if ((m = path.match(/^\/api\/admin\/events\/[^/]+\/clients$/)) && method === 'GET') return json([])
   if ((m = path.match(/^\/api\/admin\/events\/[^/]+\/album$/)) && method === 'GET') return json({ limit: null, selected: [] })
@@ -410,7 +411,8 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
     }
     if (sub === '/stats') return json(stats(e))
     if (sub === '/photos') {
-      let list = e.photos.filter((p) =>
+      // The demo's photos all sit in the guest gallery; the client gallery starts empty.
+      let list = (q.get('gallery') === 'CLIENT' ? [] : e.photos).filter((p) =>
         (!q.get('uploaderId') || p.uploaderId === q.get('uploaderId')) &&
         (q.get('liked') === null || !!p.liked === (q.get('liked') === 'true')) &&
         (q.get('hidden') === null || !!p.hidden === (q.get('hidden') === 'true')) &&

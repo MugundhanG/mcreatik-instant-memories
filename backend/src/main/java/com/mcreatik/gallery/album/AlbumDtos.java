@@ -4,15 +4,18 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.mcreatik.gallery.photo.Gallery;
+
 public final class AlbumDtos {
 
     private AlbumDtos() {
     }
 
-    public record Category(UUID id, String name, int position, long photos) {
+    public record Category(UUID id, String name, int position, long photos, Gallery gallery) {
     }
 
-    public record CategoryRequest(String name) {
+    /** {@code gallery}: GUEST or CLIENT; omitted means the event's default (CLIENT for client-type events, else GUEST). */
+    public record CategoryRequest(String name, String gallery) {
     }
 
     /** {@code categoryId} null moves the photos to "not sorted". */

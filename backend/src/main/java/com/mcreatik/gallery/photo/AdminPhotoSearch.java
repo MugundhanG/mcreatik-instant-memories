@@ -60,7 +60,7 @@ public class AdminPhotoSearch {
         this.em = em;
     }
 
-    public List<Photo> find(UUID eventId, Filter filter, Sort sort, int offset, int limit) {
+    public List<Photo> find(UUID eventId, Gallery gallery, Filter filter, Sort sort, int offset, int limit) {
         Map<String, Object> params = new HashMap<>();
         String order = switch (sort) {
             case NEWEST -> TAKEN_AT + " DESC, p.id DESC";
@@ -68,7 +68,7 @@ public class AdminPhotoSearch {
             case CAMERA -> "u.created_at ASC NULLS LAST, u.id, " + TAKEN_AT + " ASC, p.id ASC";
         };
         String sql = "SELECT p.* FROM photos p LEFT JOIN uploaders u ON u.id = p.uploader_id WHERE "
-                + where(eventId, filter, params) + " ORDER BY " + order + " OFFSET :offset LIMIT :limit";
+                + where(eventId, gallery, filter, params) + " ORDER BY " + order + " OFFSET :offset LIMIT :limit";
         Query q = em.createNativeQuery(sql, Photo.class);
         params.forEach(q::setParameter);
         q.setParameter("offset", offset);
@@ -82,10 +82,11 @@ public class AdminPhotoSearch {
     }
 
     /** Days that have photos, oldest first, for the date filter. */
-    public List<DayCount> days(UUID eventId) {
+    public List<DayCount> days(UUID eventId, Gallery gallery) {
         Query q = em.createNativeQuery("SELECT " + DAY + " AS day, count(*) FROM photos p WHERE p.event_id = :event "
-                + "GROUP BY 1 ORDER BY 1");
+                + "AND p.gallery = :gallery GROUP BY 1 ORDER BY 1");
         q.setParameter("event", eventId);
+        q.setParameter("gallery", gallery.name());
         List<DayCount> days = new ArrayList<>();
         for (Object row : q.getResultList()) {
             Object[] r = (Object[]) row;
@@ -95,9 +96,10 @@ public class AdminPhotoSearch {
         return days;
     }
 
-    private static String where(UUID eventId, Filter f, Map<String, Object> params) {
-        StringBuilder w = new StringBuilder("p.event_id = :event");
+    private static String where(UUID eventId, Gallery gallery, Filter f, Map<String, Object> params) {
+        StringBuilder w = new StringBuilder("p.event_id = :event AND p.gallery = :gallery");
         params.put("event", eventId);
+        params.put("gallery", gallery.name());
         if (f.uploaderId() != null) {
             w.append(" AND p.uploader_id = :uploader");
             params.put("uploader", f.uploaderId());

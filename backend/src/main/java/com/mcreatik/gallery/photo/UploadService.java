@@ -111,6 +111,10 @@ public class UploadService {
         }
     }
 
+    /**
+     * The uploader app always sends compressed photos to the guest gallery. They are accepted while that gallery is
+     * off too (guests just can't see them until it is turned on).
+     */
     public UploadSessionResponse createSession(UploaderPrincipal uploader, UploadSessionRequest request) {
         String mimeType = validate(request);
         String checksum = request.checksumSha256().toLowerCase(Locale.ROOT);
@@ -125,7 +129,7 @@ public class UploadService {
             throw ApiException.conflict("UPLOADER_PAUSED", "This camera is paused. Resume it to upload new photos.");
         }
 
-        var existing = photos.findByEventIdAndChecksumSha256(event.getId(), checksum);
+        var existing = photos.findByEventIdAndGalleryAndChecksumSha256(event.getId(), Gallery.GUEST, checksum);
         if (existing.isPresent()) {
             return resumeOrDuplicate(existing.get().getId(), uploader, fileName, request);
         }
@@ -140,7 +144,7 @@ public class UploadService {
             tx.executeWithoutResult(s -> photos.saveAndFlush(photo));
         } catch (DataIntegrityViolationException race) {
             // Another request inserted the same checksum concurrently: behave as if it had been there first.
-            UUID winner = photos.findByEventIdAndChecksumSha256(event.getId(), checksum)
+            UUID winner = photos.findByEventIdAndGalleryAndChecksumSha256(event.getId(), Gallery.GUEST, checksum)
                     .orElseThrow(() -> race).getId();
             return resumeOrDuplicate(winner, uploader, fileName, request);
         }
@@ -246,15 +250,16 @@ public class UploadService {
      * Unlike camera uploads this never switches the event to LIVE: delivery after the event is the common case.
      */
     public AdminUploadResponse adminUpload(UUID eventId, AdminUpload meta, byte[] web, byte[] thumbnail) {
-        return adminUpload(eventId, meta, web, thumbnail, false);
+        return adminUpload(eventId, Gallery.GUEST, meta, web, thumbnail, false);
     }
 
     /**
      * {@code withOriginal}: the full-quality file was already PUT to storage after {@link #adminOriginalSession};
      * it is checked and kept, so studios and clients can download the original.
      */
-    public AdminUploadResponse adminUpload(UUID eventId, AdminUpload meta, byte[] web, byte[] thumbnail,
-                                           boolean withOriginal) {
+    public AdminUploadResponse adminUpload(UUID eventId, Gallery gallery, AdminUpload meta, byte[] web,
+                                           byte[] thumbnail, boolean withOriginal) {
+        requireQuality(gallery, withOriginal);
         String mimeType = validate(new UploadSessionRequest(meta.fileName(), meta.fileSize(), meta.mimeType(),
                 meta.checksumSha256(), new Prepared(web.length, thumbnail.length, meta.width(), meta.height(),
                 meta.capturedAt())));
@@ -268,7 +273,7 @@ public class UploadService {
             throw ApiException.conflict("EVENT_CLOSED", "This event is archived and no longer accepts photos");
         }
 
-        var existing = photos.findByEventIdAndChecksumSha256(eventId, checksum);
+        var existing = photos.findByEventIdAndGalleryAndChecksumSha256(eventId, gallery, checksum);
         if (existing.isPresent() && existing.get().getStatus() != PhotoStatus.UPLOADING
                 && existing.get().getStatus() != PhotoStatus.FAILED) {
             return new AdminUploadResponse(SessionOutcome.DUPLICATE, existing.get().getId());
@@ -291,6 +296,7 @@ public class UploadService {
                         ? photos.findById(photoId).orElseThrow(() -> ApiException.notFound("Photo"))
                         : new Photo(photoId, eventId, null, fileName, StorageKeys.original(eventId, photoId, mimeType),
                                 meta.fileSize(), mimeType, checksum);
+                photo.setGallery(gallery);
                 if (existing.isPresent()) {
                     photo.restartUpload(null, fileName, meta.fileSize());
                 }
@@ -306,7 +312,7 @@ public class UploadService {
             // The same file arrived concurrently (two tabs, a camera): the other copy wins.
             storage.delete(StorageArea.MEDIA, webKey);
             storage.delete(StorageArea.MEDIA, thumbKey);
-            UUID winner = photos.findByEventIdAndChecksumSha256(eventId, checksum).orElseThrow(() -> race).getId();
+            UUID winner = photos.findByEventIdAndGalleryAndChecksumSha256(eventId, gallery, checksum).orElseThrow(() -> race).getId();
             return new AdminUploadResponse(SessionOutcome.DUPLICATE, winner);
         }
         publisher.publishEvent(new PhotoReadyEvent(eventId, photoId));
@@ -322,8 +328,9 @@ public class UploadService {
     }
 
     /** Step 1 of a dashboard "original quality" upload: where to PUT the full-quality file. */
-    public OriginalSession adminOriginalSession(UUID eventId, String rawFileName, long fileSize, String rawMimeType,
-                                                String rawChecksum) {
+    public OriginalSession adminOriginalSession(UUID eventId, Gallery gallery, String rawFileName, long fileSize,
+                                                String rawMimeType, String rawChecksum) {
+        requireQuality(gallery, true);
         String mimeType = validate(new UploadSessionRequest(rawFileName, fileSize, rawMimeType, rawChecksum));
         String checksum = rawChecksum.toLowerCase(Locale.ROOT);
         String fileName = cleanFileName(rawFileName);
@@ -332,7 +339,7 @@ public class UploadService {
             throw ApiException.conflict("EVENT_CLOSED", "This event is archived and no longer accepts photos");
         }
         var ttl = properties.upload().presignTtl();
-        var existing = photos.findByEventIdAndChecksumSha256(eventId, checksum);
+        var existing = photos.findByEventIdAndGalleryAndChecksumSha256(eventId, gallery, checksum);
         if (existing.isPresent()) {
             Photo photo = existing.get();
             if (photo.getStatus() == PhotoStatus.READY && !photo.isOriginalStored()) {
@@ -355,10 +362,11 @@ public class UploadService {
         UUID photoId = UUID.randomUUID();
         Photo photo = new Photo(photoId, eventId, null, fileName, StorageKeys.original(eventId, photoId, mimeType),
                 fileSize, mimeType, checksum);
+        photo.setGallery(gallery);
         try {
             tx.executeWithoutResult(s -> photos.saveAndFlush(photo));
         } catch (DataIntegrityViolationException race) {
-            UUID winner = photos.findByEventIdAndChecksumSha256(eventId, checksum).orElseThrow(() -> race).getId();
+            UUID winner = photos.findByEventIdAndGalleryAndChecksumSha256(eventId, gallery, checksum).orElseThrow(() -> race).getId();
             return new OriginalSession(SessionOutcome.DUPLICATE, winner, null, false);
         }
         return new OriginalSession(SessionOutcome.UPLOAD, photoId,
@@ -372,11 +380,27 @@ public class UploadService {
             if (photo.isOriginalStored()) {
                 return; // idempotent
             }
+            requireQuality(photo.getGallery(), true);
             if (!originalArrived(photo)) {
                 throw ApiException.conflict("UPLOAD_NOT_FOUND", "The original has not reached storage yet");
             }
             photo.expectOriginal();
         });
+    }
+
+    /**
+     * Guest gallery: compressed only (originals are refused). Client gallery: full quality only. Either gallery
+     * accepts uploads while it is turned off; the photos just stay out of sight until it is on.
+     */
+    private static void requireQuality(Gallery gallery, boolean withOriginal) {
+        if (gallery == Gallery.GUEST && withOriginal) {
+            throw ApiException.badRequest("GUEST_COMPRESSED_ONLY",
+                    "The guest gallery takes compressed photos only. Upload full quality to the client gallery.");
+        }
+        if (gallery == Gallery.CLIENT && !withOriginal) {
+            throw ApiException.badRequest("CLIENT_ORIGINAL_REQUIRED",
+                    "The client gallery takes full-quality photos. Upload the original file.");
+        }
     }
 
     private boolean originalArrived(Photo photo) {

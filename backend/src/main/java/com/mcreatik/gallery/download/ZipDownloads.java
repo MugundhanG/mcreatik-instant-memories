@@ -26,6 +26,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.mcreatik.gallery.common.ApiException;
+import com.mcreatik.gallery.photo.Gallery;
 import com.mcreatik.gallery.common.Tokens;
 import com.mcreatik.gallery.storage.StorageArea;
 import com.mcreatik.gallery.storage.StorageService;
@@ -59,16 +60,19 @@ public class ZipDownloads {
         final UUID eventId;
         final List<UUID> photoIds;
         final boolean includeHidden;
+        final Gallery gallery;
         final String fileName;
         final Instant expiresAt;
         final AtomicInteger done = new AtomicInteger();
         volatile int total;
         volatile State state = State.WAITING;
 
-        Job(UUID eventId, List<UUID> photoIds, boolean includeHidden, String fileName, Instant expiresAt, int total) {
+        Job(UUID eventId, List<UUID> photoIds, boolean includeHidden, Gallery gallery, String fileName,
+            Instant expiresAt, int total) {
             this.eventId = eventId;
             this.photoIds = photoIds;
             this.includeHidden = includeHidden;
+            this.gallery = gallery;
             this.fileName = fileName;
             this.expiresAt = expiresAt;
             this.total = total;
@@ -101,6 +105,11 @@ public class ZipDownloads {
 
     /** {@code includeHidden}: the studio may download photos hidden from guests; the couple may not. */
     public Prepared prepare(UUID eventId, List<UUID> photoIds, boolean includeHidden, String name) {
+        return prepare(eventId, photoIds, includeHidden, null, name);
+    }
+
+    /** {@code gallery}: only photos of this gallery (null: any), e.g. the couple's gallery on a split event. */
+    public Prepared prepare(UUID eventId, List<UUID> photoIds, boolean includeHidden, Gallery gallery, String name) {
         List<UUID> ids = photoIds == null ? List.of() : photoIds.stream().distinct().toList();
         if (ids.isEmpty()) {
             throw ApiException.badRequest("NOTHING_SELECTED", "Select at least one photo");
@@ -109,13 +118,13 @@ public class ZipDownloads {
             throw ApiException.badRequest("TOO_MANY",
                     "Download at most " + MAX_PHOTOS + " photos at a time. Pick a category or fewer photos.");
         }
-        int found = items(eventId, ids, includeHidden).size();
+        int found = items(eventId, ids, includeHidden, gallery).size();
         if (found == 0) {
             throw ApiException.notFound("Photos");
         }
         String fileName = fileName(name);
         String token = Tokens.randomToken("zip_");
-        jobs.put(token, new Job(eventId, ids, includeHidden, fileName, Instant.now().plus(TTL), found));
+        jobs.put(token, new Job(eventId, ids, includeHidden, gallery, fileName, Instant.now().plus(TTL), found));
         String path = "/api/public/downloads/" + token;
         return new Prepared(path, path + "/progress", found, fileName);
     }
@@ -162,12 +171,13 @@ public class ZipDownloads {
     }
 
     /** Photos in the order the day happened, with their stored files. */
-    List<Item> items(UUID eventId, List<UUID> ids, boolean includeHidden) {
+    List<Item> items(UUID eventId, List<UUID> ids, boolean includeHidden, Gallery gallery) {
         return jdbc.query("""
                 SELECT original_file_name, storage_key, optimized_storage_key, original_stored
                 FROM photos
-                WHERE event_id = ? AND id = ANY (?) AND status = 'READY'%s
-                ORDER BY coalesce(captured_at, created_at), id""".formatted(includeHidden ? "" : " AND NOT hidden"),
+                WHERE event_id = ? AND id = ANY (?) AND status = 'READY'%s%s
+                ORDER BY coalesce(captured_at, created_at), id""".formatted(includeHidden ? "" : " AND NOT hidden",
+                        gallery == null ? "" : " AND gallery = '" + gallery.name() + "'"),
                 ps -> {
                     ps.setObject(1, eventId);
                     ps.setArray(2, ps.getConnection().createArrayOf("uuid", ids.toArray()));
@@ -189,7 +199,7 @@ public class ZipDownloads {
     }
 
     private void writeZip(Job job, OutputStream out) throws IOException {
-        List<Item> items = items(job.eventId, job.photoIds, job.includeHidden);
+        List<Item> items = items(job.eventId, job.photoIds, job.includeHidden, job.gallery);
         job.total = items.size();
         Set<String> used = new HashSet<>();
         int missing = 0;

@@ -92,7 +92,12 @@ class AdminUploadTest extends IntegrationTest {
     }
 
     private String originalAvailable(String eventId) throws Exception {
-        return mvc.perform(get("/api/admin/events/" + eventId + "/photos").header("Authorization", bearer(adminToken())))
+        return originalAvailable(eventId, "CLIENT");
+    }
+
+    private String originalAvailable(String eventId, String gallery) throws Exception {
+        return mvc.perform(get("/api/admin/events/" + eventId + "/photos?gallery=" + gallery)
+                        .header("Authorization", bearer(adminToken())))
                 .andReturn().getResponse().getContentAsString();
     }
 
@@ -117,22 +122,27 @@ class AdminUploadTest extends IntegrationTest {
     }
 
     @Test
-    void addsTheOriginalToAPhotoAlreadyInTheGallery() throws Exception {
+    void theOriginalOfAGuestPhotoGoesToTheClientGalleryAsItsOwnPhoto() throws Exception {
         String eventId = eventId(createEvent("Attach", "LIVE"));
         byte[] original = jpeg(1600, 1067);
-        // First the compressed version only (e.g. during the event)...
+        // First the compressed version for guests (e.g. during the event)...
         upload(adminToken(), eventId, "IMG_9000.JPG", original, jpeg(1024, 683), jpeg(640, 427)).andExpect(status().isOk());
-        assertThat(JsonPath.<Boolean>read(originalAvailable(eventId), "$.photos[0].originalAvailable")).isFalse();
-        // ...then the original for delivery: no second photo, the same one gains its original.
+        assertThat(JsonPath.<Boolean>read(originalAvailable(eventId, "GUEST"), "$.photos[0].originalAvailable")).isFalse();
+        // ...then the full-quality file for the client: the same file may sit in both galleries.
         String session = originalSession(eventId, original);
-        assertThat(JsonPath.<Boolean>read(session, "$.needsVersions")).isFalse();
-        String photoId = JsonPath.read(session, "$.photoId");
+        assertThat(JsonPath.<String>read(session, "$.outcome")).isEqualTo("UPLOAD");
+        assertThat(JsonPath.<Boolean>read(session, "$.needsVersions")).isTrue();
         putToStorage(JsonPath.read(session, "$.upload.url"), original);
-        mvc.perform(post("/api/admin/events/" + eventId + "/photos/" + photoId + "/original")
+        upload(adminToken(), eventId, "IMG_9000.JPG", original, jpeg(1024, 683), jpeg(640, 427), true)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("UPLOAD"));
+        assertThat(JsonPath.<List<Object>>read(originalAvailable(eventId, "GUEST"), "$.photos")).hasSize(1);
+        String client = originalAvailable(eventId, "CLIENT");
+        assertThat(JsonPath.<List<Object>>read(client, "$.photos")).hasSize(1);
+        assertThat(JsonPath.<Boolean>read(client, "$.photos[0].originalAvailable")).isTrue();
+        // A guest photo never gains an original.
+        String guestPhoto = JsonPath.read(originalAvailable(eventId, "GUEST"), "$.photos[0].id");
+        mvc.perform(post("/api/admin/events/" + eventId + "/photos/" + guestPhoto + "/original")
                         .header("Authorization", bearer(adminToken())))
-                .andExpect(status().isNoContent());
-        String list = originalAvailable(eventId);
-        assertThat(JsonPath.<List<Object>>read(list, "$.photos")).hasSize(1);
-        assertThat(JsonPath.<Boolean>read(list, "$.photos[0].originalAvailable")).isTrue();
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("GUEST_COMPRESSED_ONLY"));
     }
 }

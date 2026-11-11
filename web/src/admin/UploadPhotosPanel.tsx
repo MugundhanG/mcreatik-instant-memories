@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import { adminApi, ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
-import type { Category } from '../lib/types'
+import type { Category, Gallery } from '../lib/types'
 import { ACCEPTED_TYPES, preparePhoto } from './prepareUpload'
 import { Button, Card } from './ui'
 
@@ -36,16 +36,16 @@ async function putOriginal(file: File, upload: { url: string; method: string; he
 }
 
 /** One photo: compressed → gallery versions; original → full file to storage, then the gallery versions. */
-async function uploadOne(eventId: string, item: Item): Promise<'done' | 'duplicate'> {
+async function uploadOne(eventId: string, item: Item, gallery: Gallery): Promise<'done' | 'duplicate'> {
   const prepared = await preparePhoto(item.file)
   if (item.mode === 'compressed') {
-    const res = await adminApi.uploadPhoto(eventId, item.file, prepared, false, item.categoryId)
+    const res = await adminApi.uploadPhoto(eventId, item.file, prepared, false, item.categoryId, gallery)
     return res.outcome === 'DUPLICATE' ? 'duplicate' : 'done'
   }
-  const session = await adminApi.originalUpload(eventId, item.file, prepared.checksumSha256, item.categoryId)
+  const session = await adminApi.originalUpload(eventId, item.file, prepared.checksumSha256, item.categoryId, gallery)
   if (session.outcome === 'DUPLICATE' || !session.upload) return 'duplicate'
   await putOriginal(item.file, session.upload)
-  if (session.needsVersions) await adminApi.uploadPhoto(eventId, item.file, prepared, true, item.categoryId)
+  if (session.needsVersions) await adminApi.uploadPhoto(eventId, item.file, prepared, true, item.categoryId, gallery)
   else await adminApi.attachOriginal(eventId, session.photoId)
   return 'done'
 }
@@ -61,7 +61,7 @@ const MODES: Record<Mode, { title: string; badge: string; use: string; detail: s
     title: 'Upload original photos',
     badge: 'Full quality',
     use: 'For client delivery: edited finals, album selection, print-quality downloads.',
-    detail: 'Also keeps the full camera file (about 8–15 MB per photo, so slower). Photos already in the gallery just get their original added, never duplicated.',
+    detail: 'Keeps the full camera file (about 8–15 MB per photo, so slower). Only your client sees these photos, never guests.',
   },
 }
 
@@ -75,10 +75,12 @@ function reason(err: unknown) {
 
 /**
  * Manual upload: the admin adds photos from their computer (edited photos after the event, extra shots).
- * Each photo is compressed in the browser and appears in the guest gallery at once, behind the same QR.
+ * Guest gallery: each photo is compressed in the browser and appears at once, behind the same QR. Client gallery: the full file is kept.
  */
-export function UploadPhotosPanel({ eventId, onUploaded, categories = [], onAddStorage }: {
+export function UploadPhotosPanel({ eventId, gallery = 'GUEST', onUploaded, categories = [], onAddStorage }: {
   eventId: string
+  /** Guest gallery: the compressed box only. Client gallery: the full-quality box only. */
+  gallery?: Gallery
   onUploaded: () => void
   categories?: Category[]
   /** A client gallery ran out of storage: where to add more. */
@@ -93,7 +95,8 @@ export function UploadPhotosPanel({ eventId, onUploaded, categories = [], onAddS
   const stopped = useRef(false)
   const fileInput = useRef<HTMLInputElement>(null)
   const folderInput = useRef<HTMLInputElement>(null)
-  const pickMode = useRef<Mode>('compressed')
+  const mode: Mode = gallery === 'CLIENT' ? 'original' : 'compressed'
+  const pickMode = useRef<Mode>(mode)
   const [dragging, setDraggingMode] = useState<Mode | null>(null)
 
   const running = items.some((i) => i.status === 'waiting' || i.status === 'working')
@@ -125,7 +128,7 @@ export function UploadPhotosPanel({ eventId, onUploaded, categories = [], onAddS
       set(item, 'working')
       void (async () => {
         try {
-          const outcome = await uploadOne(eventId, item)
+          const outcome = await uploadOne(eventId, item, gallery)
           set(item, outcome)
           if (outcome === 'done' && ++sinceRefresh.current >= REFRESH_EVERY) {
             sinceRefresh.current = 0
@@ -206,33 +209,33 @@ export function UploadPhotosPanel({ eventId, onUploaded, categories = [], onAddS
           <span className="text-xs text-muted">e.g. pick “Cake cutting”, then choose that folder</span>
         </label>
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {(['compressed', 'original'] as const).map((mode) => (
+      <div className="grid gap-3">
+        {[mode].map((m) => (
           <div
-            key={mode}
+            key={m}
             onDragOver={(e) => {
               e.preventDefault()
-              setDraggingMode(mode)
+              setDraggingMode(m)
             }}
             onDragLeave={() => setDraggingMode(null)}
-            onDrop={(e) => onDrop(e, mode)}
-            className={`flex flex-col rounded-xl border-2 border-dashed p-4 transition-colors ${dragging === mode ? 'border-ink bg-stone-50' : 'border-line'}`}
-            data-testid={`upload-${mode}`}
+            onDrop={(e) => onDrop(e, m)}
+            className={`flex flex-col rounded-xl border-2 border-dashed p-4 transition-colors ${dragging === m ? 'border-ink bg-stone-50' : 'border-line'}`}
+            data-testid={`upload-${m}`}
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="font-medium">{MODES[mode].title}</p>
-              <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-muted">{MODES[mode].badge}</span>
+              <p className="font-medium">{MODES[m].title}</p>
+              <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-muted">{MODES[m].badge}</span>
             </div>
-            <p className="mt-2 text-sm text-ink">{MODES[mode].use}</p>
-            <p className="mt-1 text-xs text-muted">{MODES[mode].detail}</p>
+            <p className="mt-2 text-sm text-ink">{MODES[m].use}</p>
+            <p className="mt-1 text-xs text-muted">{MODES[m].detail}</p>
             <div className="mt-auto flex flex-wrap gap-2 pt-4">
-              <Button variant={mode === 'compressed' ? 'primary' : 'secondary'} onClick={() => pick(mode, fileInput.current)}>Choose photos</Button>
-              <Button variant="ghost" onClick={() => pick(mode, folderInput.current)}>Choose a folder</Button>
+              <Button variant={m === 'compressed' ? 'primary' : 'secondary'} onClick={() => pick(m, fileInput.current)}>Choose photos</Button>
+              <Button variant="ghost" onClick={() => pick(m, folderInput.current)}>Choose a folder</Button>
             </div>
           </div>
         ))}
       </div>
-      <p className="mt-2 text-xs text-muted">JPEG or PNG · or drag photos onto either box</p>
+      <p className="mt-2 text-xs text-muted">JPEG or PNG · or drag photos onto the box</p>
       <input ref={fileInput} type="file" multiple accept={ACCEPTED_TYPES.join(',')} className="hidden" onChange={onPick} aria-label="Photos to upload" />
       <input
         ref={folderInput}

@@ -4,7 +4,7 @@ import { PhotoViewer } from '../gallery/PhotoViewer'
 import { adminApi, type BulkPhotoAction } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
 import { downloadPhoto } from '../lib/photoActions'
-import type { AdminPhoto, AdminPhotoQuery, AdminPhotoSort, Category, PhotoFacets, PublicPhoto, UploaderStats } from '../lib/types'
+import type { AdminPhoto, AdminPhotoQuery, AdminPhotoSort, Category, Gallery, PhotoFacets, PublicPhoto, UploaderStats } from '../lib/types'
 import { DownloadIcon, EyeIcon, HeartIcon, MoreIcon, StarIcon, TrashIcon } from './icons'
 import { Button, Card } from './ui'
 import { useZipDownload } from '../shared/zipDownload'
@@ -71,6 +71,8 @@ interface Props {
   /** Changes when photos finish uploading: new ones are merged in without moving the list. */
   refreshKey: number
   uploaders: UploaderStats[]
+  /** Which gallery this list shows (default: the guest gallery). */
+  gallery?: Gallery
   /** The event's categories, for the filter, labels and "Move to". */
   categories: Category[]
   /** Photos moved between categories: refresh the counts. */
@@ -82,7 +84,7 @@ interface Props {
   onPhotosChanged: () => void
 }
 
-export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refreshKey, uploaders, categories, onCategoriesChanged, onCoverChange, onEventChanged, onPhotosChanged }: Props) {
+export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refreshKey, uploaders, gallery = 'GUEST', categories, onCategoriesChanged, onCoverChange, onEventChanged, onPhotosChanged }: Props) {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
   const [photos, setPhotos] = useState<AdminPhoto[]>([])
   const [hasMore, setHasMore] = useState(false)
@@ -120,13 +122,13 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
 
   const cameraName = useMemo(() => new Map(uploaders.map((u) => [u.id, u.name])), [uploaders])
 
-  const loadFacets = useCallback(() => adminApi.photoFacets(eventId).then(setFacets).catch(() => {}), [eventId])
+  const loadFacets = useCallback(() => adminApi.photoFacets(eventId, gallery).then(setFacets).catch(() => {}), [eventId, gallery])
 
   // A new filter or sort starts the list from the top.
   useEffect(() => {
     let active = true
     adminApi
-      .photos(eventId, { ...toQuery(filters), offset: 0, limit: PAGE })
+      .photos(eventId, { ...toQuery(filters), gallery, offset: 0, limit: PAGE })
       .then((page) => {
         if (!active) return
         setPhotos(page.photos)
@@ -137,7 +139,7 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
     return () => {
       active = false
     }
-  }, [eventId, filters])
+  }, [eventId, filters, gallery])
 
   // New uploads: refresh the first page in place. Existing photos keep their position (no jump back to the top),
   // photos that just finished processing get their thumbnails, brand-new ones appear at the top.
@@ -149,7 +151,7 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
     }
     loadFacets()
     adminApi
-      .photos(eventId, { ...toQuery(filters), offset: 0, limit: PAGE })
+      .photos(eventId, { ...toQuery(filters), gallery, offset: 0, limit: PAGE })
       .then((page) => {
         setPhotos((list) => {
           const fresh = new Map(page.photos.map((p) => [p.id, p]))
@@ -192,7 +194,7 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
     if (loadingMore.current || !hasMore) return
     loadingMore.current = true
     try {
-      const page = await adminApi.photos(eventId, { ...toQuery(filters), offset: photos.length, limit: PAGE })
+      const page = await adminApi.photos(eventId, { ...toQuery(filters), gallery, offset: photos.length, limit: PAGE })
       setPhotos((list) => {
         const known = new Set(list.map((p) => p.id))
         return [...list, ...page.photos.filter((p) => !known.has(p.id))]
@@ -201,7 +203,7 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
     } finally {
       loadingMore.current = false
     }
-  }, [eventId, filters, hasMore, photos.length])
+  }, [eventId, gallery, filters, hasMore, photos.length])
   useEffect(() => {
     moreRef.current = more
   }, [more])

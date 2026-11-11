@@ -63,6 +63,13 @@ public class Event {
     @Column(name = "storage_locked", nullable = false)
     private boolean storageLocked;
 
+    /**
+     * Guest and Client galleries are separate: the couple sees only the client gallery. False on events that
+     * existed before the split (the couple sees every photo, as before).
+     */
+    @Column(name = "split_galleries", nullable = false)
+    private boolean splitGalleries;
+
     /** Guests' QR gallery; only McreatiK (super admin) turns it off. */
     @Column(name = "live_gallery_enabled", nullable = false)
     private boolean liveGalleryEnabled = true;
@@ -141,6 +148,14 @@ public class Event {
 
     public void setEndTime(Instant endTime) {
         this.endTime = endTime;
+    }
+
+    public boolean isSplitGalleries() {
+        return splitGalleries;
+    }
+
+    public void setSplitGalleries(boolean splitGalleries) {
+        this.splitGalleries = splitGalleries;
     }
 
     public EventType getEventType() {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
 import { formatBytes, formatCount, formatEventDate, timeAgo } from '../lib/format'
-import type { BillingSummary, Category, EventClient, EventDetail, EventStats, EventStatus } from '../lib/types'
+import type { BillingSummary, Category, EventClient, EventDetail, EventStats, EventStatus, Gallery } from '../lib/types'
 import { ShutterLoader } from '../shared/ShutterLoader'
 import { AnalyticsPanel } from './AnalyticsPanel'
 import { CategoriesCard } from './CategoriesCard'
@@ -66,9 +66,17 @@ export default function EventDashboardPage() {
   const openTab = useCallback((t: Tab) => setParams(t === 'overview' ? {} : { tab: t }, { replace: true }), [setParams])
   const [copied, setCopied] = useState(false)
 
-  const [categories, setCategories] = useState<Category[]>([])
+  // Each gallery (guest, client) has its own categories.
+  const [categories, setCategories] = useState<Record<Gallery, Category[]>>({ GUEST: [], CLIENT: [] })
+  const [galleryTab, setGalleryTab] = useState<Gallery>('GUEST')
   const [eventClients, setEventClients] = useState<EventClient[] | null>(null)
-  const loadCategories = useCallback(() => adminApi.categories(eventId).then(setCategories).catch(() => {}), [eventId])
+  const loadCategories = useCallback(
+    () =>
+      Promise.all([adminApi.categories(eventId, 'GUEST'), adminApi.categories(eventId, 'CLIENT')])
+        .then(([GUEST, CLIENT]) => setCategories({ GUEST, CLIENT }))
+        .catch(() => {}),
+    [eventId],
+  )
   useEffect(() => {
     loadCategories()
   }, [loadCategories])
@@ -146,6 +154,8 @@ export default function EventDashboardPage() {
   // A section fades in each time it is shown (CSS animations restart when an element stops being hidden).
   // A client gallery has no guests: an old ?tab=guests link shows the Overview.
   const shown: Tab = clientOnly && tab === 'guests' ? 'overview' : tab
+  const activeGallery: Gallery = clientOnly ? 'CLIENT' : galleryTab
+  const galleryPanel = (id: Gallery) => ({ id: `panel-${id}`, role: 'tabpanel', 'aria-labelledby': `tab-${id}`, hidden: activeGallery !== id })
   const panel = (id: Tab) => ({ id: `panel-${id}`, role: 'tabpanel', 'aria-labelledby': `tab-${id}`, hidden: shown !== id })
 
   return (
@@ -252,28 +262,60 @@ export default function EventDashboardPage() {
       </section>
 
       <section {...panel('photos')} className="anim-fade-in space-y-6">
-        <UploadPhotosPanel
-          eventId={event.id}
-          categories={categories}
-          onAddStorage={() => openTab('overview')}
-          onUploaded={() => {
-            loadStats()
-            loadCategories()
-          }}
-        />
-        <PhotosPanel
-          eventId={event.id}
-          eventSlug={event.slug}
-          eventName={event.name}
-          coverPhotoId={event.coverPhotoId}
-          refreshKey={(stats?.readyPhotos ?? 0) + (stats?.failedPhotos ?? 0) + (stats?.inProgressPhotos ?? 0)}
-          uploaders={stats?.uploaders ?? []}
-          categories={categories}
-          onCategoriesChanged={loadCategories}
-          onCoverChange={(id) => update({ coverPhotoId: id })}
-          onEventChanged={() => adminApi.event(eventId).then(setEvent).catch(() => {})}
-          onPhotosChanged={loadStats}
-        />
+        {/* Both galleries stay mounted (only hidden), so an upload keeps going while you look at the other one. */}
+        {!clientOnly && (
+          <Tabs<Gallery>
+            label="Galleries"
+            current={galleryTab}
+            onChange={setGalleryTab}
+            tabs={[
+              { id: 'GUEST', label: 'Guest gallery' },
+              { id: 'CLIENT', label: 'Client gallery' },
+            ]}
+          />
+        )}
+        {(clientOnly ? ['CLIENT' as const] : ['GUEST' as const, 'CLIENT' as const]).map((gallery) => {
+          const off = gallery === 'GUEST' ? event.liveGalleryEnabled === false : event.clientGalleryEnabled === false
+          return (
+            <div key={gallery} {...galleryPanel(gallery)} className="space-y-6" data-testid={`gallery-${gallery.toLowerCase()}`}>
+              <p className="text-sm text-muted">
+                {gallery === 'GUEST'
+                  ? 'Guests see these photos (compressed, from your cameras or uploaded here).'
+                  : 'Only your client sees these, in full quality.'}
+              </p>
+              {off && (
+                <div role="status" data-testid={`gallery-off-${gallery.toLowerCase()}`} className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  This gallery is off. Uploads are saved, but guests (or your client) can't see them until it's turned on.
+                </div>
+              )}
+              <UploadPhotosPanel
+                eventId={event.id}
+                gallery={gallery}
+                categories={categories[gallery]}
+                onAddStorage={() => openTab('overview')}
+                onUploaded={() => {
+                  loadStats()
+                  loadCategories()
+                }}
+              />
+              <CategoriesCard eventId={event.id} gallery={gallery} categories={categories[gallery]} onChange={loadCategories} />
+              <PhotosPanel
+                eventId={event.id}
+                gallery={gallery}
+                eventSlug={event.slug}
+                eventName={event.name}
+                coverPhotoId={event.coverPhotoId}
+                refreshKey={(stats?.readyPhotos ?? 0) + (stats?.failedPhotos ?? 0) + (stats?.inProgressPhotos ?? 0)}
+                uploaders={stats?.uploaders ?? []}
+                categories={categories[gallery]}
+                onCategoriesChanged={loadCategories}
+                onCoverChange={(id) => update({ coverPhotoId: id })}
+                onEventChanged={() => adminApi.event(eventId).then(setEvent).catch(() => {})}
+                onPhotosChanged={loadStats}
+              />
+            </div>
+          )
+        })}
       </section>
 
       {!clientOnly && (
@@ -288,7 +330,6 @@ export default function EventDashboardPage() {
 
       <section {...panel('settings')} className="anim-fade-in space-y-6">
         {superAdmin && <GalleryAccessCard event={event} onChange={setEvent} />}
-        <CategoriesCard eventId={event.id} categories={categories} onChange={loadCategories} />
         <Card title="Privacy & data">
           <div className="flex flex-wrap items-end justify-between gap-4">
             {billing?.free ? (

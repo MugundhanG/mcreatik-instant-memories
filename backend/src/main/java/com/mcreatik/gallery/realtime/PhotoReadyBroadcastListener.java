@@ -23,6 +23,6 @@ public class PhotoReadyBroadcastListener {
 
     @EventListener
     public void onPhotoReady(PhotoReadyEvent event) {
-        photos.findById(event.photoId()).ifPresent(p -> broadcaster.photoReady(event.eventId(), mapper.toPublic(p)));
+        photos.findById(event.photoId()).filter(p -> p.getGallery() == com.mcreatik.gallery.photo.Gallery.GUEST).ifPresent(p -> broadcaster.photoReady(event.eventId(), mapper.toPublic(p)));
     }
 }
