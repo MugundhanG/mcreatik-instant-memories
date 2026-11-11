@@ -114,7 +114,7 @@ Setting up a new laptop? Press **Install uploader** in the top bar of the dashbo
 Every camera needs its own **uploader**. One laptop with the McreatiK Instant Memories Uploader app can serve up to 4 cameras: add the extra cameras in the app with **+ Add camera** (you name each one there), and each appears here by itself. On the laptop, each event gets one folder with a sub-folder per camera.
 
 1. Open the event. On **Overview**, under **Cameras & uploaders**, type a name such as "Camera 1 · Canon R6 II" and press **Add camera & get code**.
-2. A **connection code** appears. **It's shown only once**, so press **Copy code** and paste it into the uploader (see the [Uploader guide](/admin/docs/guide-uploader)). A laptop already used for an earlier event: press **Change event…** in the uploader and paste the new code ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)).
+2. On the laptop, open the uploader and **sign in with your studio login** (the same email and password as this dashboard), then pick the event from the list (see the [Uploader guide](/admin/docs/guide-uploader)). A laptop already used for an earlier event: press **Change event…** in the uploader and pick the new event ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)). A **connection code** (shown only once, press **Copy code**) still works: choose **Use a connection code instead** in the uploader.
 
 ![Add camera & get code: the one-time connection code](images/s-add-uploader.webp)
 
@@ -247,7 +247,7 @@ Table card text you can copy: "**Scan to see the photos live.** Point your phone
 | Problem | Fix |
 | --- | --- |
 | A camera shows Offline on the dashboard | The uploader on that laptop is closed, asleep or has no internet. Check its window. |
-| The uploader shows an earlier event's name | Press **Change event…** in the uploader and paste this event's code. |
+| The uploader shows an earlier event's name | Press **Change event…** in the uploader and pick this event. |
 | The camera can't connect to the laptop | See the camera guide's troubleshooting ([Canon](/admin/docs/guide-canon#troubleshooting) · [Sony](/admin/docs/guide-sony#troubleshooting)). |
 | Guests say the page is empty | Status is Draft or Archived, or no photos yet. Set Upcoming or Live. |
 | "This gallery is currently unavailable" | McreatiK turned the gallery off. Contact McreatiK. |

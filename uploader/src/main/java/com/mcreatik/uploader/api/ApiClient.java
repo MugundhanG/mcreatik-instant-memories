@@ -20,7 +20,7 @@ import tools.jackson.databind.json.JsonMapper;
 /** Talks to the McreatiK backend (JSON) and to object storage (presigned PUT). */
 public class ApiClient {
 
-    private static final JsonMapper JSON = JsonMapper.builder()
+    static final JsonMapper JSON = JsonMapper.builder()
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();
     /** Headers the JDK client sets itself and refuses to accept. */
     private static final Set<String> RESTRICTED = Set.of("host", "content-length", "connection", "expect", "upgrade");

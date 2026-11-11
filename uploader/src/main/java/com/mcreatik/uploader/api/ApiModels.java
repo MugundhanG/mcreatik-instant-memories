@@ -94,4 +94,25 @@ public final class ApiModels {
 
     public record ErrorBody(String code, String message) {
     }
+
+    // ---- studio sign-in (same login as the website) ----
+
+    public record LoginRequest(String email, String password) {
+    }
+
+    /** {@code expiresAt} is an ISO instant (12 hours after sign-in). */
+    public record LoginResponse(String token, String expiresAt, String email, String displayName, String role,
+                                boolean mustChangePassword) {
+    }
+
+    /** One row of GET /api/admin/events. {@code status}: DRAFT, UPCOMING, LIVE, COMPLETED or ARCHIVED. */
+    public record StudioEvent(String id, String name, String eventDate, String status, String createdAt) {
+    }
+
+    /** What "create uploader" returns; {@code token} (mku_...) is what a connection code carries. */
+    public record UploaderCredentials(String uploaderId, String name, String token, String connectionCode) {
+    }
+
+    public record CreateUploaderRequest(String name) {
+    }
 }
