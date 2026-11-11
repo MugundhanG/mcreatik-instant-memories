@@ -47,9 +47,9 @@ public final class EventsPage implements Page {
         sw.add(head, BorderLayout.NORTH);
         JPanel steps = Ui.clear(new GridLayout(3, 1, 0, 6));
         steps.add(Ui.label("1   Wait until Waiting and Uploading are both 0.", Font.PLAIN, 13f, "text"));
-        steps.add(Ui.label("2   In the new event's dashboard: Overview → Cameras & uploaders → Add uploader → Copy code.",
+        steps.add(Ui.label("2   Press Change event… and sign in with your studio email and password (asked again after 12 hours).",
                 Font.PLAIN, 13f, "text"));
-        steps.add(Ui.label("3   Press Change event…, paste the code, then Switch event. The uploader restarts by itself.",
+        steps.add(Ui.label("3   Pick the new event, then Switch event. The uploader restarts by itself. (A connection code still works.)",
                 Font.PLAIN, 13f, "text"));
         sw.add(steps, BorderLayout.CENTER);
         JPanel action = Ui.clear(new BorderLayout(12, 0));

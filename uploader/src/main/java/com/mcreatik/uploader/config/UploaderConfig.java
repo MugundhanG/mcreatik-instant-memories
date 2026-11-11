@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Properties;
 
@@ -15,7 +16,24 @@ import java.util.Properties;
  * (one per camera) by giving each its own {@code --data-dir}.
  */
 public record UploaderConfig(String serverUrl, String token, Path watchFolder, int concurrency, String deviceId,
-                             Ftp ftp) {
+                             Ftp ftp, Session session) {
+
+    /**
+     * The studio sign-in kept for "Change event…": the website's login token (valid 12 hours). The password is never
+     * stored.
+     */
+    public record Session(String email, String token, Instant expiresAt) {
+
+        public boolean valid(Instant now) {
+            return token != null && expiresAt != null && now.isBefore(expiresAt);
+        }
+
+        /** Never print the token. */
+        @Override
+        public String toString() {
+            return "Session[email=" + email + ", expiresAt=" + expiresAt + "]";
+        }
+    }
 
     public static final String FILE_NAME = "config.properties";
 
@@ -40,6 +58,11 @@ public record UploaderConfig(String serverUrl, String token, Path watchFolder, i
         }
     }
 
+    /** Connected with a connection code: no studio sign-in. */
+    public UploaderConfig(String serverUrl, String token, Path watchFolder, int concurrency, String deviceId, Ftp ftp) {
+        this(serverUrl, token, watchFolder, concurrency, deviceId, ftp, null);
+    }
+
     public UploaderConfig {
         if (concurrency < 1 || concurrency > 8) {
             concurrency = 2;
@@ -51,11 +74,15 @@ public record UploaderConfig(String serverUrl, String token, Path watchFolder, i
     }
 
     public UploaderConfig withWatchFolder(Path folder) {
-        return new UploaderConfig(serverUrl, token, folder, concurrency, deviceId, ftp);
+        return new UploaderConfig(serverUrl, token, folder, concurrency, deviceId, ftp, session);
+    }
+
+    public UploaderConfig withSession(Session newSession) {
+        return new UploaderConfig(serverUrl, token, watchFolder, concurrency, deviceId, ftp, newSession);
     }
 
     public UploaderConfig withFtp(Ftp newFtp) {
-        return new UploaderConfig(serverUrl, token, watchFolder, concurrency, deviceId, newFtp);
+        return new UploaderConfig(serverUrl, token, watchFolder, concurrency, deviceId, newFtp, session);
     }
 
     public static Optional<UploaderConfig> load(Path dataDir) throws IOException {
@@ -77,9 +104,18 @@ public record UploaderConfig(String serverUrl, String token, Path watchFolder, i
                 : new Ftp(Boolean.parseBoolean(p.getProperty("ftpEnabled", "false")),
                         Integer.parseInt(p.getProperty("ftpPort", Integer.toString(Ftp.DEFAULT_PORT))),
                         p.getProperty("ftpUser", "mcreatik"), p.getProperty("ftpPassword"));
+        Session session = null;
+        try {
+            if (p.getProperty("sessionToken") != null && p.getProperty("sessionExpiresAt") != null) {
+                session = new Session(p.getProperty("sessionEmail", ""), p.getProperty("sessionToken"),
+                        Instant.parse(p.getProperty("sessionExpiresAt")));
+            }
+        } catch (java.time.format.DateTimeParseException ignored) {
+            // an unreadable expiry: treat as signed out
+        }
         return Optional.of(new UploaderConfig(server, token, Path.of(folder),
                 Integer.parseInt(p.getProperty("concurrency", "2")),
-                p.getProperty("deviceId", DeviceId.generate()), ftp));
+                p.getProperty("deviceId", DeviceId.generate()), ftp, session));
     }
 
     public void save(Path dataDir) throws IOException {
@@ -94,9 +130,14 @@ public record UploaderConfig(String serverUrl, String token, Path watchFolder, i
         p.setProperty("ftpPort", Integer.toString(ftp.port()));
         p.setProperty("ftpUser", ftp.username());
         p.setProperty("ftpPassword", ftp.password());
+        if (session != null && session.token() != null && session.expiresAt() != null) {
+            p.setProperty("sessionEmail", session.email() == null ? "" : session.email());
+            p.setProperty("sessionToken", session.token());
+            p.setProperty("sessionExpiresAt", session.expiresAt().toString());
+        }
         Path tmp = dataDir.resolve(FILE_NAME + ".tmp");
         try (OutputStream out = Files.newOutputStream(tmp)) {
-            p.store(out, "McreatiK Instant Memories Uploader - keep this file private (contains the uploader token)");
+            p.store(out, "McreatiK Instant Memories Uploader - keep this file private (contains the uploader token and the sign-in token, never the password)");
         }
         Files.move(tmp, dataDir.resolve(FILE_NAME), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         restrictPermissions(dataDir.resolve(FILE_NAME));

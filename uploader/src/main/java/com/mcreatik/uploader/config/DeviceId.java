@@ -22,4 +22,19 @@ public final class DeviceId {
         }
         return (host.isEmpty() ? "device" : host) + "-" + UUID.randomUUID().toString().substring(0, 8);
     }
+
+    /** The name this computer gets as an uploader in the dashboard: its host name, or the device id if it has none. */
+    public static String computerName(String deviceId) {
+        String host = null;
+        try {
+            host = InetAddress.getLocalHost().getHostName();
+        } catch (Exception ignored) {
+            // fall through to the device id
+        }
+        if (host != null) {
+            host = host.replaceAll("\\.(local|lan|home|fritz\\.box)$", "").replaceAll("[\\p{Cntrl}]", "").trim();
+        }
+        String name = host == null || host.isEmpty() || host.equalsIgnoreCase("localhost") ? deviceId : host;
+        return name.length() > 120 ? name.substring(0, 120) : name;
+    }
 }
