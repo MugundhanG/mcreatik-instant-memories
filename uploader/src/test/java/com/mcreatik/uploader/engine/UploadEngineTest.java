@@ -349,7 +349,8 @@ class UploadEngineTest {
         server.offline.set(false);
         await("paused here too", () -> engine.status().paused());
         await("waiting photos kept back", () -> filesIn(folder.resolve(PhotoFiles.PAUSED_DIR)) == 2);
-        assertThat(queue.counts().pending()).isZero();
+        // The files move first and the queue records it a moment later: wait for both.
+        await("queue emptied", () -> queue.counts().pending() == 0);
         assertThat(server.completedShas()).isEmpty();
 
         server.paused = false; // resumed in the dashboard
