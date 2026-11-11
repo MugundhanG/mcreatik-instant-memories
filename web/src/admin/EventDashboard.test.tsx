@@ -21,11 +21,16 @@ function stats(over: Record<string, number> = {}) {
 const ok = (body: unknown, status = 200) =>
   new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
+/** Every request of the current test, as "METHOD /path?query". */
+let requests: string[] = []
+
 function serve(statsBody = stats(), eventBody: Record<string, unknown> = event) {
   const patches: unknown[] = []
+  requests = []
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = new URL(String(input)).pathname
     const method = init?.method ?? 'GET'
+    requests.push(`${method} ${String(input).replace(/^https?:\/\/[^/]+/, '')}`)
     if (path === '/api/admin/account') return ok({ email: 'me@test', displayName: 'Lens & Light', role: 'STUDIO', mustChangePassword: false })
     if (path === '/api/admin/events/e1' && method === 'PATCH') {
       const body = JSON.parse(String(init?.body))
@@ -125,5 +130,54 @@ describe('Event dashboard', () => {
     await user.click(screen.getByRole('button', { name: /Change status/ }))
     await user.click(screen.getByRole('menuitemradio', { name: /Completed/ }))
     await waitFor(() => expect(patches).toEqual([{ status: 'COMPLETED' }]))
+  })
+
+  describe('guest and client galleries', () => {
+    it('has a Guest gallery and a Client gallery tab, each with its own explanation, upload box and list', async () => {
+      const user = userEvent.setup()
+      serve()
+      open('/events/e1?tab=photos')
+      const guest = await screen.findByTestId('gallery-guest')
+      const client = screen.getByTestId('gallery-client')
+      expect(screen.getByRole('tab', { name: 'Guest gallery' })).toHaveAttribute('aria-selected', 'true')
+      expect(guest).not.toHaveAttribute('hidden')
+      expect(client).toHaveAttribute('hidden')
+      expect(guest).toHaveTextContent('Guests see these photos (compressed, from your cameras or uploaded here).')
+      expect(within(guest).getByTestId('upload-compressed')).toBeInTheDocument()
+      expect(within(guest).queryByTestId('upload-original')).toBeNull()
+      expect(client).toHaveTextContent('Only your client sees these, in full quality.')
+      expect(within(client).getByTestId('upload-original')).toBeInTheDocument()
+      expect(within(client).queryByTestId('upload-compressed')).toBeNull()
+
+      await user.click(screen.getByRole('tab', { name: 'Client gallery' }))
+      expect(client).not.toHaveAttribute('hidden')
+      expect(guest).toHaveAttribute('hidden')
+      // Each gallery asks the server for its own photos, facets and categories.
+      await waitFor(() => expect(requests.some((r) => r.includes('/e1/photos?') && r.includes('gallery=CLIENT'))).toBe(true))
+      expect(requests.some((r) => r.includes('/e1/photos?') && r.includes('gallery=GUEST'))).toBe(true)
+      expect(requests).toContain('GET /api/admin/events/e1/photo-facets?gallery=CLIENT')
+      expect(requests).toContain('GET /api/admin/events/e1/categories?gallery=CLIENT')
+      expect(requests).toContain('GET /api/admin/events/e1/categories?gallery=GUEST')
+    })
+
+    it('a client-type event shows the Client gallery only', async () => {
+      serve(stats(), { ...event, eventType: 'CLIENT', liveGalleryEnabled: false })
+      open('/events/e1?tab=photos')
+      const client = await screen.findByTestId('gallery-client')
+      expect(client).not.toHaveAttribute('hidden')
+      expect(screen.queryByTestId('gallery-guest')).toBeNull()
+      expect(screen.queryByRole('tab', { name: 'Guest gallery' })).toBeNull()
+      // The guest gallery being off does not matter here: this is the client gallery.
+      expect(screen.queryByTestId('gallery-off-client')).toBeNull()
+    })
+
+    it('says a gallery is off, while uploads keep working', async () => {
+      serve(stats(), { ...event, liveGalleryEnabled: false })
+      open('/events/e1?tab=photos')
+      const note = await screen.findByTestId('gallery-off-guest')
+      expect(note).toHaveTextContent("This gallery is off. Uploads are saved, but guests (or your client) can't see them until it's turned on.")
+      expect(screen.queryByTestId('gallery-off-client')).toBeNull()
+      expect(within(screen.getByTestId('gallery-guest')).getByRole('button', { name: 'Choose photos' })).toBeEnabled()
+    })
   })
 })

@@ -48,6 +48,9 @@ class AlbumAndClientsTest extends IntegrationTest {
 
     private Setup eventWithPhotos() throws Exception {
         String eventId = eventId(createEvent("Album", "LIVE"));
+        // An event from before the galleries were split: the couple sees every photo, camera uploads included.
+        jdbc.update("UPDATE events SET split_galleries = false WHERE id = ?", java.util.UUID.fromString(eventId));
+        jdbc.update("DELETE FROM event_categories WHERE event_id = ? AND gallery = 'CLIENT'", java.util.UUID.fromString(eventId));
         String token = createUploader(eventId, "Camera 1");
         List<String> photos = List.of(uploadPhoto(token, "IMG_1.JPG", jpeg(800, 600)),
                 uploadPhoto(token, "IMG_2.JPG", jpeg(800, 601)), uploadPhoto(token, "IMG_3.JPG", jpeg(800, 602)));

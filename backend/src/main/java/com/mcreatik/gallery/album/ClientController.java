@@ -29,6 +29,7 @@ import com.mcreatik.gallery.download.ZipDownloads;
 import com.mcreatik.gallery.event.Event;
 import com.mcreatik.gallery.event.EventRepository;
 import com.mcreatik.gallery.event.EventService;
+import com.mcreatik.gallery.photo.Gallery;
 import com.mcreatik.gallery.photo.Photo;
 import com.mcreatik.gallery.photo.PhotoMapper;
 import com.mcreatik.gallery.photo.PhotoRepository;
@@ -193,14 +194,25 @@ public class ClientController {
         ClientRow c = current(auth);
         Event e = event(c);
         var pub = eventService.toPublic(e);
-        long total = jdbc.queryForObject("SELECT count(*) FROM photos WHERE event_id = ? AND status = 'READY' AND NOT hidden",
+        String only = galleryFilter(e, "");
+        long total = jdbc.queryForObject("SELECT count(*) FROM photos WHERE event_id = ? AND status = 'READY' AND NOT hidden" + only,
                 Long.class, e.getId());
         long unsorted = jdbc.queryForObject("""
-                SELECT count(*) FROM photos WHERE event_id = ? AND status = 'READY' AND NOT hidden AND category_id IS NULL""",
-                Long.class, e.getId());
+                SELECT count(*) FROM photos WHERE event_id = ? AND status = 'READY' AND NOT hidden AND category_id IS NULL"""
+                + only, Long.class, e.getId());
         return new Me(c.name(), c.email(), c.mustChange(), new EventInfo(e.getName(), e.getEventDate(), pub.coverUrl(),
                 branding.ofOwner(e.getOwnerId())), album.albumLimit(e.getId()), album.selectedCount(e.getId()), total,
-                unsorted, album.visibleCategories(e.getId()));
+                unsorted, album.visibleCategories(e.getId(), portalGallery(e)));
+    }
+
+    /** The gallery the couple sees: the client gallery on split events; on older events every photo (null). */
+    private static Gallery portalGallery(Event e) {
+        return e.isSplitGalleries() ? Gallery.CLIENT : null;
+    }
+
+    /** SQL fragment limiting a photos query to what the couple sees ({@code alias} like "p." or ""). */
+    private static String galleryFilter(Event e, String alias) {
+        return e.isSplitGalleries() ? " AND " + alias + "gallery = 'CLIENT'" : "";
     }
 
     public record ClientPhoto(UUID id, String thumbnailUrl, String webUrl, Integer width, Integer height,
@@ -224,7 +236,8 @@ public class ClientController {
         Event e = event(c);
         int size = Math.clamp(limit, 1, MAX_PAGE);
         StringBuilder sql = new StringBuilder(
-                "SELECT p.* FROM photos p WHERE p.event_id = :event AND p.status = 'READY' AND NOT p.hidden");
+                "SELECT p.* FROM photos p WHERE p.event_id = :event AND p.status = 'READY' AND NOT p.hidden"
+                        + galleryFilter(e, "p."));
         if ("none".equals(category)) {
             sql.append(" AND p.category_id IS NULL");
         } else if (category != null && !category.isBlank()) {
@@ -266,7 +279,7 @@ public class ClientController {
     public SelectResponse select(Authentication auth, @PathVariable UUID photoId, @RequestBody SelectRequest request) {
         ClientRow c = current(auth);
         Event e = event(c);
-        long count = album.select(e.getId(), c.id(), photoId, request.selected());
+        long count = album.select(e.getId(), c.id(), photoId, request.selected(), portalGallery(e));
         return new SelectResponse(count, album.albumLimit(e.getId()));
     }
 
@@ -280,7 +293,8 @@ public class ClientController {
         ClientRow c = current(auth);
         Event e = event(c);
         Photo p = photos.findByIdAndEventId(photoId, e.getId())
-                .filter(x -> x.getStatus() == PhotoStatus.READY && !x.isHidden())
+                .filter(x -> x.getStatus() == PhotoStatus.READY && !x.isHidden()
+                        && (portalGallery(e) == null || x.getGallery() == portalGallery(e)))
                 .orElseThrow(() -> ApiException.notFound("Photo"));
         if (p.isOriginalStored()) {
             return new DownloadUrl(storage.presignDownload(StorageArea.ORIGINALS, p.getStorageKey(), Duration.ofMinutes(10),
@@ -308,13 +322,14 @@ public class ClientController {
         } else if (request.photoIds() != null && !request.photoIds().isEmpty()) {
             ids = request.photoIds();
         } else {
-            ids = categoryIds(e.getId(), request.category());
+            ids = categoryIds(e, request.category());
         }
-        return downloads.prepare(e.getId(), ids, false, name);
+        return downloads.prepare(e.getId(), ids, false, portalGallery(e), name);
     }
 
-    private List<UUID> categoryIds(UUID eventId, String category) {
-        String base = "SELECT id FROM photos WHERE event_id = ? AND status = 'READY' AND NOT hidden";
+    private List<UUID> categoryIds(Event e, String category) {
+        UUID eventId = e.getId();
+        String base = "SELECT id FROM photos WHERE event_id = ? AND status = 'READY' AND NOT hidden" + galleryFilter(e, "");
         if (category == null || category.isBlank() || "all".equals(category)) {
             return jdbc.query(base, (rs, n) -> rs.getObject(1, UUID.class), eventId);
         }

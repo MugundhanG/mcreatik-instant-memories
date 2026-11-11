@@ -93,7 +93,7 @@ public class PublicGalleryController {
     public ResponseEntity<List<com.mcreatik.gallery.album.AlbumDtos.Category>> categories(@PathVariable String slug) {
         Event event = events.publicEvent(slug);
         return ResponseEntity.ok().cacheControl(CacheControl.noCache())
-                .body(album.visibleCategories(event.getId()).stream().filter(c -> c.photos() > 0).toList());
+                .body(album.visibleCategories(event.getId(), com.mcreatik.gallery.photo.Gallery.GUEST).stream().filter(c -> c.photos() > 0).toList());
     }
 
     @GetMapping(path = "/stream", produces = "text/event-stream")

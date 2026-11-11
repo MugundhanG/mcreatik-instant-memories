@@ -102,7 +102,9 @@ describe('Upload photos panel', () => {
       if (url === 'https://storage.test/put') return new Response(null, { status: 200 })
       return json({ outcome: 'UPLOAD', photoId: 'p1' })
     }))
-    render(<UploadPhotosPanel eventId="e1" onUploaded={vi.fn()} />)
+    render(<UploadPhotosPanel eventId="e1" gallery="CLIENT" onUploaded={vi.fn()} />)
+    // The client gallery has the full-quality box only.
+    expect(screen.queryByTestId('upload-compressed')).toBeNull()
     await user.click(within(screen.getByTestId('upload-original')).getByRole('button', { name: 'Choose photos' }))
     await user.upload(screen.getByLabelText('Photos to upload'), [new File(['x'], 'final.jpg', { type: 'image/jpeg' })])
 
@@ -114,5 +116,23 @@ describe('Upload photos panel', () => {
     ])
     expect(calls[1].body).toBeInstanceOf(File) // the full file, untouched
     expect((calls[2].body as FormData).get('original')).toBe('true')
+    expect((calls[2].body as FormData).get('gallery')).toBe('CLIENT')
+    expect(JSON.parse(String(calls[0].body)).gallery).toBe('CLIENT')
+  })
+
+  it('guest gallery: compressed box only, sent to the guest gallery', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    const bodies: FormData[] = []
+    vi.stubGlobal('fetch', vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      bodies.push(init!.body as FormData)
+      return new Response(JSON.stringify({ outcome: 'UPLOAD', photoId: 'p1' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }))
+    render(<UploadPhotosPanel eventId="e1" gallery="GUEST" onUploaded={vi.fn()} />)
+    expect(screen.queryByTestId('upload-original')).toBeNull()
+    expect(screen.getByTestId('upload-compressed')).toBeInTheDocument()
+    await user.upload(screen.getByLabelText('Photos to upload'), [new File(['x'], 'a.jpg', { type: 'image/jpeg' })])
+    await waitFor(() => expect(screen.getByTestId('upload-progress')).toHaveTextContent('1 added to the gallery'))
+    expect(bodies[0].get('gallery')).toBe('GUEST')
+    expect(bodies[0].get('original')).toBeNull()
   })
 })

@@ -107,6 +107,7 @@ public class EventService {
         Event event = new Event(owner, request.name().trim(), slug, request.eventDate(),
                 request.status() == null ? EventStatus.UPCOMING : request.status());
         event.setEventType(type);
+        event.setSplitGalleries(true);
         event.setStartTime(request.startTime());
         event.setEndTime(request.endTime());
         validateTimes(event);
@@ -128,7 +129,7 @@ public class EventService {
         events.save(event);
         events.flush();
         billing.recordCharge(owner, event.getId(), charge);
-        album.createDefaultCategories(event.getId());
+        album.createDefaultCategories(event.getId(), type == EventType.CLIENT);
         return toDetail(event);
     }
 

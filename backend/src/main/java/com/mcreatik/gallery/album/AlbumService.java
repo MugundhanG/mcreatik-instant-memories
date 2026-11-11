@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mcreatik.gallery.common.ApiException;
+import com.mcreatik.gallery.photo.Gallery;
 import com.mcreatik.gallery.photo.PhotoMapper;
 
 /** Photo categories, the couple's logins and their album selection, per event. */
@@ -36,43 +37,56 @@ public class AlbumService {
 
     // ---- categories ----
 
-    public void createDefaultCategories(UUID eventId) {
-        for (int i = 0; i < DEFAULT_CATEGORIES.size(); i++) {
-            jdbc.update("INSERT INTO event_categories (id, event_id, name, position) VALUES (?, ?, ?, ?)",
-                    UUID.randomUUID(), eventId, DEFAULT_CATEGORIES.get(i), i + 1);
+    /** Six default categories per gallery; client-type events have a client gallery only. */
+    public void createDefaultCategories(UUID eventId, boolean clientOnly) {
+        for (Gallery gallery : Gallery.values()) {
+            if (clientOnly && gallery == Gallery.GUEST) {
+                continue;
+            }
+            for (int i = 0; i < DEFAULT_CATEGORIES.size(); i++) {
+                jdbc.update("INSERT INTO event_categories (id, event_id, name, position, gallery) VALUES (?, ?, ?, ?, ?)",
+                        UUID.randomUUID(), eventId, DEFAULT_CATEGORIES.get(i), i + 1, gallery.name());
+            }
         }
     }
 
-    /** With photo counts; hidden photos count too here (the studio sees them), see {@link #visibleCategories}. */
-    public List<AlbumDtos.Category> categories(UUID eventId) {
-        return categories(eventId, false);
+    /**
+     * One gallery's categories with photo counts; hidden photos count too here (the studio sees them), see
+     * {@link #visibleCategories}.
+     */
+    public List<AlbumDtos.Category> categories(UUID eventId, Gallery gallery) {
+        return categories(eventId, gallery, false);
     }
 
-    /** Categories as the couple sees them: counts of photos they can open. */
-    public List<AlbumDtos.Category> visibleCategories(UUID eventId) {
-        return categories(eventId, true);
+    /** Categories as guests or the couple see them: counts of photos they can open. {@code gallery} null: all. */
+    public List<AlbumDtos.Category> visibleCategories(UUID eventId, Gallery gallery) {
+        return categories(eventId, gallery, true);
     }
 
-    private List<AlbumDtos.Category> categories(UUID eventId, boolean visibleOnly) {
+    private List<AlbumDtos.Category> categories(UUID eventId, Gallery gallery, boolean visibleOnly) {
         String photoFilter = visibleOnly ? " AND p.status = 'READY' AND NOT p.hidden" : "";
+        String galleryFilter = gallery == null ? "" : " AND c.gallery = '" + gallery.name() + "'";
         return jdbc.query("""
-                SELECT c.id, c.name, c.position, count(p.id)
+                SELECT c.id, c.name, c.position, count(p.id), c.gallery
                 FROM event_categories c LEFT JOIN photos p ON p.category_id = c.id%s
-                WHERE c.event_id = ?
-                GROUP BY c.id, c.name, c.position ORDER BY c.position, c.created_at""".formatted(photoFilter),
+                WHERE c.event_id = ?%s
+                GROUP BY c.id, c.name, c.position, c.gallery ORDER BY c.position, c.created_at""".formatted(photoFilter,
+                        galleryFilter),
                 (rs, n) -> new AlbumDtos.Category(rs.getObject(1, UUID.class), rs.getString(2), rs.getInt(3),
-                        rs.getLong(4)),
+                        rs.getLong(4), Gallery.valueOf(rs.getString(5))),
                 eventId);
     }
 
     @Transactional
-    public AlbumDtos.Category createCategory(UUID eventId, String rawName) {
+    public AlbumDtos.Category createCategory(UUID eventId, String rawName, Gallery gallery) {
         String name = categoryName(rawName);
-        Integer next = jdbc.queryForObject("SELECT coalesce(max(position), 0) + 1 FROM event_categories WHERE event_id = ?",
-                Integer.class, eventId);
+        Integer next = jdbc.queryForObject(
+                "SELECT coalesce(max(position), 0) + 1 FROM event_categories WHERE event_id = ? AND gallery = ?",
+                Integer.class, eventId, gallery.name());
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO event_categories (id, event_id, name, position) VALUES (?, ?, ?, ?)", id, eventId, name, next);
-        return new AlbumDtos.Category(id, name, next, 0);
+        jdbc.update("INSERT INTO event_categories (id, event_id, name, position, gallery) VALUES (?, ?, ?, ?, ?)", id,
+                eventId, name, next, gallery.name());
+        return new AlbumDtos.Category(id, name, next, 0, gallery);
     }
 
     public void renameCategory(UUID eventId, UUID categoryId, String rawName) {
@@ -99,6 +113,20 @@ public class AlbumService {
         }
         requireCategory(eventId, categoryId);
         UUID[] ids = photoIds.toArray(UUID[]::new);
+        if (categoryId != null) {
+            // A photo only goes into a category of its own gallery.
+            long foreign = jdbc.query("""
+                    SELECT count(*) FROM photos WHERE event_id = ? AND id = ANY (?)
+                      AND gallery <> (SELECT gallery FROM event_categories WHERE id = ?)""", ps -> {
+                ps.setObject(1, eventId);
+                ps.setArray(2, ps.getConnection().createArrayOf("uuid", ids));
+                ps.setObject(3, categoryId);
+            }, (rs, n) -> rs.getLong(1)).getFirst();
+            if (foreign > 0) {
+                throw ApiException.badRequest("GALLERY_MISMATCH",
+                        "Photos can only be moved into a category of their own gallery");
+            }
+        }
         return jdbc.update("UPDATE photos SET category_id = ?, updated_at = now() WHERE event_id = ? AND id = ANY (?)",
                 ps -> {
                     ps.setObject(1, categoryId);
@@ -111,6 +139,15 @@ public class AlbumService {
         if (categoryId != null && jdbc.queryForObject(
                 "SELECT count(*) FROM event_categories WHERE id = ? AND event_id = ?", Long.class, categoryId, eventId) == 0) {
             throw ApiException.badRequest("INVALID_CATEGORY", "Unknown category for this event");
+        }
+    }
+
+    /** The category must exist in this event and belong to {@code gallery}. */
+    public void requireCategory(UUID eventId, UUID categoryId, Gallery gallery) {
+        if (categoryId != null && jdbc.queryForObject(
+                "SELECT count(*) FROM event_categories WHERE id = ? AND event_id = ? AND gallery = ?", Long.class,
+                categoryId, eventId, gallery.name()) == 0) {
+            throw ApiException.badRequest("INVALID_CATEGORY", "Unknown category for this gallery");
         }
     }
 
@@ -258,15 +295,17 @@ public class AlbumService {
                 }, (rs, n) -> rs.getObject(1, UUID.class));
     }
 
-    /** The couple selects or unselects a photo for the album, within the studio's limit. */
+    /** The couple selects or unselects a photo for the album, within the studio's limit. {@code gallery}: see below. */
     @Transactional
-    public long select(UUID eventId, UUID clientId, UUID photoId, boolean selected) {
+    public long select(UUID eventId, UUID clientId, UUID photoId, boolean selected, Gallery gallery) {
         if (!selected) {
             jdbc.update("DELETE FROM album_selections WHERE event_id = ? AND photo_id = ?", eventId, photoId);
             return selectedCount(eventId);
         }
+        // gallery: the one the couple can see (null: every photo, on events from before the split).
         Long visible = jdbc.queryForObject("""
-                SELECT count(*) FROM photos WHERE id = ? AND event_id = ? AND status = 'READY' AND NOT hidden""",
+                SELECT count(*) FROM photos WHERE id = ? AND event_id = ? AND status = 'READY' AND NOT hidden%s"""
+                .formatted(gallery == null ? "" : " AND gallery = '" + gallery.name() + "'"),
                 Long.class, photoId, eventId);
         if (visible == 0) {
             throw ApiException.notFound("Photo");

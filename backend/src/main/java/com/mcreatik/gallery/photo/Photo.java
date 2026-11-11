@@ -57,6 +57,11 @@ public class Photo {
     @Column(name = "media_bytes", nullable = false)
     private long mediaBytes;
 
+    /** Guest gallery (compressed, shown to guests) or Client gallery (full quality, shown to the client). */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Gallery gallery = Gallery.GUEST;
+
     /** Kept in the event but not shown to guests. */
     @Column(nullable = false)
     private boolean hidden;
@@ -200,6 +205,14 @@ public class Photo {
         this.status = PhotoStatus.UPLOADED;
         this.failureReason = reason;
         this.updatedAt = now();
+    }
+
+    public Gallery getGallery() {
+        return gallery;
+    }
+
+    public void setGallery(Gallery gallery) {
+        this.gallery = gallery;
     }
 
     public UUID getId() {

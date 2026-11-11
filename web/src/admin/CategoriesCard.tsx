@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { adminApi, ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
-import type { Category } from '../lib/types'
+import type { Category, Gallery } from '../lib/types'
 import { Button, Card, ErrorText, inputClass } from './ui'
 import { useConfirm } from './useConfirm'
 
 /** The event's photo categories (Couple, Cake cutting, …): what clients browse by. Rename, add, remove. */
-export function CategoriesCard({ eventId, categories, onChange }: { eventId: string; categories: Category[]; onChange: () => void }) {
+export function CategoriesCard({ eventId, gallery, categories, onChange }: { eventId: string; gallery?: Gallery; categories: Category[]; onChange: () => void }) {
   const [name, setName] = useState('')
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -26,7 +26,7 @@ export function CategoriesCard({ eventId, categories, onChange }: { eventId: str
     e.preventDefault()
     if (!name.trim()) return
     void run(async () => {
-      await adminApi.createCategory(eventId, name.trim())
+      await adminApi.createCategory(eventId, name.trim(), gallery)
       setName('')
     })
   }
@@ -53,7 +53,7 @@ export function CategoriesCard({ eventId, categories, onChange }: { eventId: str
   return (
     <Card title="Photo categories">
       {confirmDialog}
-      <p className="mb-3 text-sm text-muted">Clients browse photos by these. Sort photos in the Photos list below (Select → Move to), or upload straight into a category.</p>
+      <p className="mb-3 text-sm text-muted">{gallery === 'CLIENT' ? 'Your client browses' : 'Guests browse'} photos by these. Sort photos in the Photos list below (Select → Move to), or upload straight into a category.</p>
       <ul className="flex flex-wrap gap-2" data-testid="categories">
         {categories.map((c) => (
           <li key={c.id} className="flex items-center gap-1 rounded-full border border-line bg-white py-1 pr-1 pl-3 text-sm">

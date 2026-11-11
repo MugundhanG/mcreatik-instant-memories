@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,6 +22,7 @@ import com.mcreatik.gallery.auth.CurrentAdmin;
 import com.mcreatik.gallery.download.ZipDownloads;
 import com.mcreatik.gallery.event.Event;
 import com.mcreatik.gallery.event.EventService;
+import com.mcreatik.gallery.photo.Gallery;
 
 /** The studio's side: categories, sorting photos into them, client logins and the couple's album selection. */
 @RestController
@@ -42,17 +44,18 @@ public class AlbumAdminController {
     }
 
     @GetMapping("/categories")
-    public List<AlbumDtos.Category> categories(Authentication auth, @PathVariable UUID eventId) {
-        owned(auth, eventId);
-        return album.categories(eventId);
+    public List<AlbumDtos.Category> categories(Authentication auth, @PathVariable UUID eventId,
+                                               @RequestParam(required = false) String gallery) {
+        Event event = owned(auth, eventId);
+        return album.categories(eventId, Gallery.resolve(gallery, event));
     }
 
     @PostMapping("/categories")
     @ResponseStatus(HttpStatus.CREATED)
     public AlbumDtos.Category createCategory(Authentication auth, @PathVariable UUID eventId,
                                              @RequestBody AlbumDtos.CategoryRequest request) {
-        owned(auth, eventId);
-        return album.createCategory(eventId, request.name());
+        Event event = owned(auth, eventId);
+        return album.createCategory(eventId, request.name(), Gallery.resolve(request.gallery(), event));
     }
 
     @PatchMapping("/categories/{categoryId}")

@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, EventType, DocPage, OnlineOrder, OnlinePaymentResult, OnlinePaymentStatus, UpiQrOrder, DocPageSummary, GuestAnalytics, HqRequest, HqRequestInput, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, Gallery, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, EventType, DocPage, OnlineOrder, OnlinePaymentResult, OnlinePaymentStatus, UpiQrOrder, DocPageSummary, GuestAnalytics, HqRequest, HqRequestInput, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export type BulkPhotoAction = 'LIKE' | 'UNLIKE' | 'HIDE' | 'SHOW' | 'DELETE'
 
@@ -169,11 +169,12 @@ export const adminApi = {
     const qs = q.toString()
     return request<AdminPhotoPage>(`/api/admin/events/${id}/photos${qs ? `?${qs}` : ''}`, {}, true)
   },
-  photoFacets: (id: string) => request<PhotoFacets>(`/api/admin/events/${id}/photo-facets`, {}, true),
+  photoFacets: (id: string, gallery?: Gallery) =>
+    request<PhotoFacets>(`/api/admin/events/${id}/photo-facets${gallery ? `?gallery=${gallery}` : ''}`, {}, true),
   updatePhoto: (photoId: string, input: { hidden?: boolean; liked?: boolean }) =>
     request<AdminPhoto>(`/api/admin/photos/${photoId}`, { method: 'PATCH', body: json(input) }, true),
   /** Dashboard upload: the browser-made gallery and thumbnail JPEGs plus the original's details. */
-  uploadPhoto: (eventId: string, file: File, p: PreparedPhoto, withOriginal = false, categoryId?: string) => {
+  uploadPhoto: (eventId: string, file: File, p: PreparedPhoto, withOriginal = false, categoryId?: string, gallery?: Gallery) => {
     const form = new FormData()
     form.append('web', p.web, 'web.jpg')
     form.append('thumbnail', p.thumbnail, 'thumb.jpg')
@@ -186,20 +187,22 @@ export const adminApi = {
     if (p.capturedAt) form.append('capturedAt', p.capturedAt)
     if (withOriginal) form.append('original', 'true')
     if (categoryId) form.append('categoryId', categoryId)
+    if (gallery) form.append('gallery', gallery)
     return request<{ outcome: 'UPLOAD' | 'DUPLICATE'; photoId: string }>(`/api/admin/events/${eventId}/photos`, { method: 'POST', body: form }, true)
   },
   /** Original-quality upload, step 1: where to PUT the full file (straight to storage, not through the server). */
-  originalUpload: (eventId: string, file: File, checksumSha256: string, categoryId?: string) =>
+  originalUpload: (eventId: string, file: File, checksumSha256: string, categoryId?: string, gallery?: Gallery) =>
     request<OriginalUploadSession>(`/api/admin/events/${eventId}/original-uploads`, {
       method: 'POST',
-      body: json({ fileName: file.name, fileSize: file.size, mimeType: file.type, checksumSha256, categoryId: categoryId ?? null }),
+      body: json({ fileName: file.name, fileSize: file.size, mimeType: file.type, checksumSha256, categoryId: categoryId ?? null, gallery: gallery ?? null }),
     }, true),
   /** For a photo already in the gallery: keep the original that was just PUT. */
   attachOriginal: (eventId: string, photoId: string) =>
     request<void>(`/api/admin/events/${eventId}/photos/${photoId}/original`, { method: 'POST' }, true),
-  categories: (eventId: string) => request<Category[]>(`/api/admin/events/${eventId}/categories`, {}, true),
-  createCategory: (eventId: string, name: string) =>
-    request<Category>(`/api/admin/events/${eventId}/categories`, { method: 'POST', body: json({ name }) }, true),
+  categories: (eventId: string, gallery?: Gallery) =>
+    request<Category[]>(`/api/admin/events/${eventId}/categories${gallery ? `?gallery=${gallery}` : ''}`, {}, true),
+  createCategory: (eventId: string, name: string, gallery?: Gallery) =>
+    request<Category>(`/api/admin/events/${eventId}/categories`, { method: 'POST', body: json({ name, gallery }) }, true),
   renameCategory: (eventId: string, categoryId: string, name: string) =>
     request<void>(`/api/admin/events/${eventId}/categories/${categoryId}`, { method: 'PATCH', body: json({ name }) }, true),
   deleteCategory: (eventId: string, categoryId: string) =>

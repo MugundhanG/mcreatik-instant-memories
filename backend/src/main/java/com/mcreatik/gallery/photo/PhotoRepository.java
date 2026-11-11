@@ -12,20 +12,20 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface PhotoRepository extends JpaRepository<Photo, UUID> {
 
-    Optional<Photo> findByEventIdAndChecksumSha256(UUID eventId, String checksumSha256);
+    Optional<Photo> findByEventIdAndGalleryAndChecksumSha256(UUID eventId, Gallery gallery, String checksumSha256);
 
     Optional<Photo> findByIdAndEventId(UUID id, UUID eventId);
 
     // ---- Guest feed (newest first, keyset pagination on (ready_at, id)) ----
 
     @Query("""
-            select p from Photo p where p.eventId = ?1 and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
+            select p from Photo p where p.eventId = ?1 and p.gallery = com.mcreatik.gallery.photo.Gallery.GUEST and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
               and p.hidden = false
             order by p.readyAt desc, p.id desc""")
     List<Photo> findLatestReady(UUID eventId, Limit limit);
 
     @Query("""
-            select p from Photo p where p.eventId = ?1 and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
+            select p from Photo p where p.eventId = ?1 and p.gallery = com.mcreatik.gallery.photo.Gallery.GUEST and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
               and p.hidden = false and (p.readyAt < ?2 or (p.readyAt = ?2 and p.id < ?3))
             order by p.readyAt desc, p.id desc""")
     List<Photo> findReadyBefore(UUID eventId, Instant readyAt, UUID id, Limit limit);
@@ -33,26 +33,26 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID> {
     // The same feed within one category (the guest picked a category tab).
 
     @Query("""
-            select p from Photo p where p.eventId = ?1 and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
+            select p from Photo p where p.eventId = ?1 and p.gallery = com.mcreatik.gallery.photo.Gallery.GUEST and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
               and p.hidden = false and p.categoryId = ?2
             order by p.readyAt desc, p.id desc""")
     List<Photo> findLatestReadyIn(UUID eventId, UUID categoryId, Limit limit);
 
     @Query("""
-            select p from Photo p where p.eventId = ?1 and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
+            select p from Photo p where p.eventId = ?1 and p.gallery = com.mcreatik.gallery.photo.Gallery.GUEST and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
               and p.hidden = false and p.categoryId = ?2 and (p.readyAt < ?3 or (p.readyAt = ?3 and p.id < ?4))
             order by p.readyAt desc, p.id desc""")
     List<Photo> findReadyBeforeIn(UUID eventId, UUID categoryId, Instant readyAt, UUID id, Limit limit);
 
     /** Catch-up after an SSE reconnect: everything newer than the client's last cursor, oldest first. */
     @Query("""
-            select p from Photo p where p.eventId = ?1 and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
+            select p from Photo p where p.eventId = ?1 and p.gallery = com.mcreatik.gallery.photo.Gallery.GUEST and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
               and p.hidden = false and (p.readyAt > ?2 or (p.readyAt = ?2 and p.id > ?3))
             order by p.readyAt asc, p.id asc""")
     List<Photo> findReadyAfter(UUID eventId, Instant readyAt, UUID id, Limit limit);
 
     /** What guests can see: ready and not hidden. */
-    @Query(value = "SELECT count(*) FROM photos WHERE event_id = ?1 AND status = 'READY' AND NOT hidden", nativeQuery = true)
+    @Query(value = "SELECT count(*) FROM photos WHERE event_id = ?1 AND gallery = 'GUEST' AND status = 'READY' AND NOT hidden", nativeQuery = true)
     long countVisible(UUID eventId);
 
     // ---- Admin (listing with filters and sorting: AdminPhotoSearch) ----
@@ -62,6 +62,12 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID> {
             SELECT count(*) FILTER (WHERE hidden AND status = 'READY'), count(*) FILTER (WHERE liked)
             FROM photos WHERE event_id = ?1""", nativeQuery = true)
     List<Object[]> countHiddenAndLiked(UUID eventId);
+
+    /** The same counts for one gallery ('GUEST' or 'CLIENT'). */
+    @Query(value = """
+            SELECT count(*) FILTER (WHERE hidden AND status = 'READY'), count(*) FILTER (WHERE liked)
+            FROM photos WHERE event_id = ?1 AND gallery = ?2""", nativeQuery = true)
+    List<Object[]> countHiddenAndLikedIn(UUID eventId, String gallery);
 
     @Query(value = """
             SELECT status, count(*) AS photos,

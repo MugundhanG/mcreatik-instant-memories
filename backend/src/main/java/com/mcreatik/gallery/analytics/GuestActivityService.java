@@ -126,7 +126,7 @@ public class GuestActivityService {
                            count(*) FILTER (WHERE a.type = 'DOWNLOAD') AS downloads,
                            count(*) FILTER (WHERE a.type = 'LIKE') AS likes
                     FROM guest_activity a
-                    JOIN photos p ON p.id = a.photo_id AND p.event_id = a.event_id AND p.status = 'READY' AND NOT p.hidden
+                    JOIN photos p ON p.id = a.photo_id AND p.event_id = a.event_id AND p.status = 'READY' AND NOT p.hidden AND p.gallery = 'GUEST'
                     WHERE a.event_id = ? AND a.photo_id IS NOT NULL
                     GROUP BY p.id, p.thumbnail_storage_key, p.original_file_name) t
                 %s ORDER BY %s, id LIMIT 8""".formatted(nonZero == null ? "" : "WHERE " + nonZero + " > 0", order),

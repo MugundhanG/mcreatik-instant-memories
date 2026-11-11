@@ -51,7 +51,7 @@ public class HqRequests {
             contact = "+" + (digits.length() == 10 ? "91" + digits : digits);
         }
         if (photoId != null && jdbc.queryForObject(
-                "SELECT count(*) FROM photos WHERE id = ? AND event_id = ? AND status = 'READY' AND NOT hidden",
+                "SELECT count(*) FROM photos WHERE id = ? AND event_id = ? AND status = 'READY' AND NOT hidden AND gallery = 'GUEST'",
                 Integer.class, photoId, eventId) == 0) {
             throw ApiException.notFound("Photo");
         }

@@ -199,6 +199,8 @@ export interface AdminPhoto {
   liked: boolean
   /** The studio's category (Couple, Cake cutting…); null = not sorted. */
   categoryId: string | null
+  /** Guest gallery (compressed) or Client gallery (full quality). Older servers omit it: guest. */
+  gallery?: Gallery
   /** The couple selected it for the album. */
   selected: boolean
 }
@@ -211,7 +213,12 @@ export interface AdminPhotoPage {
 
 export type AdminPhotoSort = 'NEWEST' | 'OLDEST' | 'CAMERA'
 
+/** The two galleries of an event: compressed photos for guests, full quality for the client. */
+export type Gallery = 'GUEST' | 'CLIENT'
+
 export interface AdminPhotoQuery {
+  /** Which gallery to list (the server defaults to GUEST, or CLIENT on client-type events). */
+  gallery?: Gallery
   sort?: AdminPhotoSort
   uploaderId?: string
   liked?: boolean
@@ -322,6 +329,8 @@ export interface Category {
   name: string
   position: number
   photos: number
+  /** Which gallery the category belongs to (older servers omit it: guest). */
+  gallery?: Gallery
 }
 
 /** The couple's login to their event's photos. */
