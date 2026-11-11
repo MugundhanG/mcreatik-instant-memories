@@ -22,6 +22,8 @@ All endpoints live under `https://im-api.mcreatik.com`. Requests and responses a
 | 403 | `FORBIDDEN`, `GALLERY_UNAVAILABLE`, `GALLERY_EXPIRED`, `ACCOUNT_DISABLED`, `EXTEND_INSTEAD` | Not allowed (`EXTEND_INSTEAD`: studios can't set the delete date; they keep it open more months) |
 | 404 | `NOT_FOUND` | Missing, or not yours (deliberately the same) |
 | 409 | `EVENT_CLOSED`, `CLIENT_EXISTS`, `EMAIL_TAKEN`, `UPLOAD_NOT_FOUND`, `STORAGE_FULL` | Conflicts with current state |
+| 400 (gallery rules) | `GUEST_COMPRESSED_ONLY`, `CLIENT_ORIGINAL_REQUIRED`, `GALLERY_MISMATCH`, `INVALID_CONTACT` | Guest gallery takes compressed uploads only; Client gallery needs the original file; photo and category in different galleries; bad HD-request contact |
+| 409 (limit) | `TOO_MANY_REQUESTS` | A visitor made too many HD requests |
 | 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header) |
 | 503 | `TOO_MANY_VIEWERS` | Live stream full |
 
@@ -67,8 +69,8 @@ There is no delete endpoint for studios; they are only disabled.
 
 | Method | Path | Who | Notes |
 | --- | --- | --- | --- |
-| GET | `/api/admin/events/{eventId}/photos` | Admin | Filters: `sort`, `uploaderId`, `liked`, `hidden`, `day`, `category`, `selected`, `offset`, `limit` (60) |
-| GET | `/api/admin/events/{eventId}/photo-facets` | Admin | Day counts, liked, hidden |
+| GET | `/api/admin/events/{eventId}/photos` | Admin | Filters: `gallery` (`GUEST` or `CLIENT`), `sort`, `uploaderId`, `liked`, `hidden`, `day`, `category`, `selected`, `q` (file-name search, partial match), `offset`, `limit` (60) |
+| GET | `/api/admin/events/{eventId}/photo-facets` | Admin | Day counts, liked, hidden; takes `?gallery=` |
 | POST | `/api/admin/events/{eventId}/photos` | Admin | Multipart web + thumbnail + metadata (12 MB max) |
 | POST | `/api/admin/events/{eventId}/original-uploads` | Admin | Presigned PUT for an original |
 | POST | `/api/admin/events/{eventId}/photos/{photoId}/original` | Admin | Confirm original arrived |
@@ -83,9 +85,11 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET / POST | `/categories` | List, create |
+| GET / POST | `/categories` | List (`?gallery=GUEST\|CLIENT`), create (`{name, gallery}`); each gallery has its own list |
 | PATCH / DELETE | `/categories/{categoryId}` | Rename, remove |
-| POST | `/photos/category` | `{photoIds[], categoryId}` |
+| POST | `/photos/category` | `{photoIds[], categoryId}`; 400 `GALLERY_MISMATCH` if a photo and the category are in different galleries |
+| GET | `/hq-requests` | Guests' HD photo requests, newest first, with `contact`, `kind` (`EMAIL` / `WHATSAPP`), `photoId` and `done` |
+| PATCH | `/hq-requests/{requestId}` | `{done}`: tick a request as handled |
 | GET / POST | `/clients` | One login per event; second create → 409 `CLIENT_EXISTS` |
 | PATCH / DELETE | `/clients/{clientId}` | New password, disable, phone |
 | GET / PUT | `/album` | Picks; `{limit}` |
@@ -130,9 +134,11 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/api/public/events/{slug}` | Event, cover, count, branding; 404 for draft/archived; 403 `GALLERY_UNAVAILABLE` when switched off |
-| GET | `/api/public/events/{slug}/photos` | `?before=` or `?after=` cursor; 40 default, 100 max, 200 for catch-up |
+| GET | `/api/public/events/{slug}/photos` | `?before=` or `?after=` cursor; 40 default, 100 max, 200 for catch-up; `?category=` filters by category. Guests only ever get `GUEST` photos |
+| GET | `/api/public/events/{slug}/categories` | The event's guest-gallery categories, with photo counts |
+| POST | `/api/public/events/{slug}/hq-requests` | "Get HD photo": `{photoId, contact, name?, visitorId}`; `contact` is an email or a 10-digit WhatsApp number → 204. 400 `INVALID_CONTACT`; 409 `TOO_MANY_REQUESTS` (per visitor) |
 | GET | `/api/public/events/{slug}/stream` | `text/event-stream`: `CONNECTED`, `PHOTO_READY`, `PHOTO_REMOVED`, `EVENT_STATUS`, `GALLERY_CLOSED` |
-| POST | `/api/public/events/{slug}/activity` | `{visitorId, items[]}`, max 50 items → 204. Types: `VISIT`, `PHOTO_VIEW`, `DOWNLOAD`, `SHARE`, `INSTAGRAM`, `CONTACT` (WhatsApp / call tap, counted as `totals.contacts`) |
+| POST | `/api/public/events/{slug}/activity` | `{visitorId, items[]}`, max 50 items → 204. Types: `VISIT`, `PHOTO_VIEW`, `DOWNLOAD`, `LIKE` / `UNLIKE` (the heart; one like per visitor and photo), `SHARE` (old clients only; the app no longer sends it), `INSTAGRAM`, `CONTACT` (WhatsApp / call tap, counted as `totals.contacts`) |
 
 ## Couple portal
 

@@ -12,7 +12,8 @@ This is the standard operating procedure for a **photography studio** using Inst
 | Per event, a few days before | Create the event, connect each camera, print the QR poster | 3–5 |
 | Event day | Start the uploader, test one shot, put the posters out | 6 |
 | During the event | Watch the dashboard; hide anything that shouldn't be shown | 7 |
-| After the event | Upload edited photos, give the couple their login, collect album picks | 8–9 |
+| After the event | Upload full-quality finals to the Client gallery, give the couple their login, collect album picks | 8–9 |
+| Any time | See who loved and asked for photos | 10 |
 
 ## 1. First login
 
@@ -114,7 +115,7 @@ Setting up a new laptop? Press **Install uploader** in the top bar of the dashbo
 Every camera needs its own **uploader**. One laptop with the McreatiK Instant Memories Uploader app can serve up to 4 cameras: add the extra cameras in the app with **+ Add camera** (you name each one there), and each appears here by itself. On the laptop, each event gets one folder with a sub-folder per camera.
 
 1. Open the event. On **Overview**, under **Cameras & uploaders**, type a name such as "Camera 1 · Canon R6 II" and press **Add camera & get code**.
-2. A **connection code** appears. **It's shown only once**, so press **Copy code** and paste it into the uploader (see the [Uploader guide](/admin/docs/guide-uploader)). A laptop already used for an earlier event: press **Change event…** in the uploader and paste the new code ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)).
+2. A **connection code** appears. **It's shown only once**, so press **Copy code** and paste it into the uploader (see the [Uploader guide](/admin/docs/guide-uploader)). The code is all the uploader needs. There is no studio sign-in in the app. A laptop already used for an earlier event: press **Change event…** in the uploader and paste the new code ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)).
 
 ![Add camera & get code: the one-time connection code](images/s-add-uploader.webp)
 
@@ -127,6 +128,7 @@ Every camera needs its own **uploader**. One laptop with the McreatiK Instant Me
 
 - **Rename:** for example "Main - Karthik" or "Candid - Divya". The name shows here, in the uploader and on its photo folder.
 - **Get new code:** the code is shown only once, so use this whenever you need it again: a lost code, a new laptop, or an event you set up earlier and are moving the laptop to now. The old code stops working.
+- **Freelancers and second shooters:** add a camera for each person, then send them the code on WhatsApp together with the uploader download link (**Install uploader** in the top bar). They need nothing else. When their job is done, press **Get new code**. Their old code stops working, so they can no longer send photos to the event.
 - **Remove:** disconnects that camera.
 
 Then set up the camera itself: [Canon EOS R6 Mark II](/admin/docs/guide-canon) · [Sony α7 IV](/admin/docs/guide-sony).
@@ -147,12 +149,13 @@ Then set up the camera itself: [Canon EOS R6 Mark II](/admin/docs/guide-canon) �
 - **Download PNG / SVG:** the QR code alone, for invitations, screens or your own designs.
 - **A4 poster:** the classic one-page poster, for an office printer.
 - **Copy link:** to share in WhatsApp groups.
+- The A4 poster also downloads as a **300 dpi JPG** on the cards page, for a print shop.
 
 ![Guest QR code card](images/s-qr-card.webp)
 
 ![Event and table cards for one event, and how the event card looks in the board](images/s-cards.webp)
 
-All downloads are JPG files at 300 dpi, with 0.125 in extra on every side for trimming: the board file is 18.25 × 24.25 in and the cards are 8.25 × 12.25 in. Ask the printer to **print at 18 × 24 in (or 8 × 12 in) and trim to size**. All text is kept well inside the edges, so a slightly off cut won't touch it.
+The board and cards are JPG files at 300 dpi, with 0.125 in extra on every side for trimming: the board file is 18.25 × 24.25 in and the cards are 8.25 × 12.25 in. Ask the printer to **print at 18 × 24 in (or 8 × 12 in) and trim to size**. All text is kept well inside the edges, so a slightly off cut won't touch it.
 
 > **Tip** Put the board at the entrance and a table card on every few tables. That's where most guests scan.
 
@@ -171,9 +174,12 @@ All downloads are JPG files at 300 dpi, with 0.125 in extra on every side for tr
 
 Open **Photos**. Every photo the cameras send appears here and in the guest gallery.
 
-![Photos tab: upload panels, filters and photo tiles](images/s-photos.webp)
+At the top of **Photos** you see two tabs: **Guest gallery** and **Client gallery**. During the event you work in **Guest gallery**. The camera photos land there.
+
+![Photos tab, Guest gallery: the photos guests see](images/s-photos-guest-tab.webp)
 
 - **Filters:** camera, liked or hidden, day, category, and newest or oldest first.
+- **Find one photo:** type the camera file name, for example IMG_1234.JPG, in the **Search file name** box.
 - **On each tile:** the heart marks a **Like** (your favourites; filter by them later); the eye **hides** it from guests at once.
 - **More (⋯):** Download, **Make cover** (the gallery's top image), Download original, Delete.
 - **Select:** tap several photos, then Move to category, Like, Hide, Download (.zip) or Delete them all at once. **Select all** and **Clear** help with big batches.
@@ -182,20 +188,37 @@ Open **Photos**. Every photo the cameras send appears here and in the guest gall
 
 > **Warning** Delete is permanent. Prefer **Hide** during the event; delete afterwards if needed.
 
+### Guest gallery and Client gallery
+
+| | Guest gallery | Client gallery |
+| --- | --- | --- |
+| **What is in it** | Camera photos and compressed uploads | Full-quality photos you upload from the dashboard: your edited finals |
+| **Who sees it** | Only the guests | Only the couple |
+| **What the couple does with it** | Nothing. They don't see it. | Views it, picks album photos, downloads photos and ZIPs |
+
+- Each tab has its **own categories**. Add them under **Settings → Photo categories**, one list for each tab.
+- If a gallery is turned off, uploads are still saved. Nobody sees them until you turn it on.
+- A **Client gallery only** event shows just the Client gallery tab.
+- **Old events:** on events created before 11 Nov 2026, the couple still sees every photo, as before. There is no split.
+
+> **Tip** Guests get compressed photos. Your client gets full quality in the Client gallery.
+
 ## 8. After the event
 
-### 8.1 Upload edited photos and originals
+### 8.1 Upload the couple's final photos
 
-At the top of **Photos**:
+Open the **Client gallery** tab and upload your edited, full-quality photos there. Choose a category first if the batch belongs to one (for example "Cake cutting"), then **Choose photos** or **Choose a folder**.
 
-- **Upload compressed photos:** for the guest gallery. They're resized to 2048 px (about 1 MB each), so they upload quickly.
-- **Upload original photos:** full quality, for the couple's downloads and album. The gallery still gets a fast copy.
+![Photos tab, Client gallery: full-quality finals for the couple](images/s-photos-client-tab.webp)
 
-Choose a category first if the batch belongs to one (for example "Cake cutting"), then **Choose photos** or **Choose a folder**.
+- Photos you upload here go **only to the couple**. Guests never see them.
+- They stay full quality. The couple can download them as they are.
+- To add more photos for guests after the event, use the **Guest gallery** tab. Those are compressed (2048 px, about 1 MB each) so they upload fast.
+- If a photo is in the wrong tab, you'll see a message. Open the other tab and upload it there.
 
 ### 8.2 Sort into categories
 
-**Settings → Photo categories** lists the albums couples browse by (Couple, Family & Groups, Rituals, Cake cutting, Main event, Candid). Add your own, or remove one with ×. To sort photos: **Photos → Select → Move to category**.
+**Settings → Photo categories** lists the albums people browse by (Couple, Family & Groups, Rituals, Cake cutting, Main event, Candid). Guest gallery and Client gallery each have their own list. Add your own, or remove one with ×. To sort photos: **Photos → Select → Move to category**.
 
 ![Settings: photo categories and delete date](images/s-settings-full.webp)
 
@@ -220,7 +243,11 @@ Then send them the couple guide: **Guides → Couples (clients) → Download PDF
 
 ## 10. See how guests used it
 
-**Guests** shows people, QR scans, gallery visits, photo views and downloads, an hourly chart and the most-loved photos. Guests stay anonymous. Use it in your marketing ("312 guests watched live").
+**Guests** shows people, QR scans, gallery visits, photo views and downloads, an hourly chart and **Likes**: how many hearts guests tapped. Guests stay anonymous. Use it in your marketing ("312 guests watched live").
+
+- **Lists:** **Most loved**, **Most downloaded** and **Most viewed** show which photos guests liked, saved and opened most.
+- **HD photo requests:** a guest can tap **Get HD photo** and leave an email or a WhatsApp number. Each request shows here with a **WhatsApp** or **email** link, so you can reply in one tap. Send the photo, then tick **Done**. Every request is a possible booking.
+- **Removal requests:** a guest who asks to remove a photo sends an email that names the camera file, for example IMG_1234.JPG. Open **Photos**, type that name in **Search file name**, and hide or delete the photo.
 
 ![Guests tab: guest activity, hourly chart and most-loved photos](images/s-guests-full.webp)
 
@@ -249,6 +276,7 @@ Table card text you can copy: "**Scan to see the photos live.** Point your phone
 | A camera shows Offline on the dashboard | The uploader on that laptop is closed, asleep or has no internet. Check its window. |
 | The uploader shows an earlier event's name | Press **Change event…** in the uploader and paste this event's code. |
 | The camera can't connect to the laptop | See the camera guide's troubleshooting ([Canon](/admin/docs/guide-canon#troubleshooting) · [Sony](/admin/docs/guide-sony#troubleshooting)). |
+| Couple says photos are missing | New events: the couple sees only the **Client gallery**. Upload the finals there. |
 | Guests say the page is empty | Status is Draft or Archived, or no photos yet. Set Upcoming or Live. |
 | "This gallery is currently unavailable" | McreatiK turned the gallery off. Contact McreatiK. |
 | Upload says "storage is full" | A client gallery has used its GB. Press **Add storage** (Overview → Gallery & storage), then **Retry failed**. |

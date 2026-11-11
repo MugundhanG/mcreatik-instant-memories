@@ -11,11 +11,12 @@ The couple gets a private login from their studio: one login per event, shared b
 | How do we choose photos for our album? | Tap the + on any photo. The counter shows how many you've picked out of your album limit. |
 | Is there a limit on album photos? | Only if your studio set one (for example 60). You can't pick more than the limit, but you can untick and swap at any time. |
 | Does the studio see our picks? | Yes, straight away, and they can download your picks as a ZIP to design the album. |
-| Can we download the full-quality photos? | Yes. If your studio uploaded the originals you get the full camera file; otherwise the high-quality gallery version. |
+| Can we download the full-quality photos? | Yes. Your studio uploads your finished photos here in full quality, and you download them as they are. |
 | Can we download everything at once? | Yes. "Download all" or a category, or tap "Select photos to download" to pick some. A ZIP holds up to 1,000 photos, so very large events download in parts (by category). A percentage shows while it's prepared. |
 | How are photos organised? | By the studio's categories (Couple, Family, Rituals, Candid and so on). Use the tabs at the top. |
-| Some photos we saw at the event are missing. | The studio may have hidden some (blurry shots or duplicates). Ask them if you're looking for a specific one. |
-| Who else can see our photos? | Guests with the QR code see the gallery copies. Only you and your studio can open your login and the full-quality originals. |
+| Some photos we saw at the event are missing. | Guests see the live photos from the day. Your gallery holds the finished photos your studio delivers, so it can look different. Ask your studio if you're looking for a specific one. |
+| Our gallery is empty. | Your studio adds your finished photos after the event. Ask them when they will be ready. |
+| Who else can see our photos? | Guests with the QR code see their own gallery of smaller copies. Only you and your studio can open your login and your full-quality photos. |
 | How long can we access them? | Until the delete date your studio set, usually 90 days after the event. Download everything you want to keep before then. **(Ask your studio for the exact date.)** |
 | It says the gallery is unavailable. | Access has been switched off for now. Contact your studio. |
 | Can we remove a photo guests can see? | Ask your studio: they can hide it from guests instantly. |

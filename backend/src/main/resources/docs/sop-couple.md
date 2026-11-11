@@ -7,7 +7,7 @@ Your photographer has set up a private photo gallery for your event. This guide 
 | Feature | What it means for you |
 | --- | --- |
 | A private login | Only the two of you and your studio can open it, on as many phones as you like |
-| Every photo, by moment | Couple, Family & Groups, Rituals, Cake cutting, Main event, Candid |
+| Your photos, by moment | Couple, Family & Groups, Rituals, Cake cutting, Main event, Candid |
 | Album picking | Tap + on your favourites; your photographer sees the picks straight away |
 | Full-quality downloads | Single photos, or everything as ZIP files |
 
@@ -61,7 +61,7 @@ Your photographer sees your picks straight away. There's no need to send file nu
 
 A ZIP holds up to 1,000 photos. Very large weddings download in parts, one category at a time. A percentage shows while the ZIP is being prepared; keep the page open.
 
-If your studio uploaded the **originals**, you get the full camera file. Otherwise you get the high-quality gallery version.
+Your studio uploads your photos here in full quality, so you get the full file.
 
 > **Warning** Photos are kept only until the **delete date** your studio set, usually 90 days after the event. Download everything you want to keep before then.
 

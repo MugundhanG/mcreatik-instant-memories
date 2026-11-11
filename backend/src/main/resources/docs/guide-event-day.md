@@ -12,7 +12,7 @@ Use this on the day. Print it, or keep it open on a phone. It works for the stud
 - [ ] The event card is printed and in your studio board, and the table cards are printed (Overview → QR code → **Event & table cards**).
 - [ ] Laptops and phone hotspot are charged; chargers, a power bank and spare camera batteries are packed.
 - [ ] The hotspot phone has enough mobile data. Allow about **1 MB per photo**, so 1,500 photos ≈ 1.5 GB.
-- [ ] The couple's login is created, or planned for after the event.
+- [ ] The couple's login is created, or planned for after the event. They see only the Client gallery, so it stays empty until you upload finals.
 
 ## At the venue (30 minutes before guests)
 
@@ -34,14 +34,17 @@ Use this on the day. Print it, or keep it open on a phone. It works for the stud
 | 30 minutes | The dashboard shows all cameras **Online**, and the latest photo is recent |
 | Battery change | The camera rejoins Wi-Fi by itself; take a test shot |
 
-- Something shouldn't be shown → **Photos → Hide** (it disappears from every phone at once).
+- Something shouldn't be shown → **Photos → Guest gallery → Hide** (it disappears from every phone at once).
+- A guest asks to remove a photo → their email names the file (for example IMG_1234.JPG). Type it in **Search file name** on Photos and hide it.
+- A freelancer or second shooter is helping → add a camera for them, and WhatsApp them the code and the uploader download link. After the event, press **Get new code** to end their access.
 - Never update the server during an event.
 
 ## After the event
 
 - [ ] Set the status to **Completed**.
-- [ ] Upload edited photos and originals (Photos → upload panels).
+- [ ] Upload your edited, full-quality finals to the **Client gallery** tab (Photos). Only the couple sees them.
 - [ ] Sort into categories, and create or send the couple's login.
+- [ ] Check the **Guests** tab for **HD photo requests**. Reply on WhatsApp or email, then tick **Done**.
 - [ ] Look at the **Guests** tab and note the numbers for your marketing.
 
 ## Troubleshooting: find the symptom
