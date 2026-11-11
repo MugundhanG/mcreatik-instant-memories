@@ -52,7 +52,7 @@ export function byNewest(a: PublicPhoto, b: PublicPhoto) {
 export function reducer(state: LiveGalleryState, action: Action): LiveGalleryState {
   switch (action.type) {
     case 'loaded':
-      return { ...state, event: action.event, photos: action.page.photos, nextCursor: action.page.nextCursor, status: 'ready' }
+      return { ...state, event: action.event, photos: action.page.photos, incoming: [], nextCursor: action.page.nextCursor, status: 'ready' }
     case 'failed':
       return { ...state, status: action.status, unavailableMessage: action.message }
     case 'arrived': {
@@ -96,7 +96,7 @@ export function reducer(state: LiveGalleryState, action: Action): LiveGallerySta
 }
 
 function fromMessage(m: PhotoReadyMessage): PublicPhoto {
-  return { id: m.photoId, thumbnailUrl: m.thumbnailUrl, webUrl: m.webUrl, width: m.width, height: m.height, readyAt: m.readyAt, cursor: m.cursor }
+  return { id: m.photoId, thumbnailUrl: m.thumbnailUrl, webUrl: m.webUrl, width: m.width, height: m.height, readyAt: m.readyAt, cursor: m.cursor, categoryId: m.categoryId ?? null }
 }
 
 /** Not found, turned off by McreatiK (with the server's message), or another error. */
@@ -118,12 +118,14 @@ const RECONNECT_MS = 5_000
  * @param shouldShowImmediately decides per arrival whether to insert now (guest at the top) or hold
  *        photos behind a "new photos" button so the grid doesn't jump under the guest's finger.
  */
-export function useLiveGallery(slug: string, shouldShowImmediately: () => boolean) {
+export function useLiveGallery(slug: string, shouldShowImmediately: () => boolean, category: string | null = null) {
   const [state, dispatch] = useReducer(reducer, initialState)
   const newest = useRef<PublicPhoto | null>(null)
   const showRef = useRef(shouldShowImmediately)
+  const categoryRef = useRef(category)
   useEffect(() => {
     showRef.current = shouldShowImmediately
+    categoryRef.current = category
   })
 
   const trackNewest = useCallback((photos: PublicPhoto[]) => {
@@ -133,7 +135,8 @@ export function useLiveGallery(slug: string, shouldShowImmediately: () => boolea
   }, [])
 
   const arrive = useCallback(
-    (photos: PublicPhoto[]) => {
+    (all: PublicPhoto[]) => {
+      const photos = categoryRef.current ? all.filter((p) => p.categoryId === categoryRef.current) : all
       if (photos.length === 0) return
       trackNewest(photos)
       dispatch({ type: 'arrived', photos, show: showRef.current() })
@@ -145,7 +148,7 @@ export function useLiveGallery(slug: string, shouldShowImmediately: () => boolea
   useEffect(() => {
     let cancelled = false
     newest.current = null
-    Promise.all([publicApi.event(slug), publicApi.photos(slug, { limit: 40 })])
+    Promise.all([publicApi.event(slug), publicApi.photos(slug, { limit: 40, category })])
       .then(([event, page]) => {
         if (cancelled) return
         trackNewest(page.photos)
@@ -157,13 +160,13 @@ export function useLiveGallery(slug: string, shouldShowImmediately: () => boolea
     return () => {
       cancelled = true
     }
-  }, [slug, trackNewest])
+  }, [slug, category, trackNewest])
 
   const catchUp = useCallback(async () => {
     try {
       const page = newest.current
-        ? await publicApi.photos(slug, { after: newest.current.cursor, limit: 200 })
-        : await publicApi.photos(slug, { limit: 40 })
+        ? await publicApi.photos(slug, { after: newest.current.cursor, limit: 200, category: categoryRef.current })
+        : await publicApi.photos(slug, { limit: 40, category: categoryRef.current })
       arrive(page.photos)
     } catch (e) {
       // Turned off by McreatiK while open: show why. Anything else: the next reconnect / poll tries again.
@@ -250,11 +253,11 @@ export function useLiveGallery(slug: string, shouldShowImmediately: () => boolea
     if (!state.nextCursor || state.loadingMore) return
     dispatch({ type: 'loadingMore' })
     try {
-      dispatch({ type: 'moreLoaded', page: await publicApi.photos(slug, { before: state.nextCursor, limit: 40 }) })
+      dispatch({ type: 'moreLoaded', page: await publicApi.photos(slug, { before: state.nextCursor, limit: 40, category }) })
     } catch {
       dispatch({ type: 'moreFailed' })
     }
-  }, [slug, state.nextCursor, state.loadingMore])
+  }, [slug, category, state.nextCursor, state.loadingMore])
 
   const showIncoming = useCallback(() => dispatch({ type: 'showIncoming' }), [])
 

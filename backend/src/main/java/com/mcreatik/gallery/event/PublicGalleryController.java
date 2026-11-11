@@ -34,8 +34,11 @@ public class PublicGalleryController {
     private final PhotoMapper mapper;
     private final GalleryBroadcaster broadcaster;
 
+    private final com.mcreatik.gallery.album.AlbumService album;
+
     public PublicGalleryController(EventService events, PhotoRepository photos, PhotoMapper mapper,
-                                   GalleryBroadcaster broadcaster) {
+                                   GalleryBroadcaster broadcaster, com.mcreatik.gallery.album.AlbumService album) {
+        this.album = album;
         this.events = events;
         this.photos = photos;
         this.mapper = mapper;
@@ -55,6 +58,7 @@ public class PublicGalleryController {
     public ResponseEntity<PhotoDtos.PublicPhotoPage> photos(@PathVariable String slug,
                                                             @RequestParam(required = false) String before,
                                                             @RequestParam(required = false) String after,
+                                                            @RequestParam(required = false) java.util.UUID category,
                                                             @RequestParam(defaultValue = "" + DEFAULT_PAGE) int limit) {
         if (before != null && after != null) {
             throw ApiException.badRequest("INVALID_QUERY", "Use either before or after, not both");
@@ -70,9 +74,11 @@ public class PublicGalleryController {
             int size = Math.clamp(limit, 1, MAX_PAGE);
             if (before != null) {
                 Cursor c = Cursor.decode(before);
-                page = photos.findReadyBefore(event.getId(), c.at(), c.id(), Limit.of(size));
+                page = category == null ? photos.findReadyBefore(event.getId(), c.at(), c.id(), Limit.of(size))
+                        : photos.findReadyBeforeIn(event.getId(), category, c.at(), c.id(), Limit.of(size));
             } else {
-                page = photos.findLatestReady(event.getId(), Limit.of(size));
+                page = category == null ? photos.findLatestReady(event.getId(), Limit.of(size))
+                        : photos.findLatestReadyIn(event.getId(), category, Limit.of(size));
             }
             if (page.size() == size) {
                 next = new Cursor(page.getLast().getReadyAt(), page.getLast().getId()).encode();
@@ -80,6 +86,14 @@ public class PublicGalleryController {
         }
         return ResponseEntity.ok().cacheControl(CacheControl.noCache())
                 .body(new PhotoDtos.PublicPhotoPage(page.stream().map(mapper::toPublic).toList(), next));
+    }
+
+    /** The studio's photo categories that have photos guests can see, for the gallery's category tabs. */
+    @GetMapping("/categories")
+    public ResponseEntity<List<com.mcreatik.gallery.album.AlbumDtos.Category>> categories(@PathVariable String slug) {
+        Event event = events.publicEvent(slug);
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache())
+                .body(album.visibleCategories(event.getId()).stream().filter(c -> c.photos() > 0).toList());
     }
 
     @GetMapping(path = "/stream", produces = "text/event-stream")

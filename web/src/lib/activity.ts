@@ -5,7 +5,7 @@ import { API_BASE_URL } from './api'
  * The only identifier is a random id this browser makes up (to count distinct people); nothing personal.
  * Items are batched and sent every few seconds so a full venue on one Wi-Fi stays light on the server.
  */
-export type ActivityType = 'VISIT' | 'PHOTO_VIEW' | 'DOWNLOAD' | 'SHARE' | 'INSTAGRAM' | 'CONTACT'
+export type ActivityType = 'VISIT' | 'PHOTO_VIEW' | 'DOWNLOAD' | 'SHARE' | 'INSTAGRAM' | 'CONTACT' | 'LIKE' | 'UNLIKE'
 
 interface Item {
   type: ActivityType
@@ -21,7 +21,7 @@ let visitor: string | null = null
 const queues = new Map<string, Item[]>()
 let timer: ReturnType<typeof setTimeout> | null = null
 
-function visitorId() {
+export function visitorId() {
   if (visitor) return visitor
   try {
     visitor = localStorage.getItem(VISITOR_KEY)

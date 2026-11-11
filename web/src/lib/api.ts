@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, EventType, DocPage, OnlineOrder, OnlinePaymentResult, OnlinePaymentStatus, UpiQrOrder, DocPageSummary, GuestAnalytics, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, EventType, DocPage, OnlineOrder, OnlinePaymentResult, OnlinePaymentStatus, UpiQrOrder, DocPageSummary, GuestAnalytics, HqRequest, HqRequestInput, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export type BulkPhotoAction = 'LIKE' | 'UNLIKE' | 'HIDE' | 'SHOW' | 'DELETE'
 
@@ -100,14 +100,18 @@ export function withBillingDefaults(b: BillingSummary): BillingSummary {
 export const publicApi = {
   pricing: () => request<PublicPricing>('/api/public/pricing'),
   event: (slug: string) => request<PublicEvent>(`/api/public/events/${encodeURIComponent(slug)}`),
-  photos: (slug: string, opts: { before?: string; after?: string; limit?: number } = {}) => {
+  photos: (slug: string, opts: { before?: string; after?: string; limit?: number; category?: string | null } = {}) => {
     const q = new URLSearchParams()
+    if (opts.category) q.set('category', opts.category)
     if (opts.before) q.set('before', opts.before)
     if (opts.after) q.set('after', opts.after)
     if (opts.limit) q.set('limit', String(opts.limit))
     const qs = q.toString()
     return request<PublicPhotoPage>(`/api/public/events/${encodeURIComponent(slug)}/photos${qs ? `?${qs}` : ''}`)
   },
+  categories: (slug: string) => request<Category[]>(`/api/public/events/${encodeURIComponent(slug)}/categories`),
+  requestHq: (slug: string, body: HqRequestInput) =>
+    request<void>(`/api/public/events/${encodeURIComponent(slug)}/hq-requests`, { method: 'POST', body: json(body) }),
   streamUrl: (slug: string) => `${API_BASE_URL}/api/public/events/${encodeURIComponent(slug)}/stream`,
 }
 
@@ -233,6 +237,9 @@ export const adminApi = {
     return request<Account>('/api/admin/account/logo', { method: 'POST', body: form }, true)
   },
   removeLogo: () => request<Account>('/api/admin/account/logo', { method: 'DELETE' }, true),
+  hqRequests: (eventId: string) => request<HqRequest[]>(`/api/admin/events/${eventId}/hq-requests`, {}, true),
+  setHqDone: (eventId: string, id: string, done: boolean) =>
+    request<void>(`/api/admin/events/${eventId}/hq-requests/${id}`, { method: 'PATCH', body: json({ done }) }, true),
   analytics: (eventId: string) => request<GuestAnalytics>(`/api/admin/events/${eventId}/analytics`, {}, true),
   /** McreatiK sets up a studio's branding (onboarding). */
   updateStudioBranding: (studioId: string, input: { displayName?: string; instagram?: string; phone?: string; logoScale?: number; boardTheme?: 'cream' | 'dark' | 'white' }) =>
@@ -282,3 +289,8 @@ export const adminApi = {
     request<void>(`/api/admin/uploaders/${uploaderId}`, { method: 'PATCH', body: json(changes) }, true),
   deleteUploader: (uploaderId: string) => request<void>(`/api/admin/uploaders/${uploaderId}`, { method: 'DELETE' }, true),
 }
+
+export const fetchPublicCategories = (slug: string) => publicApi.categories(slug)
+export const requestHq = (slug: string, body: HqRequestInput) => publicApi.requestHq(slug, body)
+export const fetchHqRequests = (eventId: string) => adminApi.hqRequests(eventId)
+export const setHqDone = (eventId: string, id: string, done: boolean) => adminApi.setHqDone(eventId, id, done)

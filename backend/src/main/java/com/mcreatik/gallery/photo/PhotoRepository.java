@@ -30,6 +30,20 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID> {
             order by p.readyAt desc, p.id desc""")
     List<Photo> findReadyBefore(UUID eventId, Instant readyAt, UUID id, Limit limit);
 
+    // The same feed within one category (the guest picked a category tab).
+
+    @Query("""
+            select p from Photo p where p.eventId = ?1 and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
+              and p.hidden = false and p.categoryId = ?2
+            order by p.readyAt desc, p.id desc""")
+    List<Photo> findLatestReadyIn(UUID eventId, UUID categoryId, Limit limit);
+
+    @Query("""
+            select p from Photo p where p.eventId = ?1 and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY
+              and p.hidden = false and p.categoryId = ?2 and (p.readyAt < ?3 or (p.readyAt = ?3 and p.id < ?4))
+            order by p.readyAt desc, p.id desc""")
+    List<Photo> findReadyBeforeIn(UUID eventId, UUID categoryId, Instant readyAt, UUID id, Limit limit);
+
     /** Catch-up after an SSE reconnect: everything newer than the client's last cursor, oldest first. */
     @Query("""
             select p from Photo p where p.eventId = ?1 and p.status = com.mcreatik.gallery.photo.PhotoStatus.READY

@@ -278,7 +278,7 @@ export default function EventDashboardPage() {
 
       {!clientOnly && (
         <section {...panel('guests')} className="anim-fade-in">
-          <AnalyticsPanel eventId={event.id} live={event.status === 'LIVE'} />
+          <AnalyticsPanel eventId={event.id} live={event.status === 'LIVE'} eventName={event.name} />
         </section>
       )}
 

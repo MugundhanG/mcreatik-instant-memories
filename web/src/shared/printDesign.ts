@@ -325,6 +325,83 @@ export function boardSvg(themeName: BoardTheme, brand: BoardBrand, opts: { card?
 </svg>`
 }
 
+/** The classic A4 poster: 210 × 297 mm at 300 dpi, edge to edge (no bleed). */
+export const POSTER = { width: 2480, height: 3508 }
+
+/** The A4 stage / table poster (ivory paper, gold frame) as one SVG, for the preview and the 300 dpi JPEG. */
+export function posterSvg(content: CardContent, brand: BoardBrand, opts: { fonts?: EmbeddedFonts; measure?: Measure } = {}) {
+  const measure = opts.measure ?? measureText
+  const W = POSTER.width
+  const H = POSTER.height
+  const parts: string[] = []
+  parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="#FBF6EA"/>`)
+  parts.push(`<rect x="${0.45 * I}" y="${0.45 * I}" width="${W - 0.9 * I}" height="${H - 0.9 * I}" fill="none" stroke="#C9A35A" stroke-width="${0.03 * I}"/>`)
+  parts.push(`<rect x="${0.6 * I}" y="${0.6 * I}" width="${W - 1.2 * I}" height="${H - 1.2 * I}" fill="none" stroke="#E3CC9A" stroke-width="${0.012 * I}"/>`)
+  let y = 1.0 * I
+  if (brand.logo) {
+    const logoH = Math.min(1.3 * I, Math.max(0.6 * I, 0.9 * I * (brand.logoScale / 100)))
+    const logoW = 4.5 * I
+    parts.push(`<image x="${(W - logoW) / 2}" y="${y}" width="${logoW}" height="${logoH}" preserveAspectRatio="xMidYMid meet" href="${brand.logo}" xlink:href="${brand.logo}"/>`)
+    y += logoH + 0.2 * I
+  }
+  const studio = brand.name.toUpperCase()
+  const studioSize = fit(measure, studio, 600, SERIF, 0.5 * I, W - 2.4 * I, 0.22)
+  const studioLs = studioSize * 0.22
+  y += studioSize
+  parts.push(`<text x="${W / 2 + studioLs / 2}" y="${y}" text-anchor="middle" font-family="${SERIF}" font-weight="600" font-size="${studioSize}" letter-spacing="${studioLs}" fill="${GOLD_DEEP}">${esc(studio)}</text>`)
+  y += 0.55 * I
+  const pill = 'LIVE PHOTO GALLERY'
+  const pillSize = 0.2 * I
+  const pillLs = pillSize * 0.3
+  const pillW = measure(pill, `600 ${pillSize}px ${SANS}`) + pillLs * pill.length + 1.0 * I
+  const pillH = 0.5 * I
+  const px = (W - pillW) / 2
+  parts.push(`<rect x="${px}" y="${y}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="none" stroke="${GOLD_LIGHT}" stroke-width="${0.015 * I}"/>`)
+  parts.push(`<circle cx="${px + 0.35 * I}" cy="${y + pillH / 2}" r="${0.07 * I}" fill="${LIVE_RED}"/>`)
+  parts.push(`<text x="${px + 0.6 * I}" y="${y + pillH / 2 + pillSize * 0.36}" font-family="${SANS}" font-weight="600" font-size="${pillSize}" letter-spacing="${pillLs}" fill="${GOLD_DEEP}">${pill}</text>`)
+  y += pillH + 0.3 * I
+  const name = nameLines(measure, content.names, 1.1 * I, W - 2.4 * I)
+  const lineH = name.size * 1.1
+  for (const line of name.lines) {
+    y += lineH
+    parts.push(`<text x="${W / 2}" y="${y - lineH * 0.2}" text-anchor="middle" font-family="${SERIF}" font-weight="600" font-size="${name.size}" fill="${GOLD}">${esc(line)}</text>`)
+  }
+  const detailSize = fit(measure, content.detail, 500, SANS, 0.19 * I, W - 2.4 * I, 0.3)
+  y += 0.15 * I + detailSize
+  const dls = detailSize * 0.3
+  parts.push(`<text x="${W / 2 + dls / 2}" y="${y}" text-anchor="middle" font-family="${SANS}" font-weight="500" font-size="${detailSize}" letter-spacing="${dls}" fill="#5B4A33">${esc(content.detail)}</text>`)
+  y += 0.45 * I
+  const qrBox = 4.6 * I
+  const qx = (W - qrBox) / 2
+  parts.push(`<rect x="${qx}" y="${y}" width="${qrBox}" height="${qrBox}" rx="${0.3 * I}" fill="#FFFFFF" stroke="${GOLD}" stroke-width="${0.05 * I}"/>`)
+  parts.push(placeQr(content.qr, qx + 0.25 * I, y + 0.25 * I, qrBox - 0.5 * I))
+  y += qrBox + 0.35 * I + 0.62 * I * 0.8
+  const scan = fit(measure, 'Scan to see the photos live', 600, SERIF, 0.62 * I, W - 2.4 * I)
+  parts.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-family="${SERIF}" font-weight="600" font-size="${scan}" fill="#2B2118">Scan to see the photos live</text>`)
+  const step = 0.2 * I
+  const n = (d: string) => `<tspan fill="${GOLD}" font-weight="700">${d}</tspan>`
+  y += 0.5 * I
+  parts.push(`<text x="${W / 2}" y="${y}" text-anchor="middle" font-family="${SANS}" font-weight="500" font-size="${step}" letter-spacing="${step * 0.2}" fill="#5B4A33">${n('1')} SCAN     ${n('2')} WATCH LIVE     ${n('3')} SAVE</text>`)
+  const left = 1.0 * I
+  const foot = 0.18 * I
+  parts.push(`<text x="${left}" y="${H - 1.0 * I}" font-family="${SANS}" font-weight="500" font-size="${foot}" letter-spacing="${foot * 0.2}" fill="#8A7A66">NO APP · NO SIGN-UP NEEDED</text>`)
+  const contact: { text: string; icon: typeof INSTAGRAM_ICON }[] = []
+  if (brand.phone) contact.push({ text: formatPhone(brand.phone), icon: PHONE_ICON })
+  if (brand.instagram) contact.push({ text: `@${brand.instagram.replace(/^@/, '')}`, icon: INSTAGRAM_ICON })
+  contact.forEach(({ text, icon }, i) => {
+    const size = 0.26 * I
+    const right = W - 1.0 * I
+    const cy = H - 1.0 * I - (contact.length - 1 - i) * 0.45 * I
+    const w = measure(text, `500 ${size}px ${SANS}`)
+    parts.push(`<text x="${right}" y="${cy}" text-anchor="end" font-family="${SANS}" font-weight="500" font-size="${size}" fill="${GOLD_DEEP}">${esc(text)}</text>`)
+    parts.push(icon(right - w - 0.4 * I, cy - size * 0.88, size * 1.05, GOLD_DEEP))
+  })
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<defs><style>${(opts.fonts ?? NO_FONTS).css}</style></defs>
+${parts.join('\n')}
+</svg>`
+}
+
 // ---- Fonts, images and export (browser only) ----
 
 export async function dataUrl(blob: Blob): Promise<string> {

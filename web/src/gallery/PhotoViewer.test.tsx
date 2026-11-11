@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushActivity } from '../lib/activity'
 import { liveEvent, mockFetch, MockEventSource, photo } from '../test/mocks'
 import GalleryPage from './GalleryPage'
 
@@ -269,5 +270,57 @@ describe('Photo viewer', () => {
       drag(stage, [200, 100], [205, 400])
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
+  })
+
+  it('toggles the heart, remembers it in this browser and tracks LIKE / UNLIKE', async () => {
+    const user = userEvent.setup()
+    const fetchMock = mockFetch({
+      [base]: () => liveEvent,
+      [`${base}/photos`]: () => ({ photos: [photo(3), photo(2), photo(1)], nextCursor: null }),
+      [`${base}/activity`]: () => new Response(null, { status: 204 }),
+      [`${base}/categories`]: () => [],
+    })
+    localStorage.clear()
+    renderGallery()
+    await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
+    const heart = await screen.findByRole('button', { name: 'Like photo' })
+    expect(heart).toHaveAttribute('aria-pressed', 'false')
+    await user.click(heart)
+    expect(heart).toHaveAttribute('aria-pressed', 'true')
+    expect(JSON.parse(localStorage.getItem(`mcreatik.likes.${SLUG}`)!)).toHaveLength(1)
+    await user.click(heart)
+    expect(heart).toHaveAttribute('aria-pressed', 'false')
+    flushActivity()
+    const types = fetchMock.mock.calls
+      .map((c) => c as unknown as [RequestInfo | URL, RequestInit | undefined])
+      .filter(([u]) => String(u).endsWith('/activity'))
+      .flatMap(([, init]) => JSON.parse(String(init?.body)).items.map((i: { type: string }) => i.type))
+    expect(types).toContain('LIKE')
+    expect(types).toContain('UNLIKE')
+  })
+
+  it('sends an HD request and shows the server error when it fails', async () => {
+    const user = userEvent.setup()
+    let attempt = 0
+    mockFetch({
+      [base]: () => liveEvent,
+      [`${base}/photos`]: () => ({ photos: [photo(3), photo(2), photo(1)], nextCursor: null }),
+      [`${base}/categories`]: () => [],
+      [`${base}/hq-requests`]: () => (++attempt === 1
+        ? new Response(JSON.stringify({ code: 'INVALID_CONTACT', message: 'Enter your email, or your WhatsApp number with 10 digits' }), { status: 400 })
+        : new Response(null, { status: 204 })),
+    })
+    renderGallery()
+    await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
+    await user.click(await screen.findByRole('button', { name: 'Get HD photo' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Get HD photo' })
+    await user.type(within(dialog).getByLabelText('Email or WhatsApp number'), 'abc')
+    await user.click(within(dialog).getByRole('button', { name: 'Send' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Enter your email, or your WhatsApp number with 10 digits')
+    await user.clear(within(dialog).getByLabelText('Email or WhatsApp number'))
+    await user.type(within(dialog).getByLabelText('Email or WhatsApp number'), 'a@b.co')
+    await user.click(within(dialog).getByRole('button', { name: 'Send' }))
+    expect(await screen.findByText('Request sent. The studio will send it to you.')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Get HD photo' })).not.toBeInTheDocument()
   })
 })

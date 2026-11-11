@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BLEED, BOARD, boardSvg, CARD, cardSvg, fileSlug, isBoardTheme, withPrintDpi, type Measure } from './printDesign'
+import { BLEED, BOARD, boardSvg, CARD, cardSvg, fileSlug, isBoardTheme, posterSvg, POSTER, withPrintDpi, type Measure } from './printDesign'
 
 // A fixed-width "font": every character is 0.5 em wide.
 const measure: Measure = (text, font) => text.length * Number(/(\d+(?:\.\d+)?)px/.exec(font)![1]) * 0.5
@@ -88,5 +88,13 @@ describe('print designs', () => {
     expect(['cream', 'dark', 'white'].every(isBoardTheme)).toBe(true)
     expect(isBoardTheme('neon')).toBe(false)
     expect(fileSlug('Arun & Priya')).toBe('arun-priya')
+  })
+
+  it('makes the A4 poster at 2480 x 3508 px (300 dpi)', () => {
+    const svg = posterSvg(card, brand, { measure })
+    expect([attr(svg, 'width'), attr(svg, 'height')]).toEqual([2480, 3508])
+    expect(POSTER).toEqual({ width: 2480, height: 3508 })
+    expect(svg).toContain('Arun &amp; Priya')
+    expect(svg).toContain('Scan to see the photos live')
   })
 })
