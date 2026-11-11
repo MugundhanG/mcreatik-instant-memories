@@ -15,7 +15,7 @@ public class PhotoMapper {
 
     public PhotoDtos.PublicPhoto toPublic(Photo p) {
         return new PhotoDtos.PublicPhoto(p.getId(), url(p.getThumbnailStorageKey()), url(p.getOptimizedStorageKey()),
-                p.getWidth(), p.getHeight(), p.getReadyAt(), new Cursor(p.getReadyAt(), p.getId()).encode());
+                p.getWidth(), p.getHeight(), p.getReadyAt(), new Cursor(p.getReadyAt(), p.getId()).encode(), p.getCategoryId());
     }
 
     public PhotoDtos.AdminPhoto toAdmin(Photo p) {

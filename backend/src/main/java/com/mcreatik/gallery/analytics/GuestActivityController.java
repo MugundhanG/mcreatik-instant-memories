@@ -20,8 +20,10 @@ public class GuestActivityController {
 
     private final GuestActivityService activity;
     private final EventService events;
+    private final HqRequests hqRequests;
 
-    public GuestActivityController(GuestActivityService activity, EventService events) {
+    public GuestActivityController(GuestActivityService activity, EventService events, HqRequests hqRequests) {
+        this.hqRequests = hqRequests;
         this.activity = activity;
         this.events = events;
     }
@@ -40,5 +42,31 @@ public class GuestActivityController {
     public GuestActivity.Summary summary(Authentication auth, @PathVariable UUID eventId) {
         events.owned(CurrentAdmin.id(auth), eventId);
         return activity.summary(eventId);
+    }
+
+    public record HqRequestBody(UUID photoId, String name, String contact, String visitorId) {
+    }
+
+    /** A guest asks for the full-quality photo and leaves an email or WhatsApp number. No login. */
+    @PostMapping("/api/public/events/{slug}/hq-requests")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void requestHq(@PathVariable String slug, @RequestBody HqRequestBody body) {
+        hqRequests.create(events.publicEvent(slug).getId(), body.photoId(), body.name(), body.contact(), body.visitorId());
+    }
+
+    @GetMapping("/api/admin/events/{eventId}/hq-requests")
+    public List<HqRequests.Request> hqRequests(Authentication auth, @PathVariable UUID eventId) {
+        events.owned(CurrentAdmin.id(auth), eventId);
+        return hqRequests.list(eventId);
+    }
+
+    public record DoneBody(boolean done) {
+    }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/api/admin/events/{eventId}/hq-requests/{requestId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void hqDone(Authentication auth, @PathVariable UUID eventId, @PathVariable UUID requestId, @RequestBody DoneBody body) {
+        events.owned(CurrentAdmin.id(auth), eventId);
+        hqRequests.setDone(eventId, requestId, body.done());
     }
 }

@@ -43,10 +43,28 @@ public class GuestActivityService {
         if (items.size() > MAX_BATCH) {
             throw ApiException.badRequest("BATCH_TOO_LARGE", "At most " + MAX_BATCH + " items per request");
         }
-        List<Object[]> rows = items.stream()
-                .map(i -> row(eventId, visitorId, i))
-                .filter(r -> r != null)
-                .toList();
+        List<Object[]> rows = new java.util.ArrayList<>();
+        for (Item item : items) {
+            Object[] row = row(eventId, visitorId, item);
+            if (row == null) {
+                continue;
+            }
+            String type = (String) row[1];
+            if (GuestActivity.Type.LIKE.name().equals(type) || GuestActivity.Type.UNLIKE.name().equals(type)) {
+                // One like per guest and photo: a repeat changes nothing, UNLIKE takes it back.
+                if (item.photoId() == null) {
+                    continue;
+                }
+                jdbc.update("DELETE FROM guest_activity WHERE event_id = ? AND photo_id = ? AND visitor_id = ? AND type = 'LIKE'",
+                        eventId, item.photoId(), visitorId);
+                if (GuestActivity.Type.LIKE.name().equals(type)) {
+                    // Written now, not in the batch, so a repeat in the same batch finds it and replaces it.
+                    jdbc.update("INSERT INTO guest_activity (event_id, type, visitor_id, photo_id, source) VALUES (?, ?, ?, ?, ?)", row);
+                }
+                continue;
+            }
+            rows.add(row);
+        }
         if (!rows.isEmpty()) {
             jdbc.batchUpdate("INSERT INTO guest_activity (event_id, type, visitor_id, photo_id, source) VALUES (?, ?, ?, ?, ?)",
                     rows);
@@ -74,10 +92,11 @@ public class GuestActivityService {
                        count(DISTINCT visitor_id) FILTER (WHERE type = 'DOWNLOAD'),
                        count(*) FILTER (WHERE type = 'SHARE'),
                        count(*) FILTER (WHERE type = 'INSTAGRAM'),
-                       count(*) FILTER (WHERE type = 'CONTACT')
+                       count(*) FILTER (WHERE type = 'CONTACT'),
+                       count(*) FILTER (WHERE type = 'LIKE')
                 FROM guest_activity WHERE event_id = ?""",
                 (rs, n) -> new GuestActivity.Totals(rs.getLong(1), rs.getLong(2), rs.getLong(3), rs.getLong(4),
-                        rs.getLong(5), rs.getLong(6), rs.getLong(7), rs.getLong(8), rs.getLong(9)),
+                        rs.getLong(5), rs.getLong(6), rs.getLong(7), rs.getLong(8), rs.getLong(9), rs.getLong(10)),
                 eventId);
 
         List<GuestActivity.Hour> hours = jdbc.query("""
@@ -90,24 +109,29 @@ public class GuestActivityService {
                 (rs, n) -> new GuestActivity.Hour(rs.getString(1), rs.getLong(2), rs.getLong(3), rs.getLong(4)),
                 eventId);
 
-        // Most loved photos still in the gallery (deleted or hidden ones drop out).
-        List<GuestActivity.TopPhoto> top = jdbc.query("""
-                SELECT p.id, p.thumbnail_storage_key, p.original_file_name,
-                       count(*) FILTER (WHERE a.type = 'PHOTO_VIEW') AS views,
-                       count(*) FILTER (WHERE a.type = 'DOWNLOAD') AS downloads
-                FROM guest_activity a
-                JOIN photos p ON p.id = a.photo_id AND p.event_id = a.event_id AND p.status = 'READY' AND NOT p.hidden
-                WHERE a.event_id = ? AND a.photo_id IS NOT NULL
-                GROUP BY p.id, p.thumbnail_storage_key, p.original_file_name
-                ORDER BY downloads DESC, views DESC, p.id
-                LIMIT 8""",
-                (rs, n) -> new GuestActivity.TopPhoto(rs.getObject(1, UUID.class), photoMapper.url(rs.getString(2)),
-                        rs.getString(3), rs.getLong(4), rs.getLong(5)),
-                eventId);
-
+        List<GuestActivity.TopPhoto> top = topPhotos(eventId, "downloads DESC, views DESC", null);
         Timestamp last = jdbc.queryForObject("SELECT max(created_at) FROM guest_activity WHERE event_id = ?",
                 Timestamp.class, eventId);
         Instant lastAt = last == null ? null : last.toInstant();
-        return new GuestActivity.Summary(totals, hours, top, lastAt);
+        return new GuestActivity.Summary(totals, hours, top, lastAt, topPhotos(eventId, "likes DESC, downloads DESC", "likes"),
+                topPhotos(eventId, "downloads DESC, views DESC", "downloads"), topPhotos(eventId, "views DESC, downloads DESC", "views"));
+    }
+
+    /** Photos still in the gallery (deleted or hidden ones drop out), ranked; {@code nonZero}: leave out photos at 0 of it. */
+    private List<GuestActivity.TopPhoto> topPhotos(UUID eventId, String order, String nonZero) {
+        return jdbc.query("""
+                SELECT * FROM (
+                    SELECT p.id, p.thumbnail_storage_key, p.original_file_name,
+                           count(*) FILTER (WHERE a.type = 'PHOTO_VIEW') AS views,
+                           count(*) FILTER (WHERE a.type = 'DOWNLOAD') AS downloads,
+                           count(*) FILTER (WHERE a.type = 'LIKE') AS likes
+                    FROM guest_activity a
+                    JOIN photos p ON p.id = a.photo_id AND p.event_id = a.event_id AND p.status = 'READY' AND NOT p.hidden
+                    WHERE a.event_id = ? AND a.photo_id IS NOT NULL
+                    GROUP BY p.id, p.thumbnail_storage_key, p.original_file_name) t
+                %s ORDER BY %s, id LIMIT 8""".formatted(nonZero == null ? "" : "WHERE " + nonZero + " > 0", order),
+                (rs, n) -> new GuestActivity.TopPhoto(rs.getObject(1, UUID.class), photoMapper.url(rs.getString(2)),
+                        rs.getString(3), rs.getLong(4), rs.getLong(5), rs.getLong(6)),
+                eventId);
     }
 }
