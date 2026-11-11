@@ -48,7 +48,8 @@ import com.mcreatik.uploader.source.PhotoSource;
 public class UploadEngine implements AutoCloseable {
 
     private static final Logger log = Logger.getLogger(UploadEngine.class.getName());
-    public static final String APP_VERSION = "0.2.0";
+    /** The installer's version (jpackage sets it), else the build's, for local runs. */
+    public static final String APP_VERSION = System.getProperty("jpackage.app-version", "0.2.0");
 
     private final ApiClient api;
     private final UploadQueue queue;

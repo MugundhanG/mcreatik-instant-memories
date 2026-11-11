@@ -411,10 +411,8 @@ public final class SetupDialog {
 
         // ---- where to start ----
         UploaderConfig.Session start = session.get();
-        if (switching && start == null) {
-            codeMode.set(true);
-            showDetails(steps, stack, eventField, codeBlock, detailsTitle, null, eventName, eventStatus, connect, true);
-        } else if (start != null && start.valid(Instant.now())) {
+        // A laptop set up with a connection code also starts at sign-in now; the code stays one click away.
+        if (start != null && start.valid(Instant.now())) {
             picker.setSignedIn(start.email());
             picker.showLoading();
             steps.show(stack, EVENTS);
