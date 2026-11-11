@@ -75,10 +75,6 @@ public final class LiveUploadPage implements Page {
         event = new EventCard(ctx);
         PageLayout page = new PageLayout(null, null);
 
-        // Laptops set up with a connection code before sign-in existed: point them to it once per run.
-        if (ctx.cameras().first().config().session() == null) {
-            page.section(signInBanner());
-        }
         page.section(event);
 
         JPanel row = Ui.clear(new RatioRow(14, 0.58, 0.42));
@@ -251,25 +247,5 @@ public final class LiveUploadPage implements Page {
             }
         }
         return newest;
-    }
-
-    private JPanel signInBanner() {
-        Ui.Surface card = Ui.Surface.card(new BorderLayout(12, 0));
-        JPanel text = Ui.clear(new GridLayout(2, 1, 0, 2));
-        text.add(Ui.label("New: sign in with your studio login", Font.BOLD, 13.5f, "text"));
-        text.add(Ui.label("Pick your events here, with no connection code to copy.", Font.PLAIN, 12f, "muted"));
-        card.add(text, BorderLayout.CENTER);
-        JPanel buttons = Ui.clear(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
-        Ui.Btn later = new Ui.Btn("Not now", Ui.Kind.GHOST, null);
-        Ui.Btn signIn = new Ui.Btn("Sign in", Ui.Kind.PRIMARY, "calendar-days");
-        buttons.add(later);
-        buttons.add(signIn);
-        card.add(buttons, BorderLayout.EAST);
-        later.addActionListener(e -> {
-            card.setVisible(false);
-            card.getParent().revalidate();
-        });
-        signIn.addActionListener(e -> ctx.actions().changeEvent());
-        return card;
     }
 }
