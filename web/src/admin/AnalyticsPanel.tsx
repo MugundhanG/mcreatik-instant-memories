@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { adminApi } from '../lib/api'
 import { formatCount, timeAgo } from '../lib/format'
 import type { GuestAnalytics, HqRequest, TopPhoto } from '../lib/types'
@@ -66,11 +66,19 @@ export function AnalyticsPanel({ eventId, live, eventName = 'the event' }: { eve
   const [data, setData] = useState<GuestAnalytics | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
   const load = useCallback(() => {
     adminApi.analytics(eventId).then((d) => {
+      if (!mounted.current) return // answer arrived after the panel closed
       setData(d)
       setError(null)
-    }).catch((e: Error) => setError(e.message))
+    }).catch((e: Error) => mounted.current && setError(e.message))
   }, [eventId])
 
   useEffect(() => {
@@ -229,7 +237,13 @@ function TopPhotos({ data }: { data: GuestAnalytics }) {
 function HqRequests({ eventId, eventName }: { eventId: string; eventName: string }) {
   const [rows, setRows] = useState<HqRequest[] | null>(null)
   useEffect(() => {
-    adminApi.hqRequests(eventId).then((r) => setRows(Array.isArray(r) ? r : [])).catch(() => setRows([]))
+    let active = true // ignore an answer that arrives after the panel closed
+    adminApi.hqRequests(eventId)
+      .then((r) => active && setRows(Array.isArray(r) ? r : []))
+      .catch(() => active && setRows([]))
+    return () => {
+      active = false
+    }
   }, [eventId])
 
   const toggle = (r: HqRequest) => {
