@@ -1,28 +1,24 @@
 package com.mcreatik.uploader.ui;
 
-import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
 import javax.imageio.ImageIO;
-import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import com.mcreatik.uploader.Cameras;
 import com.mcreatik.uploader.FakeMcreatikServer;
 import com.mcreatik.uploader.TestPhotos;
-import com.mcreatik.uploader.api.ApiModels.StudioEvent;
 import com.mcreatik.uploader.config.UploaderConfig;
 import com.mcreatik.uploader.ui.theme.Theme;
 
 /**
- * Renders the sign-in screens with demo data into PNGs (no network, no real accounts). Run under Xvfb:
+ * Renders the setup and Live screens with demo data into PNGs (no network, no real accounts). Run under Xvfb:
  * {@code xvfb-run -a -s "-screen 0 1600x1200x24" java -cp <test classpath> com.mcreatik.uploader.ui.ScreenshotTool <outDir>}.
  */
 public final class ScreenshotTool {
@@ -39,90 +35,24 @@ public final class ScreenshotTool {
         System.setProperty("mcreatik.theme", "light");
         Theme.applyAtStartup();
 
-        for (Theme theme : new Theme[] {Theme.LIGHT, Theme.DARK}) {
-            boolean dark = theme == Theme.DARK;
-            SwingUtilities.invokeAndWait(() -> Theme.switchTo(theme));
-            String suffix = dark ? "dark" : "light";
-            String prefix = dark ? "07-signin-" : "01-signin-";
-            if (!dark) {
-                shot("01-signin-light", () -> SetupDialog.backdrop(signIn(false, false)));
-                shot("02-validation-light", () -> SetupDialog.backdrop(signIn(true, false)));
-                shot("03-wrong-password-light", () -> SetupDialog.backdrop(signIn(false, true)));
-                shot("04-events-light", () -> SetupDialog.backdrop(events(true, true)));
-                shot("05-events-empty-light", () -> SetupDialog.backdrop(events(false, false)));
-                livePage("06-live-light");
-            } else {
-                shot("07-signin-dark", () -> SetupDialog.backdrop(signIn(false, false)));
-                shot("08-events-dark", () -> SetupDialog.backdrop(events(true, true)));
-            }
-        }
+        SwingUtilities.invokeAndWait(() -> Theme.switchTo(Theme.LIGHT));
+        setupDialog("01-setup-code-light");
+        livePage("02-live-light");
         System.exit(0);
     }
 
-    // ---- screens ----
-
-    private static JComponent signIn(boolean errors, boolean wrongPassword) {
-        SignInPanel panel = new SignInPanel(new SignInPanel.Handler() {
-            @Override
-            public void signIn(String email, char[] password) {
+    /** The real setup dialog (connection-code step), grabbed while it is open. */
+    private static void setupDialog(String name) throws Exception {
+        Path data = Files.createTempDirectory("shot-setup");
+        Thread t = new Thread(() -> SetupDialog.show(data, 2, true), "setup-shot");
+        t.setDaemon(true);
+        t.start();
+        Thread.sleep(2500);
+        for (java.awt.Window w : java.awt.Window.getWindows()) {
+            if (w instanceof javax.swing.JDialog d && d.isShowing()) {
+                write(name, d.getContentPane());
+                SwingUtilities.invokeAndWait(d::dispose);
             }
-
-            @Override
-            public void forgotPassword() {
-            }
-
-            @Override
-            public void useConnectionCode() {
-            }
-        }, null);
-        if (errors) {
-            panel.fill("hello@lenslight", "");
-            panel.showAllErrors();
-        }
-        if (wrongPassword) {
-            panel.fill("hello@lenslight.test", "not-my-password");
-            panel.showBanner("Email or password is wrong");
-        }
-        return panel;
-    }
-
-    private static JComponent events(boolean withEvents, boolean select) {
-        EventPickerPanel[] picker = new EventPickerPanel[1];
-        com.mcreatik.uploader.ui.components.Ui.Surface card = new com.mcreatik.uploader.ui.components.Ui.Surface(
-                new java.awt.BorderLayout(0, 14), "card", "border", 18, new java.awt.Insets(24, 28, 20, 28));
-        card.shadow(true);
-        javax.swing.JButton cancel = new com.mcreatik.uploader.ui.components.Ui.Btn("Cancel",
-                com.mcreatik.uploader.ui.components.Ui.Kind.SECONDARY, null);
-        javax.swing.JButton next = new com.mcreatik.uploader.ui.components.Ui.Btn("Continue",
-                com.mcreatik.uploader.ui.components.Ui.Kind.PRIMARY, null);
-        next.setEnabled(false);
-        picker[0] = new EventPickerPanel(() -> {
-        }, ev -> next.setEnabled(ev != null));
-        picker[0].setPreferredSize(new Dimension(520, 440));
-        picker[0].setSignedIn("hello@lenslight.test");
-        List<StudioEvent> list = withEvents ? List.of(
-                new StudioEvent("1", "Arun & Priya Wedding", "2026-12-12", "UPCOMING", "2026-02-01T00:00:00Z"),
-                new StudioEvent("2", "Reception Night", "2026-11-11", "LIVE", "2026-04-01T00:00:00Z"),
-                new StudioEvent("3", "Kavya's 30th Birthday", "2026-03-02", "COMPLETED", "2026-01-10T00:00:00Z"),
-                new StudioEvent("4", "Housewarming at Lens & Light Studio", null, "DRAFT", "2026-05-01T00:00:00Z"),
-                new StudioEvent("5", "Old Closed Event", "2027-01-01", "ARCHIVED", "2026-02-05T00:00:00Z"))
-                : List.of();
-        picker[0].setEvents(list);
-        if (select) {
-            picker[0].select(EventListHelper.byName(list, "Arun & Priya Wedding"));
-        }
-        card.add(picker[0], java.awt.BorderLayout.CENTER);
-        javax.swing.JPanel buttons = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
-        buttons.setOpaque(false);
-        buttons.add(cancel);
-        buttons.add(next);
-        card.add(buttons, java.awt.BorderLayout.SOUTH);
-        return card;
-    }
-
-    private static final class EventListHelper {
-        static StudioEvent byName(List<StudioEvent> list, String name) {
-            return list.stream().filter(e -> e.name().equals(name)).findFirst().orElse(null);
         }
     }
 
@@ -157,26 +87,6 @@ public final class ScreenshotTool {
     }
 
     // ---- rendering ----
-
-    private interface Content {
-        JComponent create();
-    }
-
-    private static void shot(String name, Content content) throws Exception {
-        JFrame[] frame = new JFrame[1];
-        SwingUtilities.invokeAndWait(() -> {
-            frame[0] = new JFrame(name);
-            frame[0].setContentPane((javax.swing.JPanel) content.create());
-            frame[0].setSize(640, 740);
-            frame[0].setLocation(20, 20);
-            frame[0].setVisible(true);
-        });
-        Thread.sleep(900);
-        SwingUtilities.invokeAndWait(() -> {
-        });
-        write(name, frame[0].getContentPane());
-        SwingUtilities.invokeAndWait(frame[0]::dispose);
-    }
 
     private static void write(String name, java.awt.Container pane) throws Exception {
         BufferedImage[] img = new BufferedImage[1];
