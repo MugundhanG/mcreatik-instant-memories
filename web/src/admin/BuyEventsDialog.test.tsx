@@ -9,7 +9,7 @@ const billing: BillingSummary = {
   upiId: 'mcreatik@okicici', payeeName: 'McreatiK Studios', payments: [], onlinePayments: false,
   mainCredits: 0, quickCredits: 0, carryOver: 0, packActive: true, planPaidUntil: null,
   prices: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300, storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3,
-    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799 },
+    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799, quickPackMain: 1499 },
   clientCredits: 0,
 }
 
@@ -82,6 +82,24 @@ describe('Buy events by UPI', () => {
     await user.click(screen.getByRole('radio', { name: /Quick/ }))
     expect(screen.getByRole('radio', { name: /Quick/ })).toHaveTextContent('₹999')
     expect(screen.getByTestId('amount')).toHaveTextContent('₹999')
+  })
+
+  it('adds storage to a client gallery in the same payment', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: 'pay1' }), { status: 201, headers: { 'Content-Type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<BuyEventsDialog billing={billing} purchase={{ item: 'CLIENT_SETUP', quantity: 2 }} onPaid={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹500') // 2 galleries, storage later
+    await user.click(screen.getByRole('radio', { name: /25 GB/ }))
+    // One gallery with its storage: ₹250 + 25 GB × ₹15 × 3 months.
+    expect(screen.getByTestId('breakdown')).toHaveTextContent('1 × ₹250 + 25 GB × ₹45')
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹1,375')
+    expect(screen.queryByRole('button', { name: 'More galleries' })).not.toBeInTheDocument()
+    await user.type(screen.getByPlaceholderText(/418299301122/), '418299301122')
+    await user.click(screen.getByRole('button', { name: "I've paid ₹1,375" }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body)))
+      .toEqual({ item: 'CLIENT_SETUP', quantity: 1, storageGb: 25, utr: '418299301122' })
   })
 
   it('says so when McreatiK has not set up a UPI ID yet', () => {

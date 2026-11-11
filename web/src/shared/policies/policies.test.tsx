@@ -13,7 +13,7 @@ describe('Policy pages', () => {
       perEventPrice: 2499, monthlyPrice: 5000, monthlyEvents: 4, extraEventPrice: 999, currency: 'INR',
       packages: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300,
         storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3,
-    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799 },
+    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799, quickPackMain: 1499 },
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
     render(<PricingPage />)
     expect((await screen.findAllByText('₹2,499')).length).toBeGreaterThan(0)

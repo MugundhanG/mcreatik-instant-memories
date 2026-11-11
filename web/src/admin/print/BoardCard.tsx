@@ -18,6 +18,7 @@ export function BoardCard({ brand, saveTheme, onSaved }: {
   const [theme, setTheme] = useState<BoardTheme>(themeOf(brand))
   const [saving, setSaving] = useState(false)
   const [making, setMaking] = useState(false)
+  const [percent, setPercent] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const assets = usePrintAssets(brand, adminApi.accountLogo)
   const anchor = useRef<HTMLDivElement>(null)
@@ -51,9 +52,10 @@ export function BoardCard({ brand, saveTheme, onSaved }: {
   const download = async () => {
     if (!svg) return
     setMaking(true)
+    setPercent(0)
     setError(null)
     try {
-      downloadBlob(await renderJpeg(svg, BOARD.width, BOARD.height), `studio-board-${theme}-18x24in.jpg`)
+      downloadBlob(await renderJpeg(svg, BOARD.width, BOARD.height, setPercent), `studio-board-${theme}-18x24in.jpg`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not make the print file')
     } finally {
@@ -79,7 +81,7 @@ export function BoardCard({ brand, saveTheme, onSaved }: {
         <ErrorText>{error}</ErrorText>
         <div className="mt-4 flex flex-col gap-2">
           <Button variant="primary" onClick={download} disabled={!svg || making}>
-            {making ? 'Making print file…' : 'Download board (18 × 24 in)'}
+            {making ? `Making print file… ${percent}%` : 'Download board (18 × 24 in)'}
           </Button>
           <p className="text-xs text-muted">
             JPG at 300 dpi, 18.25 × 24.25 in: 0.125 in extra on every side for trimming. Ask the print shop to print at

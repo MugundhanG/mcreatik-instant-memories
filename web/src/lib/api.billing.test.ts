@@ -15,7 +15,7 @@ describe('Billing from an older backend', () => {
 
   it('leaves a current backend’s values alone', () => {
     const prices = { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300,
-      storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3, main2Extra: 1399, main4Extra: 899, quick2Extra: 899, quick4Extra: 699 }
+      storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3, main2Extra: 1399, main4Extra: 899, quick2Extra: 899, quick4Extra: 699, quickPackMain: 1399 }
     const b = withBillingDefaults({ credits: 3, mainCredits: 1, quickCredits: 2, unitPrice: 899, quickUnitPrice: 899, prices } as unknown as BillingSummary)
     expect(b.prices).toEqual(prices)
     expect(b.quickCredits).toBe(2)

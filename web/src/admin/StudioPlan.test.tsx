@@ -12,7 +12,7 @@ const studio: StudioBilling = {
 describe('Studio plan row (super admin)', () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  it('shows the events a studio has available and gives or takes back one at a time', async () => {
+  it('changes nothing until Save, then saves the package and the counts in one go', async () => {
     const user = userEvent.setup()
     const bodies: unknown[] = []
     vi.stubGlobal('fetch', vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
@@ -24,13 +24,37 @@ describe('Studio plan row (super admin)', () => {
 
     // 2 Main bought + 0 Quick + 3 left in this month's pack.
     expect(screen.getByTestId('available-s1')).toHaveTextContent('Available: 5 events (3 left in pack this month) + 1 client')
+    expect(screen.getByTestId('pack-events-s1')).toHaveTextContent('4 events a month · 1 used')
+    expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
     const quick = screen.getByRole('group', { name: 'Quick' })
     expect(within(quick).getByRole('button', { name: 'Take back one: Quick' })).toBeDisabled() // never below 0
 
     await user.click(screen.getByRole('button', { name: 'Give one: Main' }))
-    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1))
+    await user.click(screen.getByRole('button', { name: 'Give one: Main' }))
     await user.click(screen.getByRole('button', { name: 'Take back one: Client' }))
-    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(2))
-    expect(bodies).toEqual([{ addCredits: 1 }, { addClientCredits: -1 }])
+    expect(screen.getByTestId('available-s1')).toHaveTextContent('Available: 7 events (3 left in pack this month) + 0 client')
+    expect(screen.getByText('Not saved yet')).toBeInTheDocument()
+    expect(bodies).toEqual([]) // nothing sent yet
+
+    // Picking another package fills in its events per month (a new pack starts with its whole month).
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Plan' }), 'QUICK_2')
+    expect(screen.getByTestId('pack-events-s1')).toHaveTextContent('2 events a month · 0 used')
+    expect(screen.getByTestId('available-s1')).toHaveTextContent('Available: 6 events (2 left in pack this month)')
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1))
+    expect(bodies).toEqual([{ plan: 'QUICK_2', addCredits: 2, addClientCredits: -1 }])
+  })
+
+  it('Cancel puts everything back', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    render(<StudioPlan billing={studio} onChange={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Give one: Quick' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByTestId('available-s1')).toHaveTextContent('Available: 5 events')
+    expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

@@ -138,6 +138,9 @@ export function BillingSettingsCard() {
         <Field label="Quick pack · 4 events: extra Quick event (₹)">
           <input className={inputClass} inputMode="numeric" value={s.quick4ExtraPrice} onChange={num('quick4ExtraPrice')} />
         </Field>
+        <Field label="Main event for a Quick-pack studio (₹)" hint="While its Quick pack is paid up">
+          <input className={inputClass} inputMode="numeric" value={s.quickPackMainPrice} onChange={num('quickPackMainPrice')} />
+        </Field>
         <Field label="Upgrade a Quick event to Main (₹)">
           <input className={inputClass} inputMode="numeric" value={s.upgradePrice} onChange={num('upgradePrice')} />
         </Field>
@@ -185,59 +188,108 @@ function CreditStepper({ label, value, busy, onStep }: { label: string; value: n
   )
 }
 
+/** Events a pack gives each month. */
+const PACK_EVENTS: Partial<Record<Plan, number>> = { MAIN_2: 2, MAIN_4: 4, QUICK_2: 2, QUICK_4: 4 }
+
 /**
- * One studio's plan, this month's usage, pack paid-until date and the events it has to use; McreatiK can give or take
- * back Main events, Quick events and client galleries with + / − (e.g. a free trial, or a refund) and set the
- * paid-until date after a renewal paid outside the app.
+ * One studio's plan, this month's usage, pack paid-until date and the events it has to use. McreatiK changes the
+ * package, the paid-until date and the Main / Quick / client counts with + / − (e.g. a free trial, or a refund), then
+ * presses Save: nothing changes for the studio until then. Picking a package fills in its events per month.
+ * Give it a key of the billing values, so it starts again from what the server has after a save.
  */
 export function StudioPlan({ billing, onChange }: { billing: StudioBilling; onChange: () => void }) {
+  const [plan, setPlan] = useState<Plan>(billing.plan)
   const [quota, setQuota] = useState(String(billing.monthlyQuota))
+  const [paidUntil, setPaidUntil] = useState(billing.planPaidUntil ?? '')
+  const [main, setMain] = useState(billing.mainCredits)
+  const [quick, setQuick] = useState(billing.quickCredits)
+  const [client, setClient] = useState(billing.clientCredits)
   const [busy, setBusy] = useState(false)
-  const update = async (input: { plan?: Plan; monthlyQuota?: number; addCredits?: number; addQuickCredits?: number; addClientCredits?: number; planPaidUntil?: string }) => {
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const planChanged = plan !== billing.plan
+  const quotaChanged = plan === 'MONTHLY' && Number(quota) !== billing.monthlyQuota && Number.isInteger(Number(quota))
+  const paidChanged = isPack(plan) && paidUntil !== '' && paidUntil !== (billing.planPaidUntil ?? '')
+  const dirty = planChanged || quotaChanged || paidChanged || main !== billing.mainCredits || quick !== billing.quickCredits || client !== billing.clientCredits
+
+  // A newly chosen pack starts with its whole month; the current one shows what is left.
+  const perMonth = PACK_EVENTS[plan] ?? 0
+  const used = planChanged ? 0 : billing.usedThisMonth
+  const packLeft = isPack(plan) && (planChanged || billing.packActive) ? Math.max(0, perMonth - used) : 0
+  const plans: Plan[] = ['PER_EVENT', ...PACKS, 'UNLIMITED', ...(billing.plan === 'MONTHLY' ? ['MONTHLY' as Plan] : [])]
+
+  const edit = <T,>(set: (v: T) => void) => (v: T) => { setSaved(false); set(v) }
+  const reset = () => {
+    setPlan(billing.plan); setQuota(String(billing.monthlyQuota)); setPaidUntil(billing.planPaidUntil ?? '')
+    setMain(billing.mainCredits); setQuick(billing.quickCredits); setClient(billing.clientCredits); setError(null)
+  }
+  const save = async () => {
     setBusy(true)
+    setError(null)
     try {
-      await adminApi.updateStudioBilling(billing.studioId, input)
+      await adminApi.updateStudioBilling(billing.studioId, {
+        ...(planChanged ? { plan } : {}),
+        ...(quotaChanged ? { monthlyQuota: Number(quota) } : {}),
+        ...(paidChanged ? { planPaidUntil: paidUntil } : {}),
+        ...(main !== billing.mainCredits ? { addCredits: main - billing.mainCredits } : {}),
+        ...(quick !== billing.quickCredits ? { addQuickCredits: quick - billing.quickCredits } : {}),
+        ...(client !== billing.clientCredits ? { addClientCredits: client - billing.clientCredits } : {}),
+      })
+      setSaved(true)
       onChange()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Could not save')
     } finally {
       setBusy(false)
     }
   }
-  const packLeft = isPack(billing.plan) && billing.packActive ? Math.max(0, billing.monthlyQuota - billing.usedThisMonth) : 0
-  const plans: Plan[] = ['PER_EVENT', ...PACKS, 'UNLIMITED', ...(billing.plan === 'MONTHLY' ? ['MONTHLY' as Plan] : [])]
+
   return (
     <div className="flex w-full flex-wrap items-center gap-2 rounded-lg bg-stone-50 px-3 py-2 text-sm" data-testid={`plan-${billing.studioId}`}>
-      <select aria-label="Plan" value={billing.plan} onChange={(e) => update({ plan: e.target.value as Plan })}
+      <select aria-label="Plan" value={plan} disabled={busy} onChange={(e) => edit(setPlan)(e.target.value as Plan)}
         className="h-8 rounded-md border border-line bg-white px-2 text-sm">
         {plans.map((p) => <option key={p} value={p}>{PLAN_LABEL[p]}</option>)}
       </select>
-      {billing.plan === 'MONTHLY' && (
+      {plan === 'MONTHLY' && (
         <>
           <span className="tabular-nums text-muted">{billing.usedThisMonth} of</span>
-          <input aria-label="Events per month" inputMode="numeric" value={quota} onChange={(e) => setQuota(e.target.value)}
-            onBlur={() => Number(quota) !== billing.monthlyQuota && Number.isInteger(Number(quota)) && update({ monthlyQuota: Number(quota) })}
+          <input aria-label="Events per month" inputMode="numeric" value={quota} onChange={(e) => edit(setQuota)(e.target.value)}
             className="h-8 w-14 rounded-md border border-line bg-white px-2 text-center text-sm tabular-nums" />
           <span className="text-muted">events this month</span>
         </>
       )}
-      {isPack(billing.plan) && (
+      {isPack(plan) && (
         <>
-          <span className="tabular-nums text-muted">{billing.usedThisMonth} of {billing.monthlyQuota} this month · paid until</span>
-          <input type="date" aria-label="Paid until" value={billing.planPaidUntil ?? ''}
-            onChange={(e) => e.target.value && update({ planPaidUntil: e.target.value })}
-            className={`h-8 rounded-md border bg-white px-2 text-sm ${billing.packActive ? 'border-line' : 'border-red-300 text-red-700'}`} />
-          {!billing.packActive && <span className="text-xs font-medium text-red-700">ended</span>}
+          <span className="tabular-nums text-muted" data-testid={`pack-events-${billing.studioId}`}>
+            <b className="text-ink">{perMonth} events a month</b> · {used} used · paid until
+          </span>
+          {planChanged && !paidUntil
+            ? <span className="text-muted">a month from today</span>
+            : <input type="date" aria-label="Paid until" value={paidUntil} onChange={(e) => edit(setPaidUntil)(e.target.value)}
+                className={`h-8 rounded-md border bg-white px-2 text-sm ${planChanged || billing.packActive ? 'border-line' : 'border-red-300 text-red-700'}`} />}
+          {!planChanged && !billing.packActive && <span className="text-xs font-medium text-red-700">ended</span>}
         </>
       )}
-      {billing.plan !== 'UNLIMITED' && (
+      {plan !== 'UNLIMITED' && (
         <div className="flex w-full flex-wrap items-center gap-x-5 gap-y-2 border-t border-line pt-2" data-testid={`available-${billing.studioId}`}>
           <span className="text-xs font-medium">
-            Available: <b className="tabular-nums">{billing.mainCredits + billing.quickCredits + packLeft}</b> events
+            Available: <b className="tabular-nums">{main + quick + packLeft}</b> events
             {packLeft > 0 && <span className="font-normal text-muted"> ({packLeft} left in pack this month)</span>}
-            {' '}+ <b className="tabular-nums">{billing.clientCredits}</b> client
+            {' '}+ <b className="tabular-nums">{client}</b> client
           </span>
-          <CreditStepper label="Main" value={billing.mainCredits} busy={busy} onStep={(d) => void update({ addCredits: d })} />
-          <CreditStepper label="Quick" value={billing.quickCredits} busy={busy} onStep={(d) => void update({ addQuickCredits: d })} />
-          <CreditStepper label="Client" value={billing.clientCredits} busy={busy} onStep={(d) => void update({ addClientCredits: d })} />
+          <CreditStepper label="Main" value={main} busy={busy} onStep={(d) => edit(setMain)(main + d)} />
+          <CreditStepper label="Quick" value={quick} busy={busy} onStep={(d) => edit(setQuick)(quick + d)} />
+          <CreditStepper label="Client" value={client} busy={busy} onStep={(d) => edit(setClient)(client + d)} />
+        </div>
+      )}
+      {(dirty || saved || error) && (
+        <div className="flex w-full flex-wrap items-center justify-end gap-3 border-t border-line pt-2">
+          {error && <span className="mr-auto text-xs text-red-700">{error}</span>}
+          {dirty && <span className="mr-auto text-xs text-amber-800">Not saved yet</span>}
+          {saved && !dirty && <span role="status" className="text-xs text-emerald-700">Saved ✓</span>}
+          {dirty && <Button onClick={reset} disabled={busy}>Cancel</Button>}
+          {dirty && <Button variant="primary" onClick={() => void save()} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</Button>}
         </div>
       )}
     </div>

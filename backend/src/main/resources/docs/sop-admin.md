@@ -158,3 +158,9 @@ Have this ready on any event day:
 | Rollback if an update breaks | Immediately | `deploy/oracle/rollback.sh` (see Deployment) |
 | Security and findings | Monthly | [Findings and next actions](/admin/docs/findings) |
 | Answers to customer questions | When a feature changes | [Instant Memories Q&A](/admin/docs/qa-how-to-use) |
+
+## Deleting a studio, and event deletion
+
+- **Studios → Delete** removes a studio for good: its login, every event with its photos and galleries, its logo and its payment history. You type the studio's name to confirm. To only stop a studio logging in, use **Disable**.
+- **Studios cannot delete events** or change an event's name or date after creating it. They can delete photos. Only McreatiK can delete an event (**Settings → Delete event now**) or correct its name or date.
+- **Package and event counts:** change the package and the Main / Quick / Client counts, then press **Save changes**. Nothing changes for the studio until you save. Picking a pack shows its events per month.

@@ -111,6 +111,25 @@ class ClientGalleryTest extends IntegrationTest {
     }
 
     @Test
+    void storageBoughtWithTheSetupGoesToTheNewGalleryAndARejectedPaymentTakesItBack() throws Exception {
+        // ₹250 setup + 10 GB × ₹15 × 3 months = ₹700, in one payment.
+        buy("{\"item\":\"CLIENT_SETUP\",\"quantity\":1,\"storageGb\":10,\"utr\":\"" + utr() + "\"}")
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(700));
+        event("CLIENT", "2026-11-01").andExpect(status().isCreated()).andExpect(jsonPath("$.storageQuotaGb").value(10));
+        // Used once: the next gallery starts without storage.
+        buy("{\"item\":\"CLIENT_SETUP\",\"utr\":\"" + utr() + "\"}").andExpect(jsonPath("$.amount").value(250));
+        event("CLIENT", "2026-11-01").andExpect(status().isCreated()).andExpect(jsonPath("$.storageQuotaGb").value(0));
+        // Storage only with a single gallery; a rejected payment takes its storage back.
+        buy("{\"item\":\"CLIENT_SETUP\",\"quantity\":2,\"storageGb\":5,\"utr\":\"" + utr() + "\"}").andExpect(status().isBadRequest());
+        String id = JsonPath.read(buy("{\"item\":\"CLIENT_SETUP\",\"storageGb\":5,\"utr\":\"" + utr() + "\"}")
+                .andExpect(jsonPath("$.amount").value(475)).andReturn().getResponse().getContentAsString(), "$.id");
+        mvc.perform(post("/api/admin/billing/payments/" + id + "/reject").header("Authorization", bearer(adminToken()))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT client_storage_gb FROM admin_users WHERE id = ?::uuid", Integer.class, studioId)).isZero();
+        event("CLIENT", "2026-11-01").andExpect(status().isPaymentRequired());
+    }
+
+    @Test
     void storageIsChargedForTheMonthsAGalleryHasLeft() {
         LocalDate d = LocalDate.of(2026, 11, 6);
         assertThat(BillingService.monthsLeft(d.plusMonths(6), d, 6)).isEqualTo(6);

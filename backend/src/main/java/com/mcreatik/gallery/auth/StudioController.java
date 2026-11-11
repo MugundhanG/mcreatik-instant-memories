@@ -45,9 +45,12 @@ public class StudioController {
     private final AdminAccess access;
     private final PasswordEncoder passwordEncoder;
     private final EventRepository events;
+    private final com.mcreatik.gallery.event.EventService eventService;
 
     public StudioController(AdminUserRepository users, AdminAccess access, PasswordEncoder passwordEncoder,
-                            EventRepository events, BillingService billing, StudioBranding branding) {
+                            EventRepository events, BillingService billing, StudioBranding branding,
+                            com.mcreatik.gallery.event.EventService eventService) {
+        this.eventService = eventService;
         this.billing = billing;
         this.branding = branding;
         this.users = users;
@@ -126,6 +129,25 @@ public class StudioController {
         }
         return new Studio(studio.getId(), studio.getDisplayName(), studio.getEmail(), studio.getRole(),
                 studio.isDisabled(), studio.isMustChangePassword(), studio.getCreatedAt(), 0, 0, 0, branding.of(studio));
+    }
+
+    /**
+     * Removes a studio for good: its login, every event with its photos and files, its logo and its payment history.
+     * Not yourself, and not another McreatiK login.
+     */
+    @DeleteMapping("/{studioId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    public void delete(Authentication auth, @PathVariable UUID studioId) {
+        AdminUser me = access.requireSuperAdmin(auth);
+        AdminUser studio = users.findById(studioId).orElseThrow(() -> ApiException.notFound("Studio"));
+        if (studio.getId().equals(me.getId()) || studio.isSuperAdmin()) {
+            throw ApiException.badRequest("CANNOT_DELETE", "A McreatiK login can't be deleted here");
+        }
+        events.findByOwnerIdOrderByEventDateDescCreatedAtDesc(studioId).forEach(eventService::remove);
+        events.flush();
+        branding.removeLogo(studio);
+        users.delete(studio);
     }
 
     // ---- McreatiK sets up a studio's branding (logo, name, Instagram, poster logo size) during onboarding ----

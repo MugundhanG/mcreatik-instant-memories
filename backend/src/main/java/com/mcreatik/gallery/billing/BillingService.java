@@ -102,7 +102,7 @@ public class BillingService {
                            Integer quick4Price, Integer upgradePrice, Integer upgradeGuests, Integer storageGbPrice,
                            Integer freeStorageGb, Integer clientSetupPrice, Integer activeMonths,
                            Integer main2ExtraPrice, Integer main4ExtraPrice, Integer quick2ExtraPrice,
-                           Integer quick4ExtraPrice) {
+                           Integer quick4ExtraPrice, Integer quickPackMainPrice) {
 
         /** What one event past the pack's monthly allowance costs while the pack is paid up. */
         int extraPrice(Plan plan) {
@@ -136,7 +136,7 @@ public class BillingService {
     /** Every current price, for the dashboard (the server prices each purchase again). */
     public record Prices(int main, int quick, int main2, int main4, int quick2, int quick4, int upgrade, int upgradeGuests,
                          int storageGb, int freeStorageGb, int clientSetup, int activeMonths,
-                         int main2Extra, int main4Extra, int quick2Extra, int quick4Extra) {
+                         int main2Extra, int main4Extra, int quick2Extra, int quick4Extra, int quickPackMain) {
     }
 
     /**
@@ -153,11 +153,14 @@ public class BillingService {
     }
 
     /** What a purchase costs this studio right now. {@code events}: how many (events or months). */
-    public record Quote(Item item, int events, int unitPrice, int amount, UUID eventId, Plan plan) {
+    public record Quote(Item item, int events, int unitPrice, int amount, UUID eventId, Plan plan, int storageGb) {
+        Quote(Item item, int events, int unitPrice, int amount, UUID eventId, Plan plan) {
+            this(item, events, unitPrice, amount, eventId, plan, 0);
+        }
     }
 
     /** A purchase as asked for; {@link #normalize} fills the defaults. */
-    public record Purchase(Item item, int quantity, UUID eventId, Plan plan) {
+    public record Purchase(Item item, int quantity, UUID eventId, Plan plan, int storageGb) {
     }
 
     public record StudioBilling(UUID studioId, Plan plan, int monthlyQuota, int usedThisMonth, int credits,
@@ -248,11 +251,11 @@ public class BillingService {
                 SELECT upi_id, payee_name, per_event_price, extra_event_price, monthly_price, quick_price, main2_price,
                        main4_price, quick2_price, quick4_price, upgrade_price, upgrade_guests, storage_gb_price,
                        free_storage_gb, client_setup_price, active_months, main2_extra_price, main4_extra_price,
-                       quick2_extra_price, quick4_extra_price FROM billing_settings""",
+                       quick2_extra_price, quick4_extra_price, quick_pack_main_price FROM billing_settings""",
                 (rs, n) -> new Settings(rs.getString(1), rs.getString(2), rs.getInt(3), rs.getInt(4), rs.getInt(5),
                         rs.getInt(6), rs.getInt(7), rs.getInt(8), rs.getInt(9), rs.getInt(10), rs.getInt(11), rs.getInt(12),
                         rs.getInt(13), rs.getInt(14), rs.getInt(15), rs.getInt(16), rs.getInt(17), rs.getInt(18),
-                        rs.getInt(19), rs.getInt(20)));
+                        rs.getInt(19), rs.getInt(20), rs.getInt(21)));
     }
 
     private static int orKeep(Integer value, int current) {
@@ -272,7 +275,8 @@ public class BillingService {
                 orKeep(s.storageGbPrice(), now.storageGbPrice()), orKeep(s.freeStorageGb(), now.freeStorageGb()),
                 orKeep(s.clientSetupPrice(), now.clientSetupPrice()), orKeep(s.activeMonths(), now.activeMonths()),
                 orKeep(s.main2ExtraPrice(), now.main2ExtraPrice()), orKeep(s.main4ExtraPrice(), now.main4ExtraPrice()),
-                orKeep(s.quick2ExtraPrice(), now.quick2ExtraPrice()), orKeep(s.quick4ExtraPrice(), now.quick4ExtraPrice())};
+                orKeep(s.quick2ExtraPrice(), now.quick2ExtraPrice()), orKeep(s.quick4ExtraPrice(), now.quick4ExtraPrice()),
+                orKeep(s.quickPackMainPrice(), now.quickPackMainPrice())};
         for (int i = 0; i < prices.length; i++) {
             // The free storage may be 0 GB; everything else must be at least 1.
             if (prices[i] < (i == 11 ? 0 : 1)) {
@@ -284,10 +288,10 @@ public class BillingService {
                        monthly_price = ?, quick_price = ?, main2_price = ?, main4_price = ?, quick2_price = ?, quick4_price = ?,
                        upgrade_price = ?, upgrade_guests = ?, storage_gb_price = ?, free_storage_gb = ?,
                        client_setup_price = ?, active_months = ?, main2_extra_price = ?, main4_extra_price = ?,
-                       quick2_extra_price = ?, quick4_extra_price = ?""",
+                       quick2_extra_price = ?, quick4_extra_price = ?, quick_pack_main_price = ?""",
                 upi == null || upi.isEmpty() ? null : upi, s.payeeName() == null ? null : s.payeeName().trim(),
                 prices[0], prices[1], prices[2], prices[3], prices[4], prices[5], prices[6], prices[7], prices[8], prices[9],
-                prices[10], prices[11], prices[12], prices[13], prices[14], prices[15], prices[16], prices[17]);
+                prices[10], prices[11], prices[12], prices[13], prices[14], prices[15], prices[16], prices[17], prices[18]);
         return settings();
     }
 
@@ -301,6 +305,9 @@ public class BillingService {
         }
         if (type == EventType.QUICK) {
             return s.quickPrice();
+        }
+        if (a.plan().pack() && a.packActive(today)) {
+            return s.quickPackMainPrice(); // a paid-up Quick pack: a Main event at a lower price
         }
         return a.plan() == Plan.MONTHLY ? s.extraEventPrice() : s.perEventPrice();
     }
@@ -370,6 +377,16 @@ public class BillingService {
         throw new ApiException(HttpStatus.PAYMENT_REQUIRED, "EVENT_PAYMENT_REQUIRED", why);
     }
 
+    /** Storage bought with a client gallery's setup, handed to the gallery being created (and cleared). */
+    public int takeClientStorage(UUID studioId) {
+        Integer gb = jdbc.queryForObject("SELECT client_storage_gb FROM admin_users WHERE id = ? FOR UPDATE", Integer.class, studioId);
+        if (gb == null || gb <= 0) {
+            return 0;
+        }
+        jdbc.update("UPDATE admin_users SET client_storage_gb = 0 WHERE id = ?", studioId);
+        return gb;
+    }
+
     public void recordCharge(UUID studioId, UUID eventId, String kind) {
         jdbc.update("INSERT INTO event_charges (id, owner_id, event_id, kind) VALUES (?, ?, ?, ?)",
                 UUID.randomUUID(), studioId, eventId, kind);
@@ -379,7 +396,7 @@ public class BillingService {
         return new Prices(s.perEventPrice(), s.quickPrice(), s.main2Price(), s.main4Price(), s.quick2Price(),
                 s.quick4Price(), s.upgradePrice(), s.upgradeGuests(), s.storageGbPrice(), s.freeStorageGb(),
                 s.clientSetupPrice(), s.activeMonths(), s.main2ExtraPrice(), s.main4ExtraPrice(), s.quick2ExtraPrice(),
-                s.quick4ExtraPrice());
+                s.quick4ExtraPrice(), s.quickPackMainPrice());
     }
 
     /** The current prices for the public /pricing page. */
@@ -400,9 +417,15 @@ public class BillingService {
 
     /** Fills the defaults: a missing item is Main events (the older API sent only a count). */
     public static Purchase normalize(Item item, Integer quantity, UUID eventId, Plan plan) {
+        return normalize(item, quantity, eventId, plan, null);
+    }
+
+    /** {@code storageGb}: storage bought with one client gallery's setup (CLIENT_SETUP only). */
+    public static Purchase normalize(Item item, Integer quantity, UUID eventId, Plan plan, Integer storageGb) {
         Item i = item == null ? Item.MAIN_EVENT : item;
         int q = quantity == null ? 1 : quantity;
-        return new Purchase(i, i == Item.UPGRADE || i == Item.EXTEND ? 1 : q, eventId, plan);
+        return new Purchase(i, i == Item.UPGRADE || i == Item.EXTEND ? 1 : q, eventId, plan,
+                i == Item.CLIENT_SETUP && storageGb != null ? storageGb : 0);
     }
 
     /** The price is always the server's: the studio's plan, the current settings and what is bought. */
@@ -458,7 +481,17 @@ public class BillingService {
                 if (p.quantity() < 1 || p.quantity() > MAX_EVENTS_PER_PAYMENT) {
                     throw ApiException.badRequest("INVALID_EVENTS", "Buy between 1 and " + MAX_EVENTS_PER_PAYMENT + " client galleries at a time");
                 }
-                yield new Quote(Item.CLIENT_SETUP, p.quantity(), s.clientSetupPrice(), p.quantity() * s.clientSetupPrice(), null, null);
+                int gb = p.storageGb();
+                if (gb < 0 || gb > MAX_GB_PER_PAYMENT) {
+                    throw ApiException.badRequest("INVALID_GB", "Add up to " + MAX_GB_PER_PAYMENT + " GB at a time");
+                }
+                if (gb > 0 && p.quantity() != 1) {
+                    throw ApiException.badRequest("INVALID_EVENTS", "Buy one client gallery at a time when adding its storage");
+                }
+                // Storage for the whole open period, as it would cost right after creating the gallery.
+                int storage = gb * s.storageGbPrice() * s.activeMonths();
+                yield new Quote(Item.CLIENT_SETUP, p.quantity(), s.clientSetupPrice(),
+                        p.quantity() * s.clientSetupPrice() + storage, null, null, gb);
             }
             case STORAGE -> {
                 if (a.free()) {
@@ -546,12 +579,19 @@ public class BillingService {
      * transaction, right after the payment row changed state, so it happens exactly once.
      */
     void apply(UUID studioId, Item item, int quantity, UUID eventId, Plan plan, int sign) {
+        apply(studioId, item, quantity, eventId, plan, sign, 0);
+    }
+
+    void apply(UUID studioId, Item item, int quantity, UUID eventId, Plan plan, int sign, int storageGb) {
         switch (item) {
             case MAIN_EVENT -> jdbc.update("UPDATE admin_users SET main_credits = main_credits + ? WHERE id = ?", sign * quantity, studioId);
             case QUICK_EVENT -> jdbc.update("UPDATE admin_users SET quick_credits = quick_credits + ? WHERE id = ?", sign * quantity, studioId);
             case UPGRADE -> jdbc.update("UPDATE events SET event_type = ?, updated_at = now() WHERE id = ? AND owner_id = ?",
                     sign > 0 ? EventType.MAIN.name() : EventType.QUICK.name(), eventId, studioId);
-            case CLIENT_SETUP -> jdbc.update("UPDATE admin_users SET client_credits = client_credits + ? WHERE id = ?", sign * quantity, studioId);
+            case CLIENT_SETUP -> jdbc.update("""
+                    UPDATE admin_users SET client_credits = client_credits + ?,
+                           client_storage_gb = GREATEST(0, client_storage_gb + ?) WHERE id = ?""",
+                    sign * quantity, sign * storageGb, studioId);
             case STORAGE -> {
                 jdbc.update("UPDATE events SET storage_quota_gb = GREATEST(0, storage_quota_gb + ?) WHERE id = ? AND owner_id = ?",
                         sign * quantity, eventId, studioId);
@@ -609,31 +649,31 @@ public class BillingService {
         UUID id = UUID.randomUUID();
         try {
             jdbc.update("""
-                    INSERT INTO event_payments (id, studio_id, events, unit_price, amount, utr, item, event_id, plan)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""", id, studioId, q.events(), q.unitPrice(), q.amount(), utr,
-                    q.item().name(), q.eventId(), q.plan() == null ? null : q.plan().name());
+                    INSERT INTO event_payments (id, studio_id, events, unit_price, amount, utr, item, event_id, plan, storage_gb)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", id, studioId, q.events(), q.unitPrice(), q.amount(), utr,
+                    q.item().name(), q.eventId(), q.plan() == null ? null : q.plan().name(), q.storageGb());
         } catch (DuplicateKeyException e) {
             throw ApiException.conflict("UTR_USED", "This transaction ID was already submitted");
         }
-        apply(studioId, q.item(), q.events(), q.eventId(), q.plan(), 1);
+        apply(studioId, q.item(), q.events(), q.eventId(), q.plan(), 1, q.storageGb());
         return payments("p.id = ?", id, 1).getFirst();
     }
 
     /** Records an online (Razorpay) payment waiting to be paid: nothing is given until {@link #markPaid}. */
     void insertOnline(UUID id, UUID studioId, Quote q, String method, Timestamp expiresAt) {
         jdbc.update("""
-                INSERT INTO event_payments (id, studio_id, events, unit_price, amount, method, status, expires_at, item, event_id, plan)
-                VALUES (?, ?, ?, ?, ?, ?, 'CREATED', ?, ?, ?, ?)""", id, studioId, q.events(), q.unitPrice(), q.amount(),
-                method, expiresAt, q.item().name(), q.eventId(), q.plan() == null ? null : q.plan().name());
+                INSERT INTO event_payments (id, studio_id, events, unit_price, amount, method, status, expires_at, item, event_id, plan, storage_gb)
+                VALUES (?, ?, ?, ?, ?, ?, 'CREATED', ?, ?, ?, ?, ?)""", id, studioId, q.events(), q.unitPrice(), q.amount(),
+                method, expiresAt, q.item().name(), q.eventId(), q.plan() == null ? null : q.plan().name(), q.storageGb());
     }
 
-    private record Bought(UUID studioId, Item item, int quantity, UUID eventId, Plan plan) {
+    private record Bought(UUID studioId, Item item, int quantity, UUID eventId, Plan plan, int storageGb) {
     }
 
     private static Bought bought(java.sql.ResultSet rs) throws java.sql.SQLException {
         String plan = rs.getString(5);
         return new Bought(rs.getObject(1, UUID.class), Item.valueOf(rs.getString(2)), rs.getInt(3),
-                rs.getObject(4, UUID.class), plan == null ? null : Plan.valueOf(plan));
+                rs.getObject(4, UUID.class), plan == null ? null : Plan.valueOf(plan), rs.getInt(6));
     }
 
     /**
@@ -644,13 +684,13 @@ public class BillingService {
     public boolean markPaid(UUID paymentId, String razorpayPaymentId) {
         List<Bought> rows = jdbc.query("""
                 UPDATE event_payments SET status = 'APPROVED', razorpay_payment_id = ?, reviewed_at = now(), note = NULL
-                WHERE id = ? AND status = 'CREATED' RETURNING studio_id, item, events, event_id, plan""",
+                WHERE id = ? AND status = 'CREATED' RETURNING studio_id, item, events, event_id, plan, storage_gb""",
                 (rs, n) -> bought(rs), razorpayPaymentId, paymentId);
         if (rows.isEmpty()) {
             return false;
         }
         Bought b = rows.getFirst();
-        apply(b.studioId(), b.item(), b.quantity(), b.eventId(), b.plan(), 1);
+        apply(b.studioId(), b.item(), b.quantity(), b.eventId(), b.plan(), 1, b.storageGb());
         return true;
     }
 
@@ -691,7 +731,7 @@ public class BillingService {
     /** Not received: what it bought is taken back (an event balance may go below zero until it is sorted out). */
     @Transactional
     public void reject(UUID paymentId, String note) {
-        List<Bought> rows = jdbc.query("SELECT studio_id, item, events, event_id, plan FROM event_payments WHERE id = ? AND status = 'PENDING' FOR UPDATE",
+        List<Bought> rows = jdbc.query("SELECT studio_id, item, events, event_id, plan, storage_gb FROM event_payments WHERE id = ? AND status = 'PENDING' FOR UPDATE",
                 (rs, n) -> bought(rs), paymentId);
         if (rows.isEmpty()) {
             throw ApiException.conflict("NOT_PENDING", "This payment was already reviewed");
@@ -699,7 +739,7 @@ public class BillingService {
         jdbc.update("UPDATE event_payments SET status = 'REJECTED', reviewed_at = now(), note = ? WHERE id = ?",
                 note == null || note.isBlank() ? null : note.trim(), paymentId);
         Bought b = rows.getFirst();
-        apply(b.studioId(), b.item(), b.quantity(), b.eventId(), b.plan(), -1);
+        apply(b.studioId(), b.item(), b.quantity(), b.eventId(), b.plan(), -1, b.storageGb());
     }
 
     public List<StudioBilling> studios() {
