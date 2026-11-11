@@ -2,14 +2,16 @@
 export const PRIVACY_EMAIL = 'connect@mcreatik.com'
 
 /** Prefilled email asking to take one photo down: names the gallery and the photo so it can be found at once. */
-export function removalRequestLink(eventName: string, photoId?: string) {
+export function removalRequestLink(eventName: string, photo?: { id: string; fileName?: string | null }) {
   const gallery = window.location.origin + window.location.pathname
   const subject = `Photo removal request: ${eventName}`
   const body = [
     'Hi, please remove this photo from the gallery.',
     '',
     `Gallery: ${gallery}`,
-    photoId ? `Photo: ${photoId}` : 'Photo: (please describe it)',
+    ...(photo
+      ? [`Photo: ${photo.fileName ?? photo.id}`, ...(photo.fileName ? [`Reference: ${photo.id}`] : [])]
+      : ['Photo: (please describe it)']),
     '',
     'Reason (optional): ',
   ].join('\n')

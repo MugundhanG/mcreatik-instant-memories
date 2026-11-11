@@ -275,7 +275,7 @@ export default function GalleryPage() {
           onToggleLike={toggleLike}
           onRequestHd={requestHd}
           actions={(p) => (
-            <a href={removalRequestLink(event.name, p.id)}
+            <a href={removalRequestLink(event.name, p)}
               className="inline-flex h-10 items-center justify-center rounded-full px-4 text-xs text-white/70 underline-offset-4 hover:text-white hover:underline">
               Request removal
             </a>

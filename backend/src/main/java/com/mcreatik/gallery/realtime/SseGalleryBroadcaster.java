@@ -145,9 +145,11 @@ public class SseGalleryBroadcaster implements GalleryBroadcaster {
     }
 
     public record PhotoReadyPayload(UUID eventId, UUID photoId, String thumbnailUrl, String webUrl, Integer width,
-                                    Integer height, java.time.Instant readyAt, String cursor) {
+                                    Integer height, java.time.Instant readyAt, String cursor, UUID categoryId,
+                                    String fileName) {
         PhotoReadyPayload(UUID eventId, PhotoDtos.PublicPhoto p) {
-            this(eventId, p.id(), p.thumbnailUrl(), p.webUrl(), p.width(), p.height(), p.readyAt(), p.cursor());
+            this(eventId, p.id(), p.thumbnailUrl(), p.webUrl(), p.width(), p.height(), p.readyAt(), p.cursor(), p.categoryId(),
+                    p.fileName());
         }
     }
 

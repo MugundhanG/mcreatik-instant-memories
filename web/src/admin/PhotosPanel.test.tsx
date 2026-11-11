@@ -151,6 +151,15 @@ describe('Dashboard photos', () => {
     })
   })
 
+  it('searches by file name', async () => {
+    const user = userEvent.setup()
+    const api = mockApi(() => ({ photos: [adminPhoto(1)], nextOffset: null }))
+    renderPanel()
+    await screen.findAllByRole('listitem')
+    await user.type(screen.getByLabelText('Search file name'), 'IMG_12')
+    await waitFor(() => expect(api.listings().at(-1)!.url.searchParams.get('q')).toBe('IMG_12'))
+  })
+
   it('stays in place after Load more and deleting, and loads on from where the list is', async () => {
     const user = userEvent.setup()
     const all = Array.from({ length: 5 }, (_, i) => adminPhoto(i + 1))

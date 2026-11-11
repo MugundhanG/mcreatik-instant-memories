@@ -70,6 +70,7 @@ public class AdminPhotoController {
                                          @RequestParam(required = false) LocalDate day,
                                          @RequestParam(required = false) String category,
                                          @RequestParam(required = false) Boolean selected,
+                                         @RequestParam(required = false) String q,
                                          @RequestParam(defaultValue = "0") int offset,
                                          @RequestParam(defaultValue = "60") int limit) {
         events.owned(CurrentAdmin.id(auth), eventId);
@@ -84,7 +85,8 @@ public class AdminPhotoController {
             }
         }
         List<Photo> rows = search.find(eventId,
-                new AdminPhotoSearch.Filter(uploaderId, liked, hidden, day, category, selected), sort, from, size + 1);
+                new AdminPhotoSearch.Filter(uploaderId, liked, hidden, day, category, selected,
+                        q == null ? null : q.substring(0, Math.min(q.length(), 100))), sort, from, size + 1);
         boolean more = rows.size() > size;
         List<Photo> page = more ? rows.subList(0, size) : rows;
         List<UUID> chosen = album.selectedIds(eventId, page.stream().map(Photo::getId).toList());

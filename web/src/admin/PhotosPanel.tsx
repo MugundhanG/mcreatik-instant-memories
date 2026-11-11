@@ -34,9 +34,11 @@ interface Filters {
   /** '' all, a category id, or 'none' for photos not sorted yet */
   category: string
   sort: AdminPhotoSort
+  /** Part of the file name */
+  q: string
 }
 
-const NO_FILTERS: Filters = { uploaderId: '', show: 'all', day: '', category: '', sort: 'NEWEST' }
+const NO_FILTERS: Filters = { uploaderId: '', show: 'all', day: '', category: '', sort: 'NEWEST', q: '' }
 
 function toQuery(f: Filters): AdminPhotoQuery {
   return {
@@ -47,6 +49,7 @@ function toQuery(f: Filters): AdminPhotoQuery {
     day: f.day || undefined,
     category: f.category || undefined,
     selected: f.show === 'selected' ? true : undefined,
+    q: f.q.trim() || undefined,
   }
 }
 
@@ -277,7 +280,7 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
   const viewerPhotos = useMemo(() => viewable.map(toViewer), [viewable])
   const viewerIndex = viewerId ? viewable.findIndex((p) => p.id === viewerId) : -1
   const byId = useMemo(() => new Map(photos.map((p) => [p.id, p])), [photos])
-  const filtered = filters.uploaderId !== '' || filters.show !== 'all' || filters.day !== '' || filters.category !== ''
+  const filtered = filters.uploaderId !== '' || filters.show !== 'all' || filters.day !== '' || filters.category !== '' || filters.q !== ''
 
   const togglePick = (id: string) =>
     setPicked((s) => {
@@ -374,6 +377,14 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
     setLoading(true)
     setFilters((f) => ({ ...f, ...patch }))
   }
+  // File-name search waits for a pause in typing.
+  const [search, setSearch] = useState('')
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onSearch = (value: string) => {
+    setSearch(value)
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => set({ q: value }), 350)
+  }
 
   return (
     <Card title="Photos" action={<span className="text-xs text-muted">{note ?? `${formatCount(photos.length)}${hasMore ? '+' : ''} shown`}</span>}>
@@ -403,13 +414,18 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
           ))}
           <option value="none">Not sorted yet</option>
         </select>
+        <input type="search" aria-label="Search file name" placeholder="File name, e.g. IMG_1234" value={search}
+          onChange={(e) => onSearch(e.target.value)} className={`${selectClass} w-44`} />
         <select aria-label="Sort" className={selectClass} value={filters.sort} onChange={(e) => set({ sort: e.target.value as AdminPhotoSort })}>
           <option value="NEWEST">Newest first</option>
           <option value="OLDEST">Oldest first</option>
           <option value="CAMERA">By camera</option>
         </select>
         {filtered && (
-          <Button variant="ghost" onClick={() => set({ ...NO_FILTERS, sort: filters.sort })}>Clear filters</Button>
+          <Button variant="ghost" onClick={() => {
+            setSearch('')
+            set({ ...NO_FILTERS, sort: filters.sort })
+          }}>Clear filters</Button>
         )}
         <span className="flex-1" />
         {!selecting && photos.length > 0 && <Button onClick={() => setSelecting(true)}>Select</Button>}

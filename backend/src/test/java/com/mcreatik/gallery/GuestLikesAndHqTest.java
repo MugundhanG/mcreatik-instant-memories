@@ -126,4 +126,23 @@ class GuestLikesAndHqTest extends IntegrationTest {
                 .andExpect(jsonPath("$.photos[0].categoryId").value(cake));
         mvc.perform(get("/api/public/events/" + slug + "/photos")).andExpect(jsonPath("$.photos.length()").value(2));
     }
+
+    @Test
+    void guestPhotosCarryTheFileNameAndTheDashboardFindsIt() throws Exception {
+        String event = createEvent("Removal", "LIVE");
+        String eventId = eventId(event);
+        String token = createUploader(eventId, "Camera 1");
+        String a = uploadPhoto(token, "IMG_1234.JPG", jpeg(800, 600));
+        uploadPhoto(token, "DSC_5678.JPG", jpeg(800, 601));
+        processAll();
+
+        mvc.perform(get("/api/public/events/" + slug(event) + "/photos"))
+                .andExpect(jsonPath("$.photos[?(@.id == '" + a + "')].fileName").value("IMG_1234.JPG"));
+        mvc.perform(get("/api/admin/events/" + eventId + "/photos?q=img_12").header("Authorization", bearer(adminToken())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.photos.length()").value(1))
+                .andExpect(jsonPath("$.photos[0].id").value(a));
+        mvc.perform(get("/api/admin/events/" + eventId + "/photos?q=%25").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.photos.length()").value(0));
+    }
 }
