@@ -17,6 +17,7 @@ function paymentFor(p: EventPayment): string {
     case 'PLAN': return `${n} month${n === 1 ? '' : 's'} · ${p.plan ? PLAN_LABEL[p.plan] : 'pack'}`
     case 'STORAGE': return `${n} GB storage${p.eventName ? `: ${p.eventName}` : ''}`
     case 'CLIENT_SETUP': return `${n} client galler${n === 1 ? 'y' : 'ies'}`
+    case 'STORAGE_EXTEND': return `${n} GB${p.months ? ` + ${p.months} month${p.months === 1 ? '' : 's'}` : ''}${p.eventName ? `: ${p.eventName}` : ''}`
     case 'EXTEND': return `More months (${n} GB)${p.eventName ? `: ${p.eventName}` : ''}`
     default: return `${n} Main event${n === 1 ? '' : 's'}`
   }

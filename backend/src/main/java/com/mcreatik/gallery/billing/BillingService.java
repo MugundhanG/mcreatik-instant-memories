@@ -77,9 +77,10 @@ public class BillingService {
     /**
      * What a payment buys. STORAGE: GB for one event, priced per GB per month for the months the gallery has left;
      * CLIENT_SETUP: client galleries (one used per gallery created), with the storage and open months chosen for it;
-     * EXTEND: more open months for one event, per GB of its storage quota per month.
+     * EXTEND: more open months for one event, per GB of its storage quota per month;
+     * STORAGE_EXTEND: both at once (GB added and months added, one payment).
      */
-    public enum Item { MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN, STORAGE, CLIENT_SETUP, EXTEND }
+    public enum Item { MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN, STORAGE, CLIENT_SETUP, EXTEND, STORAGE_EXTEND }
 
     /** One GB as storage is counted and sold (1024^3 bytes). */
     public static final long GB = 1024L * 1024 * 1024;
@@ -439,9 +440,9 @@ public class BillingService {
         Item i = item == null ? Item.MAIN_EVENT : item;
         int q = quantity == null ? 1 : quantity;
         int m = months != null ? months : 0;
-        return new Purchase(i, i == Item.UPGRADE || i == Item.EXTEND ? 1 : q, eventId, plan,
-                i == Item.CLIENT_SETUP && storageGb != null ? storageGb : 0,
-                i == Item.CLIENT_SETUP || i == Item.EXTEND ? m : 0);
+        return new Purchase(i, i == Item.UPGRADE || i == Item.EXTEND || i == Item.STORAGE_EXTEND ? 1 : q, eventId, plan,
+                (i == Item.CLIENT_SETUP || i == Item.STORAGE_EXTEND) && storageGb != null ? storageGb : 0,
+                i == Item.CLIENT_SETUP || i == Item.EXTEND || i == Item.STORAGE_EXTEND ? m : 0);
     }
 
     /** The price is always the server's: the studio's plan, the current settings and what is bought. */
@@ -525,6 +526,7 @@ public class BillingService {
                 int perGb = s.storageGbPrice() * months;
                 yield new Quote(Item.STORAGE, p.quantity(), perGb, p.quantity() * perGb, p.eventId(), null, 0, months, 0, 0);
             }
+            case STORAGE_EXTEND -> quoteStorageExtend(studioId, a, s, p);
             case EXTEND -> {
                 if (a.free()) {
                     throw ApiException.badRequest("NOT_NEEDED", "Your plan has no time limit: change the date in the event settings");
@@ -547,6 +549,42 @@ public class BillingService {
                         s.freeStorageGb(), s.activeMonths());
             }
         };
+    }
+
+    /**
+     * STORAGE_EXTEND: the GB added are charged for the months the gallery has left; the storage it will then hold
+     * (the quota plus the GB added, or what it already stores if that is more) is charged for the months added. The
+     * 5 GB x 3 months included with every Main or Quick event is never charged.
+     */
+    private Quote quoteStorageExtend(UUID studioId, Account a, Settings s, Purchase p) {
+        if (a.free()) {
+            throw ApiException.badRequest("NOT_NEEDED", "Your plan has no storage or time limit");
+        }
+        ownedEvent(studioId, p.eventId());
+        int gb = p.storageGb();
+        int addMonths = p.months();
+        if (gb < 0 || gb > MAX_GB_PER_PAYMENT || (gb > 0 && gb < MIN_GB_PER_PAYMENT)) {
+            throw ApiException.badRequest("INVALID_GB", "Add between " + MIN_GB_PER_PAYMENT + " and " + MAX_GB_PER_PAYMENT + " GB at a time");
+        }
+        if (addMonths < 0 || addMonths > MAX_MONTHS_PER_PAYMENT) {
+            throw ApiException.badRequest("INVALID_MONTHS", "Choose 0 to " + MAX_MONTHS_PER_PAYMENT + " months");
+        }
+        if (gb == 0 && addMonths == 0) {
+            throw ApiException.badRequest("NOTHING_TO_BUY", "Choose storage, months, or both");
+        }
+        if (addMonths > 0) {
+            Boolean deleted = jdbc.queryForObject("SELECT photos_deleted_at IS NOT NULL FROM events WHERE id = ?",
+                    Boolean.class, p.eventId());
+            if (Boolean.TRUE.equals(deleted)) {
+                throw ApiException.conflict("EVENT_DELETED", "This gallery's files have been deleted");
+            }
+        }
+        int price = s.storageGbPrice();
+        int left = monthsLeft(p.eventId(), s.activeMonths());
+        int after = Math.max(storageQuotaGb(p.eventId()) + gb, gbFor(eventBytes(p.eventId())));
+        int amount = gb * price * left + after * price * addMonths;
+        return new Quote(Item.STORAGE_EXTEND, gb, price, amount, p.eventId(), null, gb, addMonths,
+                s.freeStorageGb(), s.activeMonths());
     }
 
     private int storageQuotaGb(UUID eventId) {
@@ -632,21 +670,19 @@ public class BillingService {
                     unlockIfCovered(eventId);
                 }
             }
-            case EXTEND -> {
-                // Older payments did not record the months: they were one open period.
-                int months = boughtMonths > 0 ? boughtMonths : settings().activeMonths();
-                // More months from the current end (or from today, if it already ended); photos deleted 30 days after.
-                if (sign > 0) {
-                    jdbc.update("""
-                            UPDATE events SET active_until = (GREATEST(coalesce(active_until, ?), ?) + make_interval(months => ?))::date
-                            WHERE id = ? AND owner_id = ?""", Date.valueOf(today()), Date.valueOf(today()), months, eventId, studioId);
-                } else {
-                    jdbc.update("""
-                            UPDATE events SET active_until = (active_until - make_interval(months => ?))::date
-                            WHERE id = ? AND owner_id = ? AND active_until IS NOT NULL""", months, eventId, studioId);
+            case EXTEND -> // Older payments did not record the months: they were one open period.
+                    extendMonths(studioId, eventId, boughtMonths > 0 ? boughtMonths : settings().activeMonths(), sign);
+            case STORAGE_EXTEND -> {
+                if (quantity > 0) {
+                    jdbc.update("UPDATE events SET storage_quota_gb = GREATEST(0, storage_quota_gb + ?) WHERE id = ? AND owner_id = ?",
+                            sign * quantity, eventId, studioId);
                 }
-                jdbc.update("UPDATE events SET retention_until = (active_until + interval '30 days')::date, expiry_warned_for = NULL,"
-                        + " expiry_notified_for = NULL WHERE id = ? AND active_until IS NOT NULL", eventId);
+                if (boughtMonths > 0) {
+                    extendMonths(studioId, eventId, boughtMonths, sign);
+                }
+                if (sign > 0) {
+                    unlockIfCovered(eventId);
+                }
             }
             case PLAN -> {
                 if (sign > 0) {
@@ -665,6 +701,21 @@ public class BillingService {
                 }
             }
         }
+    }
+
+    /** More open months from the current end (or from today, if it already ended); photos deleted 30 days after. */
+    private void extendMonths(UUID studioId, UUID eventId, int months, int sign) {
+        if (sign > 0) {
+            jdbc.update("""
+                    UPDATE events SET active_until = (GREATEST(coalesce(active_until, ?), ?) + make_interval(months => ?))::date
+                    WHERE id = ? AND owner_id = ?""", Date.valueOf(today()), Date.valueOf(today()), months, eventId, studioId);
+        } else {
+            jdbc.update("""
+                    UPDATE events SET active_until = (active_until - make_interval(months => ?))::date
+                    WHERE id = ? AND owner_id = ? AND active_until IS NOT NULL""", months, eventId, studioId);
+        }
+        jdbc.update("UPDATE events SET retention_until = (active_until + interval '30 days')::date, expiry_warned_for = NULL,"
+                + " expiry_notified_for = NULL WHERE id = ? AND active_until IS NOT NULL", eventId);
     }
 
     /** The studio paid by UPI and reports the transaction: what it bought is usable at once, checked later. */

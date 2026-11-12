@@ -94,11 +94,32 @@ export default function InstallUploaderPage() {
       <div className="mt-6 grid gap-4 md:grid-cols-2">{windowsFirst ? [windows, mac] : [mac, windows]}</div>
       <section className="mt-6 rounded-2xl border border-line bg-white p-6">
         <h2 className="text-base font-semibold">After installing</h2>
-        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-stone-700">
-          <li>Open the event here: <b>Overview → Cameras &amp; uploaders → Add camera &amp; get code → Copy code (or Get new code on a camera you already added)</b>.</li>
-          <li>Open the uploader, press <b>Paste</b>, then <b>Connect</b>.</li>
-          <li>Type the <b>Server, Port, User and Password</b> it shows into the camera's FTP settings, and take a test shot.</li>
-          <li>More cameras on the same laptop: press <b>+ Add camera</b> in the uploader and use the port it shows.</li>
+        <ol className="mt-3 list-decimal space-y-3 pl-5 text-sm text-stone-700 marker:font-semibold marker:text-ink">
+          <li>
+            <b>Open it for the first time.</b>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted">
+              <li>Windows: <b>More info → Run anyway</b>.</li>
+              <li>Mac: <b>System Settings → Privacy &amp; Security → Open Anyway</b>.</li>
+            </ul>
+          </li>
+          <li>
+            <b>Get the connection code.</b> In the event, go to <b>Overview → Cameras &amp; uploaders → Add camera &amp; get code → Copy code</b>.
+          </li>
+          <li>
+            <b>Connect.</b> In the uploader press <b>Paste</b>, choose the photo folder, choose <b>camera Wi-Fi (FTP)</b> or <b>folder</b>, then press <b>Connect</b>.
+          </li>
+          <li>
+            <b>Camera Wi-Fi (FTP).</b> Type the <b>Server, Port, User and Password</b> shown on the event's <b>Live</b> page into the camera's FTP settings, then take a test shot and check that it appears.
+          </li>
+          <li>
+            <b>More cameras on the same laptop.</b> Press <b>+ Add camera</b> in the uploader and use the port it shows.
+          </li>
+          <li>
+            <b>Change to another event.</b> Wait until everything is uploaded (the queue is empty), then go to <b>Events → Change event…</b>, paste the new event's code and press <b>Connect</b>. The uploader restarts on the new event.
+          </li>
+          <li>
+            <b>A freelancer or second shooter.</b> Send them the code and the download link. <b>Get new code</b> removes their access.
+          </li>
         </ol>
         <p className="mt-4 text-xs text-muted">
           Already installed? Installing again updates it; your settings and queued photos are kept.{' '}

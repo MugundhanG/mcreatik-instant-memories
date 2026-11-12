@@ -121,7 +121,7 @@ function Problem({ title, children }: { title: string; children?: ReactNode }) {
 
 /** Who a client guide is from: the studio's logo and name (McreatiK's own for the McreatiK login). */
 function ClientGuideHeader({ brand }: { brand: Brand | null }) {
-  const own = brand && !brand.mcreatik ? brand : null
+  const own = brand && (!brand.mcreatik || brand.logoUrl) ? brand : null
   const logo = own ? own.logoUrl : mkLogo
   const name = own?.name ?? 'McreatiK Studios'
   return (

@@ -32,7 +32,11 @@ export function StudioAccordionItem({ studio: s, billing, open, onToggle, confir
 }) {
   const [fresh, setFresh] = useState<Credentials | null>(null)
   const [editingBranding, setEditingBranding] = useState(false)
-  const status = s.disabled
+  // McreatiK's own login: no plan, password or disabling here, only its branding.
+  const own = s.role === 'SUPER_ADMIN'
+  const status = own
+    ? <span className="rounded bg-ink px-1.5 py-0.5 text-xs text-white">McreatiK · super admin</span>
+    : s.disabled
     ? <span className="rounded bg-red-50 px-1.5 py-0.5 text-xs text-red-700">Disabled</span>
     : s.mustChangePassword
       ? <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-800">Not logged in yet</span>
@@ -93,7 +97,7 @@ export function StudioAccordionItem({ studio: s, billing, open, onToggle, confir
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-medium">{s.name}</span>
-            {billing && <span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-700">{PLAN_LABEL[billing.plan]}</span>}
+            {billing && !own && <span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-700">{PLAN_LABEL[billing.plan]}</span>}
             {status}
           </span>
           <span className="mt-0.5 block truncate text-xs text-muted">{s.email}</span>
@@ -108,13 +112,14 @@ export function StudioAccordionItem({ studio: s, billing, open, onToggle, confir
               <div key={k} className="rounded-lg bg-stone-50 px-3 py-2"><dd className="font-semibold">{v}</dd><dt className="text-xs text-muted">{k}</dt></div>
             ))}
           </dl>
+          {own && <p className="text-sm text-muted">McreatiK's own events use this branding. Anything left empty keeps McreatiK's built-in design.</p>}
           <p className="text-xs text-muted">Studio since {formatEventDate(s.createdAt.slice(0, 10))}</p>
-          {billing && <StudioPlan key={JSON.stringify(billing)} billing={billing} onChange={reload} />}
+          {billing && !own && <StudioPlan key={JSON.stringify(billing)} billing={billing} onChange={reload} />}
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => setEditingBranding((v) => !v)} aria-expanded={editingBranding}>Edit branding</Button>
-            <Button onClick={() => void resetPassword()}>Reset password</Button>
-            <Button variant={s.disabled ? 'secondary' : 'danger'} onClick={() => void toggleDisabled()}>{s.disabled ? 'Enable' : 'Disable'}</Button>
-            <Button variant="danger" onClick={() => void deleteStudio()}>Delete</Button>
+            {!own && <Button onClick={() => void resetPassword()}>Reset password</Button>}
+            {!own && <Button variant={s.disabled ? 'secondary' : 'danger'} onClick={() => void toggleDisabled()}>{s.disabled ? 'Enable' : 'Disable'}</Button>}
+            {!own && <Button variant="danger" onClick={() => void deleteStudio()}>Delete</Button>}
           </div>
           {fresh && (
             <div className="rounded-xl border border-emerald-200 p-4">

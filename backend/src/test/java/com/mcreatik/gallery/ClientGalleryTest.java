@@ -157,6 +157,36 @@ class ClientGalleryTest extends IntegrationTest {
     }
 
     @Test
+    void storageAndMonthsAreBoughtTogetherPricedByTheServerAndReversedTogether() throws Exception {
+        buy("{\"item\":\"MAIN_EVENT\",\"utr\":\"" + utr() + "\"}");
+        String id = eventId(event("MAIN", "2026-11-01").andReturn().getResponse().getContentAsString());
+        UUID eventId = UUID.fromString(id);
+        Date before = jdbc.queryForObject("SELECT active_until FROM events WHERE id = ?", Date.class, eventId);
+        // 10 GB x 15 x 3 months left = 450, plus (5 + 10) GB x 15 x 2 added months = 450.
+        mvc.perform(post("/api/admin/billing/quote").header("Authorization", bearer(studio)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"item\":\"STORAGE_EXTEND\",\"eventId\":\"" + id + "\",\"storageGb\":10,\"months\":2}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.amount").value(900));
+        String pay = JsonPath.read(buy("{\"item\":\"STORAGE_EXTEND\",\"eventId\":\"" + id + "\",\"storageGb\":10,\"months\":2,\"utr\":\"" + utr() + "\"}")
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(900)).andReturn().getResponse().getContentAsString(), "$.id");
+        assertThat(jdbc.queryForObject("SELECT storage_quota_gb FROM events WHERE id = ?", Integer.class, eventId)).isEqualTo(15);
+        assertThat(jdbc.queryForObject("SELECT active_until FROM events WHERE id = ?", Date.class, eventId).toLocalDate())
+                .isEqualTo(before.toLocalDate().plusMonths(2));
+        // Only storage (5 GB x 15 x the 5 months now left), only months, nothing, or too little storage.
+        buy("{\"item\":\"STORAGE_EXTEND\",\"eventId\":\"" + id + "\",\"storageGb\":5,\"utr\":\"" + utr() + "\"}")
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(375));
+        buy("{\"item\":\"STORAGE_EXTEND\",\"eventId\":\"" + id + "\",\"months\":1,\"utr\":\"" + utr() + "\"}")
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(300));
+        buy("{\"item\":\"STORAGE_EXTEND\",\"eventId\":\"" + id + "\",\"utr\":\"" + utr() + "\"}").andExpect(status().isBadRequest());
+        buy("{\"item\":\"STORAGE_EXTEND\",\"eventId\":\"" + id + "\",\"storageGb\":4,\"utr\":\"" + utr() + "\"}").andExpect(status().isBadRequest());
+        // Rejecting the first payment takes back both its GB and its months.
+        mvc.perform(post("/api/admin/billing/payments/" + pay + "/reject").header("Authorization", bearer(adminToken()))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT storage_quota_gb FROM events WHERE id = ?", Integer.class, eventId)).isEqualTo(10);
+        assertThat(jdbc.queryForObject("SELECT active_until FROM events WHERE id = ?", Date.class, eventId).toLocalDate())
+                .isEqualTo(before.toLocalDate().plusMonths(1));
+    }
+
+    @Test
     void whenRetentionEndsThePhotosGoButTheEventRecordStaysArchived() throws Exception {
         buy("{\"item\":\"MAIN_EVENT\",\"utr\":\"" + utr() + "\"}");
         String id = eventId(event("MAIN", "2026-11-01").andReturn().getResponse().getContentAsString());

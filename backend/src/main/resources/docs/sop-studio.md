@@ -112,7 +112,14 @@ Setting up a new laptop? Press **Install uploader** in the top bar of the dashbo
 Every camera needs its own **uploader**. One laptop with the McreatiK Instant Memories Uploader app can serve up to 4 cameras: add the extra cameras in the app with **+ Add camera** (you name each one there), and each appears here by itself. On the laptop, each event gets one folder with a sub-folder per camera.
 
 1. Open the event. On **Overview**, under **Cameras & uploaders**, type a name such as "Camera 1 · Canon R6 II" and press **Add camera & get code**.
-2. A **connection code** appears. **It's shown only once**, so press **Copy code** and paste it into the uploader (see the [Uploader guide](/admin/docs/guide-uploader)). The code is all the uploader needs. There is no studio sign-in in the app. A laptop already used for an earlier event: press **Change event…** in the uploader and paste the new code ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)).
+2. A **connection code** appears. **It's shown only once**, so press **Copy code** and paste it into the uploader (see the [Uploader guide](/admin/docs/guide-uploader)). The code is all the uploader needs. There is no studio sign-in in the app. 
+
+   After installing, in short (full steps in the [Uploader guide](/admin/docs/guide-uploader#2-start-and-connect-to-the-event)):
+
+   - **First open:** Windows → More info → Run anyway; Mac → System Settings → Privacy & Security → Open Anyway.
+   - **Connect:** in the uploader press **Paste**, choose the photo folder, choose camera Wi-Fi (FTP) or folder, then **Connect**.
+   - **Camera Wi-Fi:** type the Server, Port, User and Password shown on the Live page into the camera's FTP settings, then take a test shot and check it appears.
+   - **Change to another event:** wait until everything is uploaded (the queue is empty), then **Events → Change event…**, paste the new event's code and press **Connect**. The uploader restarts on the new event ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)).
 
 ![Add camera & get code: the one-time connection code](images/s-add-uploader.webp)
 

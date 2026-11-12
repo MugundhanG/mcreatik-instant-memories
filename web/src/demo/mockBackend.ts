@@ -335,7 +335,7 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
 
   // ---- admin ----
   if (path === '/api/admin/account' && method === 'GET') {
-    return json({ email: 'demo@mcreatik.com', displayName: 'Demo', role: 'SUPER_ADMIN', mustChangePassword: false })
+    return json({ email: 'demo@mcreatik.com', displayName: 'Demo', role: 'SUPER_ADMIN', mustChangePassword: false, brand: { name: 'McreatiK Studios', logoUrl: null, instagram: null, mcreatik: true, logoScale: 100, boardTheme: 'cream', phone: null } })
   }
   // The internal documentation lives on the real server only.
   if (path.startsWith('/api/admin/docs')) return json({ code: 'FORBIDDEN', message: 'The guides are not part of the demo. In the real dashboard they are under Guides.' }, 403)
@@ -343,7 +343,7 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
   if (path === '/api/admin/account/password' && method === 'POST') return new Response(null, { status: 204 })
   if (path === '/api/admin/studios' && method === 'GET') {
     const photos = events.reduce((n, e) => n + e.photos.length, 0)
-    return json([{ id: DEMO_OWNER, name: 'Demo', email: 'demo@mcreatik.com', role: 'SUPER_ADMIN', disabled: false, mustChangePassword: false, createdAt: '2026-01-01T00:00:00Z', events: events.length, photos, storageBytes: photos * 4_000_000 },
+    return json([{ id: DEMO_OWNER, name: 'Demo', email: 'demo@mcreatik.com', role: 'SUPER_ADMIN', disabled: false, mustChangePassword: false, createdAt: '2026-01-01T00:00:00Z', events: events.length, photos, storageBytes: photos * 4_000_000, brand: { name: 'McreatiK Studios', logoUrl: null, instagram: null, mcreatik: true, logoScale: 100, boardTheme: 'cream', phone: null } },
       { id: 'demo-studio-1', name: 'Lens & Light Studio', email: 'owner@lenslight.in', role: 'STUDIO', disabled: false, mustChangePassword: false, createdAt: '2026-03-12T00:00:00Z', events: 14, photos: 5230, storageBytes: 21e9, brand: { name: 'Lens & Light Studio', logoUrl: null, instagram: 'lenslight.in', mcreatik: false, phone: '+919876543210' } },
       { id: 'demo-studio-2', name: 'Frame Stories', email: 'hello@framestories.com', role: 'STUDIO', disabled: false, mustChangePassword: true, createdAt: '2026-10-30T00:00:00Z', events: 0, photos: 0, storageBytes: 0, brand: { name: 'Frame Stories', logoUrl: null, instagram: null, mcreatik: false } }])
   }

@@ -17,7 +17,7 @@ function day(iso: string, plusDays = 0) {
 
 /**
  * Storage and the active period of one event: how much it uses of what it has, how long it stays open, and the
- * buttons to add storage or keep it open more months. McreatiK's own and unlimited studios have no limits here.
+ * one button to add storage, months, or both. McreatiK's own and unlimited studios have no limits here.
  */
 export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
   event: EventDetail
@@ -33,8 +33,6 @@ export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
   const quotaBytes = quota * GB
   const over = Math.max(0, bytes - quotaBytes)
   const neededGb = Math.max(1, Math.ceil(over / GB))
-  // Keeping it open is charged on all the storage it can hold (its quota, or what it uses if that is more).
-  const extendGb = Math.max(1, quota, Math.ceil(bytes / GB))
   const percent = quotaBytes > 0 ? Math.min(100, Math.round((bytes / quotaBytes) * 100)) : bytes > 0 ? 100 : 0
   const free = billing.free
   const { storageGb, activeMonths } = billing.prices
@@ -44,7 +42,8 @@ export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
   return (
     <Card title="Gallery & storage">
       {buying && (
-        <BuyEventsDialog billing={billing} purchase={buying} onClose={() => setBuying(null)} onPaid={() => {
+        <BuyEventsDialog billing={billing} purchase={buying}
+          storage={{ quota, usedGb: Math.max(1, Math.ceil(bytes / GB)), monthsLeft: months }} onClose={() => setBuying(null)} onPaid={() => {
           setBuying(null)
           onChanged()
         }} />
@@ -83,15 +82,14 @@ export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
 
         {!free && (
           <div className="flex flex-wrap gap-2">
-            <Button variant={over > 0 || (client && quota === 0) ? 'primary' : 'secondary'}
-              onClick={() => setBuying({ item: 'STORAGE', eventId: event.id, months, quantity: over > 0 ? Math.max(5, neededGb) : client && quota === 0 ? 25 : 10 })}>
-              Add storage
+            <Button variant={over > 0 || event.expired || (client && quota === 0) ? 'primary' : 'secondary'}
+              onClick={() => setBuying({
+                item: 'STORAGE_EXTEND', eventId: event.id,
+                storageGb: over > 0 ? Math.max(5, neededGb) : client && quota === 0 ? 25 : event.expired ? 0 : 10,
+                months: event.expired ? activeMonths : 0,
+              })}>
+              Change storage &amp; months
             </Button>
-            {event.activeUntil && (
-              <Button variant={event.expired ? 'primary' : 'secondary'} onClick={() => setBuying({ item: 'EXTEND', eventId: event.id, quantity: extendGb, months: activeMonths })}>
-                Keep more months · from {rupees(extendGb * storageGb)} a month
-              </Button>
-            )}
           </div>
         )}
         {!free && <p className="text-xs text-muted">Storage is {rupees(storageGb)} per GB a month ({rupees(storageGb * months)} per GB for the {months} month{months === 1 ? '' : 's'} this gallery has left), about {photosPerGb(1)} full-quality photos per GB. Main and Quick events include {billing.prices.freeStorageGb} GB for {activeMonths} months; storage is added from 5 GB.</p>}

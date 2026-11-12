@@ -3,7 +3,7 @@ import { adminApi, ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
 import type { BillingSummary, Plan, Purchase } from '../lib/types'
 import { qrSvg } from '../shared/qr'
-import { describe, PACKS, photosPerGb, PLAN_LABEL, packPrice, rupees, unitPrice } from './plans'
+import { describe, PACKS, photosPerGb, PLAN_LABEL, packPrice, rupees, storageExtendPrice, unitPrice, type StorageContext } from './plans'
 import { Button, ErrorText, inputClass } from './ui'
 
 /** upi://pay link: any UPI app (GPay, PhonePe, Paytm…) opens it with payee and amount filled in. */
@@ -20,6 +20,7 @@ const TITLE: Record<Purchase['item'], string> = {
   STORAGE: 'Add storage',
   CLIENT_SETUP: 'Client galleries',
   EXTEND: 'Keep more months',
+  STORAGE_EXTEND: 'Change storage & months',
 }
 
 /** Preset storage sizes; any whole number of GB from MIN_GB can be typed too. */
@@ -39,7 +40,7 @@ function Stepper({ label, value, min, max, onChange, unit }: { label: string; va
 }
 
 /** Storage choices: the presets and a custom size (a whole number from MIN_GB). `allowNone` adds "Later" (0). */
-function GbPicker({ label, value, onChange, allowNone }: { label: string; value: number; onChange: (gb: number) => void; allowNone?: boolean }) {
+function GbPicker({ label, value, onChange, allowNone, noneLabel = 'Later' }: { label: string; value: number; onChange: (gb: number) => void; allowNone?: boolean; noneLabel?: string }) {
   const presets = allowNone ? [0, ...GB_PACKS] : GB_PACKS
   const custom = !presets.includes(value)
   return (
@@ -48,16 +49,16 @@ function GbPicker({ label, value, onChange, allowNone }: { label: string; value:
         {presets.map((gb) => (
           <button key={gb} type="button" role="radio" aria-checked={value === gb} onClick={() => onChange(gb)}
             className={`rounded-lg border px-1 py-2.5 text-center transition-colors ${value === gb ? 'border-ink bg-stone-50 font-medium' : 'border-line hover:border-stone-400'}`}>
-            {gb === 0 ? 'Later' : `${gb} GB`}
+            {gb === 0 ? noneLabel : `${gb} GB`}
           </button>
         ))}
       </div>
       <label className="mt-2 flex items-center gap-2 text-sm">
-        <span className="text-muted">Other size</span>
-        <input type="number" inputMode="numeric" min={MIN_GB} step={1} aria-label={`${label}: other size in GB`} className={`${inputClass} w-24`}
+        <span className="whitespace-nowrap text-muted">Other size</span>
+        <input type="number" inputMode="numeric" min={MIN_GB} step={1} aria-label={`${label}: other size in GB`} className={`${inputClass} !w-24 shrink-0`}
           value={custom ? value : ''} placeholder={`${MIN_GB}+`}
           onChange={(e) => onChange(e.target.value === '' ? presets[0] : Math.floor(Number(e.target.value)))} />
-        <span className="text-muted">GB (from {MIN_GB})</span>
+        <span className="whitespace-nowrap text-muted">GB (from {MIN_GB})</span>
       </label>
     </div>
   )
@@ -68,12 +69,14 @@ function GbPicker({ label, value, onChange, allowNone }: { label: string; value:
  * gallery open more months or set up a client gallery. The one way to pay is McreatiK's UPI QR: scan, pay, enter the
  * transaction ID (UTR); usable at once, McreatiK checks the payment afterwards. The amount shown uses the same prices as the server, which prices every purchase again.
  */
-export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, onClose }: {
+export function BuyEventsDialog({ billing, purchase: initial, reason, storage, onPaid, onClose }: {
   billing: BillingSummary
   /** What to buy; the studio can change the number (and Main / Quick for events, the pack for a plan). */
   purchase?: Purchase
   /** Why it opened, e.g. "You have used your 4 events for this month." */
   reason?: string
+  /** STORAGE_EXTEND: what the event has now, to price the change. */
+  storage?: StorageContext
   onPaid: () => void
   onClose: () => void
 }) {
@@ -86,13 +89,19 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
   // Months: a client gallery's open months (default 1), more months for an event (default the included months), or
   // the months a gallery has left (storage).
   const months = purchase.months ?? (purchase.item === 'CLIENT_SETUP' ? 1 : billing.prices.activeMonths)
+  const combined = purchase.item === 'STORAGE_EXTEND'
+  const addGb = combined ? purchase.storageGb ?? 0 : 0
+  const addMonths = combined ? purchase.months ?? 0 : 0
+  const ctx: StorageContext = storage ?? { quota: 0, usedGb: 1, monthsLeft: billing.prices.activeMonths }
+  const ext = storageExtendPrice(billing.prices, ctx, addGb, addMonths)
   const unit = unitPrice(purchase.item, billing, purchase.plan, months)
   const title = TITLE[purchase.item]
   // A client gallery can be paid together with its storage for the months chosen (one gallery at a time).
   const setupGb = purchase.item === 'CLIENT_SETUP' ? purchase.storageGb ?? 0 : 0
   const perSetupGb = billing.prices.storageGb * months
-  const amount = quantity * unit + setupGb * perSetupGb
+  const amount = combined ? ext.total : quantity * unit + setupGb * perSetupGb
   const invalid = (purchase.item === 'STORAGE' && quantity < MIN_GB) || (setupGb !== 0 && setupGb < MIN_GB)
+    || (combined && ((addGb !== 0 && addGb < MIN_GB) || (addGb === 0 && addMonths === 0)))
   const label = describe(purchase, billing)
   const link = billing.upiId ? upiLink(billing.upiId, billing.payeeName, amount, label) : null
   const isEvents = purchase.item === 'MAIN_EVENT' || purchase.item === 'QUICK_EVENT'
@@ -126,7 +135,9 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
     }
   }
 
-  const defaultReason = purchase.item === 'STORAGE'
+  const defaultReason = combined
+    ? `Add storage, keep the gallery open longer, or both: one total, one payment. Storage is ${rupees(billing.prices.storageGb)} per GB a month; the ${billing.prices.freeStorageGb} GB × ${billing.prices.activeMonths} months included with every Main or Quick event are already covered.`
+    : purchase.item === 'STORAGE'
     ? `Storage for this gallery until it closes: ${rupees(billing.prices.storageGb)} per GB a month × ${months} month${months === 1 ? '' : 's'} = ${rupees(unit)} per GB. About ${photosPerGb(1)} full-quality photos per GB.`
     : purchase.item === 'CLIENT_SETUP'
       ? `A gallery for the couple only, without a live event: ${rupees(billing.prices.clientSetup)} each to set up, then storage at ${rupees(billing.prices.storageGb)} per GB a month for the months you choose.`
@@ -165,6 +176,21 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
                 ))}
               </div>
             )}
+            {combined && (
+              <div className="space-y-3">
+                <div>
+                  <p className="mb-1.5 text-sm font-medium">Add storage <span className="font-normal text-muted">· now {ctx.quota} GB</span></p>
+                  <GbPicker label="Add storage" value={addGb} allowNone noneLabel="None" onChange={(gb) => change({ storageGb: gb })} />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Add months</p>
+                    <p className="text-xs text-muted">{ctx.monthsLeft} month{ctx.monthsLeft === 1 ? '' : 's'} left now</p>
+                  </div>
+                  <Stepper label="months" unit="month" value={addMonths} min={0} max={MAX_MONTHS} onChange={(m) => change({ months: m })} />
+                </div>
+              </div>
+            )}
             {purchase.item === 'STORAGE' && <GbPicker label="Storage" value={quantity} onChange={(gb) => change({ quantity: gb })} />}
             {purchase.item === 'CLIENT_SETUP' && (
               <div className="space-y-3">
@@ -192,6 +218,20 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
               </label>
             )}
 
+            {combined ? (
+              <div className="rounded-xl bg-stone-50 p-3 text-sm" data-testid="breakdown">
+                {addGb > 0 && (
+                  <p className="flex justify-between gap-3"><span className="text-muted">{addGb} GB × {rupees(billing.prices.storageGb)} × {ctx.monthsLeft} month{ctx.monthsLeft === 1 ? '' : 's'} left</span><span className="tabular-nums">{rupees(ext.storage)}</span></p>
+                )}
+                {addMonths > 0 && (
+                  <p className="flex justify-between gap-3"><span className="text-muted">{ext.after} GB × {rupees(billing.prices.storageGb)} × {addMonths} added month{addMonths === 1 ? '' : 's'}</span><span className="tabular-nums">{rupees(ext.time)}</span></p>
+                )}
+                <p className="mt-1.5 flex items-baseline justify-between gap-3 border-t border-line pt-1.5">
+                  <span className="font-medium">Total</span>
+                  <span className="text-xl font-semibold tabular-nums" data-testid="amount">{rupees(amount)}</span>
+                </p>
+              </div>
+            ) : (
             <div className="flex items-center justify-between rounded-xl bg-stone-50 p-3">
               {purchase.item === 'EXTEND' ? (
                 <Stepper label="months" unit="month" value={months} min={1} max={MAX_MONTHS} onChange={(m) => change({ months: m })} />
@@ -209,6 +249,7 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, onPaid, on
                 <span className="text-xl font-semibold tabular-nums" data-testid="amount">{rupees(amount)}</span>
               </p>
             </div>
+            )}
 
             {link && (
               <form onSubmit={submit} className="space-y-4">

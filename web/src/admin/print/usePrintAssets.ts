@@ -38,7 +38,7 @@ export function usePrintAssets(brand: Brand | undefined, logoFromApi?: () => Pro
 
   useEffect(() => {
     let cancelled = false
-    const studioLogo = brand && !brand.mcreatik && !!brand.logoUrl
+    const studioLogo = !!brand?.logoUrl
     Promise.all([embeddedFonts(), loadLogo(logoUrl, studioLogo ? logoFromApi : undefined)])
       .then(([fonts, logo]) => {
         if (!cancelled) setState({ fonts, logo, logoUrl })

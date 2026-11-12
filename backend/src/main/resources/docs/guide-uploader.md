@@ -55,7 +55,17 @@ The first time, the **Setup** window opens:
 
 ![Setup with the connection code pasted, ready to connect](images/uploader-setup-filled.webp)
 
-Next time it remembers the event and goes straight to the main window. To use the laptop for a **different event**, press **Change event…** (section 4).
+Next time it remembers the event and goes straight to the main window.
+
+**After installing, in short:**
+
+1. **First open:** Windows → **More info → Run anyway**; Mac → **System Settings → Privacy & Security → Open Anyway**.
+2. **Get the code:** open the event → **Overview → Cameras & uploaders → Add camera & get code → Copy code**.
+3. **Connect:** in the uploader press **Paste**, choose the photo folder, choose **camera Wi-Fi (FTP)** or **folder**, then **Connect**.
+4. **Camera Wi-Fi:** type the **Server, Port, User and Password** shown on the event's **Live** page into the camera's FTP settings, then take a test shot and check that it appears.
+5. **More cameras:** press **+ Add camera** in the uploader and use the port it shows.
+6. **Change to another event:** wait until everything is uploaded (the queue is empty), then **Events → Change event…**, paste the new event's code and press **Connect**. The uploader restarts on the new event (section 4).
+7. **Freelancer:** send them the code and the download link. **Get new code** removes their access.
 
 ## 3. The main window
 
@@ -95,7 +105,7 @@ The uploader remembers its event, even after you close it or install an update. 
 
 ![Change event… is on the right of the event card (also on the Events page)](images/uploader-change-event-button.webp)
 
-1. Check **Waiting** and **Uploading** are both **0**, so every photo has reached the event you just shot.
+1. Wait until everything is uploaded: **Waiting** and **Uploading** are both **0**, so every photo has reached the event you just shot.
 2. In the **new** event's dashboard, go to **Overview → Cameras & uploaders**:
    - No camera there yet: type a name, press **Add camera & get code**, then **Copy code**.
    - The camera is already listed (you added it when you created the event): press **Get new code** next to it, then **Copy code**. The dashboard never shows a code again after its pop-up closes, so this is how you get one later.
