@@ -9,7 +9,7 @@ This is the standard operating procedure for the **McreatiK super admin**: the p
 | Task | Where | How often |
 | --- | --- | --- |
 | Add a studio and send its login | Studios → Add studio | Each new studio |
-| Approve a manual UPI payment (only without Razorpay; online and UPI QR ones need nothing) | Studios → Payments to check | Same day |
+| Approve a UPI payment | Studios → Payments to check | Same day |
 | Change a studio's plan or events | Studios → All logins → Give / take events | When agreed |
 | Turn a gallery off or on | Event → Settings → Gallery access | On request |
 | Remove a photo after a request | Event → Photos → More → Delete | Within 3 working days |
@@ -63,13 +63,9 @@ As the super admin you see extra menu items that studios never see: **Studios**,
 
 ### 4.1 Approve a payment
 
-Studios buy extra events from their Events page (see the Studio SOP), online or by UPI QR.
+Studios buy extra events from their Events page (see the Studio SOP) by UPI QR.
 
-**Online payments (card, netbanking, UPI, wallet through Razorpay) need no checking.** The server confirms each one with Razorpay and adds the events at once; they never appear in Payments to check. They land in the same Razorpay account as the website's store (note **Instant Memories** and the studio ID on the payment). To refund a duplicate or failed charge: Razorpay Dashboard → Payments → the `pay_…` ID → **Refund**, then take the events back under **Give / take events** if they were added.
-
-**UPI QR payments are confirmed automatically too**: the dialog shows a single-use Razorpay QR for the exact amount, and Razorpay tells the server when it is paid. They also never appear in Payments to check.
-
-**Manual UPI payments** (only while Razorpay isn't set up: the QR then uses your own UPI ID) arrive in **Payments to check** with the amount and the **UTR** (UPI transaction ID).
+Payments arrive in **Payments to check** with the amount and the **UTR** (UPI transaction ID). What the studio bought is usable at once; you only confirm the money arrived.
 
 1. Open your bank or UPI app and find a credit with **the same UTR and amount**.
 2. Found it → press **Received**. The events are added to the studio straight away.

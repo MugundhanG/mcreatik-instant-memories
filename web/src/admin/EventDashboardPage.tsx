@@ -325,7 +325,7 @@ export default function EventDashboardPage() {
       )}
 
       <section {...panel('couple')} className="anim-fade-in">
-        <ClientsCard eventId={event.id} eventName={event.name} refreshKey={stats?.readyPhotos ?? 0} onClients={setEventClients} />
+        <ClientsCard eventId={event.id} eventName={event.name} eventSlug={event.slug} refreshKey={stats?.readyPhotos ?? 0} onClients={setEventClients} />
       </section>
 
       <section {...panel('settings')} className="anim-fade-in space-y-6">

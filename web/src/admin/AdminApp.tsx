@@ -1,22 +1,24 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { PolicyLinks } from '../shared/policies/PolicyLayout'
+import { SiteFooter } from '../shared/SiteFooter'
 import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router'
 import { adminApi } from '../lib/api'
 import mkLogo from '../assets/mk-logo.webp'
 import { PageLoader } from '../shared/ShutterLoader'
 import { usePresence } from '../shared/usePresence'
-import AccountPage from './AccountPage'
 import { auth, useSession } from './auth'
-import EventDashboardPage from './EventDashboardPage'
 import EventsPage from './EventsPage'
 import { DownloadIcon } from './icons'
-import InstallUploaderPage from './InstallUploaderPage'
 import LoginPage from './LoginPage'
-import NewEventPage from './NewEventPage'
-import PrintQrPage from './PrintQrPage'
-import StudiosPage from './StudiosPage'
 
 // McreatiK's documentation (diagrams, Markdown) is a separate download, fetched only when opened.
+// Pages load when opened: signing in and the events list no longer download the rest of the dashboard.
+const AccountPage = lazy(() => import('./AccountPage'))
+const EventDashboardPage = lazy(() => import('./EventDashboardPage'))
+const InstallUploaderPage = lazy(() => import('./InstallUploaderPage'))
+const NewEventPage = lazy(() => import('./NewEventPage'))
+const PrintQrPage = lazy(() => import('./PrintQrPage'))
+const PricingPage = lazy(() => import('./PricingPage'))
+const StudiosPage = lazy(() => import('./StudiosPage'))
 const DocsPage = lazy(() => import('./docs/DocsPage'))
 const EventCardsPage = lazy(() => import('./print/EventCardsPage'))
 
@@ -46,7 +48,7 @@ function Layout({ wide = false }: { wide?: boolean }) {
   const phoneLinks = [
     { to: '/admin', label: 'Events' },
     { to: '/admin/install', label: 'Install uploader' },
-    ...(superAdmin ? [{ to: '/admin/studios', label: 'Studios' }] : []),
+    ...(superAdmin ? [{ to: '/admin/studios', label: 'Studios' }, { to: '/admin/pricing', label: 'Pricing & payments' }] : []),
     { to: '/admin/docs', label: superAdmin ? 'Docs' : 'Guides' },
     { to: '/admin/account', label: session?.displayName ? `Account · ${session.displayName}` : 'Account' },
   ]
@@ -68,6 +70,7 @@ function Layout({ wide = false }: { wide?: boolean }) {
               Install uploader
             </NavLink>
             {superAdmin && <NavLink to="/admin/studios" className={navClass}>Studios</NavLink>}
+            {superAdmin && <NavLink to="/admin/pricing" className={navClass}>Pricing &amp; payments</NavLink>}
             <NavLink to="/admin/docs" className={navClass}>{superAdmin ? 'Docs' : 'Guides'}</NavLink>
             <NavLink to="/admin/account" className={navClass} title={session?.email}>{session?.displayName}</NavLink>
             <button type="button" onClick={auth.signOut} className="text-muted hover:text-ink">
@@ -99,15 +102,20 @@ function Layout({ wide = false }: { wide?: boolean }) {
         )}
       </header>
       {wide ? (
-        <Suspense fallback={<PageLoader />}>
-          <Outlet />
-        </Suspense>
+        <>
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
+          <SiteFooter className="py-6" />
+        </>
       ) : (
         <>
           <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-            <Outlet />
+            <Suspense fallback={<PageLoader />}>
+              <Outlet />
+            </Suspense>
           </main>
-          <PolicyLinks className="pb-8" />
+          <SiteFooter className="pb-8" />
         </>
       )}
     </div>
@@ -125,13 +133,14 @@ export default function AdminApp() {
     <Routes>
       <Route path="login" element={<LoginPage />} />
       <Route element={<RequireSession />}>
-        <Route path="events/:eventId/print" element={<PrintQrPage />} />
+        <Route path="events/:eventId/print" element={<Suspense fallback={<PageLoader />}><PrintQrPage /></Suspense>} />
         <Route element={<Layout />}>
           <Route index element={<EventsPage />} />
           <Route path="events/new" element={<NewEventPage />} />
           <Route path="events/:eventId" element={<EventDashboardPage />} />
           <Route path="events/:eventId/cards" element={<Suspense fallback={<PageLoader />}><EventCardsPage /></Suspense>} />
           <Route path="studios" element={<StudiosPage />} />
+          <Route path="pricing" element={<PricingPage />} />
           <Route path="account" element={<AccountPage />} />
           <Route path="install" element={<InstallUploaderPage />} />
         </Route>

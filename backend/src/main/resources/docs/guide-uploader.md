@@ -48,7 +48,7 @@ The first time, the **Setup** window opens:
 
 1. **Connection code:** the code is all the app asks for. There is no studio sign-in. Copy the code from the event dashboard (Overview → Cameras & uploaders → **Add camera & get code** → **Copy code**; for a camera you already added, **Get new code**), then press **Paste**.
 2. **Folder for photos on this computer:** the default "McreatiK Photos" in your home folder is fine.
-3. **How photos arrive:** keep **"Receive photos from the camera over Wi-Fi"** ticked for Canon or Sony FTP. Untick it only if your camera software already saves into a folder.
+3. **How photos arrive:** keep **"Receive photos from the camera over Wi-Fi"** ticked for any camera with FTP transfer (Wi-Fi/FTP upload). Untick it only if your camera software already saves into a folder.
 4. Press **Connect**. If something is wrong, the reason appears in red under the form:
 
 ![A damaged connection code is explained in red](images/uploader-setup-error.webp)
@@ -79,7 +79,7 @@ The light and dark look are switched with **Light | Dark** at the top right. The
 
 ![Dark mode: the same screen, easier on the eyes at night](images/uploader-dark.webp)
 
-Now set up the camera: [Canon EOS R6 Mark II](/admin/docs/guide-canon) · [Sony α7 IV](/admin/docs/guide-sony).
+Now set up the camera (any camera with FTP transfer works; we have step-by-step examples): [Canon EOS R6 Mark II](/admin/docs/guide-canon) · [Sony α7 IV](/admin/docs/guide-sony).
 
 When the first photo arrives, the **Camera** stage of the pipeline turns green (**Receiving**), and the status card counts the photos received.
 

@@ -17,19 +17,22 @@ interface Credentials {
   phone?: string
 }
 
-const clientLoginUrl = () => `${window.location.origin}/client`
+/** The couple's link: with the event's address, so an email used for several events opens the right one. */
+const clientLoginUrl = (slug?: string) => `${window.location.origin}/client${slug ? `/login?event=${encodeURIComponent(slug)}` : ''}`
 
-function clientMessage(c: Credentials, eventName: string) {
-  return `Hi ${c.name}! Your photos from ${eventName} are ready.\n\nView all photos in full quality and choose your favourites for the album:\n${clientLoginUrl()}\n\nEmail: ${c.email}\nTemporary password: ${c.password}\n\nYou'll choose your own password when you first log in.`
+function clientMessage(c: Credentials, eventName: string, slug?: string) {
+  return `Hi ${c.name}! Your photos from ${eventName} are ready.\n\nView all photos in full quality and choose your favourites for the album:\n${clientLoginUrl(slug)}\n\nEmail: ${c.email}\nTemporary password: ${c.password}\n\nYou'll choose your own password when you first log in.`
 }
 
 /**
  * The couple's login for this event (one per event: both of them share it) and their album selection.
  * They see every photo by category, download originals, and select their favourites for the album.
  */
-export function ClientsCard({ eventId, eventName, refreshKey, onClients }: {
+export function ClientsCard({ eventId, eventName, eventSlug, refreshKey, onClients }: {
   eventId: string
   eventName: string
+  /** The event's gallery address, put in the couple's login link. */
+  eventSlug?: string
   refreshKey: number
   /** The event page shows the login in its header too. */
   onClients?: (clients: EventClient[]) => void
@@ -63,7 +66,7 @@ export function ClientsCard({ eventId, eventName, refreshKey, onClients }: {
   }, [load, refreshKey])
 
   const outgoing = (c: Credentials): Outgoing => ({
-    email: c.email, phone: c.phone, subject: `Your photos from ${eventName}`, message: clientMessage(c, eventName),
+    email: c.email, phone: c.phone, subject: `Your photos from ${eventName}`, message: clientMessage(c, eventName, eventSlug),
   })
 
   const create = async (e: FormEvent) => {
@@ -131,7 +134,7 @@ export function ClientsCard({ eventId, eventName, refreshKey, onClients }: {
   }
 
   const copyLink = async () => {
-    await navigator.clipboard?.writeText(clientLoginUrl())
+    await navigator.clipboard?.writeText(clientLoginUrl(eventSlug))
     setNote('Login page link copied')
   }
 
@@ -145,7 +148,7 @@ export function ClientsCard({ eventId, eventName, refreshKey, onClients }: {
         {credentials && (
           <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
             <p className="text-sm font-medium">Login for {credentials.name}: send it now (the password is shown only once)</p>
-            <pre className="mt-2 overflow-x-auto rounded-lg bg-white p-3 text-sm whitespace-pre-wrap" data-testid="client-credentials">{clientMessage(credentials, eventName)}</pre>
+            <pre className="mt-2 overflow-x-auto rounded-lg bg-white p-3 text-sm whitespace-pre-wrap" data-testid="client-credentials">{clientMessage(credentials, eventName, eventSlug)}</pre>
             <SendButtons outgoing={outgoing(credentials)} onDone={() => setCredentials(null)} />
           </div>
         )}
@@ -168,7 +171,7 @@ export function ClientsCard({ eventId, eventName, refreshKey, onClients }: {
                   <div className="sm:col-span-2">
                     <dt className="text-xs text-muted">Login page</dt>
                     <dd className="flex flex-wrap items-center gap-2">
-                      <a href={clientLoginUrl()} target="_blank" rel="noopener noreferrer" className="break-all underline underline-offset-4">{clientLoginUrl().replace(/^https?:\/\//, '')}</a>
+                      <a href={clientLoginUrl(eventSlug)} target="_blank" rel="noopener noreferrer" className="break-all underline underline-offset-4">{clientLoginUrl(eventSlug).replace(/^https?:\/\//, '')}</a>
                       <button type="button" onClick={copyLink} className="text-xs text-muted underline underline-offset-2 hover:text-ink">Copy</button>
                     </dd>
                   </div>

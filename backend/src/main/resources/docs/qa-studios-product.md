@@ -5,7 +5,7 @@ These are the questions photographers ask when they want to know how it works on
 | Question | Answer |
 | --- | --- |
 | How do photos get from my camera to guests? | The camera sends each photo over Wi-Fi (FTP) to a laptop running the Instant Memories uploader. The laptop makes a light, sharp copy and uploads it, and it appears in the guest gallery within seconds. |
-| Which cameras work? | Any camera with FTP transfer over Wi-Fi (for example the Canon EOS R6 Mark II). Without FTP, the uploader can also watch a folder, such as a card-reader or tethering folder. |
+| Which cameras work? | Any camera with FTP transfer (Wi-Fi/FTP upload), for example Canon or Sony. Without FTP, the uploader can also watch a folder, such as a card-reader or tethering folder. |
 | Can several photographers upload to one event? | Yes. Add one uploader per camera or laptop. Each gets its own connection code, and the dashboard shows which cameras are online and how many photos each sent. For a freelancer, press Add camera & get code and WhatsApp them the code and the uploader download link. Press Get new code to end their access. |
 | What if the venue internet drops? | Nothing is lost. The laptop saves every photo to its queue first and uploads when the connection returns. Guests' phones catch up automatically. |
 | Does it upload my full RAW or JPEG files? | By default only a light gallery copy (about 1 MB) is sent during the event, so it stays fast on venue internet. Originals stay on your card and laptop; you can upload full-quality finals later to the Client gallery from the dashboard. RAW files aren't supported (JPEG and PNG only). |

@@ -91,7 +91,7 @@ export default function PrintQrPage() {
 
           <p className="mt-8 inline-flex items-center gap-2 rounded-full border border-[#d9a94e] px-[18px] py-[7px] text-[11px] font-semibold tracking-[0.3em] text-[#8a5a1c]">
             <span className="size-2 rounded-full bg-live" />
-            LIVE PHOTO GALLERY
+            MCREATIK INSTANT MEMORIES
           </p>
 
           <h1 className={`poster-gold-text mt-5 font-display leading-[1.05] font-medium text-balance ${namesSize(names)}`}>{names}</h1>

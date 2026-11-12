@@ -133,6 +133,49 @@ class AlbumAndClientsTest extends IntegrationTest {
     }
 
     @Test
+    void oneEmailCanBeTheClientLoginOfSeveralEventsAndTheSlugOrAChoiceSaysWhich() throws Exception {
+        Setup a = eventWithPhotos();
+        Setup b = eventWithPhotos();
+        String email = "again-" + UUID.randomUUID().toString().substring(0, 6) + "@client.test";
+        for (Setup s : List.of(a, b)) {
+            mvc.perform(admin(post("/api/admin/events/" + s.eventId() + "/clients"))
+                    .content("{\"name\":\"Arun\",\"email\":\"" + email + "\",\"password\":\"temporary-123\"}"))
+                    .andExpect(status().isCreated());
+        }
+        String slugA = JsonPath.read(json(admin(get("/api/admin/events/" + a.eventId()))), "$.slug");
+        String slugB = JsonPath.read(json(admin(get("/api/admin/events/" + b.eventId()))), "$.slug");
+        // Same email and password on two open events and no slug: the client is asked which.
+        mvc.perform(post("/api/client/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"temporary-123\"}").with(ip()))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CHOOSE_EVENT"))
+                .andExpect(jsonPath("$.events.length()").value(2))
+                .andExpect(jsonPath("$.events[*].slug").value(org.hamcrest.Matchers.containsInAnyOrder(slugA, slugB)));
+        // With the slug (from the client's link) it logs into that event.
+        String token = JsonPath.read(mvc.perform(post("/api/client/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"temporary-123\",\"eventSlug\":\"" + slugB + "\"}").with(ip()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), "$.token");
+        mvc.perform(get("/api/client/me").header("Authorization", bearer(token)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.event.name").value("Album"));
+        // A wrong password never lists the events.
+        mvc.perform(post("/api/client/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"wrong-password\"}").with(ip()))
+                .andExpect(status().isUnauthorized());
+        // If only one of them is still open, no choice is needed.
+        jdbc.update("UPDATE events SET client_gallery_enabled = false WHERE id = ?", UUID.fromString(a.eventId()));
+        mvc.perform(post("/api/client/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"temporary-123\"}").with(ip()))
+                .andExpect(status().isOk());
+    }
+
+    private static org.springframework.test.web.servlet.request.RequestPostProcessor ip() {
+        int n = IPS.incrementAndGet();
+        return r -> {
+            r.setRemoteAddr("10.98.0." + n);
+            return r;
+        };
+    }
+
+    @Test
     void clientsOnlyReachTheirOwnEvent() throws Exception {
         Setup mine = eventWithPhotos();
         Setup other = eventWithPhotos();

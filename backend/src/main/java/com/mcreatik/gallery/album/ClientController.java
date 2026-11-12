@@ -94,14 +94,18 @@ public class ClientController {
         }
     }
 
-    private ClientRow row(String where, Object arg) {
-        List<ClientRow> rows = jdbc.query("""
+    private List<ClientRow> rows(String where, Object... args) {
+        return jdbc.query("""
                 SELECT id, event_id, name, email, password_hash, must_change_password, disabled, token_version,
                        reset_password_hash, reset_expires_at
                 FROM event_clients WHERE %s""".formatted(where), (rs, n) -> new ClientRow(
                 rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getString(3), rs.getString(4),
                 rs.getString(5), rs.getBoolean(6), rs.getBoolean(7), rs.getInt(8), rs.getString(9),
-                rs.getTimestamp(10) == null ? null : rs.getTimestamp(10).toInstant()), arg);
+                rs.getTimestamp(10) == null ? null : rs.getTimestamp(10).toInstant()), args);
+    }
+
+    private ClientRow row(String where, Object arg) {
+        List<ClientRow> rows = rows(where, arg);
         return rows.isEmpty() ? null : rows.getFirst();
     }
 
@@ -129,24 +133,61 @@ public class ClientController {
         return e;
     }
 
-    public record LoginRequest(String email, String password) {
+    /** {@code eventSlug}: the event of the client's link; optional when the email belongs to one event only. */
+    public record LoginRequest(String email, String password, String eventSlug) {
     }
 
     public record LoginResponse(String token, Instant expiresAt, String name, boolean mustChangePassword) {
     }
 
+    /** Sent with 409 CHOOSE_EVENT: the events this email and password open; log in again with one's {@code slug}. */
+    public record EventChoice(String slug, String name, java.time.LocalDate eventDate) {
+    }
+
+    public record ChooseEvent(String code, String message, List<EventChoice> events) {
+    }
+
     @PostMapping("/auth/login")
-    public LoginResponse login(@RequestBody LoginRequest request) {
+    public org.springframework.http.ResponseEntity<?> login(@RequestBody LoginRequest request) {
         String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
-        ClientRow c = row("email = ?", email);
+        String slug = request.eventSlug() == null ? "" : request.eventSlug().trim().toLowerCase(Locale.ROOT);
+        // One email can be the login of several events: the slug (from the client's link) says which one.
+        List<ClientRow> candidates = slug.isEmpty() ? rows("lower(email) = ?", email)
+                : rows("lower(email) = ? AND event_id = (SELECT id FROM events WHERE slug = ?)", email, slug);
         String password = request.password() == null ? "" : request.password();
-        boolean matches = passwordEncoder.matches(password, c != null ? c.passwordHash() : dummyHash);
-        // "Forgot password": the emailed temporary password works too, until it expires.
-        String resetHash = c == null || matches ? null : c.validResetHash(Instant.now());
-        boolean temporary = resetHash != null && passwordEncoder.matches(password, resetHash);
-        if (c == null || !(matches || temporary)) {
+        if (candidates.isEmpty()) {
+            passwordEncoder.matches(password, dummyHash); // keeps the timing similar whether or not the email exists
+        }
+        record Match(ClientRow row, boolean temporary) {
+        }
+        List<Match> matching = new java.util.ArrayList<>();
+        for (ClientRow row : candidates) {
+            boolean ok = passwordEncoder.matches(password, row.passwordHash());
+            // "Forgot password": the emailed temporary password works too, until it expires.
+            String reset = ok ? null : row.validResetHash(Instant.now());
+            boolean temp = reset != null && passwordEncoder.matches(password, reset);
+            if (ok || temp) {
+                matching.add(new Match(row, temp));
+            }
+        }
+        if (matching.isEmpty()) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Email or password is not correct");
         }
+        if (matching.size() > 1) {
+            // Same email and password on several events: if only one is still open, that one; else ask which.
+            List<Match> open = matching.stream().filter(m -> openFor(m.row())).toList();
+            if (open.size() == 1) {
+                matching = open;
+            } else {
+                List<EventChoice> choices = matching.stream().map(m -> events.findById(m.row().eventId()).orElse(null))
+                        .filter(java.util.Objects::nonNull).map(e -> new EventChoice(e.getSlug(), e.getName(), e.getEventDate()))
+                        .toList();
+                return org.springframework.http.ResponseEntity.status(HttpStatus.CONFLICT).body(new ChooseEvent(
+                        "CHOOSE_EVENT", "This email has more than one gallery. Choose one.", choices));
+            }
+        }
+        ClientRow c = matching.getFirst().row();
+        boolean temporary = matching.getFirst().temporary();
         if (c.disabled()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_DISABLED", "This login has been turned off by the studio");
         }
@@ -166,7 +207,14 @@ public class ClientController {
         }
         jdbc.update("UPDATE event_clients SET last_login_at = now() WHERE id = ?", c.id());
         JwtService.IssuedToken token = jwt.issueClient(c.id(), c.eventId(), c.email(), version);
-        return new LoginResponse(token.token(), token.expiresAt(), c.name(), mustChange);
+        return org.springframework.http.ResponseEntity.ok(new LoginResponse(token.token(), token.expiresAt(), c.name(), mustChange));
+    }
+
+    /** Whether the login's event is open for the couple right now (not archived, switched on, not expired). */
+    private boolean openFor(ClientRow c) {
+        return !c.disabled() && events.findById(c.eventId()).filter(e -> e.getStatus() != com.mcreatik.gallery.event.EventStatus.ARCHIVED
+                && e.isClientGalleryEnabled()
+                && !e.isExpired(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata")))).isPresent();
     }
 
     public record ForgotPasswordRequest(String email) {

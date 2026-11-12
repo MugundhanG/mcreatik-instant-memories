@@ -150,20 +150,14 @@ export function BillingSettingsCard() {
         <Field label="Storage (₹ per GB per month)">
           <input className={inputClass} inputMode="numeric" value={s.storageGbPrice} onChange={num('storageGbPrice')} />
         </Field>
-        <Field label="Free storage with a live event (GB)">
+        <Field label="Storage included with a Main or Quick event (GB)" hint="Free for the included months below">
           <input className={inputClass} inputMode="numeric" value={s.freeStorageGb} onChange={num('freeStorageGb')} />
         </Field>
         <Field label="Client gallery setup (₹ each)">
           <input className={inputClass} inputMode="numeric" value={s.clientSetupPrice} onChange={num('clientSetupPrice')} />
         </Field>
-        <Field label="Galleries stay open (months)" hint="Then deleted 30 days later unless kept longer">
+        <Field label="Included months (and default length)" hint="Then the photos are deleted 30 days later unless kept longer">
           <input className={inputClass} inputMode="numeric" value={s.activeMonths} onChange={num('activeMonths')} />
-        </Field>
-        <Field label="Older Monthly package: extra event (₹)">
-          <input className={inputClass} inputMode="numeric" value={s.extraEventPrice} onChange={num('extraEventPrice')} />
-        </Field>
-        <Field label="Older Monthly package (₹/month)" hint="Only for studios still on it">
-          <input className={inputClass} inputMode="numeric" value={s.monthlyPrice} onChange={num('monthlyPrice')} />
         </Field>
         <div className="flex items-end justify-end gap-3">
           {saved && <span role="status" className="text-sm text-emerald-700">Saved ✓</span>}

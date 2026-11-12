@@ -33,7 +33,8 @@ export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
   const quotaBytes = quota * GB
   const over = Math.max(0, bytes - quotaBytes)
   const neededGb = Math.max(1, Math.ceil(over / GB))
-  const extendGb = Math.max(1, Math.ceil(bytes / GB))
+  // Keeping it open is charged on all the storage it can hold (its quota, or what it uses if that is more).
+  const extendGb = Math.max(1, quota, Math.ceil(bytes / GB))
   const percent = quotaBytes > 0 ? Math.min(100, Math.round((bytes / quotaBytes) * 100)) : bytes > 0 ? 100 : 0
   const free = billing.free
   const { storageGb, activeMonths } = billing.prices
@@ -68,7 +69,7 @@ export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
           <p data-testid="storage-over" role="status" className={`rounded-lg px-3 py-2 ${event.storageLocked ? 'bg-red-50 text-red-900' : 'bg-amber-50 text-amber-900'}`}>
             {event.storageLocked
               ? <><b>The couple's gallery is paused</b> until storage is added: this event uses {formatGb(over)} more than its {quota} GB. The guests' gallery and every photo are untouched.</>
-              : <>This event uses {formatGb(over)} more than the {quota} GB included. Add {neededGb} GB ({rupees(neededGb * storageGb * months)}) by <b>{day(event.eventDate, STORAGE_GRACE_DAYS)}</b> to keep the couple's gallery open. Uploads are never stopped.</>}
+              : <>This event uses {formatGb(over)} more than the {quota} GB included. Add {Math.max(5, neededGb)} GB ({rupees(Math.max(5, neededGb) * storageGb * months)}) by <b>{day(event.eventDate, STORAGE_GRACE_DAYS)}</b> to keep the couple's gallery open. Uploads are never stopped.</>}
           </p>
         )}
 
@@ -83,17 +84,17 @@ export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
         {!free && (
           <div className="flex flex-wrap gap-2">
             <Button variant={over > 0 || (client && quota === 0) ? 'primary' : 'secondary'}
-              onClick={() => setBuying({ item: 'STORAGE', eventId: event.id, months, quantity: over > 0 ? neededGb : client && quota === 0 ? 25 : 10 })}>
+              onClick={() => setBuying({ item: 'STORAGE', eventId: event.id, months, quantity: over > 0 ? Math.max(5, neededGb) : client && quota === 0 ? 25 : 10 })}>
               Add storage
             </Button>
             {event.activeUntil && (
-              <Button variant={event.expired ? 'primary' : 'secondary'} onClick={() => setBuying({ item: 'EXTEND', eventId: event.id, quantity: extendGb })}>
-                Keep {activeMonths} more months · {rupees(extendGb * storageGb * activeMonths)}
+              <Button variant={event.expired ? 'primary' : 'secondary'} onClick={() => setBuying({ item: 'EXTEND', eventId: event.id, quantity: extendGb, months: activeMonths })}>
+                Keep more months · from {rupees(extendGb * storageGb)} a month
               </Button>
             )}
           </div>
         )}
-        {!free && <p className="text-xs text-muted">Storage is {rupees(storageGb)} per GB a month ({rupees(storageGb * months)} per GB for the {months} month{months === 1 ? '' : 's'} this gallery has left), about {photosPerGb(1)} full-quality photos per GB. Live events include {billing.prices.freeStorageGb} GB.</p>}
+        {!free && <p className="text-xs text-muted">Storage is {rupees(storageGb)} per GB a month ({rupees(storageGb * months)} per GB for the {months} month{months === 1 ? '' : 's'} this gallery has left), about {photosPerGb(1)} full-quality photos per GB. Main and Quick events include {billing.prices.freeStorageGb} GB for {activeMonths} months; storage is added from 5 GB.</p>}
       </div>
     </Card>
   )

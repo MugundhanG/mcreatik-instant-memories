@@ -96,28 +96,33 @@ public class PasswordResets {
         List<Row> rows = jdbc.query("""
                 SELECT c.id, c.name, c.email, c.reset_requested_at
                 FROM event_clients c JOIN events e ON e.id = c.event_id
-                WHERE c.email = ? AND NOT c.disabled AND e.status <> 'ARCHIVED' AND e.client_gallery_enabled""",
+                WHERE lower(c.email) = ? AND NOT c.disabled AND e.status <> 'ARCHIVED' AND e.client_gallery_enabled""",
                 (rs, n) -> new Row(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3),
                         rs.getTimestamp(4) == null ? null : rs.getTimestamp(4).toInstant()), clean(rawEmail));
-        if (rows.isEmpty() || throttled(rows.getFirst().requestedAt(), now)) {
+        // One email may log in to several events: every login gets the same temporary password, in one email.
+        List<Row> due = rows.stream().filter(r -> !throttled(r.requestedAt(), now)).toList();
+        if (due.isEmpty()) {
             return;
         }
-        Row c = rows.getFirst();
-        jdbc.update("""
-                UPDATE event_clients SET reset_password_hash = ?, reset_expires_at = ?, reset_requested_at = ?
-                WHERE id = ?""", hash, java.sql.Timestamp.from(now.plus(VALID_FOR)), java.sql.Timestamp.from(now), c.id());
+        for (Row r : due) {
+            jdbc.update("""
+                    UPDATE event_clients SET reset_password_hash = ?, reset_expires_at = ?, reset_requested_at = ?
+                    WHERE id = ?""", hash, java.sql.Timestamp.from(now.plus(VALID_FOR)), java.sql.Timestamp.from(now), r.id());
+        }
+        Row c = due.getFirst();
         sendLater(c.email(), message(c.name(), temporary, loginUrl("/client")));
     }
 
     private void sendLater(String to, String body) {
-        Thread.ofVirtual().name("password-reset-mail").start(() -> mailer.send(to, "Your McreatiK temporary password", body));
+        Thread.ofVirtual().name("password-reset-mail").start(() -> mailer.send(to, "Your McreatiK temporary password",
+                body + "\n" + com.mcreatik.gallery.mail.MailSignature.text(), com.mcreatik.gallery.mail.MailSignature.html(body)));
     }
 
     static String message(String name, String temporary, String loginUrl) {
         return """
                 Hi %s,
 
-                We received a request to reset the password for your McreatiK Live Gallery login.
+                We received a request to reset the password for your McreatiK Instant Memories login.
 
                 Temporary password: %s
 
@@ -125,9 +130,6 @@ public class PasswordResets {
                 You will then choose a new password.
 
                 If you didn't ask for this, you can ignore this email. Your current password still works.
-
-                McreatiK
-                connect@mcreatik.com
                 """.formatted(name == null || name.isBlank() ? "there" : name, temporary, loginUrl);
     }
 }

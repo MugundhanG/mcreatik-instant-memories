@@ -30,17 +30,18 @@ describe('Policy pages', () => {
     expect(screen.getByText('Client gallery').parentElement).toHaveTextContent('₹250')
     expect(screen.getByText(/a full wedding of about 2,000 photos \(25 GB\) kept for 3 months is ₹1,375/)).toBeInTheDocument()
     expect(screen.getAllByText(/per GB per month/).length).toBeGreaterThan(0)
-    expect(screen.getByText(/Every live event includes 5 GB/)).toBeInTheDocument()
+    expect(screen.getByText(/Every Main or Quick event includes 5 GB for 3 months/)).toBeInTheDocument()
     expect(screen.getByText(/Galleries stay open for 3 months/)).toBeInTheDocument()
   })
 
-  it('still shows the older single plan if the server sends no packages', async () => {
+  it('shows only the per-event price (no older monthly plan) if the server sends no packages', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
       perEventPrice: 2500, monthlyPrice: 5000, monthlyEvents: 4, extraEventPrice: 999, currency: 'INR',
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
     render(<PricingPage />)
     expect(await screen.findByText('₹2,500')).toBeInTheDocument()
-    expect(screen.getByText(/Each extra event in a month: ₹999/)).toBeInTheDocument()
+    expect(screen.queryByText(/Each extra event in a month/)).not.toBeInTheDocument()
+    expect(document.body.textContent).not.toMatch(/razorpay/i)
   })
 
   it('says so when prices cannot be loaded', async () => {

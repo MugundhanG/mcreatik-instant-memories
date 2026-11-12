@@ -34,6 +34,8 @@ class ClientGalleryTest extends IntegrationTest {
 
     @Autowired
     private GalleryLifecycleTestAccess lifecycle;
+    @Autowired
+    private com.mcreatik.gallery.event.EventService events;
 
     private String studioId;
     private String studio;
@@ -101,8 +103,8 @@ class ClientGalleryTest extends IntegrationTest {
                 .andExpect(jsonPath("$.liveGalleryEnabled").value(false))
                 .andExpect(jsonPath("$.storageQuotaGb").value(0)).andReturn().getResponse().getContentAsString();
         LocalDate today = LocalDate.now(INDIA);
-        assertThat(LocalDate.parse(JsonPath.read(json, "$.activeUntil"))).isEqualTo(today.plusMonths(3));
-        assertThat(LocalDate.parse(JsonPath.read(json, "$.retentionUntil"))).isEqualTo(today.plusMonths(3).plusDays(30));
+        assertThat(LocalDate.parse(JsonPath.read(json, "$.activeUntil"))).isEqualTo(today.plusMonths(1));
+        assertThat(LocalDate.parse(JsonPath.read(json, "$.retentionUntil"))).isEqualTo(today.plusMonths(1).plusDays(30));
         // One setup fee is one gallery.
         event("CLIENT", "2026-11-01").andExpect(status().isPaymentRequired());
         // No guest QR gallery.
@@ -112,21 +114,78 @@ class ClientGalleryTest extends IntegrationTest {
 
     @Test
     void storageBoughtWithTheSetupGoesToTheNewGalleryAndARejectedPaymentTakesItBack() throws Exception {
-        // ₹250 setup + 10 GB × ₹15 × 3 months = ₹700, in one payment.
-        buy("{\"item\":\"CLIENT_SETUP\",\"quantity\":1,\"storageGb\":10,\"utr\":\"" + utr() + "\"}")
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(700));
-        event("CLIENT", "2026-11-01").andExpect(status().isCreated()).andExpect(jsonPath("$.storageQuotaGb").value(10));
+        // ₹250 setup + 10 GB × ₹15 × 3 months = ₹700, in one payment; the gallery opens for those 3 months.
+        buy("{\"item\":\"CLIENT_SETUP\",\"quantity\":1,\"storageGb\":10,\"months\":3,\"utr\":\"" + utr() + "\"}")
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(700)).andExpect(jsonPath("$.months").value(3));
+        String threeMonths = event("CLIENT", "2026-11-01").andExpect(status().isCreated())
+                .andExpect(jsonPath("$.storageQuotaGb").value(10)).andReturn().getResponse().getContentAsString();
+        assertThat(LocalDate.parse(JsonPath.read(threeMonths, "$.activeUntil"))).isEqualTo(LocalDate.now(INDIA).plusMonths(3));
         // Used once: the next gallery starts without storage.
         buy("{\"item\":\"CLIENT_SETUP\",\"utr\":\"" + utr() + "\"}").andExpect(jsonPath("$.amount").value(250));
         event("CLIENT", "2026-11-01").andExpect(status().isCreated()).andExpect(jsonPath("$.storageQuotaGb").value(0));
+        // Months: at least 1, at most 12; storage at least 5 GB (or none).
+        buy("{\"item\":\"CLIENT_SETUP\",\"storageGb\":5,\"months\":13,\"utr\":\"" + utr() + "\"}").andExpect(status().isBadRequest());
+        buy("{\"item\":\"CLIENT_SETUP\",\"storageGb\":4,\"utr\":\"" + utr() + "\"}").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_GB"));
         // Storage only with a single gallery; a rejected payment takes its storage back.
         buy("{\"item\":\"CLIENT_SETUP\",\"quantity\":2,\"storageGb\":5,\"utr\":\"" + utr() + "\"}").andExpect(status().isBadRequest());
         String id = JsonPath.read(buy("{\"item\":\"CLIENT_SETUP\",\"storageGb\":5,\"utr\":\"" + utr() + "\"}")
-                .andExpect(jsonPath("$.amount").value(475)).andReturn().getResponse().getContentAsString(), "$.id");
+                .andExpect(jsonPath("$.amount").value(325)).andReturn().getResponse().getContentAsString(), "$.id");
         mvc.perform(post("/api/admin/billing/payments/" + id + "/reject").header("Authorization", bearer(adminToken()))
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNoContent());
         assertThat(jdbc.queryForObject("SELECT client_storage_gb FROM admin_users WHERE id = ?::uuid", Integer.class, studioId)).isZero();
         event("CLIENT", "2026-11-01").andExpect(status().isPaymentRequired());
+    }
+
+    @Test
+    void extendingChoosesTheMonthsAndChargesAllTheStorageForThem() throws Exception {
+        buy("{\"item\":\"MAIN_EVENT\",\"utr\":\"" + utr() + "\"}");
+        String id = eventId(event("MAIN", "2026-11-01").andReturn().getResponse().getContentAsString());
+        // The 5 GB x 3 months every Main event includes are free; the quote tells the page about them.
+        mvc.perform(post("/api/admin/billing/quote").header("Authorization", bearer(studio)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"item\":\"EXTEND\",\"eventId\":\"" + id + "\",\"months\":2}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.amount").value(150)).andExpect(jsonPath("$.months").value(2))
+                .andExpect(jsonPath("$.includedGb").value(5)).andExpect(jsonPath("$.includedMonths").value(3));
+        // Bought storage counts: 5 + 10 GB for 1 month = 225.
+        buy("{\"item\":\"STORAGE\",\"eventId\":\"" + id + "\",\"quantity\":10,\"utr\":\"" + utr() + "\"}").andExpect(status().isCreated());
+        buy("{\"item\":\"EXTEND\",\"eventId\":\"" + id + "\",\"months\":1,\"utr\":\"" + utr() + "\"}")
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(225));
+        buy("{\"item\":\"EXTEND\",\"eventId\":\"" + id + "\",\"months\":0,\"utr\":\"" + utr() + "\"}").andExpect(status().isCreated()); // 0 = the default (3)
+        buy("{\"item\":\"EXTEND\",\"eventId\":\"" + id + "\",\"months\":13,\"utr\":\"" + utr() + "\"}")
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_MONTHS"));
+        buy("{\"item\":\"EXTEND\",\"eventId\":\"" + id + "\",\"months\":-1,\"utr\":\"" + utr() + "\"}").andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void whenRetentionEndsThePhotosGoButTheEventRecordStaysArchived() throws Exception {
+        buy("{\"item\":\"MAIN_EVENT\",\"utr\":\"" + utr() + "\"}");
+        String id = eventId(event("MAIN", "2026-11-01").andReturn().getResponse().getContentAsString());
+        uploadPhoto(createUploader(id, "Camera 1"), "IMG_1.JPG", jpeg(800, 600));
+        processAll();
+        UUID eventId = UUID.fromString(id);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM photos WHERE event_id = ?", Integer.class, eventId)).isEqualTo(1);
+        LocalDate today = LocalDate.now(INDIA);
+        jdbc.update("UPDATE events SET active_until = ?, retention_until = ? WHERE id = ?",
+                Date.valueOf(today.minusDays(40)), Date.valueOf(today.minusDays(10)), eventId);
+
+        for (var expired : events.expiredEvents(today)) {
+            events.deleteExpired(expired);
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM photos WHERE event_id = ?", Integer.class, eventId)).isZero();
+        assertThat(jdbc.queryForObject("SELECT status FROM events WHERE id = ?", String.class, eventId)).isEqualTo("ARCHIVED");
+        assertThat(jdbc.queryForObject("SELECT photos_deleted_at IS NOT NULL FROM events WHERE id = ?", Boolean.class, eventId)).isTrue();
+        // The event record, its payment and its charge stay as the business record, and it is not purged twice.
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM event_charges WHERE event_id = ?", Integer.class, eventId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM event_payments WHERE studio_id = ?::uuid", Integer.class, studioId)).isEqualTo(1);
+        assertThat(events.expiredEvents(today)).noneMatch(e -> e.getId().equals(eventId));
+        String archived = detail(id);
+        assertThat((String) JsonPath.read(archived, "$.status")).isEqualTo("ARCHIVED");
+        // Its files are gone, so it can't be kept open any longer.
+        buy("{\"item\":\"EXTEND\",\"eventId\":\"" + id + "\",\"utr\":\"" + utr() + "\"}")
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EVENT_DELETED"));
+        // Only McreatiK can remove the record itself.
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/admin/events/" + id)
+                .header("Authorization", bearer(studio))).andExpect(status().isForbidden());
     }
 
     @Test
@@ -146,12 +205,15 @@ class ClientGalleryTest extends IntegrationTest {
         originalSession(id, 2_000_000).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STORAGE_FULL"));
 
         buy("{\"item\":\"STORAGE\",\"eventId\":\"" + id + "\",\"quantity\":10,\"utr\":\"" + utr() + "\"}")
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(450)); // 10 GB × ₹15 × 3 months
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(150)); // 10 GB × ₹15 × 1 month left
         assertThat((Integer) JsonPath.read(detail(id), "$.storageQuotaGb")).isEqualTo(10);
         originalSession(id, 2_000_000).andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("UPLOAD"));
         // Storage can't be bought for someone else's event.
         String other = eventId(createEvent("McreatiK's own", "UPCOMING"));
-        buy("{\"item\":\"STORAGE\",\"eventId\":\"" + other + "\",\"quantity\":1,\"utr\":\"" + utr() + "\"}").andExpect(status().isNotFound());
+        buy("{\"item\":\"STORAGE\",\"eventId\":\"" + other + "\",\"quantity\":5,\"utr\":\"" + utr() + "\"}").andExpect(status().isNotFound());
+        // Custom sizes start at 5 GB.
+        buy("{\"item\":\"STORAGE\",\"eventId\":\"" + id + "\",\"quantity\":4,\"utr\":\"" + utr() + "\"}").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_GB"));
     }
 
     @Test
@@ -173,7 +235,7 @@ class ClientGalleryTest extends IntegrationTest {
         assertThat((Boolean) JsonPath.read(locked, "$.storageLocked")).isTrue();
         assertThat((Boolean) JsonPath.read(locked, "$.liveGalleryEnabled")).isTrue();
 
-        buy("{\"item\":\"STORAGE\",\"eventId\":\"" + id + "\",\"quantity\":1,\"utr\":\"" + utr() + "\"}").andExpect(status().isCreated());
+        buy("{\"item\":\"STORAGE\",\"eventId\":\"" + id + "\",\"quantity\":5,\"utr\":\"" + utr() + "\"}").andExpect(status().isCreated());
         String open = detail(id);
         assertThat((Boolean) JsonPath.read(open, "$.clientGalleryEnabled")).isTrue();
         assertThat((Boolean) JsonPath.read(open, "$.storageLocked")).isFalse();
@@ -201,13 +263,13 @@ class ClientGalleryTest extends IntegrationTest {
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("contact Lens")));
         assertThat((Boolean) JsonPath.read(detail(id), "$.expired")).isTrue();
 
-        // Paying studios can't just move the date; they keep it open for 3 more months, at ₹15 per GB per month (at least 1 GB): ₹45.
+        // Paying studios can't just move the date; they keep it open for 3 more months, at ₹15 per GB of its 5 GB quota per month: ₹225.
         mvc.perform(patch("/api/admin/events/" + id).header("Authorization", bearer(studio))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"retentionUntil\":\"2030-01-01\"}"))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("EXTEND_INSTEAD"));
         String pay = JsonPath.read(buy("{\"item\":\"EXTEND\",\"eventId\":\"" + id + "\",\"utr\":\"" + utr() + "\"}")
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.amount").value(45)).andReturn().getResponse().getContentAsString(), "$.id");
+                .andExpect(jsonPath("$.amount").value(225)).andExpect(jsonPath("$.months").value(3)).andReturn().getResponse().getContentAsString(), "$.id");
         String extended = detail(id);
         assertThat(LocalDate.parse(JsonPath.read(extended, "$.activeUntil"))).isEqualTo(today.plusMonths(3));
         assertThat(LocalDate.parse(JsonPath.read(extended, "$.retentionUntil"))).isEqualTo(today.plusMonths(3).plusDays(30));

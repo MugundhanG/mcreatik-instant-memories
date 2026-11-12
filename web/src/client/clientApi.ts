@@ -38,6 +38,23 @@ export interface ClientPhoto {
 const listeners = new Set<() => void>()
 let current: ClientSession | null = read()
 
+/** One of the events a client's email and password open (sent with 409 CHOOSE_EVENT). */
+export interface EventChoice {
+  slug: string
+  name: string
+  eventDate: string
+}
+
+/** The email has a login on several events: the client picks one and logs in again with its address. */
+export class ChooseEventError extends ApiError {
+  readonly events: EventChoice[]
+
+  constructor(message: string, events: EventChoice[]) {
+    super(409, 'CHOOSE_EVENT', message)
+    this.events = events
+  }
+}
+
 function read(): ClientSession | null {
   try {
     const raw = localStorage.getItem(KEY)
@@ -87,13 +104,16 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     let code = `HTTP_${res.status}`
     let message = 'Something went wrong'
+    let events: EventChoice[] | null = null
     try {
       const body = await res.json()
       code = body.code ?? code
       message = body.message ?? message
+      if (code === 'CHOOSE_EVENT' && Array.isArray(body.events)) events = body.events
     } catch {
       // not JSON
     }
+    if (events) throw new ChooseEventError(message, events)
     throw new ApiError(res.status, code, message)
   }
   return (res.status === 204 ? undefined : await res.json()) as T
@@ -102,8 +122,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 const json = (b: unknown) => JSON.stringify(b)
 
 export const clientApi = {
-  login: (email: string, password: string) =>
-    request<ClientSession>('/api/client/auth/login', { method: 'POST', body: json({ email, password }) }),
+  /** {@code eventSlug}: the event of the client's link; without it an email on several events gets a choice. */
+  login: (email: string, password: string, eventSlug?: string) =>
+    request<ClientSession>('/api/client/auth/login', { method: 'POST', body: json({ email, password, ...(eventSlug ? { eventSlug } : {}) }) }),
   forgotPassword: (email: string) =>
     request<void>('/api/client/auth/forgot-password', { method: 'POST', body: json({ email }) }),
   me: () => request<ClientMe>('/api/client/me'),

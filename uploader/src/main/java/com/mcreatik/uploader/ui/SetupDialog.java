@@ -93,7 +93,7 @@ public final class SetupDialog {
         JCheckBox ftp = new JCheckBox("Receive photos from the camera over Wi-Fi (built-in FTP server)", ftpByDefault);
         ftp.setFont(UiTheme.font(Font.BOLD, 13f));
         ftp.setOpaque(false);
-        JLabel ftpHint = UiTheme.label("For cameras with FTP transfer, such as Canon EOS R6 Mark II or Sony α7 IV. "
+        JLabel ftpHint = UiTheme.label("For any camera with FTP transfer (Wi-Fi/FTP upload), for example Canon or Sony. "
                 + "Untick if your camera software already saves into a folder.", Font.PLAIN, 12f, UiTheme.MUTED);
         if (switching) {
             folder.setText(current.watchFolder().toString());

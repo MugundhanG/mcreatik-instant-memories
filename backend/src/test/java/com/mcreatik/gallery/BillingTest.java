@@ -62,14 +62,15 @@ class BillingTest extends IntegrationTest {
     }
 
     @Test
-    void onlinePaymentIsOffWithoutRazorpayKeysAndTheUpiQrStillWorks() throws Exception {
-        mvc.perform(get("/api/admin/billing").header("Authorization", bearer(studio)))
-                .andExpect(jsonPath("$.onlinePayments").value(false));
+    void noOnlinePaymentEndpointsExistAndTheUpiQrIsTheOnlyFlow() throws Exception {
         mvc.perform(post("/api/admin/billing/online-orders").header("Authorization", bearer(studio))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"events\":1}"))
-                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ONLINE_PAYMENTS_OFF"));
+                .andExpect(status().is4xxClientError());
+        mvc.perform(post("/api/admin/billing/upi-qr").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"events\":1}"))
+                .andExpect(status().is4xxClientError());
         mvc.perform(post("/api/public/razorpay/webhook").contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().is4xxClientError());
         pay(1, "418299301122").andExpect(status().isCreated()).andExpect(jsonPath("$.method").value("UPI_QR"));
     }
 

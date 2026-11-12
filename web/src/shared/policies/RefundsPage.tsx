@@ -24,7 +24,7 @@ export default function RefundsPage() {
       <Section title="Charged twice, or charged for a failed payment?">
         <p>
           If you were charged more than once for the same purchase, or money left your account but the events were not
-          added, we refund the extra or failed amount in full. Refunds go back to the card, bank account or UPI you paid
+          added, we refund the extra or failed amount in full. Refunds go back to the bank account or UPI you paid
           with, within <b>5–7 working days</b> of us confirming the problem.
         </p>
         <p>

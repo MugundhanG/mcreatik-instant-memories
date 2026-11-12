@@ -48,6 +48,27 @@ public class SmtpMailer implements Mailer {
     }
 
     @Override
+    public boolean send(String to, String subject, String text, String html) {
+        if (sender == null) {
+            log.warn("Email is not set up (MAIL_HOST is empty): could not send \"{}\"", subject);
+            return false;
+        }
+        try {
+            var m = sender.createMimeMessage();
+            var h = new org.springframework.mail.javamail.MimeMessageHelper(m, true, "UTF-8");
+            h.setFrom(from);
+            h.setTo(to);
+            h.setSubject(subject);
+            h.setText(text, html);
+            sender.send(m);
+            return true;
+        } catch (Exception e) {
+            log.error("Could not send \"{}\": {}", subject, e.toString());
+            return false;
+        }
+    }
+
+    @Override
     public boolean send(String to, String subject, String body) {
         if (sender == null) {
             log.warn("Email is not set up (MAIL_HOST is empty): could not send \"{}\"", subject);

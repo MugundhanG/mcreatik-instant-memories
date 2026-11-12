@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { adminApi } from '../lib/api'
 import { formatCount, formatEventDate } from '../lib/format'
 import type { BillingSummary, EventSummary, Purchase } from '../lib/types'
@@ -7,6 +7,7 @@ import { ShutterLoader } from '../shared/ShutterLoader'
 import { useSession } from './auth'
 import { BuyEventsDialog } from './BuyEventsDialog'
 import { isPack, PLAN_LABEL, rupees } from './plans'
+import { applyFilter, EMPTY_FILTER, filterFromParams, filterToParams, isFiltered, type EventFilter, type SortKey } from './eventFilters'
 import { ErrorText, EventStatusBadge } from './ui'
 
 const FIRST_STEPS = [
@@ -14,6 +15,49 @@ const FIRST_STEPS = [
   { title: 'Print the QR poster', body: 'In the event, open QR code, then Event & table cards. Put the event card in your studio board at the entrance and the table cards on the tables.' },
   { title: 'Connect a camera', body: 'In the event, under Cameras & uploaders, add an uploader and paste its code into the uploader app on the laptop.' },
 ]
+
+const select = 'h-9 w-full rounded-lg border border-line bg-white px-2.5 text-sm'
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/** Sort and filter bar; the choices live in the address, so a filtered list can be bookmarked or reloaded. */
+function FilterBar({ events, filter, onChange, superAdmin }: { events: EventSummary[]; filter: EventFilter; onChange: (f: EventFilter) => void; superAdmin: boolean }) {
+  const set = <K extends keyof EventFilter>(k: K, v: EventFilter[K]) => onChange({ ...filter, [k]: v })
+  const years = [...new Set(events.map((e) => e.eventDate.slice(0, 4)))].sort().reverse()
+  const studios = [...new Map(events.filter((e) => e.ownerName).map((e) => [e.ownerId, e.ownerName!])).entries()].sort((a, b) => a[1].localeCompare(b[1]))
+  const labelled = (label: string, node: React.ReactNode) => (
+    <label className="block min-w-0"><span className="mb-1 block text-xs text-muted">{label}</span>{node}</label>
+  )
+  return (
+    <section aria-label="Sort and filter events" className="rounded-xl border border-line bg-white p-3 sm:p-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {labelled('Sort', <select className={select} value={filter.sort} onChange={(e) => set('sort', e.target.value as SortKey)}>
+          <option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A to Z</option></select>)}
+        {labelled('Type', <select className={select} value={filter.type} onChange={(e) => set('type', e.target.value as EventFilter['type'])}>
+          <option value="">All types</option><option value="MAIN">Main</option><option value="QUICK">Quick</option><option value="CLIENT">Client gallery</option></select>)}
+        {labelled('Status', <select className={select} value={filter.status} onChange={(e) => set('status', e.target.value as EventFilter['status'])}>
+          <option value="">All statuses</option>{['DRAFT', 'UPCOMING', 'LIVE', 'COMPLETED', 'ARCHIVED'].map((s) => <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>)}</select>)}
+        {superAdmin && labelled('Studio', <select className={select} value={filter.studio} onChange={(e) => set('studio', e.target.value)}>
+          <option value="">All studios</option>{studios.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>)}
+      </div>
+      <details className="mt-3 group" open={!!(filter.year || filter.month || filter.from || filter.to) || undefined}>
+        <summary className="cursor-pointer text-sm font-medium text-stone-700 select-none">Date filters</summary>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {labelled('Year', <select className={select} value={filter.year} onChange={(e) => set('year', e.target.value)}>
+          <option value="">Any year</option>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select>)}
+        {labelled('Month', <select className={select} value={filter.month} onChange={(e) => set('month', e.target.value)}>
+          <option value="">Any month</option>{MONTHS.map((m, i) => <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>)}</select>)}
+        {labelled('From date', <input type="date" className={select} value={filter.from} max={filter.to || undefined} onChange={(e) => set('from', e.target.value)} />)}
+        {labelled('To date', <input type="date" className={select} value={filter.to} min={filter.from || undefined} onChange={(e) => set('to', e.target.value)} />)}
+        </div>
+      </details>
+      {isFiltered(filter) && (
+        <button type="button" onClick={() => onChange({ ...EMPTY_FILTER, sort: filter.sort })} className="mt-3 text-sm text-muted underline underline-offset-2 hover:text-ink">
+          Clear filters
+        </button>
+      )}
+    </section>
+  )
+}
 
 function formatDay(iso: string) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
@@ -75,6 +119,9 @@ export default function EventsPage() {
   const [events, setEvents] = useState<EventSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const superAdmin = useSession()?.role === 'SUPER_ADMIN'
+  const [params, setParams] = useSearchParams()
+  const filter = filterFromParams(params)
+  const shown = events ? applyFilter(events, filter) : null
 
   const [billing, setBilling] = useState<BillingSummary | null>(null)
   const [buying, setBuying] = useState<Purchase | null>(null)
@@ -120,8 +167,12 @@ export default function EventsPage() {
           </Link>
         </section>
       )}
+      {events && events.length > 1 && <FilterBar events={events} filter={filter} superAdmin={superAdmin} onChange={(f) => setParams(filterToParams(f), { replace: true })} />}
+      {events && events.length > 0 && shown?.length === 0 && (
+        <p className="rounded-xl border border-line bg-white p-6 text-center text-sm text-muted" data-testid="no-match">No events match these filters.</p>
+      )}
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {events?.map((e) => (
+        {shown?.map((e) => (
           <li key={e.id}>
             <Link to={`/admin/events/${e.id}`} className="lift block rounded-xl border border-line bg-white p-5">
               <div className="flex items-start justify-between gap-3">

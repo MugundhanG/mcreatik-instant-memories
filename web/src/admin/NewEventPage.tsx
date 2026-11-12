@@ -36,6 +36,10 @@ export default function NewEventPage() {
   const [eventType, setEventType] = useState<EventType>('MAIN')
   const [billing, setBilling] = useState<BillingSummary | null>(null)
   const [payment, setPayment] = useState<{ billing: BillingSummary; reason: string } | null>(null)
+  // How long the galleries stay open. Main and Quick include `activeMonths`; more months are bought right after
+  // creating the event. A client gallery's months are part of its purchase (default 1).
+  const [monthsChoice, setMonthsChoice] = useState<number | null>(null)
+  const [extend, setExtend] = useState<{ eventId: string; months: number } | null>(null)
   // The super admin can create the event for a client studio.
   const superAdmin = useSession()?.role === 'SUPER_ADMIN'
   const [studios, setStudios] = useState<Studio[]>([])
@@ -47,6 +51,14 @@ export default function NewEventPage() {
     adminApi.billing().then(setBilling).catch(() => {})
   }, [])
 
+  const included = billing?.prices.activeMonths ?? 3
+  const client = eventType === 'CLIENT'
+  const months = monthsChoice ?? (client ? 1 : included)
+  const pays = !!billing && !billing.free && !ownerId
+  const showMonths = pays && (client ? billing.clientCredits === 0 : true)
+  const extraMonths = client ? 0 : Math.max(0, months - included)
+  const extraPrice = billing ? extraMonths * billing.prices.freeStorageGb * billing.prices.storageGb : 0
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true)
@@ -57,6 +69,12 @@ export default function NewEventPage() {
   const create = async () => {
     try {
       const event = await adminApi.createEvent({ name, eventDate, status, slug: slug.trim() || undefined, ownerId: ownerId || undefined, eventType })
+      if (pays && extraMonths > 0) {
+        // The studio chose more than the included months: the usual "Keep more months" purchase, prefilled.
+        setExtend({ eventId: event.id, months: extraMonths })
+        setBusy(false)
+        return
+      }
       navigate(`/admin/events/${event.id}`, { replace: true })
     } catch (err) {
       // Out of events for this month (or a per-event plan): offer to buy, then create it straight after.
@@ -78,7 +96,7 @@ export default function NewEventPage() {
       {payment && (
         <BuyEventsDialog
           billing={payment.billing}
-          purchase={{ item: eventType === 'CLIENT' ? 'CLIENT_SETUP' : eventType === 'QUICK' ? 'QUICK_EVENT' : 'MAIN_EVENT', quantity: 1 }}
+          purchase={{ item: eventType === 'CLIENT' ? 'CLIENT_SETUP' : eventType === 'QUICK' ? 'QUICK_EVENT' : 'MAIN_EVENT', quantity: 1, ...(client ? { months } : {}) }}
           reason={payment.reason}
           onClose={() => setPayment(null)}
           onPaid={() => {
@@ -86,6 +104,15 @@ export default function NewEventPage() {
             setBusy(true)
             void create()
           }}
+        />
+      )}
+      {extend && billing && (
+        <BuyEventsDialog
+          billing={billing}
+          purchase={{ item: 'EXTEND', eventId: extend.eventId, quantity: billing.prices.freeStorageGb, months: extend.months }}
+          reason={`Your event is created. It includes ${included} months; you chose ${extend.months + included}. Pay for the extra ${extend.months} month${extend.months === 1 ? '' : 's'}, or close this to keep ${included}.`}
+          onClose={() => navigate(`/admin/events/${extend.eventId}`, { replace: true })}
+          onPaid={() => navigate(`/admin/events/${extend.eventId}`, { replace: true })}
         />
       )}
       <Link to="/admin" className="text-sm text-muted hover:text-ink">← Events</Link>
@@ -108,7 +135,7 @@ export default function NewEventPage() {
                 ['QUICK', 'Quick event', `Engagements, small birthdays, baby showers: up to about ${billing?.prices.upgradeGuests ?? 200} guests. Upgrade to Main later if it grows.`, billing?.quickUnitPrice],
                 ['CLIENT', 'Client gallery only', 'No live event: a private gallery for the couple to pick album photos and download. You add the photos and storage.', billing?.prices.clientSetup],
               ] as const).map(([type, title, body, price]) => (
-                <button key={type} type="button" role="radio" aria-checked={eventType === type} onClick={() => setEventType(type)}
+                <button key={type} type="button" role="radio" aria-checked={eventType === type} onClick={() => { setEventType(type); setMonthsChoice(null) }}
                   className={`rounded-xl border p-3 text-left transition-colors ${eventType === type ? 'border-ink bg-stone-50 ring-1 ring-ink' : 'border-line hover:border-stone-400'}`}>
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="font-medium">{title}</span>
@@ -139,6 +166,18 @@ export default function NewEventPage() {
               </select>
             </Field>
           </div>
+          {showMonths && (
+            <Field label="Gallery open for" hint={client
+              ? 'The months are part of the client gallery purchase: setup + storage × months.'
+              : `${included} months are included. Each extra month is ${rupees(billing.prices.freeStorageGb * billing.prices.storageGb)} (${billing.prices.freeStorageGb} GB × ${rupees(billing.prices.storageGb)}).`}>
+              <select className={inputClass} value={months} onChange={(e) => setMonthsChoice(Number(e.target.value))} aria-label="Gallery open for">
+                {Array.from({ length: 12 - (client ? 0 : included - 1) }, (_, i) => i + (client ? 1 : included)).map((m) => (
+                  <option key={m} value={m}>{m} month{m === 1 ? '' : 's'}{!client && m === included ? ' (included)' : ''}</option>
+                ))}
+              </select>
+              {extraMonths > 0 && <span className="mt-1 block text-xs text-muted" data-testid="extra-months">Extra {extraMonths} month{extraMonths === 1 ? '' : 's'}: {rupees(extraPrice)}, paid right after the event is created.</span>}
+            </Field>
+          )}
           <Field label="Gallery address (optional)" hint="Leave empty for a hard-to-guess address like arun-priya-7k3dqx9mzp. A custom address is easier for strangers to guess.">
             <input className={inputClass} value={slug} placeholder="auto" onChange={(e) => setSlug(e.target.value.toLowerCase())} />
           </Field>

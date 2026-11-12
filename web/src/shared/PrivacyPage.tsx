@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { PRIVACY_EMAIL } from './privacy'
+import { SiteFooter } from './SiteFooter'
 
 const UPDATED = '1 November 2026'
 
@@ -52,8 +53,9 @@ export default function PrivacyPage() {
 
         <Section title="How long photos are kept">
           <p>
-            Until the studio deletes the event or the delete date it chose. Deleting an event permanently removes its photos,
-            files and activity data from our storage. Copies held by our delivery network can stay reachable for a while,
+            Photos are deleted 30 days after the gallery's open period ends, unless the studio keeps it open longer. Deleting
+            photos permanently removes them and their files from our storage. The event record itself (its name, date,
+            studio and payments) is kept as a business record and evidence of the events a studio took. Copies held by our delivery network can stay reachable for a while,
             but only by someone who already has that exact photo's link.
           </p>
         </Section>
@@ -72,6 +74,7 @@ export default function PrivacyPage() {
             contact the studio that photographed your event.
           </p>
         </Section>
+        <SiteFooter className="mt-12 border-t border-line pt-6" />
       </main>
     </div>
   )
