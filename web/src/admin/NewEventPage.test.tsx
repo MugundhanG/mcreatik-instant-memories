@@ -42,7 +42,7 @@ describe('New event: how long the galleries stay open', () => {
     vi.unstubAllGlobals()
   })
 
-  it('includes 3 months for Main events, prices extra months and offers Keep more months right after creating', async () => {
+  it('includes 3 months for Main events, prices extra months and offers Change storage & months right after creating', async () => {
     const user = userEvent.setup()
     const calls = setUp()
     const months = await screen.findByRole('combobox', { name: 'Gallery open for' })
@@ -53,7 +53,7 @@ describe('New event: how long the galleries stay open', () => {
     expect(screen.getByTestId('extra-months')).toHaveTextContent('Extra 2 months: ₹150') // 5 GB × ₹15 × 2
     await user.type(screen.getByLabelText(/Event name/), 'Arun & Priya')
     await user.click(screen.getByRole('button', { name: 'Create event' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Keep more months' })
+    const dialog = await screen.findByRole('dialog', { name: 'Change storage & months' })
     expect(dialog).toHaveTextContent('₹150')
     expect(calls.some((c) => c.path === '/api/admin/events' && c.body)).toBe(true)
   })

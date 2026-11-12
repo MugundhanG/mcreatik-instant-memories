@@ -123,6 +123,32 @@ class StudioBrandingTest extends IntegrationTest {
     }
 
     @Test
+    void mcreatiKCanEditItsOwnBrandingAndItsEventsUseItsStoredValues() throws Exception {
+        String slug = slug(createEvent("Own event 2", "LIVE"));
+        // Built-in defaults first: the studio name and nothing else set.
+        mvc.perform(get("/api/public/events/" + slug)).andExpect(jsonPath("$.brand.instagram").doesNotExist())
+                .andExpect(jsonPath("$.brand.logoUrl").doesNotExist());
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"McreatiK Weddings\",\"instagram\":\"@mcreatik.in\",\"phone\":\"98765 43210\",\"boardTheme\":\"dark\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.brand.name").value("McreatiK Weddings"));
+        mvc.perform(multipart("/api/admin/account/logo").file(new MockMultipartFile("logo", "logo.png", "image/png", png()))
+                        .header("Authorization", bearer(adminToken())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.brand.logoUrl").isNotEmpty());
+        mvc.perform(get("/api/public/events/" + slug)).andExpect(jsonPath("$.brand.mcreatik").value(true))
+                .andExpect(jsonPath("$.brand.name").value("McreatiK Weddings"))
+                .andExpect(jsonPath("$.brand.instagram").value("mcreatik.in"))
+                .andExpect(jsonPath("$.brand.phone").value("+919876543210"))
+                .andExpect(jsonPath("$.brand.logoUrl").isNotEmpty());
+        // Clearing them returns to the built-in design.
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(adminToken()))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"instagram\":\"\",\"phone\":\"\"}"));
+        mvc.perform(delete("/api/admin/account/logo").header("Authorization", bearer(adminToken())));
+        mvc.perform(get("/api/public/events/" + slug)).andExpect(jsonPath("$.brand.instagram").doesNotExist())
+                .andExpect(jsonPath("$.brand.logoUrl").doesNotExist());
+    }
+
+    @Test
     void rejectsBadInstagramAndNonImageLogos() throws Exception {
         mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"instagram\":\"not a handle!\"}"))

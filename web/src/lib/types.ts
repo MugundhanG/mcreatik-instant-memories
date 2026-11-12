@@ -377,7 +377,7 @@ export type EventType = 'MAIN' | 'QUICK' | 'CLIENT'
 
 /** What a payment buys. */
 /** STORAGE: GB for one event; CLIENT_SETUP: client galleries; EXTEND: another open period for one event (per GB per month). */
-export type PurchaseItem = 'MAIN_EVENT' | 'QUICK_EVENT' | 'UPGRADE' | 'PLAN' | 'STORAGE' | 'CLIENT_SETUP' | 'EXTEND'
+export type PurchaseItem = 'MAIN_EVENT' | 'QUICK_EVENT' | 'UPGRADE' | 'PLAN' | 'STORAGE' | 'CLIENT_SETUP' | 'EXTEND' | 'STORAGE_EXTEND'
 
 /** A purchase as the dashboard asks for it; the server sets the price. quantity: events or months. */
 export interface Purchase {
@@ -389,7 +389,8 @@ export interface Purchase {
    *  months to keep it open (1 to 12); quantity is then the GB it holds, to show the price. CLIENT_SETUP: the
    *  months the new gallery is open (1 to 12, default 1). */
   months?: number
-  /** CLIENT_SETUP: storage (GB) bought together with one gallery's setup; the new gallery starts with it. */
+  /** CLIENT_SETUP: storage (GB) bought together with one gallery's setup; the new gallery starts with it.
+   *  STORAGE_EXTEND: the GB added to an event (0 or from 5); `months` is then the months added (0 to 12). */
   storageGb?: number
 }
 

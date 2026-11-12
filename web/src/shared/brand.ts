@@ -33,7 +33,17 @@ export const MCREATIK_BRAND: ResolvedBrand = {
 }
 
 export function resolveBrand(brand: Brand | undefined): ResolvedBrand {
-  if (!brand || brand.mcreatik) return MCREATIK_BRAND
+  if (!brand) return MCREATIK_BRAND
+  if (brand.mcreatik) {
+    // McreatiK's own events: what the super admin saved wins; anything empty keeps the built-in design.
+    return {
+      ...MCREATIK_BRAND,
+      name: brand.name?.trim() || MCREATIK_BRAND.name,
+      instagram: brand.instagram || MCREATIK_BRAND.instagram,
+      phone: brand.phone || MCREATIK_BRAND.phone,
+      ...(brand.logoUrl ? { heroLogo: brand.logoUrl, heroLogoOnCard: true, posterLogo: brand.logoUrl, posterLogoScale: brand.logoScale ?? 100 } : {}),
+    }
+  }
   return {
     name: brand.name,
     instagram: brand.instagram,

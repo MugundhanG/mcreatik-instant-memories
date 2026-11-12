@@ -109,7 +109,8 @@ export default function NewEventPage() {
       {extend && billing && (
         <BuyEventsDialog
           billing={billing}
-          purchase={{ item: 'EXTEND', eventId: extend.eventId, quantity: billing.prices.freeStorageGb, months: extend.months }}
+          purchase={{ item: 'STORAGE_EXTEND', eventId: extend.eventId, storageGb: 0, months: extend.months }}
+          storage={{ quota: billing.prices.freeStorageGb, usedGb: 1, monthsLeft: included }}
           reason={`Your event is created. It includes ${included} months; you chose ${extend.months + included}. Pay for the extra ${extend.months} month${extend.months === 1 ? '' : 's'}, or close this to keep ${included}.`}
           onClose={() => navigate(`/admin/events/${extend.eventId}`, { replace: true })}
           onPaid={() => navigate(`/admin/events/${extend.eventId}`, { replace: true })}

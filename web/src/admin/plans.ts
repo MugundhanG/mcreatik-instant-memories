@@ -36,6 +36,7 @@ export function unitPrice(item: PurchaseItem, billing: BillingSummary, plan?: Pl
     case 'PLAN': return packPrice(plan ?? billing.plan, billing.prices)
     case 'STORAGE': return billing.prices.storageGb * (months ?? billing.prices.activeMonths)
     case 'EXTEND': return billing.prices.storageGb * (months ?? billing.prices.activeMonths)
+    case 'STORAGE_EXTEND': return billing.prices.storageGb
     case 'CLIENT_SETUP': return billing.prices.clientSetup
   }
 }
@@ -55,6 +56,27 @@ export function monthsLeft(activeUntil: string | null | undefined, activeMonths:
   return plus(months) < until ? months + 1 : Math.max(1, months)
 }
 
+/** What the event has now, for pricing a combined storage + months purchase. */
+export interface StorageContext {
+  /** The event's storage quota (GB). */
+  quota: number
+  /** What it stores now, in whole GB (at least 1). */
+  usedGb: number
+  /** Months the gallery has left (what added storage is charged for). */
+  monthsLeft: number
+}
+
+/**
+ * Adding `gb` GB and `months` months in one payment, the way the server prices it: the GB added for the months left,
+ * plus all the storage the gallery will then hold for the months added. The included 5 GB x 3 months is never charged.
+ */
+export function storageExtendPrice(prices: Prices, ctx: StorageContext, gb: number, months: number) {
+  const storage = gb * prices.storageGb * ctx.monthsLeft
+  const after = Math.max(ctx.quota + gb, ctx.usedGb)
+  const time = after * prices.storageGb * months
+  return { storage, time, after, total: storage + time }
+}
+
 /** About how many full-quality photos fit in this many GB (~12 MB each, with web versions). */
 export const photosPerGb = (gb: number) => Math.round((gb * 1024) / 12.5 / 10) * 10
 
@@ -69,6 +91,10 @@ export function describe(p: Purchase, billing: BillingSummary): string {
     case 'UPGRADE': return 'Upgrade to a Main event'
     case 'PLAN': return `${n} month${n === 1 ? '' : 's'} of ${PLAN_LABEL[p.plan ?? billing.plan]}`
     case 'STORAGE': { const m = p.months ?? billing.prices.activeMonths; return `${n} GB of storage for ${m} month${m === 1 ? '' : 's'}` }
+    case 'STORAGE_EXTEND': {
+      const parts = [p.storageGb ? `${p.storageGb} GB more storage` : '', p.months ? `${p.months} more month${p.months === 1 ? '' : 's'}` : '']
+      return parts.filter(Boolean).join(' + ') || 'Storage and months'
+    }
     case 'CLIENT_SETUP': return `${n} client galler${n === 1 ? 'y' : 'ies'}${p.storageGb ? ` + ${p.storageGb} GB for ${p.months ?? 1} month${(p.months ?? 1) === 1 ? '' : 's'}` : ''}`
     case 'EXTEND': { const m = p.months ?? billing.prices.activeMonths; return `${m} more month${m === 1 ? '' : 's'} (${n} GB)` }
   }

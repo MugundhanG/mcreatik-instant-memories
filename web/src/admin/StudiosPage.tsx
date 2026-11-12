@@ -112,20 +112,11 @@ export default function StudiosPage() {
       <Card title="All logins">
         {!studios && !error && <ShutterLoader className="py-8" />}
         <ul className="divide-y divide-line" data-testid="studios">
-          {studios?.map((s) =>
-            s.role === 'SUPER_ADMIN' ? (
-              <li key={s.id} className="flex items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <p className="font-medium">{s.name} <span className="ml-1 rounded bg-ink px-1.5 py-0.5 text-xs text-white">McreatiK · super admin</span></p>
-                  <p className="truncate text-xs text-muted">{s.email}</p>
-                </div>
-                <span className="shrink-0 text-sm tabular-nums"><b>{formatCount(s.events)}</b> <span className="text-muted">events</span></span>
-              </li>
-            ) : (
-              <StudioAccordionItem key={s.id} studio={s} billing={billing.get(s.id)} open={openId === s.id}
-                onToggle={() => setOpenId((id) => (id === s.id ? null : s.id))}
-                confirm={confirm} reload={load} onError={setError} />
-            ))}
+          {studios?.map((s) => (
+            <StudioAccordionItem key={s.id} studio={s} billing={billing.get(s.id)} open={openId === s.id}
+              onToggle={() => setOpenId((id) => (id === s.id ? null : s.id))}
+              confirm={confirm} reload={load} onError={setError} />
+          ))}
         </ul>
       </Card>
     </div>

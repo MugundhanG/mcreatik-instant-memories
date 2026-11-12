@@ -8,7 +8,7 @@ import { resolveBrand } from '../shared/brand'
 import { GalleryUnavailable } from '../shared/GalleryUnavailable'
 import { PageLoader, ShutterLoader } from '../shared/ShutterLoader'
 import { useZipDownload } from '../shared/zipDownload'
-import { SiteFooter } from '../shared/SiteFooter'
+import { ClientFooter } from './ClientFooter'
 import { ZipProgressCard } from '../shared/ZipProgressCard'
 import { clientApi, clientSession, type ClientMe, type ClientPhoto } from './clientApi'
 
@@ -278,9 +278,9 @@ export default function ClientPortal() {
         </ul>
         <div ref={sentinel} aria-hidden="true" />
         {nextOffset !== null && !loading && <ShutterLoader label="Loading more" className="py-6 [&_svg]:size-8" />}
-        <p className="py-8 text-center text-xs text-muted"><a href="/privacy" className="underline underline-offset-2 hover:text-ink">Privacy &amp; security</a></p>
+        <div className="h-8" />
       </main>
-      <SiteFooter className="pb-8" />
+      <ClientFooter brand={brand} className="pb-8" />
 
       <ZipProgressCard status={zip.status} onClose={zip.dismiss} />
       {toast && !zip.status && (

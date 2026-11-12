@@ -74,6 +74,20 @@ describe('Studio accounts', () => {
     expect(await screen.findByRole('link', { name: 'Studios' })).toBeInTheDocument()
   })
 
+  it("lets McreatiK's own login edit its branding on the Account page and on the Studios page", async () => {
+    const user = userEvent.setup()
+    const brand = { name: 'McreatiK Studios', logoUrl: null, instagram: null, mcreatik: true, logoScale: 100, boardTheme: 'cream' as const, phone: null }
+    mockApi({ ...account('SUPER_ADMIN'), brand }, [{ ...superStudio, brand }])
+    signIn('SUPER_ADMIN')
+    const { unmount } = renderAt('/account')
+    expect(await screen.findByText('Studio branding')).toBeInTheDocument()
+    unmount()
+    renderAt('/studios')
+    await user.click(await screen.findByRole('button', { name: /McreatiK Studios/ }))
+    expect(screen.getByRole('button', { name: 'Edit branding' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+  })
+
   it('sends a studio with a temporary password to choose its own first', async () => {
     const user = userEvent.setup()
     const calls = mockApi(account('STUDIO', true))

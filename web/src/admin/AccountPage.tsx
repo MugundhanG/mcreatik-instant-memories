@@ -52,8 +52,8 @@ export default function AccountPage() {
       <Card title="Your account">
         <p className="text-sm"><span className="font-medium">{session?.displayName}</span> · <span className="text-muted">{session?.email}</span></p>
       </Card>
-      {/* McreatiK's own events use the built-in McreatiK design; studios set their own. */}
-      {!forced && account?.brand && account.role === 'STUDIO' && (
+      {/* Studios set their own; McreatiK's login too (what is left empty keeps the built-in McreatiK design). */}
+      {!forced && account?.brand && (
         <BrandingCard
           brand={account.brand}
           theme={account.brand.boardTheme}
