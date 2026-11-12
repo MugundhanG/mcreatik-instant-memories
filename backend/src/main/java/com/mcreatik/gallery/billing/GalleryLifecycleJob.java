@@ -73,7 +73,7 @@ public class GalleryLifecycleJob {
         List<Row> rows = jdbc.query("""
                 UPDATE events e SET client_gallery_enabled = false, storage_locked = true
                 FROM admin_users u
-                WHERE u.id = e.owner_id AND %s AND e.event_type IN ('MAIN', 'QUICK') AND NOT e.storage_locked
+                WHERE u.id = e.owner_id AND %s AND e.photos_deleted_at IS NULL AND e.event_type IN ('MAIN', 'QUICK') AND NOT e.storage_locked
                   AND e.client_gallery_enabled AND e.event_date < ?
                   AND (SELECT coalesce(sum(p.media_bytes + CASE WHEN p.original_stored THEN p.file_size ELSE 0 END), 0)
                        FROM photos p WHERE p.event_id = e.id) > e.storage_quota_gb::bigint * ?
@@ -100,7 +100,7 @@ public class GalleryLifecycleJob {
         List<Row> rows = jdbc.query("""
                 UPDATE events e SET expiry_warned_for = e.active_until
                 FROM admin_users u
-                WHERE u.id = e.owner_id AND %s AND e.active_until BETWEEN ? AND ?
+                WHERE u.id = e.owner_id AND %s AND e.photos_deleted_at IS NULL AND e.active_until BETWEEN ? AND ?
                   AND e.expiry_warned_for IS DISTINCT FROM e.active_until
                 RETURNING e.id, e.name, u.email, u.display_name, e.active_until""".formatted(PAYING),
                 (rs, n) -> new Row(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4),
@@ -126,7 +126,7 @@ public class GalleryLifecycleJob {
         List<Row> rows = jdbc.query("""
                 UPDATE events e SET expiry_notified_for = e.active_until
                 FROM admin_users u
-                WHERE u.id = e.owner_id AND %s AND e.active_until < ?
+                WHERE u.id = e.owner_id AND %s AND e.photos_deleted_at IS NULL AND e.active_until < ?
                   AND e.expiry_notified_for IS DISTINCT FROM e.active_until
                 RETURNING e.id, e.name, u.email, u.display_name, e.active_until""".formatted(PAYING),
                 (rs, n) -> new Row(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4),

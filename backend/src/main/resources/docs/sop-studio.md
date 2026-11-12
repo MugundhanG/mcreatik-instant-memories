@@ -83,30 +83,27 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 | --- | --- |
 | **Client gallery only** | ₹250 setup per gallery + storage |
 | **Storage** | ₹15 per GB per month (1 GB ≈ 80 full-quality photos) |
-| **Main or Quick event** | 5 GB included, then ₹15 per GB per month |
-| **Keep 3 more months** | ₹15 per GB per month: ₹45 per GB the gallery uses |
+| **Main or Quick event** | 5 GB for 3 months included free; storage then starts at 5 GB extra (any size from 5 GB), ₹15 per GB per month |
+| **Keep more months** | You choose the months (1 or more): ₹15 per GB of the gallery's storage per month |
 
 - **What counts:** everything stored for the event, both the gallery versions and the full-quality originals. A typical wedding of 2,000 photos with originals is about 25 GB.
 - **Event page → Overview → Gallery & storage** shows what the event uses, how many more photos fit, and when it closes. **Add storage** buys GB for that event (5, 10, 25, 50 or 100, or any number).
 - **Client galleries** start with 0 GB. Add storage before uploading; when it is full, uploads stop with "storage is full" until you add more.
 - **Main and Quick events** are never stopped during the event. If the event uses more than 5 GB, add the extra GB within **14 days of the event date**. If you don't, the couple's gallery is paused (the guests' gallery keeps working) until you add it.
-- **Every gallery is open 3 months (about 90 days)**: from the event date for Main and Quick, from the day it was created for a client gallery. After that, guests and the couple see "This gallery has expired", and the photos are **deleted for good 30 days later**. We email you 14 days before and on the day.
-- **Keep 3 more months** on the same card extends it, at ₹15 per GB a month (₹45 for each GB it uses). You can press it as many times as you need. You can do it any time until the deletion date.
-- **How storage is charged:** when you add storage, you pay for the months the gallery has left (rounded up to whole months). For a new gallery that is its full 3 months: ₹45 per GB.
+- **Every gallery is open 3 months (about 90 days)**: from the event date for Main and Quick, from the day it was created for a client gallery. After that, guests and the couple see "This gallery has expired", and the photos are **deleted for good 30 days later** (the event record itself is kept). We email you 14 days before and on the day.
+- **Keep more months** on the same card extends it: choose how many months; you pay ₹15 per GB of the gallery's storage per month. You can use it as many times as you need. You can do it any time until the deletion date.
+- **How storage is charged:** when you add storage, you pay for the months the gallery has left (rounded up to whole months). A client gallery has no free storage: you choose its months when you buy it (setup + GB × ₹15 × months).
 - **Selling it on:** you decide what to charge your couple for the digital gallery. For example, a 25 GB wedding gallery for 3 months is ₹250 + 25 × ₹15 × 3 = ₹1,375 to you, so you could charge your couple ₹2,500 or more for a private online album. Uploading only the edited finals (not every original) keeps the GB, and your cost, down.
 
 Current prices are always on [the pricing page](https://live.mcreatik.com/pricing).
 
 ### Need more events?
 
-Press **Buy events**, choose **Main** or **Quick** and how many. **Monthly packs** (or **Renew or change pack**) opens the same window for a pack. Then pay one of two ways:
+Press **Buy events**, choose **Main** or **Quick** and how many. **Monthly packs** (or **Renew or change pack**) opens the same window for a pack. Then pay:
 
-- **Card, netbanking, UPI** (fastest): press **Pay ₹…**. A secure Razorpay window opens; pay by card, netbanking, UPI or wallet. The events are added **straight away** and your new event carries on. Closing the window without paying changes nothing.
-- **UPI QR**: press **Show UPI QR for ₹…**, then scan it with GPay, PhonePe, Paytm or any UPI app (on a phone, tap **Pay with UPI app**). The events are added **automatically within seconds** of paying; there is nothing to type. The QR works for 15 minutes; if it runs out, press **New UPI QR**.
+Pay with the **UPI QR**: scan it with GPay, PhonePe, Paytm or any UPI app (on a phone, tap **Pay with UPI app**), then type the **UTR** (the UPI transaction ID in your app) and press **I have paid**. The events are added **straight away**; McreatiK checks the payment afterwards. Bought events never expire. If a payment is not received, it is taken back and we contact you (see **Refunds** at the foot of the dashboard).
 
-The price is the same both ways. Bought events never expire. If a card or bank payment fails, no events are added; any money taken is returned by your bank, or by us (see **Refunds** at the foot of the dashboard).
-
-![Buy events: pay by card, netbanking or UPI, or by UPI QR](images/s-buy-events.webp)
+![Buy events: pay by UPI QR](images/s-buy-events.webp)
 
 ## 4. Connect your cameras
 
@@ -131,7 +128,7 @@ Every camera needs its own **uploader**. One laptop with the McreatiK Instant Me
 - **Freelancers and second shooters:** add a camera for each person, then send them the code on WhatsApp together with the uploader download link (**Install uploader** in the top bar). They need nothing else. When their job is done, press **Get new code**. Their old code stops working, so they can no longer send photos to the event.
 - **Remove:** disconnects that camera.
 
-Then set up the camera itself: [Canon EOS R6 Mark II](/admin/docs/guide-canon) · [Sony α7 IV](/admin/docs/guide-sony).
+Then set up the camera itself (any camera with FTP transfer (Wi-Fi/FTP upload) works; examples): [Canon EOS R6 Mark II](/admin/docs/guide-canon) · [Sony α7 IV](/admin/docs/guide-sony).
 
 ## 5. QR code, studio board and cards
 
@@ -224,7 +221,7 @@ Open the **Client gallery** tab and upload your edited, full-quality photos ther
 
 ### 8.3 How long it stays open
 
-**Settings → Privacy & data** shows when the gallery closes and when its photos are deleted permanently (30 days later). To keep it longer, use **Keep 3 more months** on the Overview's **Gallery & storage** card (see 3.1). Tell the couple the date so they download in time.
+**Settings → Privacy & data** shows when the gallery closes and when its photos are deleted permanently (30 days later). To keep it longer, use **Keep more months** on the Overview's **Gallery & storage** card (see 3.1). Tell the couple the date so they download in time.
 
 ## 9. Give the couple their login
 
@@ -280,7 +277,7 @@ Table card text you can copy: "**Scan to see the photos live.** Point your phone
 | Guests say the page is empty | Status is Draft or Archived, or no photos yet. Set Upcoming or Live. |
 | "This gallery is currently unavailable" | McreatiK turned the gallery off. Contact McreatiK. |
 | Upload says "storage is full" | A client gallery has used its GB. Press **Add storage** (Overview → Gallery & storage), then **Retry failed**. |
-| Couple says "This gallery has expired" | Its 3 months have passed. Press **Keep 3 more months** on the Overview before the deletion date shown there. |
+| Couple says "This gallery has expired" | Its 3 months have passed. Press **Keep more months** on the Overview before the deletion date shown there. |
 | Can't create an event (payment needed) | Your pack's events are used up, your pack has ended (renew it), or it's a Main event on a Quick pack. The message says which. Use **Buy events** or **Renew pack**. |
 | Couple says the album limit is reached | Raise the **Album limit** on the Couple tab, or ask them to untick some. |
 

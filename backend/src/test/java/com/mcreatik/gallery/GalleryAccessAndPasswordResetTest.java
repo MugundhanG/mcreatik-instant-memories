@@ -73,9 +73,10 @@ class GalleryAccessAndPasswordResetTest extends IntegrationTest {
     /** The temporary password in the email sent to this address. */
     private String emailedPassword(String to) {
         ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
-        verify(mailer, timeout(3000)).send(eq(to), eq("Your McreatiK temporary password"), body.capture());
+        verify(mailer, timeout(3000)).send(eq(to), eq("Your McreatiK temporary password"), body.capture(), org.mockito.ArgumentMatchers.contains("mcreatik.com"));
         Matcher m = TEMPORARY.matcher(body.getValue());
         assertThat(m.find()).isTrue();
+        assertThat(body.getValue()).contains("Instant Memories login", "Instagram: @mcreatik.studios", "wa.me/919952758545", "connect@mcreatik.com");
         return m.group(1);
     }
 

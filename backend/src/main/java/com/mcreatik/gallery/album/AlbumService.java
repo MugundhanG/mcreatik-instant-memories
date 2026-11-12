@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -189,12 +188,9 @@ public class AlbumService {
                     "This event already has a client login. Reset its password or delete it to create a new one.");
         }
         UUID id = UUID.randomUUID();
-        try {
-            jdbc.update("INSERT INTO event_clients (id, event_id, name, email, password_hash, phone) VALUES (?, ?, ?, ?, ?, ?)",
-                    id, eventId, name, email, passwordEncoder.encode(request.password()), phone);
-        } catch (DuplicateKeyException e) {
-            throw ApiException.conflict("EMAIL_TAKEN", "This email already has a client login");
-        }
+        // The same email may be the login of other events too (the client chooses the event when logging in).
+        jdbc.update("INSERT INTO event_clients (id, event_id, name, email, password_hash, phone) VALUES (?, ?, ?, ?, ?, ?)",
+                id, eventId, name, email, passwordEncoder.encode(request.password()), phone);
         return clients(eventId).stream().filter(c -> c.id().equals(id)).findFirst().orElseThrow();
     }
 

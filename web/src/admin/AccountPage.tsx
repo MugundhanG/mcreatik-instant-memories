@@ -56,6 +56,7 @@ export default function AccountPage() {
       {!forced && account?.brand && account.role === 'STUDIO' && (
         <BrandingCard
           brand={account.brand}
+          theme={account.brand.boardTheme}
           actions={{
             update: async (input) => (await adminApi.updateAccount(input)).brand!,
             upload: async (png) => (await adminApi.uploadLogo(png)).brand!,

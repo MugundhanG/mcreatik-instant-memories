@@ -25,60 +25,10 @@ public class BillingController {
 
     private final BillingService billing;
     private final AdminAccess access;
-    private final OnlinePaymentService online;
 
-    public BillingController(BillingService billing, AdminAccess access, OnlinePaymentService online) {
+    public BillingController(BillingService billing, AdminAccess access) {
         this.billing = billing;
         this.access = access;
-        this.online = online;
-    }
-
-    /**
-     * What to buy. {@code item} defaults to Main events (the older API sent only {@code events}); {@code quantity}
-     * (or {@code events}) is the number of events or months; {@code eventId} for an upgrade; {@code plan} for a pack.
-     */
-    public record OnlineOrderRequest(Integer events, BillingService.Item item, Integer quantity, UUID eventId,
-                                     BillingService.Plan plan, Integer storageGb) {
-        BillingService.Purchase purchase() {
-            return BillingService.normalize(item, quantity != null ? quantity : events, eventId, plan, storageGb);
-        }
-    }
-
-    /** Pay online (card, netbanking, UPI, wallet): opens a Razorpay order at the server's price. */
-    @PostMapping("/online-orders")
-    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
-    public OnlinePaymentService.CheckoutOrder startOnline(Authentication auth, @RequestBody OnlineOrderRequest request) {
-        return online.start(CurrentAdmin.id(auth), request.purchase());
-    }
-
-    public record ConfirmRequest(String razorpayPaymentId, String razorpaySignature) {
-    }
-
-    /** Back from Razorpay Checkout: verified with Razorpay, then the events are added (once). */
-    @PostMapping("/online-orders/{paymentId}/confirm")
-    public OnlinePaymentService.Result confirmOnline(Authentication auth, @PathVariable UUID paymentId,
-                                                     @RequestBody ConfirmRequest request) {
-        return online.confirm(CurrentAdmin.id(auth), paymentId, request.razorpayPaymentId(), request.razorpaySignature());
-    }
-
-    /** UPI QR confirmed automatically: a single-use Razorpay QR for the exact amount. */
-    @PostMapping("/upi-qr")
-    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
-    public OnlinePaymentService.UpiQrOrder startUpiQr(Authentication auth, @RequestBody OnlineOrderRequest request) {
-        return online.startQr(CurrentAdmin.id(auth), request.purchase());
-    }
-
-    /** "Paid yet?" for a UPI QR (checks with Razorpay; adds the events once paid). */
-    @GetMapping("/online-orders/{paymentId}")
-    public OnlinePaymentService.Status onlineStatus(Authentication auth, @PathVariable UUID paymentId) {
-        return online.status(CurrentAdmin.id(auth), paymentId);
-    }
-
-    /** The studio closed the QR: stop it accepting payments. */
-    @org.springframework.web.bind.annotation.DeleteMapping("/online-orders/{paymentId}")
-    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
-    public void cancelOnline(Authentication auth, @PathVariable UUID paymentId) {
-        online.cancel(CurrentAdmin.id(auth), paymentId);
     }
 
     /** The logged-in studio's plan, this month's usage, bought events, UPI details and its payments. */
@@ -87,9 +37,22 @@ public class BillingController {
         return billing.summary(CurrentAdmin.id(auth));
     }
 
-    /** A UPI QR payment the studio made, with its transaction ID; the other fields as in {@link OnlineOrderRequest}. */
+    /**
+     * A UPI QR payment the studio made, with its transaction ID. {@code item} defaults to Main events (the older API
+     * sent only {@code events}); {@code quantity} (or {@code events}) is the number of events, months or GB;
+     * {@code eventId} for an upgrade, storage or more months; {@code plan} for a pack; {@code months} for a client
+     * gallery's open months (CLIENT_SETUP).
+     */
     public record PaymentRequest(Integer events, String utr, BillingService.Item item, Integer quantity, UUID eventId,
-                                 BillingService.Plan plan, Integer storageGb) {
+                                 BillingService.Plan plan, Integer storageGb, Integer months) {
+    }
+
+    /** What a purchase would cost, for the dashboard's price breakdown (nothing is bought). */
+    @PostMapping("/quote")
+    public BillingService.Quote quote(Authentication auth, @RequestBody PaymentRequest request) {
+        return billing.quote(CurrentAdmin.id(auth), BillingService.normalize(request.item(),
+                request.quantity() != null ? request.quantity() : request.events(), request.eventId(), request.plan(),
+                request.storageGb(), request.months()));
     }
 
     @PostMapping("/payments")
@@ -97,7 +60,7 @@ public class BillingController {
     public BillingService.Payment pay(Authentication auth, @RequestBody PaymentRequest request) {
         return billing.submitPayment(CurrentAdmin.id(auth), BillingService.normalize(request.item(),
                 request.quantity() != null ? request.quantity() : request.events(), request.eventId(), request.plan(),
-                request.storageGb()),
+                request.storageGb(), request.months()),
                 request.utr());
     }
 

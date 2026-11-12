@@ -20,7 +20,7 @@ export function Button({ variant = 'secondary', className = '', ...props }: Butt
   )
 }
 
-export function Card({ title, action, children, className = '' }: { title?: string; action?: ReactNode; children: ReactNode; className?: string }) {
+export function Card({ title, action, children, className = '', bodyClassName = '' }: { title?: string; action?: ReactNode; children: ReactNode; className?: string; bodyClassName?: string }) {
   return (
     <section className={`rounded-xl border border-line bg-white ${className}`}>
       {(title || action) && (
@@ -29,7 +29,7 @@ export function Card({ title, action, children, className = '' }: { title?: stri
           {action}
         </div>
       )}
-      <div className="p-5">{children}</div>
+      <div className={`p-5 ${bodyClassName}`}>{children}</div>
     </section>
   )
 }

@@ -8,6 +8,7 @@ import { resolveBrand } from '../shared/brand'
 import { GalleryUnavailable } from '../shared/GalleryUnavailable'
 import { PageLoader, ShutterLoader } from '../shared/ShutterLoader'
 import { useZipDownload } from '../shared/zipDownload'
+import { SiteFooter } from '../shared/SiteFooter'
 import { ZipProgressCard } from '../shared/ZipProgressCard'
 import { clientApi, clientSession, type ClientMe, type ClientPhoto } from './clientApi'
 
@@ -196,7 +197,8 @@ export default function ClientPortal() {
           <div>
             <p className="text-[11px] font-semibold tracking-[0.35em] text-[#f3dfb4] uppercase">{brand.name}</p>
             <h1 className="mt-1 font-display text-4xl leading-tight font-medium sm:text-5xl">{me.event.name}</h1>
-            <p className="mt-1 text-sm text-white/80">{formatEventDate(me.event.eventDate)} · Welcome, {me.name}</p>
+            <p className="mt-1 text-sm text-white/80">{formatEventDate(me.event.eventDate)} </p>
+            <p className="mt-3 text-base font-medium text-white">Hi! Welcome to your gallery.</p>
           </div>
         </div>
       </header>
@@ -278,6 +280,7 @@ export default function ClientPortal() {
         {nextOffset !== null && !loading && <ShutterLoader label="Loading more" className="py-6 [&_svg]:size-8" />}
         <p className="py-8 text-center text-xs text-muted"><a href="/privacy" className="underline underline-offset-2 hover:text-ink">Privacy &amp; security</a></p>
       </main>
+      <SiteFooter className="pb-8" />
 
       <ZipProgressCard status={zip.status} onClose={zip.dismiss} />
       {toast && !zip.status && (

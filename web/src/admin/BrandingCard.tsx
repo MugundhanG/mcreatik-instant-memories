@@ -3,6 +3,8 @@ import { ApiError } from '../lib/api'
 import type { Brand } from '../lib/types'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
 import { formatPhone } from '../shared/phone'
+import { THEMES, type BoardTheme } from '../shared/printDesign'
+import { phoneError } from '../shared/validate'
 
 const LOGO_MAX_EDGE = 800
 
@@ -40,6 +42,13 @@ export interface BrandingActions {
   remove: () => Promise<Brand>
 }
 
+/** The poster preview's paper, following the studio's board design (Account → Studio board). */
+const PREVIEW_PAPER: Record<BoardTheme, string> = {
+  cream: 'radial-gradient(ellipse at 50% 35%, #fffdf8, #f3ead8)',
+  dark: 'radial-gradient(ellipse at 50% 30%, #2b2521, #1a1714)',
+  white: '#ffffff',
+}
+
 const MIN_SCALE = 50
 const MAX_SCALE = 200
 
@@ -47,13 +56,17 @@ const MAX_SCALE = 200
  * A studio's name, logo, Instagram and poster logo size: what guests see on its galleries and QR posters.
  * {@code onSaved} receives the brand as saved (its name is the studio name).
  */
-export function BrandingCard({ brand, actions, onSaved, title = 'Studio branding', embedded = false }: {
+export function BrandingCard({ brand, actions, onSaved, title = 'Studio branding', embedded = false, theme = 'cream', onCancel }: {
   brand: Brand
   actions: BrandingActions
   onSaved: (b: Brand) => void
   title?: string
   /** Inside another card (Studios page): no card frame of its own. */
   embedded?: boolean
+  /** The studio's board design: the preview below uses its colours. */
+  theme?: BoardTheme
+  /** Called after Cancel put the form back to the saved values (e.g. to close the editor). */
+  onCancel?: () => void
 }) {
   const [name, setName] = useState(brand.name)
   const [instagram, setInstagram] = useState(brand.instagram ?? '')
@@ -62,6 +75,8 @@ export function BrandingCard({ brand, actions, onSaved, title = 'Studio branding
   const [busy, setBusy] = useState<'save' | 'logo' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [phoneTouched, setPhoneTouched] = useState(false)
+  const phoneMsg = phoneTouched ? phoneError(phone) : null
   const fileInput = useRef<HTMLInputElement>(null)
   const logoUrl = brand.logoUrl
 
@@ -89,8 +104,20 @@ export function BrandingCard({ brand, actions, onSaved, title = 'Studio branding
     }
   }
 
+  const cancel = () => {
+    setName(brand.name)
+    setInstagram(brand.instagram ?? '')
+    setPhone(brand.phone ? formatPhone(brand.phone) : '')
+    setScale(brand.logoScale ?? 100)
+    setPhoneTouched(false)
+    setError(null)
+    onCancel?.()
+  }
+
   const save = (e: FormEvent) => {
     e.preventDefault()
+    setPhoneTouched(true)
+    if (phoneError(phone)) return
     void run('save', () => actions.update({ displayName: name.trim(), instagram: instagram.trim(), phone: phone.trim(), logoScale: scale }), 'Could not save')
   }
 
@@ -118,7 +145,7 @@ export function BrandingCard({ brand, actions, onSaved, title = 'Studio branding
         <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={pickLogo} aria-label="Logo file" />
       </div>
       <p className="-mt-3 mb-5 text-xs text-muted">Best: a PNG with a transparent background.</p>
-      <form onSubmit={save} className="space-y-4">
+      <form onSubmit={save} noValidate className="space-y-4">
         {logoUrl && (
           <div>
             <label className="flex items-center justify-between text-sm font-medium" htmlFor="logo-scale">
@@ -129,26 +156,28 @@ export function BrandingCard({ brand, actions, onSaved, title = 'Studio branding
               onChange={(e) => setScale(Number(e.target.value))} className="mt-2 w-full accent-[#b37a2c]" />
             {/* Live preview of the poster's top, at its real proportions (the A4 poster is 210 mm wide). */}
             <div className="mt-3 overflow-hidden rounded-lg border border-line" data-testid="poster-preview">
-              <div className="flex flex-col items-center bg-[radial-gradient(ellipse_at_50%_35%,#fffdf8,#f3ead8)] px-4 py-4" style={{ minHeight: 120 }}>
+              <div className="flex flex-col items-center px-4 py-4" style={{ minHeight: 120, background: PREVIEW_PAPER[theme] }}>
                 <img src={logoUrl} alt="" className="w-auto object-contain" style={{ height: 42 * scale / 100, maxWidth: 160 * scale / 100 }} />
-                <p className="mt-2 font-display text-base font-semibold tracking-[0.22em] text-[#7a4f17] uppercase">{name || brand.name}</p>
-                <p className="mt-2 rounded-full border border-[#d9a94e] px-2 py-0.5 text-[7px] font-semibold tracking-[0.3em] text-[#8a5a1c]">LIVE PHOTO GALLERY</p>
+                <p className="mt-2 font-display text-base font-semibold tracking-[0.22em] uppercase" style={{ color: THEMES[theme].accent }}>{name || brand.name}</p>
+                <p className="mt-2 rounded-full border px-2 py-0.5 text-[7px] font-semibold tracking-[0.3em]" style={{ borderColor: THEMES[theme].frame, color: THEMES[theme].accent }}>MCREATIK INSTANT MEMORIES</p>
               </div>
             </div>
           </div>
         )}
-        <Field label="Studio name">
+        <Field label="Studio name" hint="Shown to guests on your galleries, QR posters and printed cards.">
           <input className={inputClass} required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
         <Field label="Instagram" hint="Guests get a Follow button. Leave empty to hide it.">
           <input className={inputClass} value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@yourstudio" />
         </Field>
         <Field label="Contact number (WhatsApp)" hint="Guests can WhatsApp or call you from your gallery, and it is printed on your studio board and QR poster. Leave empty to hide it.">
-          <input className={inputClass} type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="98765 43210" />
+          <input className={inputClass} type="tel" inputMode="tel" autoComplete="tel" aria-invalid={!!phoneMsg} value={phone} onChange={(e) => setPhone(e.target.value)} onBlur={() => setPhoneTouched(true)} placeholder="98765 43210" />
         </Field>
+        <ErrorText>{phoneMsg}</ErrorText>
         <ErrorText>{error}</ErrorText>
         <div className="flex items-center justify-end gap-3">
           {saved && <span role="status" className="text-sm text-emerald-700">Saved ✓</span>}
+          <Button onClick={cancel} disabled={busy !== null}>Cancel</Button>
           <Button type="submit" variant="primary" disabled={busy !== null}>{busy === 'save' ? 'Saving…' : 'Save'}</Button>
         </div>
       </form>

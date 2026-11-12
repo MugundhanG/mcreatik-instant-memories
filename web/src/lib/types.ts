@@ -385,7 +385,9 @@ export interface Purchase {
   quantity?: number
   eventId?: string
   plan?: Plan
-  /** STORAGE: the months the gallery has left, to show the price (the server works it out itself). */
+  /** STORAGE: the months the gallery has left, to show the price (the server works it out itself). EXTEND: the
+   *  months to keep it open (1 to 12); quantity is then the GB it holds, to show the price. CLIENT_SETUP: the
+   *  months the new gallery is open (1 to 12, default 1). */
   months?: number
   /** CLIENT_SETUP: storage (GB) bought together with one gallery's setup; the new gallery starts with it. */
   storageGb?: number
@@ -432,34 +434,15 @@ export interface EventPayment {
   note: string | null
   createdAt: string
   reviewedAt: string | null
-  /** UPI_QR: checked by McreatiK. RAZORPAY: paid online. UPI_AUTO: Razorpay UPI QR. Both confirmed by Razorpay. */
-  method: 'UPI_QR' | 'RAZORPAY' | 'UPI_AUTO'
-  razorpayPaymentId: string | null
+  /** Always a UPI QR payment, checked by McreatiK. */
+  method: 'UPI_QR'
   item: PurchaseItem
   eventId: string | null
   eventName: string | null
   /** The pack a PLAN payment paid for. */
   plan: Plan | null
-}
-
-/** A Razorpay order the server opened for "Pay online" (the amount is always the server's). */
-export interface OnlineOrder {
-  paymentId: string
-  razorpayOrderId: string
-  keyId: string
-  amountPaise: number
-  currency: 'INR'
-  events: number
-  amount: number
-  studioName: string
-  email: string
-}
-
-export interface OnlinePaymentResult {
-  paymentId: string
-  events: number
-  /** Bought events now available. */
-  credits: number
+  /** The months bought (keeping a gallery open, or a client gallery's open months); 0 when not recorded. */
+  months?: number
 }
 
 /** The logged-in studio's plan and allowance. */
@@ -479,8 +462,6 @@ export interface BillingSummary {
   upiId: string | null
   payeeName: string | null
   payments: EventPayment[]
-  /** Card / netbanking / UPI / wallet checkout (Razorpay) is set up. */
-  onlinePayments: boolean
   mainCredits: number
   quickCredits: number
   /** Last month's unused pack events, still usable this month. */
@@ -512,8 +493,8 @@ export interface BillingSettings {
   /** The single Main event price. */
   perEventPrice: number
   /** The older Monthly plan: extra events and its monthly price. */
-  extraEventPrice: number
-  monthlyPrice: number
+  extraEventPrice?: number
+  monthlyPrice?: number
   quickPrice: number
   main2Price: number
   main4Price: number
@@ -540,22 +521,4 @@ export interface PublicPricing {
   extraEventPrice: number
   currency: 'INR'
   packages?: Prices
-}
-
-/** A single-use UPI QR for the exact amount, confirmed automatically (no transaction ID to type). */
-export interface UpiQrOrder {
-  paymentId: string
-  /** upi://pay link drawn as the QR, or opened by a UPI app on this phone. */
-  upiLink: string | null
-  imageUrl: string | null
-  events: number
-  amount: number
-  expiresAt: string
-}
-
-export interface OnlinePaymentStatus {
-  paymentId: string
-  status: 'WAITING' | 'PAID' | 'EXPIRED'
-  events: number
-  credits: number
 }

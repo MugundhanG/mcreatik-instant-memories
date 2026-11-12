@@ -115,8 +115,10 @@ public class EventService {
         if (type == EventType.CLIENT) {
             // A gallery for the couple only: no guest QR gallery, storage bought for it, active from today.
             event.setLiveGalleryEnabled(false);
-            event.setStorageQuotaGb("CLIENT".equals(charge) ? billing.takeClientStorage(owner) : 0);
-            event.setActiveUntil(today().plusMonths(prices.activeMonths()));
+            boolean bought = "CLIENT".equals(charge);
+            event.setStorageQuotaGb(bought ? billing.takeClientStorage(owner) : 0);
+            // The months chosen when the gallery was bought (at least 1).
+            event.setActiveUntil(today().plusMonths(bought ? billing.takeClientMonths(owner) : prices.activeMonths()));
         } else {
             event.setStorageQuotaGb(prices.freeStorageGb());
             event.setActiveUntil(request.eventDate().plusMonths(prices.activeMonths()));
@@ -434,12 +436,23 @@ public class EventService {
         throw new IllegalArgumentException("Unexpected timestamp type " + value.getClass());
     }
 
-    /** Used by the retention job. */
+    /** Used by the retention job: events past their retention date whose photos are still there. */
     public List<Event> expiredEvents(LocalDate today) {
-        return events.findByRetentionUntilBefore(today);
+        return events.findExpiredWithPhotos(today);
     }
 
+    /**
+     * The retention date has passed: the photos and every stored file are deleted and the gallery is closed
+     * (ARCHIVED), but the event itself stays as a business record (with its payments and charges).
+     */
+    @Transactional
     public void deleteExpired(Event event) {
-        remove(event);
+        String prefix = StorageKeys.eventPrefix(event.getId());
+        storage.deletePrefix(StorageArea.ORIGINALS, prefix);
+        storage.deletePrefix(StorageArea.MEDIA, prefix);
+        events.archive(event.getId());
+        events.deletePhotos(event.getId());
+        broadcaster.eventStatusChanged(event.getId(), EventStatus.ARCHIVED);
+        log.info("Photos of event {} ({}) deleted; the event record is kept", event.getId(), event.getSlug());
     }
 }

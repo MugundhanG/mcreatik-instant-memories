@@ -5,7 +5,7 @@ import type { BillingSummary } from './types'
 describe('Billing from an older backend', () => {
   it('fills in prices and typed credits so the dashboard keeps working until the backend is deployed', () => {
     const old = { plan: 'PER_EVENT', free: false, monthlyQuota: 0, usedThisMonth: 0, credits: 2, unitPrice: 2500, monthlyPrice: 5000,
-      upiId: 'x@upi', payeeName: null, payments: [], onlinePayments: false } as unknown as BillingSummary
+      upiId: 'x@upi', payeeName: null, payments: [] } as unknown as BillingSummary
     const b = withBillingDefaults(old)
     expect(b.mainCredits).toBe(2)
     expect(b.quickCredits).toBe(0)

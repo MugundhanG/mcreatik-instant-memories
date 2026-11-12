@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, Gallery, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, EventType, DocPage, OnlineOrder, OnlinePaymentResult, OnlinePaymentStatus, UpiQrOrder, DocPageSummary, GuestAnalytics, HqRequest, HqRequestInput, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, Gallery, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, EventType, DocPage, DocPageSummary, GuestAnalytics, HqRequest, HqRequestInput, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export type BulkPhotoAction = 'LIKE' | 'UNLIKE' | 'HIDE' | 'SHOW' | 'DELETE'
 
@@ -254,16 +254,6 @@ export const adminApi = {
   },
   removeStudioLogo: (studioId: string) => request<Brand>(`/api/admin/studios/${studioId}/logo`, { method: 'DELETE' }, true),
   billing: () => request<BillingSummary>('/api/admin/billing', {}, true).then(withBillingDefaults),
-  /** The studio paid by UPI: the events are usable at once, McreatiK checks the transaction later. */
-  startOnlinePayment: (purchase: Purchase) =>
-    request<OnlineOrder>('/api/admin/billing/online-orders', { method: 'POST', body: json(purchase) }, true),
-  confirmOnlinePayment: (paymentId: string, razorpayPaymentId: string, razorpaySignature: string) =>
-    request<OnlinePaymentResult>(`/api/admin/billing/online-orders/${paymentId}/confirm`,
-      { method: 'POST', body: json({ razorpayPaymentId, razorpaySignature }) }, true),
-  startUpiQr: (purchase: Purchase) =>
-    request<UpiQrOrder>('/api/admin/billing/upi-qr', { method: 'POST', body: json(purchase) }, true),
-  onlinePaymentStatus: (paymentId: string) => request<OnlinePaymentStatus>(`/api/admin/billing/online-orders/${paymentId}`, {}, true),
-  cancelOnlinePayment: (paymentId: string) => request<void>(`/api/admin/billing/online-orders/${paymentId}`, { method: 'DELETE' }, true),
   /** The studio paid by UPI: what it bought is usable at once, McreatiK checks the transaction later. */
   payByUpi: (purchase: Purchase, utr: string) =>
     request<EventPayment>('/api/admin/billing/payments', { method: 'POST', body: json({ ...purchase, utr }) }, true),

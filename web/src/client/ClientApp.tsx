@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router'
+import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router'
 import { ApiError } from '../lib/api'
 import { ForgotPassword } from '../shared/ForgotPassword'
-import { clientApi, clientSession, useClientSession } from './clientApi'
+import { ChooseEventError, clientApi, clientSession, useClientSession, type EventChoice } from './clientApi'
 import ClientPortal from './ClientPortal'
 import { PasswordInput } from '../shared/PasswordInput'
 
@@ -29,6 +29,10 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [forgot, setForgot] = useState(false)
+  // The couple's link carries the event (?event=address); an email on several events asks which one.
+  const [params] = useSearchParams()
+  const [choices, setChoices] = useState<EventChoice[] | null>(null)
+  const linkEvent = params.get('event') ?? undefined
   if (session) return <Navigate to="/client" replace />
   if (forgot) {
     return (
@@ -38,18 +42,39 @@ function LoginPage() {
     )
   }
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
+  const login = async (eventSlug?: string) => {
     setBusy(true)
     setError(null)
     try {
-      clientSession.set(await clientApi.login(email, password))
+      clientSession.set(await clientApi.login(email, password, eventSlug ?? linkEvent))
       navigate('/client', { replace: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not log in')
+      if (err instanceof ChooseEventError) setChoices(err.events)
+      else setError(err instanceof ApiError ? err.message : 'Could not log in')
     } finally {
       setBusy(false)
     }
+  }
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    void login()
+  }
+  if (choices) {
+    return (
+      <Shell title="Which gallery?" subtitle="This email has more than one gallery. Choose the one you want to open.">
+        <div className="space-y-2">
+          {choices.map((c) => (
+            <button key={c.slug} type="button" disabled={busy} onClick={() => void login(c.slug)}
+              className="w-full rounded-xl border border-line px-4 py-3 text-left hover:border-ink disabled:opacity-60">
+              <span className="block font-medium">{c.name}</span>
+              <span className="block text-xs text-muted">{new Date(`${c.eventDate}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            </button>
+          ))}
+          {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+          <button type="button" onClick={() => setChoices(null)} className="w-full text-center text-sm text-muted underline underline-offset-2 hover:text-ink">Back</button>
+        </div>
+      </Shell>
+    )
   }
   return (
     <Shell title="Your photos" subtitle="Log in with the email and password your photographer sent you.">

@@ -35,7 +35,7 @@ export function unitPrice(item: PurchaseItem, billing: BillingSummary, plan?: Pl
     case 'UPGRADE': return billing.prices.upgrade
     case 'PLAN': return packPrice(plan ?? billing.plan, billing.prices)
     case 'STORAGE': return billing.prices.storageGb * (months ?? billing.prices.activeMonths)
-    case 'EXTEND': return billing.prices.storageGb * billing.prices.activeMonths
+    case 'EXTEND': return billing.prices.storageGb * (months ?? billing.prices.activeMonths)
     case 'CLIENT_SETUP': return billing.prices.clientSetup
   }
 }
@@ -69,8 +69,8 @@ export function describe(p: Purchase, billing: BillingSummary): string {
     case 'UPGRADE': return 'Upgrade to a Main event'
     case 'PLAN': return `${n} month${n === 1 ? '' : 's'} of ${PLAN_LABEL[p.plan ?? billing.plan]}`
     case 'STORAGE': { const m = p.months ?? billing.prices.activeMonths; return `${n} GB of storage for ${m} month${m === 1 ? '' : 's'}` }
-    case 'CLIENT_SETUP': return `${n} client galler${n === 1 ? 'y' : 'ies'}${p.storageGb ? ` + ${p.storageGb} GB` : ''}`
-    case 'EXTEND': return `${billing.prices.activeMonths} more months (${n} GB)`
+    case 'CLIENT_SETUP': return `${n} client galler${n === 1 ? 'y' : 'ies'}${p.storageGb ? ` + ${p.storageGb} GB for ${p.months ?? 1} month${(p.months ?? 1) === 1 ? '' : 's'}` : ''}`
+    case 'EXTEND': { const m = p.months ?? billing.prices.activeMonths; return `${m} more month${m === 1 ? '' : 's'} (${n} GB)` }
   }
 }
 

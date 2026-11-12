@@ -92,27 +92,27 @@ export default function EventCardsPage() {
       {assets.logoMissing && (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Your logo couldn't be loaded, so the board preview shows your studio name only.</p>
       )}
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-        <Card title="Event card">
+      <div className="grid items-stretch gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <Card title="Event card" className="flex flex-col" bodyClassName="flex flex-1 flex-col">
           <p className="mb-4 text-sm text-muted">Goes in the frame of your studio board.</p>
-          <div className="mx-auto max-w-48"><DesignPreview svg={svgs?.event ?? null} label="Event card" /></div>
-          <Button variant="primary" className="mt-4 w-full" onClick={() => download('event')} disabled={!svgs || making !== null}>
+          <div className="mx-auto mb-4 w-full max-w-48"><DesignPreview svg={svgs?.event ?? null} label="Event card" /></div>
+          <Button variant="primary" className="mt-auto w-full" onClick={() => download('event')} disabled={!svgs || making !== null}>
             {making === 'event' ? `Making print file… ${percent}%` : 'Download event card'}
           </Button>
           <p className="mt-2 text-xs text-muted">{printNote}</p>
         </Card>
-        <Card title="Table card">
+        <Card title="Table card" className="flex flex-col" bodyClassName="flex flex-1 flex-col">
           <p className="mb-4 text-sm text-muted">Stands on its own on guest tables, with "Scan to see the photos live".</p>
-          <div className="mx-auto max-w-48"><DesignPreview svg={svgs?.table ?? null} label="Table card" /></div>
-          <Button variant="primary" className="mt-4 w-full" onClick={() => download('table')} disabled={!svgs || making !== null}>
+          <div className="mx-auto mb-4 w-full max-w-48"><DesignPreview svg={svgs?.table ?? null} label="Table card" /></div>
+          <Button variant="primary" className="mt-auto w-full" onClick={() => download('table')} disabled={!svgs || making !== null}>
             {making === 'table' ? `Making print file… ${percent}%` : 'Download table card'}
           </Button>
           <p className="mt-2 text-xs text-muted">{printNote}</p>
         </Card>
-        <Card title="A4 poster">
+        <Card title="A4 poster" className="flex flex-col" bodyClassName="flex flex-1 flex-col">
           <p className="mb-4 text-sm text-muted">Classic ivory and gold poster for the stage or a table.</p>
-          <div className="mx-auto max-w-48"><DesignPreview svg={svgs?.poster ?? null} label="A4 poster" /></div>
-          <Button variant="primary" className="mt-4 w-full" onClick={() => download('poster')} disabled={!svgs || making !== null}>
+          <div className="mx-auto mb-4 w-full max-w-48"><DesignPreview svg={svgs?.poster ?? null} label="A4 poster" /></div>
+          <Button variant="primary" className="mt-auto w-full" onClick={() => download('poster')} disabled={!svgs || making !== null}>
             {making === 'poster' ? `Making print file… ${percent}%` : 'Download JPG'}
           </Button>
           <p className="mt-2 text-xs text-muted">JPG at 300 dpi, A4 (2480 × 3508 px). Print at A4.</p>

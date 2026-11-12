@@ -89,13 +89,6 @@ gallery:
       originals-bucket: ${R2_ORIGINALS_BUCKET:mcreatik-instant-memories-originals}
       media-bucket: ${R2_MEDIA_BUCKET:mcreatik-instant-memories-media}
       media-public-base-url: ${R2_MEDIA_PUBLIC_BASE_URL:}
-  razorpay:
-    # Online payments (card, netbanking, UPI, wallet). The same Razorpay account as the main website: copy its
-    # existing keys (don't regenerate them, that breaks the website's store). Off when any is empty.
-    key-id: ${RAZORPAY_KEY_ID:}
-    key-secret: ${RAZORPAY_KEY_SECRET:}
-    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
-    api-base-url: ${RAZORPAY_API_BASE_URL:https://api.razorpay.com}
   mail:
     # Gmail / Google Workspace SMTP for "Forgot password" emails, sent from connect@mcreatik.com (app password).
     host: ${MAIL_HOST:}

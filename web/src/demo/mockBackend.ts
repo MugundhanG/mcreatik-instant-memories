@@ -343,7 +343,21 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
   if (path === '/api/admin/account/password' && method === 'POST') return new Response(null, { status: 204 })
   if (path === '/api/admin/studios' && method === 'GET') {
     const photos = events.reduce((n, e) => n + e.photos.length, 0)
-    return json([{ id: DEMO_OWNER, name: 'Demo', email: 'demo@mcreatik.com', role: 'SUPER_ADMIN', disabled: false, mustChangePassword: false, createdAt: '2026-01-01T00:00:00Z', events: events.length, photos, storageBytes: photos * 4_000_000 }])
+    return json([{ id: DEMO_OWNER, name: 'Demo', email: 'demo@mcreatik.com', role: 'SUPER_ADMIN', disabled: false, mustChangePassword: false, createdAt: '2026-01-01T00:00:00Z', events: events.length, photos, storageBytes: photos * 4_000_000 },
+      { id: 'demo-studio-1', name: 'Lens & Light Studio', email: 'owner@lenslight.in', role: 'STUDIO', disabled: false, mustChangePassword: false, createdAt: '2026-03-12T00:00:00Z', events: 14, photos: 5230, storageBytes: 21e9, brand: { name: 'Lens & Light Studio', logoUrl: null, instagram: 'lenslight.in', mcreatik: false, phone: '+919876543210' } },
+      { id: 'demo-studio-2', name: 'Frame Stories', email: 'hello@framestories.com', role: 'STUDIO', disabled: false, mustChangePassword: true, createdAt: '2026-10-30T00:00:00Z', events: 0, photos: 0, storageBytes: 0, brand: { name: 'Frame Stories', logoUrl: null, instagram: null, mcreatik: false } }])
+  }
+  if (path === '/api/admin/billing/settings' && method === 'GET') {
+    return json({ upiId: 'mcreatik@upi', payeeName: 'McreatiK', perEventPrice: 2999, extraEventPrice: 2999, monthlyPrice: 9999, quickPrice: 999, main2Price: 5499, main4Price: 9999, quick2Price: 1799, quick4Price: 3299, upgradePrice: 999, upgradeGuests: 500, storageGbPrice: 49, freeStorageGb: 5, clientSetupPrice: 499, activeMonths: 3, main2ExtraPrice: 2499, main4ExtraPrice: 2299, quick2ExtraPrice: 899, quick4ExtraPrice: 799, quickPackMainPrice: 4999 })
+  }
+  if (path === '/api/admin/billing/payments' && method === 'GET') {
+    return json([{ id: 'pay-1', studioId: 'demo-studio-1', studioName: 'Lens & Light Studio', events: 1, unitPrice: 2999, amount: 2999, utr: '412345678901', status: 'PENDING', note: null, createdAt: '2026-11-11T09:30:00Z', reviewedAt: null, method: 'UPI_QR', item: 'MAIN_EVENT', eventId: null, eventName: null, plan: null }])
+  }
+  if (path === '/api/admin/billing/studios' && method === 'GET') {
+    return json([
+      { studioId: 'demo-studio-1', plan: 'MAIN_4', monthlyQuota: 4, usedThisMonth: 2, credits: 0, mainCredits: 0, quickCredits: 0, planPaidUntil: '2026-12-05', packActive: true, clientCredits: 1 },
+      { studioId: 'demo-studio-2', plan: 'PER_EVENT', monthlyQuota: 0, usedThisMonth: 0, credits: 0, mainCredits: 0, quickCredits: 0, planPaidUntil: null, packActive: false, clientCredits: 0 },
+    ])
   }
   if ((m = path.match(/^\/api\/admin\/events\/([^/]+)\/photos$/)) && method === 'POST' && body instanceof FormData) {
     const e = events.find((x) => x.id === m![1])

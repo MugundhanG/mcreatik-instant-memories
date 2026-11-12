@@ -10,7 +10,7 @@ const GB = 1024 ** 3
 
 const billing: BillingSummary = {
   plan: 'PER_EVENT', free: false, monthlyQuota: 0, usedThisMonth: 0, credits: 0, unitPrice: 2499, quickUnitPrice: 1499, monthlyPrice: 0,
-  upiId: 'mcreatik@okicici', payeeName: 'McreatiK', payments: [], onlinePayments: false,
+  upiId: 'mcreatik@okicici', payeeName: 'McreatiK', payments: [],
   mainCredits: 0, quickCredits: 0, carryOver: 0, packActive: false, planPaidUntil: null, clientCredits: 0,
   prices: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300,
     storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3,
@@ -50,14 +50,14 @@ describe('Gallery & storage', () => {
     expect(screen.getByTestId('storage-card')).toHaveTextContent('2.5 GB used of 5 GB')
     expect(screen.getByRole('progressbar', { name: 'Storage used' })).toHaveAttribute('aria-valuenow', '50')
     expect(screen.getByTestId('active-until')).toHaveTextContent('Open until 1 May 2027')
-    expect(screen.getByRole('button', { name: 'Keep 3 more months · ₹135' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Keep more months · from ₹75 a month' })).toBeInTheDocument()
     expect(screen.queryByTestId('storage-over')).not.toBeInTheDocument()
     expect(screen.getByTestId('storage-card')).toHaveTextContent('₹15 per GB a month (₹90 per GB for the 6 months this gallery has left)')
   })
 
   it('tells a live event over its free storage the GB, price and date, and a locked one that the couple waits', () => {
     const { rerender } = render(<GalleryStorageCard event={event()} billing={billing} bytes={8.2 * GB} onChanged={vi.fn()} />)
-    expect(screen.getByTestId('storage-over')).toHaveTextContent('Add 4 GB (₹360) by 15 November 2026')
+    expect(screen.getByTestId('storage-over')).toHaveTextContent('Add 5 GB (₹450) by 15 November 2026')
     expect(screen.getByTestId('storage-over')).toHaveTextContent('Uploads are never stopped')
     rerender(<GalleryStorageCard event={event({ storageLocked: true })} billing={billing} bytes={8.2 * GB} onChanged={vi.fn()} />)
     expect(screen.getByTestId('storage-over')).toHaveTextContent("The couple's gallery is paused")
@@ -81,7 +81,7 @@ describe('Gallery & storage', () => {
 describe('Buying storage, client galleries and 6 more months', () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  it('prices storage packs per GB with a photo estimate and pays for exactly what was chosen', async () => {
+  it('prices storage packs per GB and pays for exactly what was chosen', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: 'p' }), { status: 201, headers: { 'Content-Type': 'application/json' } }))
     vi.stubGlobal('fetch', fetchMock)
@@ -89,7 +89,7 @@ describe('Buying storage, client galleries and 6 more months', () => {
     expect(screen.getByRole('dialog', { name: 'Add storage' })).toBeInTheDocument()
     expect(screen.getByTestId('amount')).toHaveTextContent('₹450')
     await user.click(screen.getByRole('radio', { name: /25 GB/ }))
-    expect(screen.getByRole('radio', { name: /25 GB/ })).toHaveTextContent('≈ 2,050')
+    expect(screen.getByRole('radio', { name: /25 GB/ })).toHaveTextContent('25 GB')
     expect(screen.getByTestId('amount')).toHaveTextContent('₹1,125')
     await user.type(screen.getByPlaceholderText(/418299301122/), '418299301122')
     await user.click(screen.getByRole('button', { name: "I've paid ₹1,125" }))
@@ -98,15 +98,15 @@ describe('Buying storage, client galleries and 6 more months', () => {
       .toEqual({ item: 'STORAGE', eventId: 'e1', quantity: 25, utr: '418299301122' })
   })
 
-  it('sells client galleries at the setup price, and 6 more months at the GB the gallery holds', () => {
+  it('sells client galleries at the setup price, and more months at all the GB the gallery holds', () => {
     const { unmount } = render(<BuyEventsDialog billing={billing} purchase={{ item: 'CLIENT_SETUP', quantity: 2 }} onPaid={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByRole('dialog', { name: 'Client galleries' })).toBeInTheDocument()
     expect(screen.getByTestId('amount')).toHaveTextContent('₹500')
     expect(screen.getByTestId('event-count')).toHaveTextContent('2 galleries')
     unmount()
     render(<BuyEventsDialog billing={billing} purchase={{ item: 'EXTEND', eventId: 'e1', quantity: 3 }} onPaid={vi.fn()} onClose={vi.fn()} />)
-    expect(screen.getByRole('dialog', { name: 'Keep 3 more months' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Keep more months' })).toBeInTheDocument()
     expect(screen.getByTestId('amount')).toHaveTextContent('₹135')
-    expect(screen.getByText('3 more months (3 GB)')).toBeInTheDocument()
+    expect(screen.getByTestId('months-count')).toHaveTextContent('3 months')
   })
 })

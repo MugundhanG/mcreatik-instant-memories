@@ -1,4 +1,4 @@
-/** Business details shown on every policy page (Razorpay and card networks ask for these to be public). */
+/** Business details shown on every policy page. */
 export const BUSINESS = {
   name: 'McreatiK',
   product: 'McreatiK Instant Memories',
