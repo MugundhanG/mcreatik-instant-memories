@@ -123,7 +123,7 @@ Every camera needs its own **uploader**. One laptop with the McreatiK Instant Me
 
    - **First open:** Windows → More info → Run anyway; Mac → System Settings → Privacy & Security → Open Anyway.
    - **Connect:** in the uploader press **Paste**, choose the photo folder, choose camera Wi-Fi (FTP) or folder, then **Connect**.
-   - **Camera Wi-Fi:** type the Server, Port, User and Password shown on the Live page into the camera's FTP settings, then take a test shot and check it appears.
+   - **Camera Wi-Fi:** type the Server, Port, User and Password shown on the uploader's **Camera Wi-Fi settings** card (Live Upload page) into the camera's FTP settings, then take a test shot and check it appears.
    - **Change to another event:** wait until everything is uploaded (the queue is empty), then **Events → Change event…**, paste the new event's code and press **Connect**. The uploader restarts on the new event ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)).
 
 ![Add camera & get code: the one-time connection code](images/s-add-uploader.webp)
