@@ -246,7 +246,7 @@ Do this rehearsal for every new laptop and every new camera model before a paid 
 | It still shows the **old event's name** | The uploader remembers its last event. Press **Change event…** and paste the new event's code (section 4). |
 | Red "This uploader was removed from the event" | Someone deleted this uploader in the dashboard. Add a new one there, then **Change event…** with its code. |
 
-More: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day).
+More: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day) · [Event-day problem playbook](/admin/docs/guide-event-day-problems).
 
 ## Advanced: the command-line version
 

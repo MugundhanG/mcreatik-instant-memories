@@ -19,7 +19,7 @@ import com.mcreatik.gallery.support.IntegrationTest;
 class DocsTest extends IntegrationTest {
 
     static final java.util.List<String> STUDIO_PAGES = java.util.List.of("sop-studio", "sop-couple", "sop-guest",
-            "guide-uploader", "guide-canon", "guide-sony", "guide-event-day", "qa-guests", "qa-couples",
+            "guide-uploader", "guide-canon", "guide-sony", "guide-event-day", "guide-event-day-problems", "qa-guests", "qa-couples",
             "qa-studios-product");
 
     private String studioLogin() throws Exception {
@@ -93,7 +93,7 @@ class DocsTest extends IntegrationTest {
                 .andExpect(jsonPath("$[0].group").value("Getting started"))
                 .andReturn().getResponse().getContentAsString();
         java.util.List<String> slugs = JsonPath.read(list, "$[*].slug");
-        assertThat(slugs).hasSize(25).contains("api", "security", "glossary", "qa-guests", "qa-tricky", "sop-admin", "guide-sony");
+        assertThat(slugs).hasSize(26).contains("api", "security", "glossary", "qa-guests", "qa-tricky", "sop-admin", "guide-sony");
         java.util.List<String> qaGroups = JsonPath.read(list, "$[?(@.slug == 'qa-guests')].group");
         assertThat(qaGroups).containsExactly("Instant Memories Q&A");
         java.util.List<String> forStudios = JsonPath.read(list, "$[?(@.studio == true)].slug");

@@ -2,6 +2,8 @@
 
 Use this on the day. Print it, or keep it open on a phone. It works for the studio and for McreatiK support.
 
+**Something went wrong?** Open the [Event-day problem playbook](/admin/docs/guide-event-day-problems): a 60-second "camera, laptop, internet or server?" check, and a fix card for each common problem.
+
 ## The day before
 
 - [ ] The event exists, its status is **Upcoming**, and the date is right.
@@ -48,6 +50,8 @@ Use this on the day. Print it, or keep it open on a phone. It works for the stud
 - [ ] Look at the **Guests** tab and note the numbers for your marketing.
 
 ## Troubleshooting: find the symptom
+
+Quick fixes are below. For the step-by-step version, with what to do if a fix doesn't work, use the [Event-day problem playbook](/admin/docs/guide-event-day-problems).
 
 ### The camera won't connect
 

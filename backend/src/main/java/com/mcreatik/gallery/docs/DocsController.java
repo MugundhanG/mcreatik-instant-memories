@@ -41,7 +41,7 @@ import com.mcreatik.gallery.common.ApiException;
 public class DocsController {
 
     /** The day the documentation was last checked against the code. */
-    static final String REVIEWED_ON = "2026-11-05";
+    static final String REVIEWED_ON = "2026-11-13";
 
     /** One page; {@code studio} pages are also shown to studio logins (and are written for them). */
     record Page(String slug, String title, String group, boolean studio) {
@@ -61,6 +61,7 @@ public class DocsController {
             new Page("guide-canon", "Canon EOS R6 Mark II", "Camera & uploader guides", true),
             new Page("guide-sony", "Sony α7 IV", "Camera & uploader guides", true),
             new Page("guide-event-day", "Event-day checklist", "Camera & uploader guides", true),
+            new Page("guide-event-day-problems", "Event-day problem playbook", "Camera & uploader guides", true),
             new Page("frontend", "Frontend", "Codebase"),
             new Page("backend", "Backend", "Codebase"),
             new Page("database", "Database", "Codebase"),

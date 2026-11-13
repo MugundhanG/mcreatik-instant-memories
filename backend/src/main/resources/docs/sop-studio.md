@@ -177,7 +177,7 @@ The board and cards are JPG files at 300 dpi, with 0.125 in extra on every side 
 2. Start the uploader on each laptop and check it shows **Online** and **this event's name** (see the [Uploader guide](/admin/docs/guide-uploader)).
 3. Take one test shot per camera. It should appear in the gallery within seconds.
 4. Put the QR posters out.
-5. Follow the [Event-day checklist](/admin/docs/guide-event-day).
+5. Follow the [Event-day checklist](/admin/docs/guide-event-day). Keep the [Event-day problem playbook](/admin/docs/guide-event-day-problems) open too: it says what to do if anything goes wrong.
 
 ## 7. During the event: curate live
 
@@ -294,4 +294,4 @@ Table card text you can copy: "**Scan to see the photos live.** Point your phone
 | Can't create an event (payment needed) | Your pack's events are used up, your pack has ended (renew it), or it's a Main event on a Quick pack. The message says which. Use **Buy events** or **Renew pack**. |
 | Couple says the album limit is reached | Raise the **Album limit** on the Couple tab, or ask them to untick some. |
 
-More: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day).
+More: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day) · [Event-day problem playbook](/admin/docs/guide-event-day-problems).
