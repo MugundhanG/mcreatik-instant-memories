@@ -1,6 +1,6 @@
 # Overview
 
-McreatiK Live Gallery puts wedding photos on guests' phones within seconds of the shot. Studios get a dashboard to run events. Couples get a private portal for album picks and original downloads. Each event has two photo sets: a Guest gallery (compressed, for guests) and a Client gallery (full quality, for the couple); events made before 11 Nov 2026 keep one set.
+McreatiK Instant Memories puts wedding photos on guests' phones within seconds of the shot. Studios get a dashboard to run events. Couples get a private portal for album picks and original downloads. Each event has two photo sets: a Guest gallery (compressed, for guests) and a Client gallery (full quality, for the couple); events made before 11 Nov 2026 keep one set.
 
 > **Note** This documentation was written from a read-only review of the `main` branch. Every statement points to a real file or function. Anything that could not be confirmed from the code is marked **(assumption)**. Secret values are never shown; settings are named, not printed.
 

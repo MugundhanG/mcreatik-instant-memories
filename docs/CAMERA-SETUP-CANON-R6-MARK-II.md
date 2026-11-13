@@ -1,4 +1,4 @@
-# Canon EOS R6 Mark II → McreatiK Live Gallery (Wi-Fi FTP)
+# Canon EOS R6 Mark II → McreatiK Instant Memories (Wi-Fi FTP)
 
 > The maintained, illustrated version of this guide is `backend/src/main/resources/docs/guide-canon.md` (in-app Docs: **Canon EOS R6 Mark II**, `/admin/docs/guide-canon`), next to the Sony α7 IV, uploader and event-day guides. This copy is a short text version.
 

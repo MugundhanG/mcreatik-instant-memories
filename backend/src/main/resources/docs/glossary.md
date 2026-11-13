@@ -1,6 +1,6 @@
 # Glossary
 
-Plain-language meanings of the technical words used in these docs, with where each one shows up in McreatiK Live Gallery.
+Plain-language meanings of the technical words used in these docs, with where each one shows up in McreatiK Instant Memories.
 
 | Term | Meaning, and where it shows up |
 | --- | --- |
