@@ -17,7 +17,7 @@ This is the standard operating procedure for a **photography studio** using Inst
 
 ## 1. First login
 
-1. Open **live.mcreatik.com/admin**, then sign in with the email and temporary password McreatiK sent you.
+1. Open **live.mcreatik.com/admin**, then sign in with the email and temporary password McreatiK sent you. The page checks the email and password as you fill them in.
 
 ![Staff sign-in page](images/s-login.webp)
 
@@ -33,8 +33,10 @@ Open your studio name at the top right (**Account**).
 
 1. **Logo:** press **Change logo**. A PNG with a transparent background looks best.
 2. **Logo size on the QR poster:** drag until the preview looks right.
-3. **Studio name** and **Instagram** (without the @).
-4. **Contact number (WhatsApp):** your booking number, for example 98765 43210 (+91 is added for you). Then **Save**.
+3. **Studio name** and **Instagram** (without the @). Under the studio name you see that guests get to see it on your galleries, QR posters and printed cards.
+4. **Contact number (WhatsApp):** your booking number, for example 98765 43210 (+91 is added for you). It is checked as you type. Then press **Save**, or **Cancel** to undo your changes.
+
+The preview follows the board design you pick.
 
 Guests see your name, logo and Instagram on the gallery and on the printed QR poster. With a contact number, the gallery also shows a **"Book … for your event"** bar right under the live bar, with **WhatsApp** and **Call** buttons, and the number is printed on your studio board and A4 poster. Every guest at the event is a possible client: **Guests → Contacted you** counts how many tapped it. Leave the number empty to hide it.
 
@@ -43,18 +45,20 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 ## 3. Create an event
 
 1. **Events** shows all your events and, at the top, your plan: events left this month, any carried over from last month, and events you've bought.
+   - Use **Sort** and the filters (type, status, year, month, from and to date) to find an event fast.
 
 ![Events list with the monthly allowance](images/s-events.webp)
 
 2. Press **New event** and choose the **Event type**:
    - **Main event:** weddings, receptions, big birthdays, big traditional functions and large corporate events.
    - **Quick event:** engagements, small birthdays, baby showers and small corporate events, up to about 200 guests. If more guests turn up, the gallery keeps working and the event page offers **Upgrade to Main**.
-   - **Client gallery only:** no live guest gallery and no camera. You upload the edited photos from the dashboard and the couple gets a private gallery to view, select and download. ₹250 per client gallery, plus storage (see 3.1).
+   - **Client gallery only:** no live guest gallery and no camera. You upload the edited photos from the dashboard and the couple gets a private gallery to view, select and download. ₹250 per client gallery, plus storage for the months you choose (see 3.1).
 
    Under the choice, the form tells you how this event is paid for: by your pack, by an event you bought, or the price to pay.
 3. Enter the **Event name** guests will see (for example "Rahul & Sneha Engagement"), the **Date** and the **Status** (Upcoming for future events).
-4. **Gallery address** is optional. Leave it empty and you get a hard-to-guess address.
-5. Press **Create event**.
+4. **Gallery open for:** how many months the gallery stays open. Main and Quick events include 3 months. Each extra month costs ₹75. You pay for it right after creating the event, in the **Change storage & months** window. A client gallery starts at 1 month, and its price is the setup plus the storage for those months.
+5. **Gallery address** is optional. Leave it empty and you get a hard-to-guess address.
+6. Press **Create event**.
 
 ![New event form](images/s-new-event.webp)
 
@@ -74,26 +78,27 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 - **Upgrades:** a Quick event that grows past about 200 guests can be upgraded to Main for ₹1,000.
 - **Bought events** never expire.
 - **Main event on a Quick pack:** while your Quick pack is paid up, a Main event costs ₹1,499 instead of ₹2,499.
-- **Check the event name and date before creating an event.** They are printed on your QR cards and can't be changed afterwards (contact McreatiK if you made a mistake). Events can't be deleted; you can delete photos.
-- **Client gallery storage:** when you pay the ₹250 setup, you can add the gallery's storage in the same payment.
+- **Check the event name and date before creating an event.** They are printed on your QR cards and can't be changed afterwards (contact McreatiK if you made a mistake). Studios can't delete events; you can delete photos. Only McreatiK can delete an event.
+- **Client gallery storage:** when you pay the ₹250 setup, you pay for the gallery's storage and months in the same payment.
 
 ### 3.1 Storage and how long galleries stay open
 
 | | Price |
 | --- | --- |
-| **Client gallery only** | ₹250 setup per gallery + storage |
+| **Client gallery only** | ₹250 setup per gallery + storage, for 1 month unless you choose more |
 | **Storage** | ₹15 per GB per month (1 GB ≈ 80 full-quality photos) |
-| **Main or Quick event** | 5 GB for 3 months included free; storage then starts at 5 GB extra (any size from 5 GB), ₹15 per GB per month |
-| **Keep more months** | You choose the months (1 or more): ₹15 per GB of the gallery's storage per month |
+| **Main or Quick event** | 5 GB for 3 months included free; extra storage starts at 5 GB (5, 10, 25, 50 or your own number), ₹15 per GB per month |
+| **Change storage & months** | One button: add GB, add months, or both. You see one total and make one UPI payment |
+| **One more month on a Main or Quick event** | 5 GB × ₹15 = ₹75 |
 
 - **What counts:** everything stored for the event, both the gallery versions and the full-quality originals. A typical wedding of 2,000 photos with originals is about 25 GB.
-- **Event page → Overview → Gallery & storage** shows what the event uses, how many more photos fit, and when it closes. **Add storage** buys GB for that event (5, 10, 25, 50 or 100, or any number).
-- **Client galleries** start with 0 GB. Add storage before uploading; when it is full, uploads stop with "storage is full" until you add more.
+- **Event page → Overview → Gallery & storage** shows what the event uses, how many more photos fit, and when it closes. **Change storage & months** is the one button for more space or more time. Choose the GB to add (5, 10, 25, 50 or your own number, at least 5), the months to add, or both.
+- **Client galleries** start with 0 GB. Choose the storage when you create it; when it is full, uploads stop with "storage is full" until you add more.
 - **Main and Quick events** are never stopped during the event. If the event uses more than 5 GB, add the extra GB within **14 days of the event date**. If you don't, the couple's gallery is paused (the guests' gallery keeps working) until you add it.
-- **Every gallery is open 3 months (about 90 days)**: from the event date for Main and Quick, from the day it was created for a client gallery. After that, guests and the couple see "This gallery has expired", and the photos are **deleted for good 30 days later** (the event record itself is kept). We email you 14 days before and on the day.
-- **Keep more months** on the same card extends it: choose how many months; you pay ₹15 per GB of the gallery's storage per month. You can use it as many times as you need. You can do it any time until the deletion date.
-- **How storage is charged:** when you add storage, you pay for the months the gallery has left (rounded up to whole months). A client gallery has no free storage: you choose its months when you buy it (setup + GB × ₹15 × months).
-- **Selling it on:** you decide what to charge your couple for the digital gallery. For example, a 25 GB wedding gallery for 3 months is ₹250 + 25 × ₹15 × 3 = ₹1,375 to you, so you could charge your couple ₹2,500 or more for a private online album. Uploading only the edited finals (not every original) keeps the GB, and your cost, down.
+- **Main and Quick galleries are open 3 months (about 90 days)** from the event date. A client gallery is open for the months you chose, 1 by default, from the day it was created. After that, guests and the couple see "This gallery has expired", and the photos are **deleted for good 30 days later**. The event stays in your list as a record (archived). Studios can't delete events; only McreatiK can. We email you 14 days before and on the day.
+- **More months:** use **Change storage & months** on the same card. You can use it as many times as you need, any time until the deletion date.
+- **How it is charged:** the GB you add are charged for the months the gallery has left (rounded up to whole months), plus all the gallery's GB for the months you add, at ₹15 per GB per month. The free 5 GB for 3 months is never charged. A client gallery has no free storage: you choose its months when you create it (setup + GB × ₹15 × months).
+- **Selling it on:** you decide what to charge your couple for the digital gallery. For example, a 25 GB wedding gallery for 3 months is ₹250 + 25 × ₹15 × 3 = ₹1,375 to you (for 1 month it is ₹625), so you could charge your couple ₹2,500 or more for a private online album. Uploading only the edited finals (not every original) keeps the GB, and your cost, down.
 
 Current prices are always on [the pricing page](https://live.mcreatik.com/pricing).
 
@@ -101,7 +106,7 @@ Current prices are always on [the pricing page](https://live.mcreatik.com/pricin
 
 Press **Buy events**, choose **Main** or **Quick** and how many. **Monthly packs** (or **Renew or change pack**) opens the same window for a pack. Then pay:
 
-Pay with the **UPI QR**: scan it with GPay, PhonePe, Paytm or any UPI app (on a phone, tap **Pay with UPI app**), then type the **UTR** (the UPI transaction ID in your app) and press **I have paid**. The events are added **straight away**; McreatiK checks the payment afterwards. Bought events never expire. If a payment is not received, it is taken back and we contact you (see **Refunds** at the foot of the dashboard).
+Pay with the **UPI QR**: scan it with GPay, PhonePe, Paytm or any UPI app (on a phone, tap **Pay with UPI app**), then type the **UTR** (the UPI transaction ID in your app) and press **I have paid**. The events are ready **at once**; McreatiK confirms the payment within a day. Bought events never expire. If a payment is not received, it is taken back and we contact you (see **Refunds** at the foot of the dashboard).
 
 ![Buy events: pay by UPI QR](images/s-buy-events.webp)
 
@@ -153,7 +158,7 @@ Then set up the camera itself (any camera with FTP transfer (Wi-Fi/FTP upload) w
 - **Download PNG / SVG:** the QR code alone, for invitations, screens or your own designs.
 - **A4 poster:** the classic one-page poster, for an office printer.
 - **Copy link:** to share in WhatsApp groups.
-- The A4 poster also downloads as a **300 dpi JPG** on the cards page, for a print shop.
+- The A4 poster reads "McreatiK Instant Memories" and also downloads as a **300 dpi JPG** on the cards page, for a print shop.
 
 ![Guest QR code card](images/s-qr-card.webp)
 
@@ -228,17 +233,18 @@ Open the **Client gallery** tab and upload your edited, full-quality photos ther
 
 ### 8.3 How long it stays open
 
-**Settings → Privacy & data** shows when the gallery closes and when its photos are deleted permanently (30 days later). To keep it longer, use **Keep more months** on the Overview's **Gallery & storage** card (see 3.1). Tell the couple the date so they download in time.
+**Settings → Privacy & data** shows when the gallery closes and when its photos are deleted permanently (30 days later). To keep it longer, use **Change storage & months** on the Overview's **Gallery & storage** card (see 3.1). Tell the couple the date so they download in time.
 
 ## 9. Give the couple their login
 
 1. Open **Couple** and press **Create client login**: name, email and phone (for WhatsApp).
-2. Send it with **WhatsApp** or **Open in mail app**. The temporary password is shown only now.
+2. Send it with **WhatsApp** or **Open in mail app**. The message carries the couple's gallery link. The temporary password is shown only now.
 3. **Album limit (optional):** for example 60. The couple can't pick more than this.
 4. Their picks appear under **Album selection** as they choose. Press **Download all (.zip)** for your album designer, or use **Copy file names** or **Download list (.txt)** to find them in Lightroom.
 
 ![Couple tab: client login, album limit and the couple's picks](images/s-couple-full.webp)
 
+- **Same email, several events:** the same couple email can have a login on several events. The link is live.mcreatik.com/client/login?event=your-event-address. If they use the plain login page, they choose the event after signing in. A password reset covers all their logins.
 - **Send login again:** resends the login with a new temporary password.
 - **Turn off:** blocks the couple's login without deleting anything.
 - **Delete login:** removes it. Their picks are kept with the event.
@@ -283,8 +289,8 @@ Table card text you can copy: "**Scan to see the photos live.** Point your phone
 | Couple says photos are missing | New events: the couple sees only the **Client gallery**. Upload the finals there. |
 | Guests say the page is empty | Status is Draft or Archived, or no photos yet. Set Upcoming or Live. |
 | "This gallery is currently unavailable" | McreatiK turned the gallery off. Contact McreatiK. |
-| Upload says "storage is full" | A client gallery has used its GB. Press **Add storage** (Overview → Gallery & storage), then **Retry failed**. |
-| Couple says "This gallery has expired" | Its 3 months have passed. Press **Keep more months** on the Overview before the deletion date shown there. |
+| Upload says "storage is full" | A client gallery has used its GB. Press **Change storage & months** (Overview → Gallery & storage), then **Retry failed**. |
+| Couple says "This gallery has expired" | Its 3 months have passed. Press **Change storage & months** on the Overview before the deletion date shown there. |
 | Can't create an event (payment needed) | Your pack's events are used up, your pack has ended (renew it), or it's a Main event on a Quick pack. The message says which. Use **Buy events** or **Renew pack**. |
 | Couple says the album limit is reached | Raise the **Album limit** on the Couple tab, or ask them to untick some. |
 

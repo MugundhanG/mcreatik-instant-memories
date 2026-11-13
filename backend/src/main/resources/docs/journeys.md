@@ -19,8 +19,8 @@ sequenceDiagram
 ```
 
 1. `AdminBootstrap` creates McreatiK's own account on first boot.
-2. `StudioPlan` sets the plan, monthly quota and credits. `BrandingCard` sets the name, logo and Instagram.
-3. `PaymentsToCheck` lists PENDING UPI payments. McreatiK checks the UTR in the bank app, then approves, which adds credits.
+2. `StudioAccordionItem` (one row per studio on `StudiosPage`) holds the plan, monthly quota, credits and `BrandingCard`, with Reset password, Disable and Delete.
+3. `PricingPage` (menu: Pricing & payments) holds the prices and `PaymentsToCheck`, which lists PENDING UPI payments. McreatiK checks the UTR in the bank app, then approves, which adds credits.
 4. `GalleryAccessCard` turns an event's guest or couple gallery off. Open phones get `GALLERY_CLOSED` after the commit.
 
 ## A studio runs an event
@@ -111,9 +111,9 @@ sequenceDiagram
   participant UI as /client
   participant API as Backend
   participant R2 as R2 originals
-  C->>UI: Email + temporary password from the studio
-  UI->>API: POST /api/client/auth/login
-  API-->>UI: token, mustChangePassword → PasswordPage
+  C->>UI: The studio's link /client/login?event=slug, email + temporary password
+  UI->>API: POST /api/client/auth/login (email, password, eventSlug)
+  API-->>UI: token, mustChangePassword → PasswordPage (or 409 CHOOSE_EVENT: pick the event, log in again)
   UI->>API: GET /api/client/me, /photos
   C->>UI: Tick a photo
   UI->>API: PUT /photos/{id}/selected
@@ -135,10 +135,12 @@ stateDiagram-v2
   UPCOMING --> LIVE: first uploader photo or studio
   LIVE --> COMPLETED: studio
   COMPLETED --> ARCHIVED: studio
-  UPCOMING --> Deleted: studio
-  LIVE --> Deleted: studio
-  COMPLETED --> Deleted: studio or RetentionJob
-  ARCHIVED --> Deleted: studio or RetentionJob
+  UPCOMING --> Deleted: McreatiK
+  LIVE --> Deleted: McreatiK
+  COMPLETED --> Deleted: McreatiK
+  ARCHIVED --> Deleted: McreatiK
+  COMPLETED --> PhotosDeleted: RetentionJob
+  PhotosDeleted --> ARCHIVED: record kept
   Deleted --> [*]
 ```
 

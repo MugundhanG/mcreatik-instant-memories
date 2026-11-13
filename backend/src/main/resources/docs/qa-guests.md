@@ -13,7 +13,7 @@ These are people at the event who scan the QR code. They never log in.
 | Can I get the full-quality photo? | Yes. Open the photo, tap Get HD photo and leave your email or WhatsApp number. The studio sends it to you. |
 | Can I find photos from one moment? | Yes. If the studio sorted the photos, tabs at the top show each moment, such as Rituals or Candid. |
 | What quality are the photos? | Sharp phone-and-screen quality (2048 px on the long side), ideal for WhatsApp, Instagram and phone wallpapers. Full-quality photos go to the couple, and you can ask the studio for one with Get HD photo. |
-| Can I see the photos after the event? | Yes. The same link works after the event until the gallery's delete date, usually 90 days after the event unless the studio sets otherwise. |
+| Can I see the photos after the event? | Yes. The same link works after the event while the gallery is open (3 months by default, longer if the studio chose more). The photos are deleted 30 days after it closes. |
 | I'm in a photo and want it removed. | Open the photo and tap "Request removal": an email opens with the photo's file name (like IMG_1234.JPG). You can also email connect@mcreatik.com with the gallery link. We pass it to the studio and aim to remove it within 3 working days. The studio can also hide it instantly. |
 | Can strangers see these photos? | Only people with the link or QR code can open the gallery. The address can't be guessed and isn't on Google. If you forward the link, whoever you send it to can see the gallery. |
 | Does the photo show where it was taken? | No. Location (GPS) data is removed from every gallery photo. |

@@ -2,7 +2,7 @@
 
 The **McreatiK Instant Memories Uploader** runs on a laptop at the venue. It receives each photo from the camera over Wi-Fi (or from a folder), makes a light, sharp copy, and uploads it to the live gallery. If the internet drops, photos wait safely on the laptop and upload by themselves later.
 
-The current version is **1.0.19**. Connect it with the connection code from the event dashboard. There is no studio sign-in. Freelancers need only the code and the download link.
+The current version is **1.0.22**. Connect it with the connection code from the event dashboard. There is no studio sign-in. Freelancers need only the code and the download link.
 
 ![How a photo reaches every guest](images/flow-photo-journey.svg)
 

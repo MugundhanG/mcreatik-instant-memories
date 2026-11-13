@@ -98,8 +98,13 @@ flowchart LR
 
 | Component | What it does |
 | --- | --- |
-| `EventsPage` | Event list, plan allowance, Buy events dialog; a three-step first-event guide when a studio has no events |
-| `NewEventPage` | Create event; a 402 opens `BuyEventsDialog` (UPI) |
+| `EventsPage` | Event list, plan allowance, Buy events dialog; a three-step first-event guide when a studio has no events. Its `FilterBar` (Sort, type, status, year, month, from and to date, and Studio for McreatiK) keeps the choices in the address; the filter logic is in `eventFilters.ts` |
+| `NewEventPage` | Create event, with the **Gallery open for** months field (3 included for Main and Quick, 1 by default for a client gallery); a 402 or extra months open `BuyEventsDialog` (UPI) |
+| `GalleryStorageCard` | The event Overview's **Gallery & storage** card and its one **Change storage & months** button |
+| `BuyEventsDialog` | The UPI payment window for events, packs, setup and **Change storage & months** (one quote, one payment) |
+| `InstallUploaderPage` | **Install uploader** page: download for Windows or Mac and the seven first steps |
+| `StudioAccordionItem` | One studio on `StudiosPage`: plan, usage, Edit branding, Reset password, Disable or Enable, Delete |
+| `PricingPage` | McreatiK's **Pricing & payments** page: `PaymentsToCheck` and the prices |
 | `EventDashboardPage` | Hub for one event: header (status menu, Copy link, QR) and tabs Overview / Photos / Guests / Couple / Settings kept in `?tab=`. Every tab stays mounted (only hidden) so uploads and ZIPs keep going. Refreshes stats on a timer and passes `refreshKey` down |
 | `UploadPhotosPanel` + `prepareUpload.ts` | Browser upload queue; resizes to 2048 / 640 px, reads the EXIF date |
 | `PhotosPanel` | Filters and photo tiles (Like and Hide on the tile; Download, Make cover, Download original and Delete under More). Select mode: select all / clear, move to category, Like or Unlike, Hide or Show, Download ZIP, Delete, each one request (`adminApi.bulkPhotos`) |
@@ -107,17 +112,18 @@ flowchart LR
 | `AnalyticsPanel` | Guest numbers and an hourly chart; refreshes every 30 s while live |
 | `GalleryAccessCard` | McreatiK-only guest and couple gallery switches |
 | `UploadersPanel`, `QrPanel`, `CategoriesCard` | Camera connections, QR codes, albums |
-| `StudiosPage`, `StudioPlan`, `PaymentsToCheck`, `BillingSettingsCard` | McreatiK's studio and billing tools |
+| `StudiosPage`, `StudioPlan`, `PaymentsToCheck`, `BillingSettingsCard` | McreatiK's studio and billing tools (see also `StudioAccordionItem` and `PricingPage` above) |
 | `admin/ui.tsx` | Shared `Button`, `Card`, `Field`, `Stat`, `ErrorText`, status badges |
 
 ## Couple portal
 
-`ClientApp` contains `LoginPage` (with Forgot password), `PasswordPage`, `RequireClient`, and a manifest swap so the portal installs as "My Photos". `ClientPortal` has:
+`ClientApp` contains `LoginPage` (with Forgot password; it reads `?event=` from the studio's link and, on a 409 `CHOOSE_EVENT`, shows a choose-event step), `PasswordPage`, `RequireClient`, and a manifest swap so the portal installs as "My Photos". `ClientPortal` has:
 
 - category tabs
 - paged photos
 - optimistic album ticks, which roll back when the limit is hit
 - original downloads and ZIPs with live progress
+- `ClientFooter`: the studio's name with its WhatsApp or call button and Instagram
 
 ## Forms, errors and styling
 

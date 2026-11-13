@@ -9,11 +9,11 @@ This is the standard operating procedure for the **McreatiK super admin**: the p
 | Task | Where | How often |
 | --- | --- | --- |
 | Add a studio and send its login | Studios → Add studio | Each new studio |
-| Approve a UPI payment | Studios → Payments to check | Same day |
-| Change a studio's plan or events | Studios → All logins → Give / take events | When agreed |
+| Approve a UPI payment | Pricing & payments → Payments to check | Same day |
+| Change a studio's plan or events | Studios → open the studio → Give / take events | When agreed |
 | Turn a gallery off or on | Event → Settings → Gallery access | On request |
 | Remove a photo after a request | Event → Photos → More → Delete | Within 3 working days |
-| Reset a studio's password | Studios → Reset password | On request |
+| Reset a studio's password | Studios → open the studio → Reset password | On request |
 | Update the server | Deployment page (`deploy.sh`) | After each backend change |
 
 > **Note** Every screenshot in this section comes from a demo studio ("Lens & Light Studio") with generated sample photos. No client photos are used anywhere in these docs.
@@ -25,11 +25,11 @@ This is the standard operating procedure for the **McreatiK super admin**: the p
 
 ![Staff sign-in page](images/s-login.webp)
 
-As the super admin you see extra menu items that studios never see: **Studios**, the full **Docs** (studios get **Guides**: only the pages tagged "Studios" in the sidebar), and the events of *every* studio.
+As the super admin you see extra menu items that studios never see: **Studios**, **Pricing & payments**, the full **Docs** (studios get **Guides**: only the pages tagged "Studios" in the sidebar), and the events of *every* studio.
 
 ## 2. See every event
 
-**Events** lists all events of all studios. Each card shows the studio name in gold, the date, the status and the photo count.
+**Events** lists all events of all studios. Each card shows the studio name in gold, the date, the status and the photo count. As McreatiK you also get a **Studio** filter next to the studio's own Sort and filters.
 
 ![Events list as McreatiK, showing events of every studio](images/a-events.webp)
 
@@ -59,13 +59,13 @@ As the super admin you see extra menu items that studios never see: **Studios**,
 
 ## 4. Manage studios, plans and payments
 
-![Studios page: payments to check, all logins, and payment settings](images/a-studios-full.webp)
+The **Studios** page has one row for each studio. Press a row to open it: you see its plan, usage, events, photos and storage, and the buttons **Edit branding**, **Reset password**, **Disable** or **Enable**, and **Delete**. Payments to check and all prices are on the separate **Pricing & payments** page in the menu.
 
 ### 4.1 Approve a payment
 
 Studios buy extra events from their Events page (see the Studio SOP) by UPI QR.
 
-Payments arrive in **Payments to check** with the amount and the **UTR** (UPI transaction ID). What the studio bought is usable at once; you only confirm the money arrived.
+Payments arrive in **Pricing & payments → Payments to check** with the amount and the **UTR** (UPI transaction ID). What the studio bought is usable at once; you only confirm the money arrived.
 
 1. Open your bank or UPI app and find a credit with **the same UTR and amount**.
 2. Found it → press **Received**. The events are added to the studio straight away.
@@ -75,19 +75,20 @@ Payments arrive in **Payments to check** with the amount and the **UTR** (UPI tr
 
 ### 4.2 Plans and events
 
-Under **All logins**, each studio shows its events, photos and storage.
+Open a studio on the **Studios** page to see its events, photos and storage.
 
-- **Plan:** Per event, one of the four monthly packs (Main or Quick, 2 or 4 events a month) or Unlimited. Studios still on the older Monthly package keep it until you change them.
+- **Plan:** Per event, one of the four monthly packs (Main or Quick, 2 or 4 events a month) or Unlimited.
 - **Packs:** the line shows this month's usage and the **paid until** date. Moving a studio onto a pack counts as its first month paid. If they renewed outside the app, set the date by hand. A pack whose date has passed (plus 3 days) shows **ended**, and new events are charged one by one.
 - **Available:** each studio shows the events it can still use (bought Main and Quick events plus what is left in this month's pack) and its client galleries. Press **+** or **−** beside **Main**, **Quick** or **Client** to give or take back one at a time (for example a free first event, or a refund). A count never goes below 0.
-- **Storage and open dates:** studios buy storage and **Keep 3 more months** per event themselves. Your own and Unlimited studios have no storage limits and can set an event's open-until date by hand in Settings → Privacy & data.
+- **Storage and open dates:** studios buy storage and months per event themselves with **Change storage & months**. Your own and Unlimited studios have no storage limits and can set an event's open-until date by hand in Settings → Privacy & data.
 - **Edit branding:** fix the studio's name, Instagram or logo size if they need help.
+- **McreatiK's own branding:** edit it from **Account**, or from the McreatiK row on the Studios page. Fields left empty keep the built-in McreatiK design. On the guest cover, the McreatiK logo sits without a card; a studio's logo sits on a light card.
 - **Reset password:** creates a new temporary password to send them.
-- **Disable:** blocks the studio's login. Their galleries keep working for guests and couples. Studios are never deleted.
+- **Disable:** blocks the studio's login. Their galleries keep working for guests and couples. To remove a studio for good, use **Delete** (see the end of this page).
 
 ### 4.3 Payment settings and prices
 
-Under **Payments & prices**, set your **UPI ID**, the **name shown in the UPI app**, and every price: Main and Quick single events, the four monthly packs and each pack's extra-event price (a Main pack's covers Quick events too), the upgrade price, after how many guests a Quick event is offered the upgrade, the storage price per GB per month, the GB included with live events, the client gallery setup price and how many months a gallery stays open. The older Monthly package prices only matter for studios still on it. Studios see the prices in Buy events, the new-event form and the public pricing page. Press **Save**.
+On the **Pricing & payments** page, under **Payments & prices**, set your **UPI ID**, the **name shown in the UPI app**, and every price: Main and Quick single events, the four monthly packs and each pack's extra-event price (a Main pack's covers Quick events too), the upgrade price, after how many guests a Quick event is offered the upgrade, the storage price per GB per month, the GB included with live events, the client gallery setup price and how many months a gallery stays open. Studios see the prices in Buy events, the new-event form and the public pricing page. Press **Save**.
 
 ## 5. Create an event for a studio
 
@@ -149,7 +150,7 @@ Have this ready on any event day:
 
 | Check | When | How |
 | --- | --- | --- |
-| Pending payments | Daily | Studios → Payments to check |
+| Pending payments | Daily | Pricing & payments → Payments to check |
 | Server update after code changes | When a backend PR is merged | [Deployment](/admin/docs/deployment) |
 | Rollback if an update breaks | Immediately | `deploy/oracle/rollback.sh` (see Deployment) |
 | Security and findings | Monthly | [Findings and next actions](/admin/docs/findings) |
@@ -157,6 +158,7 @@ Have this ready on any event day:
 
 ## Deleting a studio, and event deletion
 
-- **Studios → Delete** removes a studio for good: its login, every event with its photos and galleries, its logo and its payment history. You type the studio's name to confirm. To only stop a studio logging in, use **Disable**.
+- **Studios → open the studio → Delete** removes a studio for good: its login, every event with its photos and galleries, its logo and its payment history. You type the studio's name to confirm. To only stop a studio logging in, use **Disable**.
 - **Studios cannot delete events** or change an event's name or date after creating it. They can delete photos. Only McreatiK can delete an event (**Settings → Delete event now**) or correct its name or date.
 - **Package and event counts:** change the package and the Main / Quick / Client counts, then press **Save changes**. Nothing changes for the studio until you save. Picking a pack shows its events per month.
+- **Photos and event records:** the daily job deletes a gallery's photos 30 days after it closes. The event stays as a record (archived), with its payments and charges. Only McreatiK deletes events.

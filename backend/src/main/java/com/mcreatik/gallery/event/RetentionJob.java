@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import com.mcreatik.gallery.config.GalleryProperties;
 
 /**
- * Privacy retention: events past their retention date are permanently deleted (database rows and all files).
+ * Privacy retention: events past their retention date lose their photos (rows and files); the event row is kept, archived, as a record.
  * Default retention is event date + 90 days; admins can extend or clear it per event.
  */
 @Component
@@ -35,7 +35,7 @@ public class RetentionJob {
         for (Event event : events.expiredEvents(LocalDate.now(ZoneOffset.UTC))) {
             try {
                 events.deleteExpired(event);
-                log.info("Retention: deleted event {} ({}), retention ended {}", event.getId(), event.getSlug(),
+                log.info("Retention: deleted the photos of event {} ({}), retention ended {}", event.getId(), event.getSlug(),
                         event.getRetentionUntil());
             } catch (Exception e) {
                 log.error("Retention: failed to delete event {}", event.getId(), e);
