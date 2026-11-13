@@ -15,7 +15,7 @@ Plain-language meanings of the technical words used in these docs, with where ea
 | Docker image and container | A packaged app (image) and a running copy of it (container) |
 | DTO or record | A small Java data class that becomes JSON, such as `EventDetail` |
 | EXIF | Hidden camera data in a photo, including GPS; removed from gallery copies |
-| Flyway migration | A numbered SQL file (`V1__` to `V25__`) that changes the database in order |
+| Flyway migration | A numbered SQL file (`V1__` to `V26__`) that changes the database in order |
 | Guest gallery and Client gallery | The two photo sets in an event's Photos tab. Guest gallery: camera photos and compressed uploads, seen by guests. Client gallery: full-quality finals the studio uploads, seen by the couple. Stored as `photos.gallery` = `GUEST` or `CLIENT` |
 | GHCR | GitHub Container Registry, where backend images are stored |
 | HD request | A guest taps "Get HD photo" and leaves an email or WhatsApp number. Shown on the studio's Guests tab (`hq_requests` table) |

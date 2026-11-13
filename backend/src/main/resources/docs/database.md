@@ -1,8 +1,8 @@
 # Database
 
-The database is PostgreSQL on Supabase: 11 tables created by Flyway migrations `V1` to `V25` in `backend/src/main/resources/db/migration`. Hibernate only validates the schema (`ddl-auto: validate`) and never changes it.
+The database is PostgreSQL on Supabase: 11 tables created by Flyway migrations `V1` to `V26` in `backend/src/main/resources/db/migration`. Hibernate only validates the schema (`ddl-auto: validate`) and never changes it.
 
-> **Warning** Never edit a migration that has already run. Add the next numbered file (`V26__…`) instead.
+> **Warning** Never edit a migration that has already run. Add the next numbered file (`V27__…`) instead.
 
 ## Entity relationships
 
@@ -15,7 +15,7 @@ erDiagram
   events ||--o{ photos : has
   events ||--o{ guest_activity : logs
   events ||--o{ event_categories : has
-  events ||--o{ event_clients : "has (one, enforced in code)"
+  events ||--o{ event_clients : "has (one per email, enforced by index)"
   events ||--o{ album_selections : has
   events |o--o| photos : "cover photo"
   uploaders |o--o{ photos : uploaded
@@ -52,7 +52,7 @@ erDiagram
   event_clients {
     uuid id PK
     uuid event_id FK
-    string email "unique"
+    string email "unique per event"
     int token_version
   }
 ```
@@ -61,27 +61,28 @@ erDiagram
 
 | Table | Purpose | Added or changed | Code |
 | --- | --- | --- | --- |
-| `admin_users` | Studio and McreatiK logins: role, branding, plan, credits, reset fields, `token_version` | V1, V5, V6, V9, V10, V12, V13, V17 (`board_theme`), V18 (`main_credits`, `quick_credits`, `plan_paid_until`, `plan_since`, `plan_reminded_for`), V19 (`client_credits`), V21 (`contact_phone`) | JPA `AdminUser`; SQL in `BillingService`, `PasswordResets` |
-| `events` | One wedding or event; `event_type` MAIN / QUICK / CLIENT; `active_until` (open 3 months by default, `billing_settings.active_months`, then deleted 30 days later via `retention_until`), `storage_quota_gb` (5 for live events, 0 for client galleries, plus GB bought), `storage_locked`, `expiry_warned_for` / `expiry_notified_for` | V1, V8, V13, V18, V19 | JPA `Event` |
+| `admin_users` | Studio and McreatiK logins: role, branding, plan, credits, reset fields, `token_version` | V1, V5, V6, V9, V10, V12, V13, V17 (`board_theme`), V18 (`main_credits`, `quick_credits`, `plan_paid_until`, `plan_since`, `plan_reminded_for`), V19 (`client_credits`), V21 (`contact_phone`), V23 (`client_storage_gb`), V26 (`client_months`) | JPA `AdminUser`; SQL in `BillingService`, `PasswordResets` |
+| `events` | One wedding or event; `event_type` MAIN / QUICK / CLIENT; `active_until` (open 3 months by default, `billing_settings.active_months`, then deleted 30 days later via `retention_until`), `storage_quota_gb` (5 for live events, 0 for client galleries, plus GB bought), `storage_locked`, `expiry_warned_for` / `expiry_notified_for`; `photos_deleted_at` (when retention removed the photos: the event stays as an archived record) | V1, V8, V13, V18, V19, V26 | JPA `Event` |
 | `uploaders` | Camera connections (token hash, status, queue counts) | V1 | JPA `Uploader` |
 | `photos` | Every photo, and the processing queue; `gallery` (`GUEST` / `CLIENT`) | V1 to V4, V8, V25 | JPA `Photo`, `AdminPhotoSearch`, worker SQL |
 | `guest_activity` | Anonymous views, downloads, likes (`LIKE` / `UNLIKE`, with a partial index for finding a visitor's like) | V7, V24 | `GuestActivityService` |
 | `event_categories` | Albums inside an event; `gallery` (`GUEST` / `CLIENT`) gives each gallery its own list | V8, V25 |
 | `hq_requests` | Guests' "Get HD photo" requests: `photo_id`, `contact`, `kind` (`EMAIL` / `WHATSAPP`), `visitor_id`, `done` | V24 | `HqRequests`, `GuestActivityController` | `AlbumService` |
-| `event_clients` | The couple's login | V8, V11, V12, V13 | `ClientController`, `AlbumService` |
+| `event_clients` | The couple's login; one email can log in to several events (`ux_event_clients_event_email` is unique per event and email; `ix_event_clients_email` finds an email's events) | V8, V11, V12, V13, V26 | `ClientController`, `AlbumService` |
 | `album_selections` | Photos the couple ticked | V8 | `AlbumService`, `ClientController` |
 | `event_charges` | How each event was covered: `FREE`, `QUOTA` (this month's pack), `CARRY` (last month's unused), `CREDIT` (bought); carry-over is worked out from these rows | V9, V18 | `BillingService` |
-| `event_payments` | Every purchase: `item` (MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN, STORAGE, CLIENT_SETUP, EXTEND), quantity, `event_id`, `plan`; UPI ones wait for review (UTR unique) | V9, V14, V15, V18 | `BillingService`, `OnlinePaymentService` |
+| `event_payments` | Every purchase: `item` (MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN, STORAGE, CLIENT_SETUP, EXTEND, STORAGE_EXTEND), quantity, `event_id`, `plan`, `storage_gb`, `months`; UPI ones wait for review (UTR unique). The V14 and V15 online-payment columns are left over from an earlier design and unused | V9, V14, V15, V18, V23, V26 | `BillingService` |
 | `billing_settings` | One row of UPI details and every price (Main, Quick, the four packs and their extra-event prices, upgrade, storage per GB, free GB, client setup, active months) | V9, V18, V19, V20, V22 | `BillingService` |
 
 ## What happens on delete
 
 | Deleted | Effect |
 | --- | --- |
-| An event | Its uploaders, photos, activity, categories, client and album picks go too (`ON DELETE CASCADE`). Its charges stay with `event_id` set to null, so billing history survives. `EventService.delete` removes the R2 files first. |
+| An event | Only McreatiK can delete one. Its uploaders, photos, activity, categories, client and album picks go too (`ON DELETE CASCADE`). Its charges stay with `event_id` set to null, so billing history survives. `EventService.remove` removes the R2 files first. |
+| An event's photos (retention) | When retention ends, the daily job removes the files and photo rows and archives the event. The event row, its payments and its charges stay as the record (`photos_deleted_at` is set). |
 | A photo | Its album picks go; an event using it as cover gets `cover_photo_id` set to null |
 | An uploader or category | Photos keep existing, with the link set to null |
-| A studio | Not possible while it owns events (no cascade); the app only disables studios |
+| A studio | McreatiK can delete it from the Studios page. Its events are removed first (files included), then its login, logo and payment history |
 
 ## Photo status flow
 
@@ -111,7 +112,7 @@ stateDiagram-v2
 
 | Rule | Where | Database backup |
 | --- | --- | --- |
-| One client login per event | `AlbumService` (`CLIENT_EXISTS`) | None; a plain index only |
+| One client login per event | `AlbumService` (`CLIENT_EXISTS`) | Partly: `ux_event_clients_event_email` allows one login per event and email |
 | Album limit | `AlbumService`, `ClientController.select` | None |
-| Client email unique | `UNIQUE (email)` plus lowercasing in code | Case-sensitive constraint |
+| Client email unique per event | Lowercasing in code | `ux_event_clients_event_email` on `(event_id, lower(email))` |
 | Role, plan and payment status values | Java enums and strings | No `CHECK` constraint |

@@ -13,7 +13,7 @@ Your photographer has set up a private photo gallery for your event. This guide 
 
 ## 1. Log in for the first time
 
-1. Your photographer sends a message with your **login email** and a **temporary password**. The link is **live.mcreatik.com/client**.
+1. Your photographer sends a message with your **login email** and a **temporary password**. The message also has a link from your studio, like **live.mcreatik.com/client/login?event=your-event**. It opens your own gallery. If one email has more than one gallery, you choose which one after you log in.
 2. Enter both and tap **Log in**.
 
 ![Couple login page](images/c-login.webp)
@@ -26,7 +26,7 @@ Your photographer has set up a private photo gallery for your event. This guide 
 
 ## 2. Find your photos
 
-Your gallery opens with your names, the date and the studio's logo. Use the tabs to switch between moments; the number shows how many photos each has.
+Your gallery opens with a "Hi!" greeting, your names, the date and the studio's logo. At the bottom you see your studio's name, with its WhatsApp or call button and Instagram. Use the tabs to switch between moments; the number shows how many photos each has.
 
 ![The couple's portal on a phone](images/c-portal.webp)
 
@@ -63,11 +63,11 @@ A ZIP holds up to 1,000 photos. Very large weddings download in parts, one categ
 
 Your studio uploads your photos here in full quality, so you get the full file.
 
-> **Warning** Photos are kept only until the **delete date** your studio set, usually 90 days after the event. Download everything you want to keep before then.
+> **Warning** Your gallery stays open for the months your studio chose (3 months by default). Photos are deleted 30 days after it closes. Download everything you want to keep before then.
 
 ## 5. Forgot your password?
 
-Tap **Forgot password?** on the login page and enter your login email. A temporary password arrives from connect@mcreatik.com (check spam) and works for 30 minutes. Your old password keeps working until you use the new one.
+Tap **Forgot password?** on the login page and enter your login email. This works for all your galleries. A temporary password arrives from connect@mcreatik.com (check spam) and works for 30 minutes. Your old password keeps working until you use the new one.
 
 ![Forgot password](images/c-forgot.webp)
 

@@ -35,7 +35,7 @@ Keep the page open. New photos appear by themselves, usually within seconds of b
 
 ## 4. Photos after the event
 
-The same link keeps working after the event, until the gallery's delete date (usually 90 days after the event). Bookmark it or keep the WhatsApp message.
+The same link keeps working after the event, while the gallery is open (3 months by default). The photos are deleted 30 days after it closes. Bookmark it or keep the WhatsApp message.
 
 At the bottom of the gallery you'll find who took the photos (tap **Follow** to see more of their work), the privacy notice and a photo-removal link.
 

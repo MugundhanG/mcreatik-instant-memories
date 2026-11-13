@@ -78,7 +78,7 @@ sequenceDiagram
 | Who | Login | Token | Revoked by |
 | --- | --- | --- | --- |
 | Studio or McreatiK | `AuthController.login` | JWT scope `admin`, `sub` = admin id, `ver` | `ActiveAdminFilter` |
-| Couple | `ClientController.login` | JWT scope `client`, `event` claim, `ver` | `ClientController.current()` |
+| Couple | `ClientController.login` (takes an optional `eventSlug`; 409 `CHOOSE_EVENT` if one email has several galleries) | JWT scope `client`, `event` claim, `ver` | `ClientController.current()` |
 | Camera uploader | `UploaderTokenAuthenticationFilter` | `mku_…`; only its SHA-256 is stored | Rotate or delete the uploader |
 
 - Passwords use BCrypt with a 10-character minimum.
@@ -132,7 +132,7 @@ flowchart TB
 
 | Job | When | Purpose |
 | --- | --- | --- |
-| `RetentionJob.purgeExpired` | 03:17 UTC daily | Deletes events past `retention_until` (`active_until` + 30 days) and their files |
+| `RetentionJob.purgeExpired` | 03:17 UTC daily | For events past `retention_until` (`active_until` + 30 days): deletes the photos and every stored file, and archives the event. The event row, payments and charges stay as the record |
 | `GalleryLifecycleJob.run` | 04:15 UTC daily | Paying studios only: pauses the couple's gallery of a Main/Quick event still over its storage 14 days after its date; emails 14 days before and on the day a gallery closes |
 | `PhotoProcessingWorker.requeueStale` | Every 60 s | Rescues stuck photos |
 | `SseGalleryBroadcaster.heartbeat` | Every 20 s | Keeps connections alive |

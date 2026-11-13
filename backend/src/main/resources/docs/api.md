@@ -16,12 +16,12 @@ All endpoints live under `https://im-api.mcreatik.com`. Requests and responses a
 
 | Status | Example codes | Meaning |
 | --- | --- | --- |
-| 400 | `VALIDATION_FAILED`, `BAD_REQUEST`, `INVALID_SLUG` | Input is wrong |
+| 400 | `VALIDATION_FAILED`, `BAD_REQUEST`, `INVALID_SLUG`, `INVALID_MONTHS`, `NOTHING_TO_BUY` | Input is wrong (`INVALID_MONTHS`: months outside 1 to 12; `NOTHING_TO_BUY`: a storage-and-months purchase with neither) |
 | 401 | none | Not logged in, expired, or password changed since login |
 | 402 | `EVENT_PAYMENT_REQUIRED`, `CLIENT_PAYMENT_REQUIRED` | Plan used up, or no client gallery paid for; payment needed |
 | 403 | `FORBIDDEN`, `GALLERY_UNAVAILABLE`, `GALLERY_EXPIRED`, `ACCOUNT_DISABLED`, `EXTEND_INSTEAD` | Not allowed (`EXTEND_INSTEAD`: studios can't set the delete date; they keep it open more months) |
 | 404 | `NOT_FOUND` | Missing, or not yours (deliberately the same) |
-| 409 | `EVENT_CLOSED`, `CLIENT_EXISTS`, `EMAIL_TAKEN`, `UPLOAD_NOT_FOUND`, `STORAGE_FULL` | Conflicts with current state |
+| 409 | `EVENT_CLOSED`, `CLIENT_EXISTS`, `EMAIL_TAKEN`, `UPLOAD_NOT_FOUND`, `STORAGE_FULL`, `EVENT_DELETED`, `CHOOSE_EVENT` | Conflicts with current state (`EVENT_DELETED`: the gallery's files are already deleted; `CHOOSE_EVENT`: a couple's email has several galleries, see Couple portal) |
 | 400 (gallery rules) | `GUEST_COMPRESSED_ONLY`, `CLIENT_ORIGINAL_REQUIRED`, `GALLERY_MISMATCH`, `INVALID_CONTACT` | Guest gallery takes compressed uploads only; Client gallery needs the original file; photo and category in different galleries; bad HD-request contact |
 | 409 (limit) | `TOO_MANY_REQUESTS` | A visitor made too many HD requests |
 | 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header) |
@@ -50,8 +50,7 @@ All endpoints live under `https://im-api.mcreatik.com`. Requests and responses a
 | PATCH | `/api/admin/studios/{studioId}` | Super | Rename, disable, reset password |
 | PATCH | `/api/admin/studios/{studioId}/branding` | Super | Name, Instagram, contact number (`phone`), logo size |
 | POST / DELETE | `/api/admin/studios/{studioId}/logo` | Super | Studio logo |
-
-There is no delete endpoint for studios; they are only disabled.
+| DELETE | `/api/admin/studios/{studioId}` | Super | Deletes the studio for good: login, every event with its files, logo and payment history. 204. 400 `CANNOT_DELETE` for your own or another McreatiK login. The app asks you to type the studio's name first |
 
 ## Events
 
@@ -59,7 +58,7 @@ There is no delete endpoint for studios; they are only disabled.
 | --- | --- | --- | --- |
 | GET | `/api/admin/events` | Admin | Own events (all for McreatiK), with photo counts |
 | POST | `/api/admin/events` | Admin | `{name, eventDate, eventType? (MAIN / QUICK / CLIENT), status?, slug?, …, ownerId? (super)}` → 201, or 402. The detail carries `activeUntil`, `storageQuotaGb`, `storageBytes`, `storageLocked`, `expired` |
-| GET / PATCH / DELETE | `/api/admin/events/{eventId}` | Admin | Delete is permanent, files included |
+| GET / PATCH / DELETE | `/api/admin/events/{eventId}` | Admin | Delete is permanent, files included, and McreatiK only (a studio gets 403 `FORBIDDEN`). The retention job does not delete events: it removes the photos and files and archives the event |
 | GET | `/api/admin/events/{eventId}/logo` | Admin | The owning studio's logo file, for the event and table cards (404 without a logo) |
 | PATCH | `/api/admin/events/{eventId}/access` | Super | `{liveGallery?, clientGallery?}` |
 | GET | `/api/admin/events/{eventId}/stats` | Admin | Counts, storage, per-uploader status |
@@ -100,12 +99,12 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 | Method | Path | Who | Notes |
 | --- | --- | --- | --- |
 | GET | `/api/admin/billing` | Admin | Plan, this month's pack usage, `carryOver`, `mainCredits` / `quickCredits` (`credits` = both), `packActive`, `planPaidUntil`, `unitPrice` / `quickUnitPrice` (what one more Main / Quick event costs this studio: the pack's extra price while a pack is paid up), `prices`, UPI details |
-| POST | `/api/admin/billing/payments` | Admin | `{item, quantity, eventId?, plan?, utr}` → PENDING payment, applied at once. `item`: `MAIN_EVENT` / `QUICK_EVENT` (quantity = events), `UPGRADE` (`eventId` of a Quick event; 409 `NOT_QUICK`), `PLAN` (`plan` = a pack, quantity = months; a different pack starts today), `CLIENT_SETUP` (quantity = client galleries, 1–50), `STORAGE` (`eventId`, quantity = GB, 1–1000), `EXTEND` (`eventId`; quantity is set by the server to the event's GB, rounded up; adds `active_months`, 3 by default). The older `{events, utr}` still means Main events |
+| POST | `/api/admin/billing/payments` | Admin | `{item, quantity, eventId?, plan?, storageGb?, months?, utr}` → PENDING payment, applied at once. `item`: `MAIN_EVENT` / `QUICK_EVENT` (quantity = events), `UPGRADE` (`eventId` of a Quick event; 409 `NOT_QUICK`), `PLAN` (`plan` = a pack, quantity = months; a different pack starts today), `CLIENT_SETUP` (quantity = client galleries, 1–50; `storageGb` and `months` (1–12, default 1) for the gallery it creates), `STORAGE` (`eventId`, quantity = GB, 1–1000), `EXTEND` (`eventId`, `months` 1–12, default `active_months` = 3; quantity is set by the server to the event's GB, rounded up), `STORAGE_EXTEND` (`eventId`, `storageGb` and `months` added, either may be 0 but not both: one payment for the app's **Change storage & months** button; 400 `NOTHING_TO_BUY`). The older `{events, utr}` still means Main events |
 | GET | `/api/admin/billing/payments?status=` | Super | Payments to check |
 | POST | `/api/admin/billing/payments/{id}/approve` · `/reject` | Super | Reject reverses what the payment applied (credits, upgrade or pack month) |
 | GET / PATCH | `/api/admin/billing/studios[/{studioId}]` | Super | `{plan?, monthlyQuota?, addCredits?, addQuickCredits?, addClientCredits?, planPaidUntil?}`; moving onto a pack sets paid-until to a month from today unless given |
 | GET / PUT | `/api/admin/billing/settings` | Super | UPI ID, payee, prices (incl. `main2ExtraPrice` … `quick4ExtraPrice`; a missing price keeps its value) |
-| POST | `/api/admin/billing/quote` | Admin | Same body as `/payments` (without `utr`) → the price the server would charge `{amount, months, includedGb, includedMonths, …}`; nothing is bought |
+| POST | `/api/admin/billing/quote` | Admin | Same body as `/payments` (without `utr`) → the price the server would charge `{item, quantity, unitPrice, amount, eventId, storageGb, months, includedGb, includedMonths, …}`; nothing is bought |
 | GET | `/api/public/pricing` | Public | Current prices for the `/pricing` page |
 
 ## Camera uploaders
@@ -139,7 +138,7 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| POST | `/api/client/auth/login` | Public; 403 when disabled or gallery off |
+| POST | `/api/client/auth/login` | Public. `{email, password, eventSlug?}`: the slug comes from the couple's link (`/client/login?event=…`). If the email and password open several galleries, 409 `CHOOSE_EVENT` with `events: [{slug, name, eventDate}]`; log in again with a slug. 403 when disabled or gallery off |
 | POST | `/api/client/auth/forgot-password` | Public; always 204 |
 | GET | `/api/client/me` | Event, branding, album limit, categories |
 | GET | `/api/client/photos?category=&offset=` | Paged photos |
