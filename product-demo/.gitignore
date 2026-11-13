@@ -1,0 +1,13 @@
+# Recordings and the final video are kept outside git.
+05-recordings/*.mp4
+05-recordings/*.mov
+05-recordings/*.wav
+05-recordings/*.mp3
+05-recordings/*.png
+05-recordings/*.webm
+08-final-video/*.mp4
+08-final-video/*.mov
+08-final-video/*.wav
+08-final-video/*.mp3
+08-final-video/*.png
+08-final-video/*.webm
