@@ -36,12 +36,13 @@ export function resolveBrand(brand: Brand | undefined): ResolvedBrand {
   if (!brand) return MCREATIK_BRAND
   if (brand.mcreatik) {
     // McreatiK's own events: what the super admin saved wins; anything empty keeps the built-in design.
+    // McreatiK's logo is made for dark photos: it sits straight on the cover, never on a light card.
     return {
       ...MCREATIK_BRAND,
       name: brand.name?.trim() || MCREATIK_BRAND.name,
       instagram: brand.instagram || MCREATIK_BRAND.instagram,
       phone: brand.phone || MCREATIK_BRAND.phone,
-      ...(brand.logoUrl ? { heroLogo: brand.logoUrl, heroLogoOnCard: true, posterLogo: brand.logoUrl, posterLogoScale: brand.logoScale ?? 100 } : {}),
+      ...(brand.logoUrl ? { heroLogo: brand.logoUrl, heroLogoOnCard: false, posterLogo: brand.logoUrl, posterLogoScale: brand.logoScale ?? 100 } : {}),
     }
   }
   return {
