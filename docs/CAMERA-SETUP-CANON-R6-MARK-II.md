@@ -1,6 +1,6 @@
-# Canon EOS R6 Mark II → McreatiK Live Gallery (Wi-Fi FTP)
+# Canon EOS R6 Mark II → McreatiK Instant Memories (Wi-Fi FTP)
 
-> The maintained, illustrated version of this guide is in the McreatiK admin Docs: **Camera & uploader guides → Canon EOS R6 Mark II** (`backend/src/main/resources/docs/guide-canon.md`), next to the Sony α7 IV, uploader (Windows and Mac) and event-day guides, and the SOPs for McreatiK, studios, couples and guests.
+> The maintained, illustrated version of this guide is `backend/src/main/resources/docs/guide-canon.md` (in-app Docs: **Canon EOS R6 Mark II**, `/admin/docs/guide-canon`), next to the Sony α7 IV, uploader and event-day guides. This copy is a short text version.
 
 The camera sends every photo over Wi-Fi to the McreatiK Instant Memories Uploader on your laptop, which puts it in the live gallery.
 No cable and no separate FTP software.
@@ -12,13 +12,10 @@ R6 Mark II ──Wi-Fi (FTP)──> laptop: McreatiK Instant Memories Uploader �
 ## Before the event (once per camera, ~10 minutes)
 
 **1. Laptop**
-- Start McreatiK Instant Memories Uploader, paste the connection code from the event dashboard, keep
-  **"Receive photos from the camera over Wi-Fi"** ticked, and click OK.
-- The window shows a **Camera Wi-Fi (FTP)** box with the **server address, port (2121), user name and password**.
-  Keep it visible, you'll type these into the camera.
-- Windows: when the firewall asks, click **Allow** (private networks).
-- Mac: follow [UPLOADER-MACOS.md](UPLOADER-MACOS.md) first (install Java 21, start with `caffeinate`, allow `java` in the firewall).
-- From the command line instead: `java -jar mcreatik-uploader.jar --ftp --connect MCK1.… --folder "D:\McreatiK Photos"`.
+- Install and start McreatiK Instant Memories Uploader (Windows `.msi` or Mac `.dmg`, from the dashboard's **Install uploader** button; Java is included). Paste the connection code (starts with `MCK1.`) from the event dashboard (**Overview > Cameras & uploaders > Add camera & get code**), keep **"Receive photos from the camera over Wi-Fi"** ticked and press **Connect**. There is no studio sign-in.
+- The **Camera Wi-Fi settings** card shows the **Server, Port (2121), User and Password**. Keep it visible, you'll type these into the camera.
+- Windows: when the firewall asks, click **Allow** on Private **and** Public networks (a phone hotspot counts as Public).
+- Mac: see [UPLOADER-MACOS.md](UPLOADER-MACOS.md) (Apple Silicon or Intel build, firewall, keeping the Mac awake).
 
 **2. One network for both**
 - Turn on a **phone hotspot** (4G/5G) and connect the laptop to it. The camera will join the same hotspot.
@@ -44,8 +41,7 @@ R6 Mark II ──Wi-Fi (FTP)──> laptop: McreatiK Instant Memories Uploader �
 - **Power saving:** extend auto power off, or Wi-Fi drops when the camera sleeps.
 
 **4. Test**
-Shoot a few frames. Within a few seconds the uploader shows "Camera connected · N received", and the photos appear
-in the live gallery.
+Shoot a few frames. Within a few seconds the uploader shows "N received this session", the **Camera** stage turns green (**Receiving**), and the photos appear in the live gallery.
 
 ## During the event
 - Keep the laptop and hotspot within a few metres of where you shoot, or carry the phone hotspot on you.
@@ -78,7 +74,7 @@ For the hotspot SET:
 1. Connect the laptop to the hotspot, then read the **Server address** in the uploader (or `ipconfig` → IPv4 Address).
 2. Run the "Transfer images to FTP server" wizard into an empty SET, choose the hotspot, enter that address,
    port `2121`, Passive mode on, same user and password.
-3. Allow "OpenJDK Platform binary" in the Windows firewall on **Public** networks too: a new hotspot is Public.
+3. Allow McreatiK Instant Memories Uploader in the Windows firewall on **Public** networks too: a new hotspot is Public.
 4. Android: hotspot band 2.4 GHz. iPhone: turn on Maximize Compatibility.
 
 Always use the **same phone** as the event hotspot: it normally hands the laptop the same address every time, so the
@@ -92,12 +88,15 @@ Run at least one rehearsal with the real camera before a paid event:
 - Note battery drain per hour with Wi-Fi on.
 - Set Windows to never sleep when plugged in (Settings → System → Power & battery), and keep the laptop plugged in.
 
+## Several cameras on one laptop
+One uploader serves up to 4 cameras. Press **+ Add camera** in the uploader; each camera uses the **Port on its own tab** (2121, 2122, 2123, 2124), with the same Server, User and Password.
+
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| Camera: "cannot connect to FTP server" | Camera and laptop on the same network? Address typed exactly as shown? Laptop firewall allowed? |
-| Camera shows "Busy" on the first connection | Usually clears by itself after the first connection or transfer. If not: allow "OpenJDK Platform binary" in the Windows firewall on Private **and** Public networks, check the laptop's address has not changed, and toggle Passive mode. |
+| Camera: "cannot connect to FTP server" | Camera and laptop on the same network? Address typed exactly as shown? Port 2121? Laptop firewall allowed? |
+| Camera shows "Busy" on the first connection | Usually clears by itself after the first connection or transfer. If not: allow McreatiK Instant Memories Uploader in the Windows firewall on Private **and** Public networks, check the laptop's address has not changed, and toggle Passive mode. |
 | Connects, but transfers fail | Toggle **Passive mode** in the camera; check the port is 2121. |
-| Uploader shows "could not start on port 2121" | Another program uses the port: start with `--ftp-port 2122` and enter 2122 in the camera. |
+| Uploader shows "could not start on port 2121" | Another program uses the port: start the uploader with `--ftp-port 2131` and enter 2131 in the camera. |
 | Photos arrive on the laptop but not in the gallery | Check the uploader's online status: it is the internet link (hotspot data) that's down. |
