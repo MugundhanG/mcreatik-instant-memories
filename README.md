@@ -1,4 +1,4 @@
-# McreatiK Instant Memories (Live Gallery)
+# McreatiK Instant Memories
 
 Wedding and event photos on guests' phones within seconds of the shot. Guests scan a QR code: no app, no sign-up. Studios run events from a dashboard; couples get a private portal for album picks and full-quality downloads.
 
