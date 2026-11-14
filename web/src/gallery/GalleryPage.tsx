@@ -16,6 +16,7 @@ import { GalleryUnavailable } from '../shared/GalleryUnavailable'
 import { removalRequestLink } from '../shared/privacy'
 import { PhotoViewer } from './PhotoViewer'
 import { useLiveGallery } from './useLiveGallery'
+import EnvBadge from '../shared/EnvBadge'
 
 /** Guests closer than this to the top see new photos inserted immediately. */
 const AUTO_INSERT_SCROLL_PX = 240
@@ -146,6 +147,7 @@ export default function GalleryPage() {
 
   return (
     <div className="min-h-dvh">
+      <EnvBadge corner />
       <header className="relative h-[68svh] max-h-[640px] min-h-[420px] overflow-hidden bg-[#3a2a20] text-white">
         {cover ? (
           <img src={cover} alt="" data-testid="gallery-cover" className="absolute inset-0 size-full object-cover" />

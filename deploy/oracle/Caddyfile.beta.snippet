@@ -1,0 +1,18 @@
+# BETA server only. Put this in /etc/caddy/Caddyfile on the beta VM, then:
+#   sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy
+# Same two-slot setup as Caddyfile.snippet (production): the backend runs in 8081 or 8082 (see slots.sh) and Caddy
+# sends traffic to whichever answers its health check, so beta deploys rehearse the production deploy exactly.
+#
+# Certificate: in Cloudflare DNS the `api.beta` A record must be DNS-only (grey cloud), so Let's Encrypt can reach
+# this VM directly and Caddy obtains its own certificate. Ports 80 and 443 must be open both in the VM's firewall
+# (setup-vm.sh does that) and in the Oracle VCN security list.
+api.beta.mcreatik.com {
+    reverse_proxy 127.0.0.1:8081 127.0.0.1:8082 {
+        lb_policy first
+        lb_try_duration 15s
+        health_uri /actuator/health
+        health_interval 5s
+        health_timeout 3s
+        flush_interval -1   # Server-Sent Events: send each new photo immediately
+    }
+}

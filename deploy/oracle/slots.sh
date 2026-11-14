@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared by deploy.sh and rollback.sh: the two "slots" the backend runs in, so an update never takes it offline.
 #
 #   blue  = container mcreatik-gallery-blue  on 127.0.0.1:8081
@@ -7,9 +8,19 @@
 # version in the idle slot, waits until it is healthy, then stops the old slot; Caddy retries any request that hits
 # the stopping slot on the other one, so guests never see an error page.
 # A container from before slots ("mcreatik-gallery" on 8081) counts as blue.
+#
+# Everything below has a production default, so prod commands are unchanged. A second environment on its own VM
+# (beta) normally needs no overrides either; set these only to run two environments on one machine:
+#   SLOT_PREFIX  container/image name prefix      (default mcreatik-gallery)
+#   BLUE_PORT / GREEN_PORT                         (default 8081 / 8082; keep them in step with the Caddyfile)
+#   ENV_DIR      folder holding gallery.env, deploy.log, backups/   (default ~/mcreatik-gallery)
+#   ENV_FILE     the env file itself                (default $ENV_DIR/gallery.env)
 
-NAME=mcreatik-gallery
-ENV_FILE=${ENV_FILE:-$HOME/mcreatik-gallery/gallery.env}
+NAME=${SLOT_PREFIX:-mcreatik-gallery}
+BLUE_PORT=${BLUE_PORT:-8081}
+GREEN_PORT=${GREEN_PORT:-8082}
+ENV_DIR=${ENV_DIR:-$HOME/mcreatik-gallery}
+ENV_FILE=${ENV_FILE:-$ENV_DIR/gallery.env}
 CADDYFILE=${CADDYFILE:-/etc/caddy/Caddyfile}
 MEMORY=${GALLERY_MEMORY:-2g}
 CPUS=${GALLERY_CPUS:-2}
@@ -18,7 +29,7 @@ HEALTH_WAIT_SECONDS=${HEALTH_WAIT_SECONDS:-1200}
 # Time for Caddy's health check (every 5 s) to see the new slot before the old one stops.
 SWITCH_GRACE_SECONDS=${SWITCH_GRACE_SECONDS:-12}
 
-slot_port() { [[ "$1" == blue ]] && echo 8081 || echo 8082; }
+slot_port() { [[ "$1" == blue ]] && echo "$BLUE_PORT" || echo "$GREEN_PORT"; }
 other_slot() { [[ "$1" == blue ]] && echo green || echo blue; }
 is_running() { [[ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" == "true" ]]; }
 
@@ -36,11 +47,11 @@ slot_of() { [[ "$1" == "$NAME-green" ]] && echo green || echo blue; }
 # Refuses to continue unless Caddy balances across both slots: otherwise stopping the old slot would be an outage.
 require_caddy_slots() {
   if [[ -n "${SKIP_CADDY_CHECK:-}" ]]; then return 0; fi
-  if [[ -r "$CADDYFILE" ]] && grep -q '127.0.0.1:8081' "$CADDYFILE" && grep -q '127.0.0.1:8082' "$CADDYFILE"; then
+  if [[ -r "$CADDYFILE" ]] && grep -q "127.0.0.1:$BLUE_PORT" "$CADDYFILE" && grep -q "127.0.0.1:$GREEN_PORT" "$CADDYFILE"; then
     return 0
   fi
-  echo "!! Caddy is not set up for updates without downtime yet ($CADDYFILE must list 127.0.0.1:8081 and 127.0.0.1:8082)."
-  echo "   One-time step: replace the im-api.mcreatik.com block with deploy/oracle/Caddyfile.snippet, then run:"
+  echo "!! Caddy is not set up for updates without downtime yet ($CADDYFILE must list 127.0.0.1:$BLUE_PORT and 127.0.0.1:$GREEN_PORT)."
+  echo "   One-time step: replace the API block with deploy/oracle/Caddyfile.snippet (beta: Caddyfile.beta.snippet), then run:"
   echo "     sudo caddy validate --config $CADDYFILE && sudo systemctl reload caddy"
   echo "   Nothing was changed; the running version keeps serving."
   exit 1

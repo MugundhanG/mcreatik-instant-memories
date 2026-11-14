@@ -2,9 +2,10 @@ name: Backend image
 
 # Builds the backend Docker image and publishes it to GitHub Container Registry, so small servers
 # can `docker pull` instead of compiling Java (deploy/oracle/deploy.sh with IMAGE=...).
+# main publishes :latest (production); beta publishes :beta (beta server). Both also get :sha-<commit>.
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
     paths: ["backend/**", ".github/workflows/backend-image.yml"]
   workflow_dispatch:
 
@@ -24,14 +25,22 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - id: tags
+        run: |
+          image=ghcr.io/mugundhang/mcreatik-instant-memories-backend
+          if [ "$GITHUB_REF_NAME" = "main" ]; then channel=latest; else channel=beta; fi
+          {
+            echo "list<<EOF"
+            echo "$image:$channel"
+            echo "$image:sha-$GITHUB_SHA"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@v6
         with:
           context: backend
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ghcr.io/mugundhang/mcreatik-instant-memories-backend:latest
-            ghcr.io/mugundhang/mcreatik-instant-memories-backend:sha-${{ github.sha }}
+          tags: ${{ steps.tags.outputs.list }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}

@@ -96,3 +96,5 @@ gallery:
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
     from: ${MAIL_FROM:McreatiK <connect@mcreatik.com>}
+    # Put in front of every outgoing subject; the beta server sets "[BETA] " so test mail is obvious. Empty = unchanged.
+    subject-prefix: ${MAIL_SUBJECT_PREFIX:}

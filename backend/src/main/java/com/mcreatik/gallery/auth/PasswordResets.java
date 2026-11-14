@@ -115,7 +115,8 @@ public class PasswordResets {
 
     private void sendLater(String to, String body) {
         Thread.ofVirtual().name("password-reset-mail").start(() -> mailer.send(to, "Your McreatiK temporary password",
-                body + "\n" + com.mcreatik.gallery.mail.MailSignature.text(), com.mcreatik.gallery.mail.MailSignature.html(body)));
+                body + "\n" + com.mcreatik.gallery.mail.MailSignature.text(), com.mcreatik.gallery.mail.MailSignature.html(body,
+                        com.mcreatik.gallery.mail.MailSignature.logoUrl(properties.publicGalleryBaseUrl()))));
     }
 
     static String message(String name, String temporary, String loginUrl) {

@@ -15,6 +15,7 @@ This is the standard operating procedure for the **McreatiK super admin**: the p
 | Remove a photo after a request | Event → Photos → More → Delete | Within 3 working days |
 | Reset a studio's password | Studios → open the studio → Reset password | On request |
 | Update the server | Deployment page (`deploy.sh`) | After each backend change |
+| Server down on an event day | Section 10 below | When a studio calls |
 
 > **Note** Every screenshot in this section comes from a demo studio ("Lens & Light Studio") with generated sample photos. No client photos are used anywhere in these docs.
 
@@ -132,7 +133,7 @@ Guests ask with **Request removal** in the photo viewer, or by email to connect@
 Have this ready on any event day:
 
 - Your phone with WhatsApp (+91 99527 58545) and email.
-- These docs open: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day).
+- These docs open: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day) and the studio's [Event-day problem playbook](/admin/docs/guide-event-day-problems) (read it once, so you know what the studio has been told to do).
 - The event dashboard open on **Overview** to watch **cameras online** and the latest photo.
 
 ![Event overview: photo counts, cameras online, QR code](images/s-overview.webp)
@@ -144,7 +145,7 @@ Have this ready on any event day:
 | "Guests can't open it" | Event status not Draft or Archived; gallery access on | Section 6 |
 | "Wrong photo is showing" | Hide it from the Photos tab | Section 7 |
 
-> **Warning** Never update the server during a live event. A deploy takes the gallery offline while Java starts.
+> **Warning** Never update the server during a live event. A deploy no longer takes the gallery offline (see [Deployment](/admin/docs/deployment)), but guests' live streams reconnect and a ZIP download in progress has to be restarted.
 
 ## 9. Keep the service healthy
 
@@ -155,6 +156,66 @@ Have this ready on any event day:
 | Rollback if an update breaks | Immediately | `deploy/oracle/rollback.sh` (see Deployment) |
 | Security and findings | Monthly | [Findings and next actions](/admin/docs/findings) |
 | Answers to customer questions | When a feature changes | [Instant Memories Q&A](/admin/docs/qa-how-to-use) |
+
+### Releasing a change
+
+1. Merge the work into `beta`; wait for the green CI check and the `:beta` image.
+2. Deploy beta on VM #2 and open `beta.live.mcreatik.com` (look for the amber BETA badge).
+3. Test the change: sign in, create an event, copy a connection code (its server must be `api.beta…`), upload a photo, open the guest gallery on a phone, send a password reset (subject starts with `[BETA]`).
+4. Only when everything works, merge `beta` into `main`; wait for the `:latest` image and the live web deploy.
+5. Deploy production on VM #1, check `https://im-api.mcreatik.com/actuator/health` and `live.mcreatik.com`. If anything is wrong, run `deploy/oracle/rollback.sh`.
+6. Not during a live event. Details: [Deployment](/admin/docs/deployment).
+
+## 10. Server-down runbook (event day)
+
+Use this when a studio says the uploader shows **Reconnecting** or **Offline** although their laptop has internet, or guests can't open the gallery. What the studio sees and what they were told to do is in the [Event-day problem playbook](/admin/docs/guide-event-day-problems) (card 14): keep shooting, because every photo waits in a queue on the laptop and uploads by itself once the server is back.
+
+> **Warning** Never print, paste or screenshot `gallery.env` or any secret while you fix this. Check one value's presence with `grep -c '^NAME=' ~/mcreatik-gallery/gallery.env`.
+
+**1. Is it really the server?** (1 minute)
+
+1. Open `https://im-api.mcreatik.com/actuator/health` in a browser. The page must show `UP`. If UptimeRobot (see [Deployment](/admin/docs/deployment)) already alerted you, the monitors tell you which one failed: the health keyword, `live.mcreatik.com`, or the gallery link.
+2. `live.mcreatik.com` (the website) loads but the health URL doesn't: the backend is the problem. Steps 2 to 5.
+3. `live.mcreatik.com` doesn't load either: check Cloudflare (the web app is built and served there; see Deployment, "Deploying the web app").
+
+**2. Look on the VM.** Connect with `ssh mcreatik-im`, then:
+
+```bash
+docker ps                                  # which slot is running: mcreatik-gallery-blue or -green
+systemctl status caddy                     # is the proxy up?
+docker logs --tail 100 mcreatik-gallery-blue    # or -green: whichever docker ps shows
+```
+
+- No `mcreatik-gallery-…` container is running: it stopped or was never started. Go to step 3.
+- A container is running but the health check isn't `UP`: read the log lines for the error (database unreachable, out of memory, startup still in progress). On the 1 GB server Java can take several minutes to start.
+- Caddy is not running: `sudo systemctl restart caddy`. To check its config first: `sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy`.
+
+**3. Restart.** The container was started with `--restart unless-stopped`. Restart the live slot:
+
+```bash
+docker restart mcreatik-gallery-blue       # or -green
+curl -fsS http://127.0.0.1:8081/actuator/health   # blue; use 8082 for green. Wait for "UP"
+```
+
+> **Note** `docker restart` is plain Docker. It is not a script in the repo and isn't described in the Deployment page, so use it only to bring the *same* version back. If a restart fails, don't keep restarting: go to step 4.
+
+**4. Roll back if the last deploy is the cause.** From `~/mcreatik-instant-memories`:
+
+```bash
+GALLERY_MEMORY=900m GALLERY_CPUS=1 deploy/oracle/rollback.sh
+```
+
+It starts the image that was live before the last deploy (`:previous`) in the idle slot, switches to it once healthy, and tags the bad one `:failed`. To go back further, run `deploy.sh` with `IMAGE=ghcr.io/mugundhang/mcreatik-instant-memories-backend:sha-<commit>` (see Deployment). The scripts never stop the live version until the new one is healthy, so a failed attempt leaves things as they were.
+
+**5. If the database is the problem.** The backend reads its database from `gallery.env` (Supabase). The nightly `backup.sh` dumps are in `~/mcreatik-gallery/backups/`. The restore steps are in Deployment, "Backups". Photos are in Cloudflare R2, not in the dump.
+
+**6. What to tell the studio** (copy, WhatsApp):
+
+> "We're aware the gallery server isn't responding and are fixing it now. Please keep shooting. Your photos are safe: they're saved on your laptop and will upload by themselves, oldest first, as soon as we're back. Keep the uploader open and the laptop plugged in, and don't change the event or press Get new code. I'll message you the moment it's fixed."
+
+Then: tell them when it is back, check their camera shows **Online** in the dashboard, and that **N waiting on laptop** is falling. Don't promise a time or an uptime figure.
+
+**7. Afterwards.** Note what happened and the time it started and ended, and add it to [Findings and next actions](/admin/docs/findings) if it needs a lasting fix. Don't deploy again until the event is over.
 
 ## Deleting a studio, and event deletion
 

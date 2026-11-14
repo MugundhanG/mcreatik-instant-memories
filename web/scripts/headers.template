@@ -1,0 +1,17 @@
+# Security headers for live.mcreatik.com (Cloudflare Workers static assets reads this file; vercel.json is not used).
+# CSP: the app loads only its own scripts/fonts; photos and logos come from im-media, data from im-api, and
+# "Upload original photos" sends files straight to R2 storage.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: {{MEDIA_ORIGIN}}; font-src 'self' data:; connect-src 'self' {{API_ORIGIN}} {{MEDIA_ORIGIN}} https://*.r2.cloudflarestorage.com; frame-src 'none'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/icons/*
+  Cache-Control: public, max-age=86400

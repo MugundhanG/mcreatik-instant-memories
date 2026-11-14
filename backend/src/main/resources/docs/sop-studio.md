@@ -123,7 +123,7 @@ Every camera needs its own **uploader**. One laptop with the McreatiK Instant Me
 
    - **First open:** Windows → More info → Run anyway; Mac → System Settings → Privacy & Security → Open Anyway.
    - **Connect:** in the uploader press **Paste**, choose the photo folder, choose camera Wi-Fi (FTP) or folder, then **Connect**.
-   - **Camera Wi-Fi:** type the Server, Port, User and Password shown on the Live page into the camera's FTP settings, then take a test shot and check it appears.
+   - **Camera Wi-Fi:** type the Server, Port, User and Password shown on the uploader's **Camera Wi-Fi settings** card (Live Upload page) into the camera's FTP settings, then take a test shot and check it appears.
    - **Change to another event:** wait until everything is uploaded (the queue is empty), then **Events → Change event…**, paste the new event's code and press **Connect**. The uploader restarts on the new event ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)).
 
 ![Add camera & get code: the one-time connection code](images/s-add-uploader.webp)
@@ -177,7 +177,7 @@ The board and cards are JPG files at 300 dpi, with 0.125 in extra on every side 
 2. Start the uploader on each laptop and check it shows **Online** and **this event's name** (see the [Uploader guide](/admin/docs/guide-uploader)).
 3. Take one test shot per camera. It should appear in the gallery within seconds.
 4. Put the QR posters out.
-5. Follow the [Event-day checklist](/admin/docs/guide-event-day).
+5. Follow the [Event-day checklist](/admin/docs/guide-event-day). Keep the [Event-day problem playbook](/admin/docs/guide-event-day-problems) open too: it says what to do if anything goes wrong.
 
 ## 7. During the event: curate live
 
@@ -294,4 +294,4 @@ Table card text you can copy: "**Scan to see the photos live.** Point your phone
 | Can't create an event (payment needed) | Your pack's events are used up, your pack has ended (renew it), or it's a Main event on a Quick pack. The message says which. Use **Buy events** or **Renew pack**. |
 | Couple says the album limit is reached | Raise the **Album limit** on the Couple tab, or ask them to untick some. |
 
-More: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day).
+More: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day) · [Event-day problem playbook](/admin/docs/guide-event-day-problems).

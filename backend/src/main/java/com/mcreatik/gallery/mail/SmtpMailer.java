@@ -22,11 +22,14 @@ public class SmtpMailer implements Mailer {
 
     private final JavaMailSenderImpl sender;
     private final String from;
+    private final String subjectPrefix;
 
     public SmtpMailer(@Value("${gallery.mail.host:}") String host, @Value("${gallery.mail.port:587}") int port,
                       @Value("${gallery.mail.username:}") String username, @Value("${gallery.mail.password:}") String password,
-                      @Value("${gallery.mail.from:McreatiK <connect@mcreatik.com>}") String from) {
+                      @Value("${gallery.mail.from:McreatiK <connect@mcreatik.com>}") String from,
+                      @Value("${gallery.mail.subject-prefix:}") String subjectPrefix) {
         this.from = from;
+        this.subjectPrefix = subjectPrefix == null ? "" : subjectPrefix;
         if (!StringUtils.hasText(host)) {
             this.sender = null;
             return;
@@ -47,8 +50,21 @@ public class SmtpMailer implements Mailer {
         this.sender = s;
     }
 
+    /**
+     * Prepends MAIL_SUBJECT_PREFIX (e.g. "[BETA] " on the beta server) so test mail is never mistaken for real mail.
+     * Empty by default, which leaves subjects unchanged. A prefix that does not end in a space gets one.
+     */
+    static String withPrefix(String prefix, String subject) {
+        if (prefix == null || prefix.isBlank()) {
+            return subject;
+        }
+        String p = Character.isWhitespace(prefix.charAt(prefix.length() - 1)) ? prefix : prefix + " ";
+        return p.stripLeading() + subject;
+    }
+
     @Override
     public boolean send(String to, String subject, String text, String html) {
+        subject = withPrefix(subjectPrefix, subject);
         if (sender == null) {
             log.warn("Email is not set up (MAIL_HOST is empty): could not send \"{}\"", subject);
             return false;
@@ -70,6 +86,7 @@ public class SmtpMailer implements Mailer {
 
     @Override
     public boolean send(String to, String subject, String body) {
+        subject = withPrefix(subjectPrefix, subject);
         if (sender == null) {
             log.warn("Email is not set up (MAIL_HOST is empty): could not send \"{}\"", subject);
             return false;

@@ -89,7 +89,7 @@ Summary only; the runbook is [`deployment.md`](backend/src/main/resources/docs/d
 Download the Windows `.msi` or Mac `.dmg` (Apple Silicon or Intel) from the dashboard's **Install uploader** button; Java is included. Guides:
 
 - [Uploader guide](backend/src/main/resources/docs/guide-uploader.md) (Windows and Mac, several cameras, switching events)
-- [Canon EOS R6 Mark II](docs/CAMERA-SETUP-CANON-R6-MARK-II.md), [Sony α7 IV](backend/src/main/resources/docs/guide-sony.md), [Event-day checklist](backend/src/main/resources/docs/guide-event-day.md)
+- [Canon EOS R6 Mark II](docs/CAMERA-SETUP-CANON-R6-MARK-II.md), [Sony α7 IV](backend/src/main/resources/docs/guide-sony.md), [Event-day checklist](backend/src/main/resources/docs/guide-event-day.md), [Event-day problem playbook](backend/src/main/resources/docs/guide-event-day-problems.md)
 - [Uploader on a Mac](docs/UPLOADER-MACOS.md)
 
 Shoot RAW+JPEG: the JPEG goes to guests, the RAW stays on the card. The uploader resizes each photo on the laptop and uploads only the light copies (about 0.6 MB), so photos reach guests in seconds even on a phone hotspot.
