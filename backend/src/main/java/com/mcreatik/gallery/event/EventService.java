@@ -23,6 +23,7 @@ import com.mcreatik.gallery.auth.AdminUserRepository;
 import com.mcreatik.gallery.auth.StudioBranding;
 import com.mcreatik.gallery.common.ApiException;
 import com.mcreatik.gallery.config.GalleryProperties;
+import com.mcreatik.gallery.face.FaceSearchService;
 import com.mcreatik.gallery.photo.Photo;
 import com.mcreatik.gallery.photo.PhotoMapper;
 import com.mcreatik.gallery.photo.PhotoRepository;
@@ -50,11 +51,12 @@ public class EventService {
     private final StudioBranding branding;
     private final AlbumService album;
     private final BillingService billing;
+    private final FaceSearchService faces;
 
     public EventService(EventRepository events, PhotoRepository photos, UploaderRepository uploaders,
                         StorageService storage, PhotoMapper photoMapper, GalleryBroadcaster broadcaster,
                         GalleryProperties properties, AdminUserRepository admins, StudioBranding branding,
-                        AlbumService album, BillingService billing) {
+                        AlbumService album, BillingService billing, FaceSearchService faces) {
         this.events = events;
         this.photos = photos;
         this.uploaders = uploaders;
@@ -66,6 +68,7 @@ public class EventService {
         this.branding = branding;
         this.album = album;
         this.billing = billing;
+        this.faces = faces;
     }
 
     @Transactional(readOnly = true)
@@ -224,6 +227,7 @@ public class EventService {
         storage.deletePrefix(StorageArea.ORIGINALS, prefix);
         storage.deletePrefix(StorageArea.MEDIA, prefix);
         events.deleteById(event.getId());
+        faces.removeEvent(event);
         broadcaster.eventStatusChanged(event.getId(), EventStatus.ARCHIVED);
         log.info("Deleted event {} ({})", event.getId(), event.getSlug());
     }
@@ -338,7 +342,7 @@ public class EventService {
         long count = photos.countVisible(event.getId());
         return new EventDtos.PublicEvent(event.getName(), event.getSlug(), event.getEventDate(), event.getStatus(),
                 event.getStatus() == EventStatus.LIVE, coverUrl(event), count,
-                branding.ofOwner(event.getOwnerId()));
+                branding.ofOwner(event.getOwnerId()), faces.searchable(event));
     }
 
     // ---- helpers ----
@@ -452,6 +456,7 @@ public class EventService {
         storage.deletePrefix(StorageArea.MEDIA, prefix);
         events.archive(event.getId());
         events.deletePhotos(event.getId());
+        faces.removeEvent(event);
         broadcaster.eventStatusChanged(event.getId(), EventStatus.ARCHIVED);
         log.info("Photos of event {} ({}) deleted; the event record is kept", event.getId(), event.getSlug());
     }
