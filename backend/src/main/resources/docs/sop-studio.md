@@ -102,6 +102,22 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 
 Current prices are always on [the pricing page](https://live.mcreatik.com/pricing).
 
+### Add-on: Find my photos (face search)
+
+**Find my photos** lets guests take a selfie in the live gallery and see only the photos they are in. It is an optional add-on, bought per event:
+
+| | Price |
+| --- | --- |
+| **Main event** | +₹999 |
+| **Quick event** | +₹499 |
+
+- **How to buy:** open the event, go to **Overview → Face search** and press **Add face search**. Pay with the same UPI QR and UTR as any other purchase; it switches on at once. McreatiK can also switch it on for an event (for example a free trial). A client gallery has no guest gallery, so it has no face search.
+- **What guests see:** a **Find my photos** button at the top of the live gallery. They read a short notice and tick **I agree**, take a selfie, and get a **Photos of you** page. The selfie is used once and is not saved.
+- **Scanning:** once it is on, the photos already in the gallery and every new one are scanned automatically. The card shows **Faces indexed x of y**. If you switch it on after the event, give it a few minutes for a big gallery.
+- **Tell your guests:** put it on your board or table card, for example **"Find your photos with a selfie"**. You are responsible for telling guests it is on (see the Terms).
+- **Privacy:** face data is processed by Amazon Web Services in Mumbai, India, only to match photos at that event. It is deleted when a photo is removed, and with the gallery's photos 30 days after the gallery period. If a guest asks to remove their face data, email connect@mcreatik.com.
+- If the card says **Coming soon**, the feature is not switched on for your account yet.
+
 ### Need more events?
 
 Press **Buy events**, choose **Main** or **Quick** and how many. **Monthly packs** (or **Renew or change pack**) opens the same window for a pack. Then pay:
@@ -167,6 +183,8 @@ Then set up the camera itself (any camera with FTP transfer (Wi-Fi/FTP upload) w
 The board and cards are JPG files at 300 dpi, with 0.125 in extra on every side for trimming: the board file is 18.25 × 24.25 in and the cards are 8.25 × 12.25 in. Ask the printer to **print at 18 × 24 in (or 8 × 12 in) and trim to size**. All text is kept well inside the edges, so a slightly off cut won't touch it.
 
 > **Tip** Put the board at the entrance and a table card on every few tables. That's where most guests scan.
+
+> **Tip** If you added **Find my photos**, write **"Find your photos with a selfie"** on the board or card so guests know it is there.
 
 ## 6. Event day
 

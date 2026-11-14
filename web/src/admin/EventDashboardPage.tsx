@@ -13,6 +13,7 @@ import { PhotosPanel } from './PhotosPanel'
 import { QrPanel } from './QrPanel'
 import { UpgradeBanner } from './UpgradeBanner'
 import { GalleryStorageCard } from './GalleryStorageCard'
+import { FaceSearchCard } from './FaceSearchCard'
 import { EventStatusMenu } from './EventStatusMenu'
 import { Button, Card, ErrorText, Field, inputClass, Tabs } from './ui'
 import { useConfirm } from './useConfirm'
@@ -221,6 +222,7 @@ export default function EventDashboardPage() {
               adminApi.billing().then(setBilling).catch(() => {})
               loadStats()
             }} />
+            {!clientOnly && <FaceSearchCard event={event} billing={billing} superAdmin={superAdmin} />}
             {clientOnly ? (
               <Card title="Client gallery">
                 <ol className="list-decimal space-y-1.5 pl-5 text-sm text-stone-700" data-testid="client-steps">

@@ -14,6 +14,10 @@ export const PACKS: Plan[] = ['MAIN_2', 'MAIN_4', 'QUICK_2', 'QUICK_4']
 
 export const isPack = (p: Plan) => PACKS.includes(p)
 
+/** Shown until the server sends the add-on's prices (older servers). */
+export const FACE_SEARCH_MAIN_DEFAULT = 999
+export const FACE_SEARCH_QUICK_DEFAULT = 499
+
 export const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
 /** A pack's monthly price. */
@@ -38,6 +42,7 @@ export function unitPrice(item: PurchaseItem, billing: BillingSummary, plan?: Pl
     case 'EXTEND': return billing.prices.storageGb * (months ?? billing.prices.activeMonths)
     case 'STORAGE_EXTEND': return billing.prices.storageGb
     case 'CLIENT_SETUP': return billing.prices.clientSetup
+    case 'FACE_SEARCH': return billing.prices.faceSearchMain ?? FACE_SEARCH_MAIN_DEFAULT
   }
 }
 
@@ -89,6 +94,7 @@ export function describe(p: Purchase, billing: BillingSummary): string {
     case 'MAIN_EVENT': return `${n} Main event${n === 1 ? '' : 's'}`
     case 'QUICK_EVENT': return `${n} Quick event${n === 1 ? '' : 's'}`
     case 'UPGRADE': return 'Upgrade to a Main event'
+    case 'FACE_SEARCH': return 'Find my photos (face search)'
     case 'PLAN': return `${n} month${n === 1 ? '' : 's'} of ${PLAN_LABEL[p.plan ?? billing.plan]}`
     case 'STORAGE': { const m = p.months ?? billing.prices.activeMonths; return `${n} GB of storage for ${m} month${m === 1 ? '' : 's'}` }
     case 'STORAGE_EXTEND': {

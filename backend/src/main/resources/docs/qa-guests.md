@@ -17,6 +17,13 @@ These are people at the event who scan the QR code. They never log in.
 | I'm in a photo and want it removed. | Open the photo and tap "Request removal": an email opens with the photo's file name (like IMG_1234.JPG). You can also email connect@mcreatik.com with the gallery link. We pass it to the studio and aim to remove it within 3 working days. The studio can also hide it instantly. |
 | Can strangers see these photos? | Only people with the link or QR code can open the gallery. The address can't be guessed and isn't on Google. If you forward the link, whoever you send it to can see the gallery. |
 | Does the photo show where it was taken? | No. Location (GPS) data is removed from every gallery photo. |
+| What is "Find my photos"? | A button some galleries have. You take a selfie and see only the photos you are in. Tap it, read the notice, tick I agree, take a selfie, and the Photos of you page opens. It only appears if the studio added it to the event. |
+| It says it couldn't see a face. | Try again in good light, facing the camera, with nothing covering your face. |
+| It says no photos of me yet. | New photos arrive during the event, and every new photo is scanned. Try again later. |
+| It says too many searches. | There is a limit to stop misuse. Try again in a while. |
+| Is my selfie saved? | No. It is used once for that search and then discarded. We don't keep it or log it. |
+| What happens to my face data? | To match photos, the gallery's photos are scanned and each face becomes a face template (numbers, not a picture), processed by Amazon Web Services in Mumbai, India, only for that event. Templates are deleted when a photo is removed and with the gallery's photos, 30 days after the gallery period. You can ask us to remove yours: connect@mcreatik.com. |
+| Do I have to use it? | No. It is optional and you must agree first. The gallery works the same without it. |
 | Are you tracking me? | No. To show the studio how many people viewed and saved photos, your browser keeps a random number, never your name or contacts. |
 | It says "This gallery is currently unavailable". | The gallery has been switched off for now. Contact the studio named on the page. |
 | It says the gallery doesn't exist. | Check the link is complete, or scan the QR code again. The event may also have ended and been removed. |

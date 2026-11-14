@@ -13,7 +13,7 @@ describe('Policy pages', () => {
       perEventPrice: 2499, monthlyPrice: 5000, monthlyEvents: 4, extraEventPrice: 999, currency: 'INR',
       packages: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300,
         storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3,
-    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799, quickPackMain: 1499 },
+    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799, quickPackMain: 1499, faceSearchMain: 1099, faceSearchQuick: 549 },
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
     render(<PricingPage />)
     expect((await screen.findAllByText('₹2,499')).length).toBeGreaterThan(0)
@@ -29,6 +29,8 @@ describe('Policy pages', () => {
     expect(screen.getByText(/carry over to the next month/)).toBeInTheDocument()
     expect(screen.getByText('Client gallery').parentElement).toHaveTextContent('₹250')
     expect(screen.getByText(/a full wedding of about 2,000 photos \(25 GB\) kept for 3 months is ₹1,375/)).toBeInTheDocument()
+    expect(screen.getByTestId('face-search-addon')).toHaveTextContent('Find my photos')
+    expect(screen.getByTestId('face-search-addon')).toHaveTextContent('+₹1,099 per Main event, +₹549 per Quick event')
     expect(screen.getAllByText(/per GB per month/).length).toBeGreaterThan(0)
     expect(screen.getByText(/Every Main or Quick event includes 5 GB for 3 months/)).toBeInTheDocument()
     expect(screen.getByText(/Galleries stay open for 3 months/)).toBeInTheDocument()
@@ -55,6 +57,13 @@ describe('Policy pages', () => {
     expect(screen.getByRole('heading', { name: 'Events you buy never expire' })).toBeInTheDocument()
     expect(screen.getByText(/5–7 working days/)).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'connect@mcreatik.com' }).length).toBeGreaterThan(0)
+  })
+
+  it('terms make the studio responsible for telling guests about face search', () => {
+    render(<TermsPage />)
+    expect(screen.getByRole('heading', { name: 'Face search (optional add-on)' })).toBeInTheDocument()
+    expect(screen.getByText(/You must tell guests at your event that face search is on/)).toBeInTheDocument()
+    expect(screen.getByText(/Find your photos with a selfie/)).toBeInTheDocument()
   })
 
   it('renders the terms and contact pages with links to every policy', () => {

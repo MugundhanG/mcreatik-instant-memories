@@ -1,7 +1,7 @@
 import { BUSINESS } from './business'
 import { PolicyLayout, Section } from './PolicyLayout'
 
-const UPDATED = '6 November 2026'
+const UPDATED = '14 November 2026'
 
 /** Terms of service for studios. Draft for the owner to review (ideally with a professional). */
 export default function TermsPage() {
@@ -30,6 +30,15 @@ export default function TermsPage() {
           <li>Do not upload unlawful content. We act on removal requests as described in our <a className="underline underline-offset-4" href="/privacy">privacy notice</a>.</li>
           <li>Each gallery is open for 3 months, about 90 days (from the event date, or from creation for a client gallery) and can be kept open longer by paying for more months. A gallery that closes has its photos deleted permanently 30 days later (the event record itself is kept as a business record); we email you before it closes.</li>
           <li>Keep your own copy of your photos. The gallery is for sharing, not your only backup.</li>
+        </ul>
+      </Section>
+
+      <Section title="Face search (optional add-on)">
+        <ul className="list-disc space-y-1.5 pl-5">
+          <li>"Find my photos" is an optional add-on you buy per event. When it is on, guests of that event can choose to take a selfie and see the photos they appear in. Nothing is searched unless the guest chooses to and agrees first.</li>
+          <li>To do this, the event's guest-gallery photos are scanned and face templates are processed by Amazon Web Services in Mumbai, India. They are deleted when a photo is removed, when you turn face search off, and with the gallery's photos 30 days after the gallery period. A guest's selfie is used once and not stored.</li>
+          <li>You must tell guests at your event that face search is on, for example with the wording "Find your photos with a selfie" on a board or card, and you are responsible for the consent of the people at your events. Do not use it where the law or the people photographed do not allow it.</li>
+          <li>We may switch it off for an event that is misused, and a guest's request to remove their face data is passed to you and acted on.</li>
         </ul>
       </Section>
 

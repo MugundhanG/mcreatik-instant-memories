@@ -59,6 +59,17 @@ function Packages({ k }: { k: Prices }) {
         <li>Packs are paid month by month from your dashboard. If you don't renew, new events are simply charged one by one.</li>
         <li>Events you buy one by one never expire.</li>
       </ul>
+      <h2 className="mt-8 text-lg font-semibold text-ink">Add-on</h2>
+      <div className="mt-3 rounded-2xl border border-line bg-white p-5" data-testid="face-search-addon">
+        <p className="font-semibold text-ink">Find my photos</p>
+        <p className="mt-1 text-sm text-ink/85">
+          AI face search for guests: +{rupees(k.faceSearchMain ?? 999)} per Main event, +{rupees(k.faceSearchQuick ?? 499)} per Quick event.
+        </p>
+        <p className="mt-2 text-sm text-muted">
+          Guests take a selfie in the live gallery and see only the photos they are in. Optional, added per event from your dashboard, and
+          guests must agree before using it. See the <a className="underline underline-offset-4" href="/privacy">privacy notice</a>.
+        </p>
+      </div>
       <h2 className="mt-8 text-lg font-semibold text-ink">Client gallery only</h2>
       <div className="mt-3 grid gap-4 sm:grid-cols-2">
         <PriceCard name="Client gallery" price={k.clientSetup} unit={`setup per gallery + ${rupees(k.storageGb)} per GB a month`}

@@ -15,6 +15,7 @@ import { formatPhone, telLink, waLink } from '../shared/phone'
 import { GalleryUnavailable } from '../shared/GalleryUnavailable'
 import { removalRequestLink } from '../shared/privacy'
 import { PhotoViewer } from './PhotoViewer'
+import { FindMyPhotos } from './FindMyPhotos'
 import { useLiveGallery } from './useLiveGallery'
 import EnvBadge from '../shared/EnvBadge'
 
@@ -198,6 +199,10 @@ export default function GalleryPage() {
             <PhoneIcon className="size-5" />
           </a>
         </div>
+      )}
+
+      {event.faceSearch && (
+        <FindMyPhotos event={event} instagram={brand.instagram} onActivity={onActivity} liked={isLiked} onToggleLike={toggleLike} onRequestHd={requestHd} />
       )}
 
       {incoming.length > 0 && (
