@@ -1,8 +1,9 @@
 import fs from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { renderHeaders, toOrigin } from './headers.mjs'
 
-const prodFixture = fs.readFileSync(new URL('../src/test/fixtures/prod-headers.txt', import.meta.url), 'utf8')
+const prodFixture = fs.readFileSync(path.resolve(process.cwd(), 'src/test/fixtures/prod-headers.txt'), 'utf8')
 
 describe('renderHeaders', () => {
   it('is byte-identical to the original production _headers when no variables are set', () => {

@@ -6,7 +6,10 @@ import { fileURLToPath } from 'node:url'
 
 export const PROD_API_ORIGIN = 'https://im-api.mcreatik.com'
 export const PROD_MEDIA_ORIGIN = 'https://im-media.mcreatik.com'
-const templatePath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'headers.template')
+// Under vitest's jsdom environment import.meta.url is not a file: URL, so fall back to the web/ folder.
+const templatePath = import.meta.url.startsWith('file:')
+  ? path.join(path.dirname(fileURLToPath(import.meta.url)), 'headers.template')
+  : path.resolve(process.cwd(), 'scripts/headers.template')
 
 /** "https://api.beta.mcreatik.com/" -> "https://api.beta.mcreatik.com". Throws on anything that is not http(s). */
 export function toOrigin(value, name) {
