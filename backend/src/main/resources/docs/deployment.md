@@ -235,11 +235,24 @@ Values live only in `~/mcreatik-gallery/gallery.env` on the VM; the names are in
 | URLs and CORS | `PUBLIC_GALLERY_BASE_URL`, `API_PUBLIC_BASE_URL`, `CORS_ALLOWED_ORIGINS` |
 | Auth | `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` |
 | Storage | `STORAGE_TYPE`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ORIGINALS_BUCKET`, `R2_MEDIA_BUCKET`, `R2_MEDIA_PUBLIC_BASE_URL` |
+| Face search (all optional, off by default) | `FACE_SEARCH_ENABLED`, `AWS_REKOGNITION_REGION`, `AWS_REKOGNITION_ACCESS_KEY_ID`, `AWS_REKOGNITION_SECRET_ACCESS_KEY`, `FACE_COLLECTION_PREFIX` (`mck-prod`, beta `mck-beta`), `FACE_MATCH_THRESHOLD` (90), `FACE_SEARCH_IP_PER_HOUR` (10), `FACE_SEARCH_EVENT_DAILY_CAP` (2000) |
 | Processing and retention | `PROCESSING_WORKERS`, `RETENTION_DEFAULT_DAYS` |
 | Mail | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, `MAIL_SUBJECT_PREFIX` (empty in production, `[BETA] ` on beta) |
 | Web build | `VITE_API_BASE_URL`, `VITE_MEDIA_BASE_URL`, `VITE_ENV_LABEL` (public, set in Cloudflare; the last two only on beta) |
 
 > **Note** Never print or screenshot `gallery.env`. Check a single value's presence with `grep -c '^NAME=' ~/mcreatik-gallery/gallery.env`.
+
+## Face search ("Find my photos") setup
+
+An optional add-on per event, using AWS Rekognition in Mumbai. Nothing happens until the global switch is on, the AWS keys are set and an event has the add-on.
+
+1. **AWS account:** create one (or use the company's) and enable billing alerts. Region `ap-south-1` (Mumbai).
+2. **IAM user** (programmatic access, no console login) limited to Rekognition. Policy actions: `rekognition:CreateCollection`, `DeleteCollection`, `ListCollections`, `IndexFaces`, `SearchFacesByImage`, `DeleteFaces`. Resource `arn:aws:rekognition:ap-south-1:<account-id>:collection/mck-*`, plus `*` for `ListCollections`. Nothing else.
+3. **Budget alert:** an AWS Budget of about $10 a month with email alerts at 50% and 100%. Cost is roughly $0.001 per photo indexed and $0.001 per search.
+4. **Keys:** put `AWS_REKOGNITION_ACCESS_KEY_ID` and `AWS_REKOGNITION_SECRET_ACCESS_KEY` in `gallery.env` (never print or commit them). Set `FACE_COLLECTION_PREFIX=mck-prod` (production) or `mck-beta` (beta) so environments never share collections.
+5. **Rollout:** deploy this version with `FACE_SEARCH_ENABLED=false` first (migration V27 only adds columns and tables). Then add the keys, set `FACE_SEARCH_ENABLED=true`, restart, and switch the add-on on for one test event (Super admin: event Overview, Face search). Check "Faces indexed x of y" and a search with your own consented selfie. Then offer free trials to the first studios.
+6. **Without keys** an in-memory fake engine runs (demo and tests only; it recognises nothing) and the backend logs a warning. Never enable the switch in production without keys.
+7. **Privacy:** the selfie is read into memory and sent to Rekognition for one search, then dropped (multipart parts under 6 MB are not written to disk). Face ids are deleted with the photo, the add-on or the event; a nightly check removes collections of deleted, archived or switched-off events.
 
 ## Deployment findings
 

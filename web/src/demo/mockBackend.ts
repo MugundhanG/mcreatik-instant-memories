@@ -60,6 +60,8 @@ const today = () => new Date().toISOString().slice(0, 10)
 const plusDays = (d: string, n: number) => new Date(Date.parse(d) + n * 86_400_000).toISOString().slice(0, 10)
 
 const events: DemoEvent[] = []
+/** Demo events have "Find my photos" on; the dashboard toggle can switch it off for a look. */
+const faceSearchOn: Record<string, boolean> = {}
 
 function makeUploaders(names: string[]): DemoUploader[] {
   return names.map((name) => ({ id: uid('upl'), name, lastSeenAt: Date.now() - 3_000, offlineUntil: 0, queued: 0, tokenPrefix: 'mku_' + Math.random().toString(36).slice(2, 8) }))
@@ -314,12 +316,26 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
   }
 
   // ---- public ----
+  if ((m = path.match(/^\/api\/public\/events\/([^/]+)\/find-me$/)) && method === 'POST') {
+    const e = events.find((x) => x.slug === decodeURIComponent(m![1]))
+    if (!e || e.status === 'DRAFT' || e.status === 'ARCHIVED') return notFound()
+    // Demo: any selfie "matches" a few photos (the real server compares faces; the selfie is never stored).
+    const matches = e.photos.filter((p) => !p.hidden).filter((_, i) => i % 3 === 0).slice(0, 5)
+    return json({ photos: matches.map(toPublic), count: matches.length })
+  }
+  if ((m = path.match(/^\/api\/admin\/events\/([^/]+)\/face-search$/))) {
+    const e = events.find((x) => x.id === m![1])
+    if (!e) return notFound()
+    if (method === 'PUT') faceSearchOn[e.id] = !!(body as { enabled?: boolean })?.enabled
+    const total = e.photos.length
+    return json({ enabled: faceSearchOn[e.id] ?? true, available: true, indexed: total, total, mainPrice: 999, quickPrice: 499 })
+  }
   if ((m = path.match(/^\/api\/public\/events\/([^/]+)(\/photos)?$/))) {
     const e = events.find((x) => x.slug === decodeURIComponent(m![1]))
     if (!e || e.status === 'DRAFT' || e.status === 'ARCHIVED') return notFound()
     if (!m[2]) {
       const cover = e.photos.find((p) => p.id === e.coverPhotoId)
-      return json({ name: e.name, slug: e.slug, eventDate: e.eventDate, status: e.status, live: e.status === 'LIVE', coverUrl: cover?.webUrl ?? null, photoCount: e.photos.filter((p) => !p.hidden).length })
+      return json({ name: e.name, slug: e.slug, eventDate: e.eventDate, status: e.status, live: e.status === 'LIVE', coverUrl: cover?.webUrl ?? null, photoCount: e.photos.filter((p) => !p.hidden).length, faceSearch: faceSearchOn[e.id] ?? true })
     }
     const visible = e.photos.filter((p) => !p.hidden)
     const limit = Number(q.get('limit') ?? 40)

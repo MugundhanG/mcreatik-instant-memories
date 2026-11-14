@@ -74,6 +74,7 @@ public final class EventDtos {
     }
 
     public record PublicEvent(String name, String slug, LocalDate eventDate, EventStatus status, boolean live,
-                              String coverUrl, long photoCount, StudioBranding.Brand brand) {
+                              String coverUrl, long photoCount, StudioBranding.Brand brand,
+                              boolean faceSearch) {
     }
 }

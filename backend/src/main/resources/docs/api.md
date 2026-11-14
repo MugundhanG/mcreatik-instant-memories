@@ -98,14 +98,21 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 
 | Method | Path | Who | Notes |
 | --- | --- | --- | --- |
-| GET | `/api/admin/billing` | Admin | Plan, this month's pack usage, `carryOver`, `mainCredits` / `quickCredits` (`credits` = both), `packActive`, `planPaidUntil`, `unitPrice` / `quickUnitPrice` (what one more Main / Quick event costs this studio: the pack's extra price while a pack is paid up), `prices`, UPI details |
-| POST | `/api/admin/billing/payments` | Admin | `{item, quantity, eventId?, plan?, storageGb?, months?, utr}` → PENDING payment, applied at once. `item`: `MAIN_EVENT` / `QUICK_EVENT` (quantity = events), `UPGRADE` (`eventId` of a Quick event; 409 `NOT_QUICK`), `PLAN` (`plan` = a pack, quantity = months; a different pack starts today), `CLIENT_SETUP` (quantity = client galleries, 1–50; `storageGb` and `months` (1–12, default 1) for the gallery it creates), `STORAGE` (`eventId`, quantity = GB, 1–1000), `EXTEND` (`eventId`, `months` 1–12, default `active_months` = 3; quantity is set by the server to the event's GB, rounded up), `STORAGE_EXTEND` (`eventId`, `storageGb` and `months` added, either may be 0 but not both: one payment for the app's **Change storage & months** button; 400 `NOTHING_TO_BUY`). The older `{events, utr}` still means Main events |
+| GET | `/api/admin/billing` | Admin | Plan, this month's pack usage, `carryOver`, `mainCredits` / `quickCredits` (`credits` = both), `packActive`, `planPaidUntil`, `unitPrice` / `quickUnitPrice` (what one more Main / Quick event costs this studio: the pack's extra price while a pack is paid up), `prices` (incl. `faceSearchMain` / `faceSearchQuick`), UPI details |
+| POST | `/api/admin/billing/payments` | Admin | `{item, quantity, eventId?, plan?, storageGb?, months?, utr}` → PENDING payment, applied at once. `item`: `MAIN_EVENT` / `QUICK_EVENT` (quantity = events), `UPGRADE` (`eventId` of a Quick event; 409 `NOT_QUICK`), `PLAN` (`plan` = a pack, quantity = months; a different pack starts today), `CLIENT_SETUP` (quantity = client galleries, 1–50; `storageGb` and `months` (1–12, default 1) for the gallery it creates), `STORAGE` (`eventId`, quantity = GB, 1–1000), `EXTEND` (`eventId`, `months` 1–12, default `active_months` = 3; quantity is set by the server to the event's GB, rounded up), `FACE_SEARCH` (`eventId` of a Main or Quick event; price `faceSearchMainPrice` / `faceSearchQuickPrice` by type; applied at once like the other items, so `events.face_search_enabled` turns on and indexing starts; reject turns it off and deletes the face data; 400 `NOT_AVAILABLE` for a Client event, 409 `ALREADY_ENABLED`), `STORAGE_EXTEND` (`eventId`, `storageGb` and `months` added, either may be 0 but not both: one payment for the app's **Change storage & months** button; 400 `NOTHING_TO_BUY`). The older `{events, utr}` still means Main events |
 | GET | `/api/admin/billing/payments?status=` | Super | Payments to check |
 | POST | `/api/admin/billing/payments/{id}/approve` · `/reject` | Super | Reject reverses what the payment applied (credits, upgrade or pack month) |
 | GET / PATCH | `/api/admin/billing/studios[/{studioId}]` | Super | `{plan?, monthlyQuota?, addCredits?, addQuickCredits?, addClientCredits?, planPaidUntil?}`; moving onto a pack sets paid-until to a month from today unless given |
-| GET / PUT | `/api/admin/billing/settings` | Super | UPI ID, payee, prices (incl. `main2ExtraPrice` … `quick4ExtraPrice`; a missing price keeps its value) |
+| GET / PUT | `/api/admin/billing/settings` | Super | UPI ID, payee, prices (incl. `main2ExtraPrice` … `quick4ExtraPrice`, `faceSearchMainPrice`, `faceSearchQuickPrice`; a missing price keeps its value) |
 | POST | `/api/admin/billing/quote` | Admin | Same body as `/payments` (without `utr`) → the price the server would charge `{item, quantity, unitPrice, amount, eventId, storageGb, months, includedGb, includedMonths, …}`; nothing is bought |
-| GET | `/api/public/pricing` | Public | Current prices for the `/pricing` page |
+| GET | `/api/public/pricing` | Public | Current prices for the `/pricing` page, including `faceSearchMainPrice` / `faceSearchQuickPrice` (also in `packages` as `faceSearchMain` / `faceSearchQuick`) |
+
+## Face search (add-on)
+
+| Method | Path | Who | Notes |
+| --- | --- | --- | --- |
+| GET | `/api/admin/events/{eventId}/face-search` | Admin (owner) or super | `{enabled, available, indexed, total, mainPrice, quickPrice}`: `available` is the system-wide switch (`FACE_SEARCH_ENABLED`); `indexed` of `total` guest photos have their faces in the engine |
+| PUT | `/api/admin/events/{eventId}/face-search` | Super | `{enabled}` → the same JSON. For free trials and manual changes. Off deletes the event's collection and face rows (turning it on again re-indexes). 400 `NOT_AVAILABLE` for a Client event. Studios buy it with `FACE_SEARCH` in Billing |
 
 ## Camera uploaders
 
@@ -127,10 +134,11 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/api/public/events/{slug}` | Event, cover, count, branding; 404 for draft/archived; 403 `GALLERY_UNAVAILABLE` when switched off |
+| GET | `/api/public/events/{slug}` | Event, cover, count, branding, `faceSearch` (true only when face search is on system-wide, the event has the add-on and its gallery is open); 404 for draft/archived; 403 `GALLERY_UNAVAILABLE` when switched off |
 | GET | `/api/public/events/{slug}/photos` | `?before=` or `?after=` cursor; 40 default, 100 max, 200 for catch-up; `?category=` filters by category. Guests only ever get `GUEST` photos |
 | GET | `/api/public/events/{slug}/categories` | The event's guest-gallery categories, with photo counts |
 | POST | `/api/public/events/{slug}/hq-requests` | "Get HD photo": `{photoId, contact, name?, visitorId}`; `contact` is an email or a 10-digit WhatsApp number → 204. 400 `INVALID_CONTACT`; 409 `TOO_MANY_REQUESTS` (per visitor) |
+| POST | `/api/public/events/{slug}/find-me` | "Find my photos": multipart field `selfie` (JPEG, PNG or WebP, 5 MB at most) → `{photos[], count}` (the same photo JSON as `/photos`: guest, ready, not hidden, newest first). The selfie is held in memory for the request only: never stored, never logged. 400 `NO_FACE` / `BAD_IMAGE`, 404 `FACE_SEARCH_OFF`, 413 `SELFIE_TOO_LARGE`, 429 `FACE_SEARCH_LIMIT` (per IP per hour, or the event's daily cap) |
 | GET | `/api/public/events/{slug}/stream` | `text/event-stream`: `CONNECTED`, `PHOTO_READY`, `PHOTO_REMOVED`, `EVENT_STATUS`, `GALLERY_CLOSED` |
 | POST | `/api/public/events/{slug}/activity` | `{visitorId, items[]}`, max 50 items → 204. Types: `VISIT`, `PHOTO_VIEW`, `DOWNLOAD`, `LIKE` / `UNLIKE` (the heart; one like per visitor and photo), `SHARE` (old clients only; the app no longer sends it), `INSTAGRAM`, `CONTACT` (WhatsApp / call tap, counted as `totals.contacts`) |
 

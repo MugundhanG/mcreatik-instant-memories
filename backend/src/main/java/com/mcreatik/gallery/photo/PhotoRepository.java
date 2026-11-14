@@ -55,6 +55,14 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID> {
     @Query(value = "SELECT count(*) FROM photos WHERE event_id = ?1 AND gallery = 'GUEST' AND status = 'READY' AND NOT hidden", nativeQuery = true)
     long countVisible(UUID eventId);
 
+    /** Face search: the guest photos (ready, not hidden) that contain any of these face ids, newest first. */
+    @Query(value = """
+            SELECT p.* FROM photos p
+            WHERE p.event_id = ?1 AND p.gallery = 'GUEST' AND p.status = 'READY' AND NOT p.hidden
+              AND p.id IN (SELECT pf.photo_id FROM photo_faces pf WHERE pf.event_id = ?1 AND pf.face_id IN (?2))
+            ORDER BY p.ready_at DESC, p.id DESC""", nativeQuery = true)
+    List<Photo> findVisibleByFaceIds(UUID eventId, List<String> faceIds);
+
     // ---- Admin (listing with filters and sorting: AdminPhotoSearch) ----
 
     /** [hidden ready photos, liked photos]. */

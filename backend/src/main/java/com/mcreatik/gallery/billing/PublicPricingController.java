@@ -12,10 +12,11 @@ public class PublicPricingController {
 
     /**
      * {@code perEventPrice} / {@code monthlyPrice} / {@code monthlyEvents} / {@code extraEventPrice}: the older single
-     * plan (kept for old pages); {@code packages}: Main and Quick prices and the monthly packs.
+     * plan (kept for old pages); {@code packages}: Main and Quick prices and the monthly packs;
+     * {@code faceSearchMainPrice} / {@code faceSearchQuickPrice}: the "Find my photos" add-on per event (also inside {@code packages} as faceSearchMain / faceSearchQuick).
      */
     public record Pricing(int perEventPrice, int monthlyPrice, int monthlyEvents, int extraEventPrice, String currency,
-                          BillingService.Prices packages) {
+                          BillingService.Prices packages, int faceSearchMainPrice, int faceSearchQuickPrice) {
     }
 
     private final BillingService billing;
@@ -28,6 +29,6 @@ public class PublicPricingController {
     public Pricing pricing() {
         BillingService.Settings s = billing.settings();
         return new Pricing(s.perEventPrice(), s.monthlyPrice(), MONTHLY_EVENTS, s.extraEventPrice(), "INR",
-                billing.publicPrices());
+                billing.publicPrices(), s.faceSearchMainPrice(), s.faceSearchQuickPrice());
     }
 }

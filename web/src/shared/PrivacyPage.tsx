@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { PRIVACY_EMAIL } from './privacy'
 import { SiteFooter } from './SiteFooter'
 
-const UPDATED = '1 November 2026'
+const UPDATED = '14 November 2026'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -30,7 +30,7 @@ export default function PrivacyPage() {
         </Section>
 
         <Section title="Guests: what we collect">
-          <p>Nothing that identifies you. You don't sign up, and we never ask for your name, phone number or email.</p>
+          <p>You don't sign up, and we never ask for your name, phone number or email. Unless you choose the optional face search below, we collect nothing that identifies you.</p>
           <p>
             To show the studio how many people viewed and saved photos, your browser keeps a random number. We store that
             number with what was viewed or saved, never your name, contacts or location.
@@ -38,6 +38,19 @@ export default function PrivacyPage() {
           <p>
             Like any website, our servers keep short-lived technical logs (which include IP addresses) to block abuse.
           </p>
+        </Section>
+
+        <Section title="Face search (optional)">
+          <p>
+            Some studios add <b>Find my photos</b> to an event. It is offered only at events where the studio has bought it, and it is
+            your choice: nothing happens unless you tap the button, read the notice and agree.
+          </p>
+          <ul className="list-disc space-y-1.5 pl-5">
+            <li>Your selfie is used once, for that search, to find the photos you are in. It is not saved, and we do not keep it or log it.</li>
+            <li>To make the search work, the event's gallery photos are scanned and each face in them becomes a face template (a string of numbers, not a photo). These templates are processed by Amazon Web Services (AWS) in Mumbai, India, only to match photos at that event. They are not used to identify anyone anywhere else, and not shared for any other purpose.</li>
+            <li>Face templates are deleted when a photo is removed, and with the rest of the gallery's photos 30 days after the gallery's open period ends (or sooner if the studio turns face search off or deletes the event).</li>
+            <li>You can ask us to remove your face data at any time: email <a className="underline underline-offset-4" href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a> with the gallery link.</li>
+          </ul>
         </Section>
 
         <Section title="How photos are protected">

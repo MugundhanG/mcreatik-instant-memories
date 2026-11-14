@@ -26,6 +26,8 @@ spring:
       # Dashboard uploads: one browser-made gallery JPEG (<= 8 MB) + thumbnail (<= 2 MB) per request.
       max-file-size: 10MB
       max-request-size: 12MB
+      # Parts up to this size stay in memory: a guest's selfie (max 5 MB) is never written to disk, not even temporarily.
+      file-size-threshold: 6MB
 
 server:
   port: ${PORT:8080}
@@ -78,6 +80,21 @@ gallery:
   retention:
     default-days: ${RETENTION_DEFAULT_DAYS:90}
     purge-enabled: ${RETENTION_PURGE_ENABLED:true}
+  face-search:
+    # Global switch for "Find my photos" (an add-on per event). Off: nothing changes, no AWS calls.
+    enabled: ${FACE_SEARCH_ENABLED:false}
+    worker-enabled: ${FACE_INDEX_WORKER_ENABLED:true}
+    region: ${AWS_REKOGNITION_REGION:ap-south-1}
+    # An IAM user limited to Rekognition. Without keys the in-memory fake provider is used (demo/tests only).
+    access-key-id: ${AWS_REKOGNITION_ACCESS_KEY_ID:}
+    secret-access-key: ${AWS_REKOGNITION_SECRET_ACCESS_KEY:}
+    collection-prefix: ${FACE_COLLECTION_PREFIX:mck-prod}
+    match-threshold: ${FACE_MATCH_THRESHOLD:90}
+    ip-per-hour: ${FACE_SEARCH_IP_PER_HOUR:10}
+    event-daily-cap: ${FACE_SEARCH_EVENT_DAILY_CAP:2000}
+    max-attempts: 5
+    max-faces-per-photo: 15
+    max-matches: 100
   storage:
     type: ${STORAGE_TYPE:local}
     local:

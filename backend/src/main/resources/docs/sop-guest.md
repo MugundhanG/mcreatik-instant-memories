@@ -33,7 +33,18 @@ Keep the page open. New photos appear by themselves, usually within seconds of b
 
 **Categories:** if the studio sorted the photos, tabs at the top (for example Rituals or Candid) let you jump to one moment.
 
-## 4. Photos after the event
+## 4. Find my photos (if your studio added it)
+
+Some galleries have a **Find my photos** button near the top. It shows only the photos you are in.
+
+1. Tap **Find my photos**. Read the short notice, tick **I agree**, and tap **Take a selfie**.
+2. Take a selfie in good light, facing the camera. Your phone's front camera opens (or choose a photo).
+3. In a few seconds you see **Photos of you**. Tap a photo to view, like or download it, as in the main gallery.
+4. Tap **Search again** to try another selfie, or **Back to all photos** to return to everything.
+
+If it says it couldn't see a face, try again in better light, facing the camera. If it shows no photos yet, new photos arrive during the event: try again later. Your selfie is used once for that search and is not saved. The face data for the gallery is deleted when the gallery's photos are deleted.
+
+## 5. Photos after the event
 
 The same link keeps working after the event, while the gallery is open (3 months by default). The photos are deleted 30 days after it closes. Bookmark it or keep the WhatsApp message.
 
@@ -41,17 +52,18 @@ At the bottom of the gallery you'll find who took the photos (tap **Follow** to 
 
 ![Gallery footer: the studio, privacy and photo removal](images/g-footer.webp)
 
-## 5. Your privacy
+## 6. Your privacy
 
 - Only people with the link or QR code can open the gallery. It isn't on Google.
 - Location (GPS) data is removed from every photo.
 - We keep only a random number in your browser to count views and downloads for the studio, never your name or contacts.
+- **Find my photos** (only if your studio added it) is your choice and asks you to agree first. Your selfie is used once and not saved.
 
 The full notice: **live.mcreatik.com/privacy**.
 
 ![The privacy notice](images/g-privacy.webp)
 
-## 6. Ask for a photo to be removed
+## 7. Ask for a photo to be removed
 
 Open the photo and tap **Request removal**. An email opens with the photo's file name in it, for example IMG_1234.JPG. Send it, or email **connect@mcreatik.com** with the gallery link. We pass it to the studio and aim to remove it within **3 working days**. The studio can also hide it instantly.
 

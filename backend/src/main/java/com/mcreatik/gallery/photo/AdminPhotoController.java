@@ -30,6 +30,7 @@ import com.mcreatik.gallery.album.AlbumService;
 import com.mcreatik.gallery.auth.CurrentAdmin;
 import com.mcreatik.gallery.common.ApiException;
 import com.mcreatik.gallery.event.EventService;
+import com.mcreatik.gallery.face.FaceSearchService;
 import com.mcreatik.gallery.realtime.GalleryBroadcaster;
 import com.mcreatik.gallery.storage.StorageArea;
 import com.mcreatik.gallery.storage.StorageService;
@@ -46,10 +47,12 @@ public class AdminPhotoController {
     private final AdminPhotoSearch search;
     private final UploadService uploads;
     private final AlbumService album;
+    private final FaceSearchService faces;
 
     public AdminPhotoController(PhotoRepository photos, EventService events, PhotoMapper mapper,
                                 StorageService storage, GalleryBroadcaster broadcaster, AdminPhotoSearch search,
-                                UploadService uploads, AlbumService album) {
+                                UploadService uploads, AlbumService album, FaceSearchService faces) {
+        this.faces = faces;
         this.search = search;
         this.uploads = uploads;
         this.album = album;
@@ -210,9 +213,11 @@ public class AdminPhotoController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(Authentication auth, @PathVariable UUID photoId) {
         Photo photo = owned(auth, photoId);
+        Runnable removeFaces = faces.captureFaces(photo.getEventId(), List.of(photo.getId()));
         photos.delete(photo);
         broadcaster.photoRemoved(photo.getEventId(), photo.getId());
         deleteFiles(List.of(photo));
+        removeFaces.run();
     }
 
     public enum BulkAction { LIKE, UNLIKE, HIDE, SHOW, DELETE }
@@ -243,6 +248,7 @@ public class AdminPhotoController {
             case LIKE, UNLIKE -> found.forEach(p -> p.setLiked(request.action() == BulkAction.LIKE));
             case HIDE, SHOW -> found.forEach(p -> applyHidden(p, request.action() == BulkAction.HIDE));
             case DELETE -> {
+                Runnable removeFaces = faces.captureFaces(eventId, found.stream().map(Photo::getId).toList());
                 photos.deleteAll(found);
                 // Guests and storage follow only once the rows are really gone.
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -250,6 +256,7 @@ public class AdminPhotoController {
                     public void afterCommit() {
                         found.forEach(p -> broadcaster.photoRemoved(p.getEventId(), p.getId()));
                         deleteFiles(found);
+                        removeFaces.run();
                     }
                 });
             }
