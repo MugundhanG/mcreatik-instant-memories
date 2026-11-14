@@ -10,11 +10,13 @@
 #
 # One-time step before the first deploy of this version: Caddy must list both slots (Caddyfile.snippet). The script
 # checks this and refuses to run otherwise, so a missed step can never cause an outage.
+# Beta VM: same commands with IMAGE=ghcr.io/mugundhang/mcreatik-instant-memories-backend:beta (see deployment.md).
+# Optional overrides (defaults = production, see slots.sh): SLOT_PREFIX, BLUE_PORT, GREEN_PORT, ENV_DIR, ENV_FILE.
 # Still avoid deploying during a live event: ZIP downloads in progress at the switch have to be restarted.
 # The container is capped (memory/CPU) so a busy event can never starve the website backend.
 set -euo pipefail
 
-LOG=${DEPLOY_LOG:-$HOME/mcreatik-gallery/deploy.log}
+LOG=${DEPLOY_LOG:-${ENV_DIR:-$HOME/mcreatik-gallery}/deploy.log}
 
 # The 1 GB server can stop answering SSH while a new version starts, and a dropped connection would kill the
 # script half-way through the switch. So it runs in the background and survives a disconnect; this window just
@@ -32,7 +34,7 @@ fi
 cd "$(dirname "$0")/../.."
 # shellcheck source=slots.sh
 source deploy/oracle/slots.sh
-[[ -r "$ENV_FILE" ]] || { echo "Missing $ENV_FILE (copy deploy/oracle/gallery.env.example and fill it in)"; exit 1; }
+[[ -r "$ENV_FILE" ]] || { echo "Missing $ENV_FILE (copy deploy/oracle/gallery.env.example, or gallery.env.beta.example on the beta VM, and fill it in)"; exit 1; }
 require_caddy_slots
 
 if [[ -n "${IMAGE:-}" ]]; then

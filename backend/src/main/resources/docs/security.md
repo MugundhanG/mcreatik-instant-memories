@@ -14,7 +14,7 @@ The audit found no critical issues, and no High issues remain. H1 does not apply
 | Secret tokens | 256-bit `SecureRandom`; uploader tokens stored only as SHA-256 | `Tokens.randomToken`, `UploaderTokenAuthenticationFilter` |
 | Private originals | Private bucket; links last 5 min (admin), 10 min (couple), 30 min (ZIP) | `AdminPhotoController.original`, `ClientController.download`, `ZipDownloads` |
 | GPS removed | All three ways of making gallery copies re-encode without EXIF | `processing/ImageOps`, uploader `prepare/ImageOps`, `prepareUpload.ts` |
-| Website headers | Strict CSP, HSTS, nosniff, no framing, Permissions-Policy | `web/public/_headers` |
+| Website headers | Strict CSP, HSTS, nosniff, no framing, Permissions-Policy | `web/scripts/headers.template` |
 | Container | Non-root user, bound to 127.0.0.1, memory and CPU capped, exits on out-of-memory | `backend/Dockerfile`, `deploy.sh` |
 | Image bombs | Subsampled decoding, 60 MB upload cap, 1 MB logo cap with type check | `ImageOps`, `StudioBranding` |
 | Dev endpoints | Local storage controller exists only with `STORAGE_TYPE=local` | `@ConditionalOnProperty` |

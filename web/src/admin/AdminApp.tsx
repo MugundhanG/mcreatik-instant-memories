@@ -9,6 +9,7 @@ import { auth, useSession } from './auth'
 import EventsPage from './EventsPage'
 import { DownloadIcon } from './icons'
 import LoginPage from './LoginPage'
+import EnvBadge from '../shared/EnvBadge'
 
 // McreatiK's documentation (diagrams, Markdown) is a separate download, fetched only when opened.
 // Pages load when opened: signing in and the events list no longer download the rest of the dashboard.
@@ -60,6 +61,7 @@ function Layout({ wide = false }: { wide?: boolean }) {
             <img src={mkLogo} alt="" className="h-7 w-auto" width={44} height={28} />
             <span className="font-display text-xl font-semibold">McreatiK</span>
             <span className="hidden text-xs tracking-[0.2em] text-muted uppercase sm:inline">Instant Memories</span>
+            <EnvBadge />
           </Link>
           <nav aria-label="Main" className="hidden items-center gap-4 text-sm whitespace-nowrap sm:flex">
             <NavLink to="/admin" end className={navClass}>Events</NavLink>

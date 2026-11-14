@@ -9,14 +9,16 @@
 # and uploads each one to the private originals bucket under backups/ (never the public media bucket, never the
 # website's buckets). Settings come from gallery.env; no secret is ever printed or put on a command line.
 #
+# ENV_DIR / ENV_FILE / BACKUP_DIR can be overridden (same variables as slots.sh); defaults are production's.
 # Restore (into an empty database, e.g. a new Supabase project):
 #   docker run --rm -i --env-file <file with PGPASSWORD=…> -v ~/mcreatik-gallery/backups:/b postgres:17-alpine \
 #     pg_restore --no-owner --no-privileges -h <host> -p <port> -U <user> -d postgres /b/db-YYYY-MM-DD.dump
 # Photos themselves live in R2 (designed for 99.999999999% durability); studios also keep their cards and laptop copies.
 set -euo pipefail
 
-ENV_FILE=${ENV_FILE:-$HOME/mcreatik-gallery/gallery.env}
-BACKUP_DIR=${BACKUP_DIR:-$HOME/mcreatik-gallery/backups}
+ENV_DIR=${ENV_DIR:-$HOME/mcreatik-gallery}
+ENV_FILE=${ENV_FILE:-$ENV_DIR/gallery.env}
+BACKUP_DIR=${BACKUP_DIR:-$ENV_DIR/backups}
 KEEP_DAYS=${KEEP_DAYS:-14}
 PG_IMAGE=${PG_IMAGE:-postgres:17-alpine}
 AWS_IMAGE=${AWS_IMAGE:-amazon/aws-cli:2.22.35}

@@ -30,9 +30,81 @@ Source of each fact:
 - **Earlier setup (not in the repo):** DNS (`im-api` DNS-only, `im-media` proxied), Supabase, and the 1 GB VM.
 - **Confirmed 3 November 2026:** Caddy is the live proxy (the API answers with `via: 1.1 Caddy`); `nginx-im-api.conf` is a leftover.
 
+## Environments: beta and production
+
+Two complete, separate environments run the same code. Beta is where every change is tried first; nothing in beta touches production data, buckets, logins or mail.
+
+| | Production | Beta |
+| --- | --- | --- |
+| Git branch | `main` | `beta` |
+| Web (Cloudflare Worker) | `mcreatik-instant-memories` at `live.mcreatik.com` | `mcreatik-instant-memories-beta` at `beta.live.mcreatik.com` |
+| API | `https://im-api.mcreatik.com` | `https://api.beta.mcreatik.com` |
+| Media | `https://im-media.mcreatik.com` | the beta bucket's `r2.dev` public URL |
+| Backend image | `ghcr.io/mugundhang/mcreatik-instant-memories-backend:latest` | same image name, tag `:beta` |
+| Server | Oracle VM #1 (`~/mcreatik-gallery/gallery.env` from `gallery.env.example`) | Oracle VM #2 (same folder, from `gallery.env.beta.example`) |
+| Caddy block | `Caddyfile.snippet` | `Caddyfile.beta.snippet` |
+| Database and buckets | Supabase project and R2 buckets for production | their own Supabase project and two R2 buckets |
+| Email subjects | unchanged | start with `[BETA] ` (`MAIL_SUBJECT_PREFIX`) |
+| Web build variables | `VITE_API_BASE_URL` | `VITE_API_BASE_URL`, `VITE_MEDIA_BASE_URL`, `VITE_ENV_LABEL=beta` (shows an amber BETA badge) |
+
+Each environment is on its own VM, so the script defaults (`mcreatik-gallery-blue/green`, ports 8081/8082, `~/mcreatik-gallery`) are the same on both and no extra settings are needed. `deploy.sh`, `rollback.sh` and `backup.sh` also accept `SLOT_PREFIX`, `BLUE_PORT`, `GREEN_PORT`, `ENV_DIR` and `ENV_FILE` for the rare case of two environments on one machine.
+
+### Release flow
+
+```mermaid
+flowchart LR
+  W[Work branch] -->|merge| B[beta branch]
+  B --> BI[Image :beta + beta Worker build]
+  BI --> BV[Test on beta.live.mcreatik.com]
+  BV -->|all good| M[main branch]
+  M --> PI[Image :latest + live Worker build]
+  PI --> PD[deploy.sh on VM #1]
+```
+
+1. Merge the work branch into `beta`. GitHub Actions runs the tests and builds the `:beta` image; Cloudflare builds the beta Worker.
+2. On VM #2 deploy the beta image (below) and test the change end to end on `beta.live.mcreatik.com`.
+3. When it behaves, merge `beta` into `main`. Actions builds `:latest`; Cloudflare deploys the live web app.
+4. On VM #1 run the production deploy (below). Roll back with `rollback.sh` if anything is wrong.
+
+### Deploy commands
+
+Beta (VM #2):
+
+```bash
+cd ~/mcreatik-instant-memories && git fetch && git checkout beta && git pull
+IMAGE=ghcr.io/mugundhang/mcreatik-instant-memories-backend:beta \
+  GALLERY_MEMORY=900m GALLERY_CPUS=1 deploy/oracle/deploy.sh
+```
+
+Production (VM #1):
+
+```bash
+cd ~/mcreatik-instant-memories && git pull
+IMAGE=ghcr.io/mugundhang/mcreatik-instant-memories-backend:latest \
+  GALLERY_MEMORY=900m GALLERY_CPUS=1 deploy/oracle/deploy.sh
+```
+
+The web app: the beta Worker is deployed by Cloudflare Workers Builds from the `beta` branch (or by hand with `npx wrangler deploy --env beta` from `web/`, after a build with the beta variables).
+
+A fresh VM is prepared once with `deploy/oracle/setup-vm.sh` (Docker, Caddy, swap, firewall); the Oracle VCN security list must also allow TCP 80 and 443.
+
+### Which server the uploader uses
+
+The connection code an admin copies from an event is `MCK1.` plus a base64 JSON of `{server, token}`, where `server` is that environment's `API_PUBLIC_BASE_URL`. The uploader needs no setting: a code made on `beta.live.mcreatik.com` points at `api.beta.mcreatik.com`, a code made on `live.mcreatik.com` points at `im-api.mcreatik.com`. Never paste a beta code into a real event's uploader.
+
+### Beta email
+
+Beta sends through the same Gmail SMTP unless `MAIL_HOST` is left empty. Every subject gets the `[BETA] ` prefix, and the logo and links in the mail come from `PUBLIC_GALLERY_BASE_URL`, so a mail that does not say `[BETA]` came from production.
+
+### Certificates (SSL)
+
+- `api.beta.mcreatik.com` is a **DNS-only** (grey cloud) A record to VM #2. Caddy gets its own Let's Encrypt certificate there, exactly like `im-api` in production. Ports 80 and 443 must be open in the VM firewall and in the Oracle VCN security list, or the certificate request fails.
+- `beta.live.mcreatik.com` is added as a custom domain on the beta Worker; Cloudflare issues that certificate itself.
+- If Cloudflare refuses the nested name `beta.live.mcreatik.com` (a second-level subdomain can need a certificate the plan does not cover), fall back to `beta-live.mcreatik.com`, which is a first-level name. Then change `PUBLIC_GALLERY_BASE_URL` and `CORS_ALLOWED_ORIGINS` in the beta `gallery.env` to the new name and redeploy beta.
+
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every push to `main` and on every pull request, as three parallel jobs:
+`.github/workflows/ci.yml` runs on every push to `main` or `beta` and on every pull request, as three parallel jobs:
 
 | Job | Steps |
 | --- | --- |
@@ -148,13 +220,14 @@ Updates need SSH. Keep two ways in:
 - root directory `web`
 - build command `npm run build`
 - deploy command `npx wrangler deploy`
-- build variable `VITE_API_BASE_URL=https://im-api.mcreatik.com`
+- build variable `VITE_API_BASE_URL=https://im-api.mcreatik.com` (optional `VITE_MEDIA_BASE_URL`, default `https://im-media.mcreatik.com`)
+- beta: `env.beta` names the Worker `mcreatik-instant-memories-beta` (`npx wrangler deploy --env beta`)
 
-`not_found_handling: single-page-application` serves `index.html` for every route. Automatic deploys on push are an **(assumption)**: that setting lives in the Cloudflare dashboard. Security headers come from `web/public/_headers`.
+`not_found_handling: single-page-application` serves `index.html` for every route. Automatic deploys on push are an **(assumption)**: that setting lives in the Cloudflare dashboard. Security headers come from `web/scripts/headers.template`: `npm run build` runs `scripts/gen-headers.mjs`, which writes `dist/_headers` with the API and media origins of that build, so each environment's CSP allows only its own servers.
 
 ## Configuration
 
-Values live only in `~/mcreatik-gallery/gallery.env` on the VM; the names are in `deploy/oracle/gallery.env.example`.
+Values live only in `~/mcreatik-gallery/gallery.env` on the VM; the names are in `deploy/oracle/gallery.env.example` (beta: `gallery.env.beta.example`).
 
 | Group | Variables |
 | --- | --- |
@@ -163,8 +236,8 @@ Values live only in `~/mcreatik-gallery/gallery.env` on the VM; the names are in
 | Auth | `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` |
 | Storage | `STORAGE_TYPE`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ORIGINALS_BUCKET`, `R2_MEDIA_BUCKET`, `R2_MEDIA_PUBLIC_BASE_URL` |
 | Processing and retention | `PROCESSING_WORKERS`, `RETENTION_DEFAULT_DAYS` |
-| Mail | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` |
-| Web build | `VITE_API_BASE_URL` (public, set in Cloudflare) |
+| Mail | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, `MAIL_SUBJECT_PREFIX` (empty in production, `[BETA] ` on beta) |
+| Web build | `VITE_API_BASE_URL`, `VITE_MEDIA_BASE_URL`, `VITE_ENV_LABEL` (public, set in Cloudflare; the last two only on beta) |
 
 > **Note** Never print or screenshot `gallery.env`. Check a single value's presence with `grep -c '^NAME=' ~/mcreatik-gallery/gallery.env`.
 

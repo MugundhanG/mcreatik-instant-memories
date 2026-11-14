@@ -157,6 +157,15 @@ Have this ready on any event day:
 | Security and findings | Monthly | [Findings and next actions](/admin/docs/findings) |
 | Answers to customer questions | When a feature changes | [Instant Memories Q&A](/admin/docs/qa-how-to-use) |
 
+### Releasing a change
+
+1. Merge the work into `beta`; wait for the green CI check and the `:beta` image.
+2. Deploy beta on VM #2 and open `beta.live.mcreatik.com` (look for the amber BETA badge).
+3. Test the change: sign in, create an event, copy a connection code (its server must be `api.beta…`), upload a photo, open the guest gallery on a phone, send a password reset (subject starts with `[BETA]`).
+4. Only when everything works, merge `beta` into `main`; wait for the `:latest` image and the live web deploy.
+5. Deploy production on VM #1, check `https://im-api.mcreatik.com/actuator/health` and `live.mcreatik.com`. If anything is wrong, run `deploy/oracle/rollback.sh`.
+6. Not during a live event. Details: [Deployment](/admin/docs/deployment).
+
 ## 10. Server-down runbook (event day)
 
 Use this when a studio says the uploader shows **Reconnecting** or **Offline** although their laptop has internet, or guests can't open the gallery. What the studio sees and what they were told to do is in the [Event-day problem playbook](/admin/docs/guide-event-day-problems) (card 14): keep shooting, because every photo waits in a queue on the laptop and uploads by itself once the server is back.

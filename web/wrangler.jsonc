@@ -1,6 +1,8 @@
 // Cloudflare Workers static-assets deployment of the web app (guest gallery + admin dashboard).
 // Cloudflare build settings: root directory `web`, build command `npm run build`,
 // deploy command `npx wrangler deploy`, build variable VITE_API_BASE_URL=https://im-api.mcreatik.com.
+// Beta: `npx wrangler deploy --env beta` (Worker mcreatik-instant-memories-beta), built with VITE_API_BASE_URL,
+// VITE_MEDIA_BASE_URL and VITE_ENV_LABEL=beta so the CSP (dist/_headers, see scripts/gen-headers.mjs) matches.
 {
   "name": "mcreatik-instant-memories",
   "compatibility_date": "2026-10-01",
@@ -8,5 +10,15 @@
     "directory": "./dist",
     // Client-side routes (/e/:slug, /admin/...) all serve index.html.
     "not_found_handling": "single-page-application"
+  },
+  "env": {
+    "beta": {
+      // Environments do not inherit `assets`, so it is repeated.
+      "name": "mcreatik-instant-memories-beta",
+      "assets": {
+        "directory": "./dist",
+        "not_found_handling": "single-page-application"
+      }
+    }
   }
 }

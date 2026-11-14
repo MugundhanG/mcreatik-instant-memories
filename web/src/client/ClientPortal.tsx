@@ -11,6 +11,7 @@ import { useZipDownload } from '../shared/zipDownload'
 import { ClientFooter } from './ClientFooter'
 import { ZipProgressCard } from '../shared/ZipProgressCard'
 import { clientApi, clientSession, type ClientMe, type ClientPhoto } from './clientApi'
+import EnvBadge from '../shared/EnvBadge'
 
 const PAGE = 60
 /** The server's limit for one ZIP. */
@@ -184,6 +185,7 @@ export default function ClientPortal() {
 
   return (
     <div className="min-h-dvh bg-paper">
+      <EnvBadge corner />
       <header className="relative overflow-hidden bg-[#2e211a] text-white">
         {me.event.coverUrl && <img src={me.event.coverUrl} alt="" className="absolute inset-0 size-full object-cover opacity-55" />}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.25),rgba(0,0,0,0.75))]" />
