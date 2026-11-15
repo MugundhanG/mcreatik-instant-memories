@@ -93,6 +93,22 @@
       <artifactId>url-connection-client</artifactId>
     </dependency>
 
+    <!-- Face search (AWS Rekognition, Mumbai). Same client exclusions as s3: the url-connection client is used. -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>rekognition</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>apache-client</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>netty-nio-client</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
     <!-- Image processing -->
     <dependency>
       <groupId>com.twelvemonkeys.imageio</groupId>

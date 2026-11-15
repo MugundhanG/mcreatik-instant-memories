@@ -128,6 +128,7 @@ export function AnalyticsPanel({ eventId, live, eventName = 'the event' }: { eve
         <ActivityChart hours={data.hours} />
 
         <TopPhotos data={data} />
+        {data.faceSearch && <FaceSearchStats stats={data.faceSearch} />}
         <HqRequests eventId={eventId} eventName={eventName} />
       </div>
     </Card>
@@ -196,6 +197,29 @@ function ActivityChart({ hours }: { hours: GuestAnalytics['hours'] }) {
           </tbody>
         </table>
       </details>
+    </div>
+  )
+}
+
+/** "Find my photos": how guests used it. Shown only when the event has the add-on. */
+function FaceSearchStats({ stats: f }: { stats: NonNullable<GuestAnalytics['faceSearch']> }) {
+  return (
+    <div data-testid="face-search-stats">
+      <p className="mb-1 text-sm font-medium">Find my photos</p>
+      <p className="mb-3 text-sm text-muted">
+        {f.searches === 0
+          ? 'No guest has used it yet. Put “Find your photos with a selfie” on your board or card.'
+          : <><b className="text-ink tabular-nums">{plural(f.guestsFound, 'guest')}</b> found their photos, <b className="text-ink tabular-nums">{plural(f.photosFound, 'photo')}</b> found, <b className="text-ink tabular-nums">{plural(f.downloads, 'download')}</b> from face search.</>}
+      </p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <Stat label="Searches" value={formatCount(f.searches)} />
+        <Stat label="Guests who found photos" value={formatCount(f.guestsFound)} />
+        <Stat label="Photos found" value={formatCount(f.photosFound)} />
+        <Stat label="Updates" value={formatCount(f.updates)} />
+        <Stat label="Downloads" value={formatCount(f.downloads)} />
+        <Stat label="Likes" value={formatCount(f.likes)} />
+      </div>
+      {f.failed > 0 && <p className="mt-2 text-xs text-muted">{formatCount(f.failed)} {f.failed === 1 ? 'search' : 'searches'} failed (no face seen or an unreadable photo).</p>}
     </div>
   )
 }

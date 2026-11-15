@@ -3,7 +3,7 @@ import { adminApi, ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
 import type { BillingSummary, Plan, Purchase } from '../lib/types'
 import { qrSvg } from '../shared/qr'
-import { describe, PACKS, photosPerGb, PLAN_LABEL, packPrice, rupees, storageExtendPrice, unitPrice, type StorageContext } from './plans'
+import { describe, FACE_SEARCH_MAIN_DEFAULT, FACE_SEARCH_QUICK_DEFAULT, PACKS, photosPerGb, PLAN_LABEL, packPrice, rupees, storageExtendPrice, unitPrice, type StorageContext } from './plans'
 import { Button, ErrorText, inputClass } from './ui'
 
 /** upi://pay link: any UPI app (GPay, PhonePe, Paytm…) opens it with payee and amount filled in. */
@@ -21,6 +21,7 @@ const TITLE: Record<Purchase['item'], string> = {
   CLIENT_SETUP: 'Client galleries',
   EXTEND: 'Keep more months',
   STORAGE_EXTEND: 'Change storage & months',
+  FACE_SEARCH: 'Find my photos',
 }
 
 /** Preset storage sizes; any whole number of GB from MIN_GB can be typed too. */
@@ -69,7 +70,7 @@ function GbPicker({ label, value, onChange, allowNone, noneLabel = 'Later' }: { 
  * gallery open more months or set up a client gallery. The one way to pay is McreatiK's UPI QR: scan, pay, enter the
  * transaction ID (UTR); usable at once, McreatiK checks the payment afterwards. The amount shown uses the same prices as the server, which prices every purchase again.
  */
-export function BuyEventsDialog({ billing, purchase: initial, reason, storage, onPaid, onClose }: {
+export function BuyEventsDialog({ billing, purchase: initial, reason, storage, faceSearchPrice, onPaid, onClose }: {
   billing: BillingSummary
   /** What to buy; the studio can change the number (and Main / Quick for events, the pack for a plan). */
   purchase?: Purchase
@@ -77,6 +78,8 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, o
   reason?: string
   /** STORAGE_EXTEND: what the event has now, to price the change. */
   storage?: StorageContext
+  /** FACE_SEARCH: the price for this event's type (Main or Quick). */
+  faceSearchPrice?: number
   onPaid: () => void
   onClose: () => void
 }) {
@@ -94,7 +97,7 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, o
   const addMonths = combined ? purchase.months ?? 0 : 0
   const ctx: StorageContext = storage ?? { quota: 0, usedGb: 1, monthsLeft: billing.prices.activeMonths }
   const ext = storageExtendPrice(billing.prices, ctx, addGb, addMonths)
-  const unit = unitPrice(purchase.item, billing, purchase.plan, months)
+  const unit = purchase.item === 'FACE_SEARCH' && faceSearchPrice !== undefined ? faceSearchPrice : unitPrice(purchase.item, billing, purchase.plan, months)
   const title = TITLE[purchase.item]
   // A client gallery can be paid together with its storage for the months chosen (one gallery at a time).
   const setupGb = purchase.item === 'CLIENT_SETUP' ? purchase.storageGb ?? 0 : 0
@@ -105,7 +108,7 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, o
   const label = describe(purchase, billing)
   const link = billing.upiId ? upiLink(billing.upiId, billing.payeeName, amount, label) : null
   const isEvents = purchase.item === 'MAIN_EVENT' || purchase.item === 'QUICK_EVENT'
-  const max = purchase.item === 'PLAN' ? 12 : purchase.item === 'UPGRADE' || purchase.item === 'EXTEND' || setupGb > 0 ? 1 : 50
+  const max = purchase.item === 'PLAN' ? 12 : purchase.item === 'UPGRADE' || purchase.item === 'EXTEND' || purchase.item === 'FACE_SEARCH' || setupGb > 0 ? 1 : 50
   const unitWord = purchase.item === 'PLAN' ? 'month' : purchase.item === 'STORAGE' ? 'GB'
     : purchase.item === 'CLIENT_SETUP' ? 'gallery' : 'event'
   const change = (p: Partial<Purchase>) => {
@@ -137,6 +140,8 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, o
 
   const defaultReason = combined
     ? `Add storage, keep the gallery open longer, or both: one total, one payment. Storage is ${rupees(billing.prices.storageGb)} per GB a month; the ${billing.prices.freeStorageGb} GB × ${billing.prices.activeMonths} months included with every Main or Quick event are already covered.`
+    : purchase.item === 'FACE_SEARCH'
+    ? `Guests take a selfie in the live gallery and see only the photos they are in. One payment for this event, ${rupees(unit)}; it works for the whole life of the gallery.`
     : purchase.item === 'STORAGE'
     ? `Storage for this gallery until it closes: ${rupees(billing.prices.storageGb)} per GB a month × ${months} month${months === 1 ? '' : 's'} = ${rupees(unit)} per GB. About ${photosPerGb(1)} full-quality photos per GB.`
     : purchase.item === 'CLIENT_SETUP'
@@ -276,6 +281,11 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, o
                 </Button>
                 <p className="text-center text-xs text-muted">It's ready at once; McreatiK confirms the payment within a day.</p>
               </form>
+            )}
+            {isEvents && (
+              <p className="text-center text-xs text-muted" data-testid="face-search-addon">
+                Add-on: <b className="font-medium text-ink">Find my photos</b>, AI face search for guests, +{rupees(billing.prices.faceSearchMain ?? FACE_SEARCH_MAIN_DEFAULT)} per Main event, +{rupees(billing.prices.faceSearchQuick ?? FACE_SEARCH_QUICK_DEFAULT)} per Quick event. Add it from the event's page.
+              </p>
             )}
             <p className="text-center text-xs text-muted">
               <a href="/pricing" target="_blank" rel="noreferrer" className="underline underline-offset-2">Pricing</a>

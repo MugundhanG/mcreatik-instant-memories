@@ -78,6 +78,10 @@ public class Event {
     @Column(name = "client_gallery_enabled", nullable = false)
     private boolean clientGalleryEnabled = true;
 
+    /** "Find my photos" (face search) is on for this event: bought as an add-on, or switched on by McreatiK. */
+    @Column(name = "face_search_enabled", nullable = false)
+    private boolean faceSearchEnabled;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -229,6 +233,10 @@ public class Event {
 
     public void setClientGalleryEnabled(boolean clientGalleryEnabled) {
         this.clientGalleryEnabled = clientGalleryEnabled;
+    }
+
+    public boolean isFaceSearchEnabled() {
+        return faceSearchEnabled;
     }
 
     public Instant getCreatedAt() {

@@ -10,7 +10,7 @@ export type ActivityType = 'VISIT' | 'PHOTO_VIEW' | 'DOWNLOAD' | 'SHARE' | 'INST
 interface Item {
   type: ActivityType
   photoId?: string
-  source?: 'qr' | 'link'
+  source?: 'qr' | 'link' | 'face'
 }
 
 const FLUSH_MS = 4_000

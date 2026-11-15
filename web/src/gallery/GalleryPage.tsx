@@ -15,6 +15,7 @@ import { formatPhone, telLink, waLink } from '../shared/phone'
 import { GalleryUnavailable } from '../shared/GalleryUnavailable'
 import { removalRequestLink } from '../shared/privacy'
 import { PhotoViewer } from './PhotoViewer'
+import { FindMyPhotos } from './FindMyPhotos'
 import { useLiveGallery } from './useLiveGallery'
 import EnvBadge from '../shared/EnvBadge'
 
@@ -68,14 +69,20 @@ export default function GalleryPage() {
 
   const [likes, setLikes] = useState<Set<string>>(() => loadLikes(slug))
   const isLiked = useCallback((id: string) => likes.has(id), [likes])
-  const toggleLike = useCallback((id: string) => {
+  const toggleLike = useCallback((id: string, source?: 'face') => {
     const next = new Set(likes)
     const liked = !next.delete(id)
     if (liked) next.add(id)
     setLikes(next)
     saveLikes(slug, next)
-    track(slug, { type: liked ? 'LIKE' : 'UNLIKE', photoId: id })
+    track(slug, { type: liked ? 'LIKE' : 'UNLIKE', photoId: id, source })
   }, [likes, slug])
+  // Photos opened from "Photos of you": their downloads and likes are counted for the studio's Find my photos stats.
+  const onFaceActivity = useCallback(
+    (type: ActivityType, photoId?: string) => track(slug, { type, photoId, source: type === 'DOWNLOAD' ? 'face' : undefined }),
+    [slug],
+  )
+  const toggleFaceLike = useCallback((id: string) => toggleLike(id, 'face'), [toggleLike])
   const requestHd = useCallback(
     (photoId: string, name: string, contact: string) =>
       publicApi.requestHq(slug, { photoId, name: name || undefined, contact, visitorId: visitorId() }),
@@ -198,6 +205,10 @@ export default function GalleryPage() {
             <PhoneIcon className="size-5" />
           </a>
         </div>
+      )}
+
+      {event.faceSearch && (
+        <FindMyPhotos event={event} instagram={brand.instagram} onActivity={onFaceActivity} liked={isLiked} onToggleLike={toggleFaceLike} onRequestHd={requestHd} />
       )}
 
       {incoming.length > 0 && (

@@ -5,6 +5,7 @@ These come up once a studio is interested. Lead every pricing conversation to a 
 | Question | Answer |
 | --- | --- |
 | How much does it cost? | A Main event (weddings, receptions, big functions) is ₹2,499; a Quick event (up to about 200 guests) is ₹1,499. Monthly packs bring it down to ₹1,250 per Main event or ₹1,000 per Quick event. Let's do a 10-minute demo and I'll suggest the cheapest option for your volume. |
+| Can guests find their own photos with a selfie? | Yes, with the optional **Find my photos** add-on: +₹999 per Main event, +₹499 per Quick event, bought per event from the event's Overview (Face search card). Guests take a selfie and see only the photos they are in. Put "Find your photos with a selfie" on your board or card; you are responsible for telling guests it is on. Face data is processed by AWS in Mumbai and deleted with the gallery's photos. |
 | What's the difference between Main and Quick? | The features are the same. Quick is for smaller events (about 200 guests). If a Quick event turns out bigger, the gallery never stops; you can upgrade it to Main for ₹1,000. |
 | What if I don't use all my pack's events? | They carry over to the next month (one month only). |
 | What if I need more events than my pack has? | Extra events cost less while your pack is paid up: ₹999 on Main 4 and ₹1,499 on Main 2 (for Main or Quick events), ₹799 on Quick 4 and ₹999 on Quick 2 (Quick events). |

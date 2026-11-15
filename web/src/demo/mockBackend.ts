@@ -60,6 +60,12 @@ const today = () => new Date().toISOString().slice(0, 10)
 const plusDays = (d: string, n: number) => new Date(Date.parse(d) + n * 86_400_000).toISOString().slice(0, 10)
 
 const events: DemoEvent[] = []
+/** Demo events have "Find my photos" on; the dashboard toggle can switch it off for a look. */
+const faceSearchOn: Record<string, boolean> = {}
+/** "Remember me" in the demo: a match is the photos that "look like" the guest and how many photos existed when it was last checked. */
+const matches = new Map<string, { eventId: string; photoIds: string[]; known: number }>()
+/** Demo stand-in for face recognition: a photo "shows the guest" for about one in three ids. */
+const looksLikeGuest = (p: DemoPhoto) => [...p.id].reduce((a, c) => a + c.charCodeAt(0), 0) % 3 === 0
 
 function makeUploaders(names: string[]): DemoUploader[] {
   return names.map((name) => ({ id: uid('upl'), name, lastSeenAt: Date.now() - 3_000, offlineUntil: 0, queued: 0, tokenPrefix: 'mku_' + Math.random().toString(36).slice(2, 8) }))
@@ -298,6 +304,10 @@ function demoAnalytics(e: DemoEvent) {
     hours: curve.map((f, i) => ({ hour: `${day}T${String(16 + i).padStart(2, '0')}:00`, people: Math.round(people * f), photoViews: Math.round(people * f * 11), downloads: Math.round(people * f * 1.3) })),
     topPhotos: e.photos.slice(0, 8).map((p, i) => ({ photoId: p.id, thumbnailUrl: p.thumbnailUrl, fileName: p.originalFileName, views: Math.round(people * (0.9 - i * 0.08)), downloads: Math.round(people * (0.3 - i * 0.03)) })),
     lastActivityAt: nowIso(),
+    faceSearch: faceSearchOn[e.id] === false ? null : {
+      searches: Math.round(people * 0.34), failed: Math.round(people * 0.03), guestsFound: Math.round(people * 0.27),
+      photosFound: Math.round(people * 0.27 * 6.4), updates: Math.round(people * 0.12), downloads: Math.round(people * 0.27 * 2.2), likes: Math.round(people * 0.27 * 1.1),
+    },
   }
 }
 
@@ -314,12 +324,45 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
   }
 
   // ---- public ----
+  if ((m = path.match(/^\/api\/public\/events\/([^/]+)\/find-me$/)) && method === 'POST') {
+    const e = events.find((x) => x.slug === decodeURIComponent(m![1]))
+    if (!e || e.status === 'DRAFT' || e.status === 'ARCHIVED') return notFound()
+    // Demo: any selfie "matches" a few photos (the real server compares faces; the selfie is never stored).
+    const found = e.photos.filter((p) => !p.hidden).filter(looksLikeGuest).slice(0, 12)
+    const matchId = uid('match')
+    matches.set(matchId, { eventId: e.id, photoIds: found.map((p) => p.id), known: e.photos.length })
+    return json({ photos: found.map(toPublic), count: found.length, matchId })
+  }
+  if ((m = path.match(/^\/api\/public\/events\/([^/]+)\/matches\/([^/]+)(\/refresh)?$/))) {
+    const e = events.find((x) => x.slug === decodeURIComponent(m![1]))
+    if (!e || e.status === 'DRAFT' || e.status === 'ARCHIVED') return notFound()
+    const match = matches.get(decodeURIComponent(m[2]))
+    if (method === 'DELETE') {
+      matches.delete(decodeURIComponent(m[2]))
+      return json(null, 204)
+    }
+    if (!match || match.eventId !== e.id) return json({ code: 'MATCH_NOT_FOUND', message: 'That match is gone' }, 404)
+    if (m[3] && method === 'POST' && e.photos.length > match.known) {
+      // New photos arrived since the last check: the ones that look like the guest are added.
+      for (const p of e.photos) if (!match.photoIds.includes(p.id) && looksLikeGuest(p)) match.photoIds.push(p.id)
+      match.known = e.photos.length
+    }
+    const shown = e.photos.filter((p) => !p.hidden && match.photoIds.includes(p.id))
+    return json({ photos: shown.map(toPublic), count: shown.length, hasNew: e.photos.length > match.known })
+  }
+  if ((m = path.match(/^\/api\/admin\/events\/([^/]+)\/face-search$/))) {
+    const e = events.find((x) => x.id === m![1])
+    if (!e) return notFound()
+    if (method === 'PUT') faceSearchOn[e.id] = !!(body as { enabled?: boolean })?.enabled
+    const total = e.photos.length
+    return json({ enabled: faceSearchOn[e.id] ?? true, available: true, indexed: total, total, mainPrice: 999, quickPrice: 499 })
+  }
   if ((m = path.match(/^\/api\/public\/events\/([^/]+)(\/photos)?$/))) {
     const e = events.find((x) => x.slug === decodeURIComponent(m![1]))
     if (!e || e.status === 'DRAFT' || e.status === 'ARCHIVED') return notFound()
     if (!m[2]) {
       const cover = e.photos.find((p) => p.id === e.coverPhotoId)
-      return json({ name: e.name, slug: e.slug, eventDate: e.eventDate, status: e.status, live: e.status === 'LIVE', coverUrl: cover?.webUrl ?? null, photoCount: e.photos.filter((p) => !p.hidden).length })
+      return json({ name: e.name, slug: e.slug, eventDate: e.eventDate, status: e.status, live: e.status === 'LIVE', coverUrl: cover?.webUrl ?? null, photoCount: e.photos.filter((p) => !p.hidden).length, faceSearch: faceSearchOn[e.id] ?? true })
     }
     const visible = e.photos.filter((p) => !p.hidden)
     const limit = Number(q.get('limit') ?? 40)

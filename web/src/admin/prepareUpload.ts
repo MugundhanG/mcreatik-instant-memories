@@ -124,3 +124,16 @@ export async function preparePhoto(file: File): Promise<PreparedPhoto> {
     bitmap.close()
   }
 }
+
+export const SELFIE_LONG_EDGE = 1024
+export const SELFIE_QUALITY = 0.85
+
+/** A guest's selfie for "Find my photos": upright, at most 1024 px on the long edge, as a JPEG (a few hundred KB). */
+export async function prepareSelfie(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+  try {
+    return await encode(bitmap, bitmap.width, bitmap.height, SELFIE_LONG_EDGE, SELFIE_QUALITY)
+  } finally {
+    bitmap.close()
+  }
+}

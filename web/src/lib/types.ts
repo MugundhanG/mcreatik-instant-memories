@@ -27,6 +27,8 @@ export interface PublicEvent {
   coverUrl: string | null
   photoCount: number
   brand?: Brand
+  /** The studio bought "Find my photos" for this event: guests can search with a selfie. Absent from older servers. */
+  faceSearch?: boolean
 }
 
 export interface PublicPhoto {
@@ -312,6 +314,22 @@ export interface GuestAnalytics {
   mostDownloaded?: TopPhoto[]
   mostViewed?: TopPhoto[]
   lastActivityAt: string | null
+  /** "Find my photos" numbers; only present when the event has the add-on. */
+  faceSearch?: FaceSearchStats | null
+}
+
+export interface FaceSearchStats {
+  searches: number
+  /** Searches that failed (no face, unreadable photo). */
+  failed: number
+  /** Guests who found at least one photo. */
+  guestsFound: number
+  photosFound: number
+  /** "Update my photos" taps that searched again. */
+  updates: number
+  /** Downloads and likes of photos opened from the face results. */
+  downloads: number
+  likes: number
 }
 
 /** Where the browser PUTs a full-quality original (see adminApi.originalUpload). */
@@ -376,8 +394,8 @@ export type Plan = 'PER_EVENT' | 'MAIN_2' | 'MAIN_4' | 'QUICK_2' | 'QUICK_4' | '
 export type EventType = 'MAIN' | 'QUICK' | 'CLIENT'
 
 /** What a payment buys. */
-/** STORAGE: GB for one event; CLIENT_SETUP: client galleries; EXTEND: another open period for one event (per GB per month). */
-export type PurchaseItem = 'MAIN_EVENT' | 'QUICK_EVENT' | 'UPGRADE' | 'PLAN' | 'STORAGE' | 'CLIENT_SETUP' | 'EXTEND' | 'STORAGE_EXTEND'
+/** FACE_SEARCH: the "Find my photos" add-on for one event. STORAGE: GB for one event; CLIENT_SETUP: client galleries; EXTEND: another open period for one event (per GB per month). */
+export type PurchaseItem = 'MAIN_EVENT' | 'QUICK_EVENT' | 'UPGRADE' | 'PLAN' | 'STORAGE' | 'CLIENT_SETUP' | 'EXTEND' | 'STORAGE_EXTEND' | 'FACE_SEARCH'
 
 /** A purchase as the dashboard asks for it; the server sets the price. quantity: events or months. */
 export interface Purchase {
@@ -420,6 +438,35 @@ export interface Prices {
   quick4Extra: number
   /** A Main event for a studio on a paid-up Quick pack. */
   quickPackMain: number
+  /** "Find my photos" (AI face search for guests) add-on, per event; older servers omit them. */
+  faceSearchMain?: number
+  faceSearchQuick?: number
+}
+
+/** The result of a guest's face search. */
+export interface FindMeResult {
+  photos: PublicPhoto[]
+  count: number
+  /** The code this phone keeps to show the photos again ("Remember me"); absent when nothing matched. */
+  matchId?: string | null
+}
+
+/** A remembered match: its photos now, and whether photos were scanned since it was last checked. */
+export interface MatchResult {
+  photos: PublicPhoto[]
+  count: number
+  hasNew: boolean
+}
+
+/** One event's "Find my photos" add-on, for the dashboard. */
+export interface FaceSearchStatus {
+  enabled: boolean
+  /** The server can run face search at all (a feature flag); false while it is not switched on. */
+  available: boolean
+  indexed: number
+  total: number
+  mainPrice: number
+  quickPrice: number
 }
 
 export interface EventPayment {
@@ -512,6 +559,8 @@ export interface BillingSettings {
   quick2ExtraPrice: number
   quick4ExtraPrice: number
   quickPackMainPrice: number
+  faceSearchMainPrice?: number
+  faceSearchQuickPrice?: number
 }
 
 /** Current prices for the public /pricing page. */

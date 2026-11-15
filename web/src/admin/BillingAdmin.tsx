@@ -18,6 +18,7 @@ function paymentFor(p: EventPayment): string {
     case 'STORAGE': return `${n} GB storage${p.eventName ? `: ${p.eventName}` : ''}`
     case 'CLIENT_SETUP': return `${n} client galler${n === 1 ? 'y' : 'ies'}`
     case 'STORAGE_EXTEND': return `${n} GB${p.months ? ` + ${p.months} month${p.months === 1 ? '' : 's'}` : ''}${p.eventName ? `: ${p.eventName}` : ''}`
+    case 'FACE_SEARCH': return `Find my photos${p.eventName ? `: ${p.eventName}` : ''}`
     case 'EXTEND': return `More months (${n} GB)${p.eventName ? `: ${p.eventName}` : ''}`
     default: return `${n} Main event${n === 1 ? '' : 's'}`
   }
@@ -141,6 +142,12 @@ export function BillingSettingsCard() {
         </Field>
         <Field label="Main event for a Quick-pack studio (₹)" hint="While its Quick pack is paid up">
           <input className={inputClass} inputMode="numeric" value={s.quickPackMainPrice} onChange={num('quickPackMainPrice')} />
+        </Field>
+        <Field label="Find my photos: Main event (₹)" hint="Face-search add-on, per event">
+          <input className={inputClass} inputMode="numeric" value={s.faceSearchMainPrice ?? 999} onChange={num('faceSearchMainPrice')} />
+        </Field>
+        <Field label="Find my photos: Quick event (₹)" hint="Face-search add-on, per event">
+          <input className={inputClass} inputMode="numeric" value={s.faceSearchQuickPrice ?? 499} onChange={num('faceSearchQuickPrice')} />
         </Field>
         <Field label="Upgrade a Quick event to Main (₹)">
           <input className={inputClass} inputMode="numeric" value={s.upgradePrice} onChange={num('upgradePrice')} />

@@ -23,6 +23,13 @@ public final class GuestActivity {
         /** Liked a photo (once per guest and photo); UNLIKE takes it back and is not stored. */
         LIKE,
         UNLIKE
+        // The server also writes FACE_SEARCH, FACE_FAILED, FACE_FOUND and FACE_UPDATE ("Find my photos" stats); a
+        // guest's browser cannot report those, so they are not here. DOWNLOAD and LIKE from face results carry source 'face'.
+    }
+
+    /** "Find my photos" for the studio: searches, guests who found photos, photos found, updates, and what came of them. */
+    public record FaceStats(long searches, long failed, long guestsFound, long photosFound, long updates, long downloads,
+                            long likes) {
     }
 
     public record Totals(long people, long qrScans, long visits, long photoViews, long downloads, long downloaders,
@@ -38,9 +45,11 @@ public final class GuestActivity {
 
     /**
      * {@code topPhotos}: by downloads, then views (the older single list). {@code mostLiked}, {@code mostDownloaded}
-     * and {@code mostViewed}: the photos ranked each way, without the ones at zero.
+     * and {@code mostViewed}: the photos ranked each way, without the ones at zero. {@code faceSearch}: only when the
+     * event has the Find my photos add-on, else null.
      */
     public record Summary(Totals totals, List<Hour> hours, List<TopPhoto> topPhotos, Instant lastActivityAt,
-                          List<TopPhoto> mostLiked, List<TopPhoto> mostDownloaded, List<TopPhoto> mostViewed) {
+                          List<TopPhoto> mostLiked, List<TopPhoto> mostDownloaded, List<TopPhoto> mostViewed,
+                          FaceStats faceSearch) {
     }
 }

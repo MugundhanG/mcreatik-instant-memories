@@ -77,4 +77,22 @@ describe('Guest analytics', () => {
     render(<AnalyticsPanel eventId="e1" live={false} />)
     expect(await screen.findByText('No requests yet')).toBeInTheDocument()
   })
+
+  it('shows the Find my photos section only when the event has the add-on', async () => {
+    const faceSearch = { searches: 240, failed: 12, guestsFound: 186, photosFound: 1240, updates: 31, downloads: 410, likes: 77 }
+    const respond = (body: unknown) => vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    respond({ ...analytics, faceSearch })
+    const { unmount } = render(<AnalyticsPanel eventId="e1" live={false} />)
+    const section = await screen.findByTestId('face-search-stats')
+    expect(section).toHaveTextContent('186 guests found their photos, 1,240 photos found, 410 downloads from face search')
+    expect(within(section).getByText('Searches').parentElement).toHaveTextContent('240')
+    expect(within(section).getByText('Updates').parentElement).toHaveTextContent('31')
+    expect(section).toHaveTextContent('12 searches failed')
+    unmount()
+
+    respond({ ...analytics, faceSearch: null })
+    render(<AnalyticsPanel eventId="e2" live={false} />)
+    await screen.findByTestId('analytics')
+    expect(screen.queryByTestId('face-search-stats')).not.toBeInTheDocument()
+  })
 })
