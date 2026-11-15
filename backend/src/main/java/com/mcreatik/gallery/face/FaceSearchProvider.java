@@ -21,18 +21,28 @@ public interface FaceSearchProvider {
     List<String> indexFaces(String collection, UUID photoId, byte[] jpegBytes);
 
     /**
-     * The face ids in the collection that match the (largest) face in the image, best first. A missing collection
+     * The faces in the collection that match the (largest) face in the image, best first (most similar first). A missing collection
      * gives an empty list.
      *
      * @throws NoFaceException the image has no face in it
      * @throws BadImageException the image is not a readable JPEG or PNG
      */
-    List<String> searchFaces(String collection, byte[] imageBytes, float threshold, int maxFaces);
+    List<FaceMatch> searchFaces(String collection, byte[] imageBytes, float threshold, int maxFaces);
+
+    /**
+     * The other face ids in the collection that look like this face (a face already in the collection: no image is
+     * sent), best first. A missing collection or a face that is no longer in it gives an empty list.
+     */
+    List<String> searchFacesByFaceId(String collection, String faceId, float threshold, int maxFaces);
 
     void deleteFaces(String collection, Collection<String> faceIds);
 
     /** Names of the collections that start with the prefix (for the nightly orphan check). */
     List<String> listCollections(String prefix);
+
+    /** A face in the collection that matched, and how sure the engine is (0 to 100). */
+    record FaceMatch(String faceId, float similarity) {
+    }
 
     /** No face in the selfie. */
     class NoFaceException extends RuntimeException {

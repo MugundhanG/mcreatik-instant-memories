@@ -36,7 +36,7 @@ export default function TermsPage() {
       <Section title="Face search (optional add-on)">
         <ul className="list-disc space-y-1.5 pl-5">
           <li>"Find my photos" is an optional add-on you buy per event. When it is on, guests of that event can choose to take a selfie and see the photos they appear in. Nothing is searched unless the guest chooses to and agrees first.</li>
-          <li>To do this, the event's guest-gallery photos are scanned and face templates are processed by Amazon Web Services in Mumbai, India. They are deleted when a photo is removed, when you turn face search off, and with the gallery's photos 30 days after the gallery period. A guest's selfie is used once and not stored.</li>
+          <li>To do this, the event's guest-gallery photos are scanned and face templates are processed by Amazon Web Services in Mumbai, India. They are deleted when a photo is removed, when you turn face search off, and with the gallery's photos 30 days after the gallery period. A guest's selfie is used once and not stored. To show a guest's photos again without a new selfie, a random match code is kept on the guest's phone and on our server, linked to their face matches; it is deleted when the guest taps "Forget me" or when the gallery's photos are deleted.</li>
           <li>You must tell guests at your event that face search is on, for example with the wording "Find your photos with a selfie" on a board or card, and you are responsible for the consent of the people at your events. Do not use it where the law or the people photographed do not allow it.</li>
           <li>We may switch it off for an event that is misused, and a guest's request to remove their face data is passed to you and acted on.</li>
         </ul>

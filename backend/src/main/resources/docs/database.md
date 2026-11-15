@@ -74,13 +74,14 @@ erDiagram
 | `event_payments` | Every purchase: `item` (MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN, STORAGE, CLIENT_SETUP, EXTEND, STORAGE_EXTEND, FACE_SEARCH), quantity, `event_id`, `plan`, `storage_gb`, `months`; UPI ones wait for review (UTR unique). The V14 and V15 online-payment columns are left over from an earlier design and unused | V9, V14, V15, V18, V23, V26 | `BillingService` |
 | `billing_settings` | One row of UPI details and every price (Main, Quick, the four packs and their extra-event prices, upgrade, storage per GB, free GB, client setup, active months, face search Main 999 / Quick 499) | V9, V18, V19, V20, V22, V27 |
 | `photo_faces` | The AWS Rekognition face ids of each guest photo (`photo_id`, `event_id`, `face_id`); both foreign keys `ON DELETE CASCADE`. Only ids are stored, never faces or selfies | V27 | `FaceIndexWorker`, `FaceSearchService` |
+| `guest_matches` | "Remember me": a random `id` the guest's phone keeps, `event_id` (cascade), `seed_face_ids` (the best 5 matches to the selfie) and `face_ids` (all matches) as text arrays, `checked_at` (photos indexed after it are "new"), `created_at`. Face ids only, never a selfie. Deleted by "Forget me", when the add-on is switched off, when the event or its photos are deleted (explicit, as an archived event keeps its row), and by the nightly check | V28 | `GuestMatchService`, `FaceSearchService` |
 | `face_search_usage` | Searches per event and day (India time) for the daily cap | V27 | `FaceSearchService` | `BillingService` |
 
 ## What happens on delete
 
 | Deleted | Effect |
 | --- | --- |
-| An event | Only McreatiK can delete one. Its AWS face collection is deleted too (`FaceSearchService.removeEvent`; a nightly check deletes any that were missed). Its uploaders, photos, activity, categories, client and album picks go too (`ON DELETE CASCADE`). Its charges stay with `event_id` set to null, so billing history survives. `EventService.remove` removes the R2 files first. |
+| An event | Only McreatiK can delete one. Its AWS face collection and remembered face matches are deleted too (`FaceSearchService.removeEvent`; a nightly check deletes any that were missed). Its uploaders, photos, activity, categories, client and album picks go too (`ON DELETE CASCADE`). Its charges stay with `event_id` set to null, so billing history survives. `EventService.remove` removes the R2 files first. |
 | An event's photos (retention) | When retention ends, the daily job removes the files and photo rows and archives the event. The event row, its payments and its charges stay as the record (`photos_deleted_at` is set). |
 | A photo | Its `photo_faces` rows and album picks go (its faces are also deleted from AWS by `AdminPhotoController`); an event using it as cover gets `cover_photo_id` set to null |
 | An uploader or category | Photos keep existing, with the link set to null |

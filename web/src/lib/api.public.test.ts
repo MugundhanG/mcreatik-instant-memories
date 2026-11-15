@@ -32,3 +32,20 @@ describe('categories and HD requests api', () => {
     await expect(requestHq('s1', { photoId: 'p', contact: 'x', visitorId: 'v' })).rejects.toBeInstanceOf(ApiError)
   })
 })
+
+describe('remember me api', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('reads, refreshes and forgets a match by its code', async () => {
+    const fetchMock = vi.fn(async (...args: [RequestInfo | URL, RequestInit?]) => (void args, new Response(JSON.stringify({ photos: [], count: 0, hasNew: false }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    vi.stubGlobal('fetch', fetchMock)
+    await publicApi.match('s1', 'm 1')
+    await publicApi.refreshMatch('s1', 'm 1', 'visitor-1234')
+    fetchMock.mockImplementation(async () => new Response(null, { status: 204 }))
+    await publicApi.forgetMatch('s1', 'm 1')
+    expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/api\/public\/events\/s1\/matches\/m%201$/)
+    expect(String(fetchMock.mock.calls[1][0])).toMatch(/\/matches\/m%201\/refresh\?visitorId=visitor-1234$/)
+    expect(fetchMock.mock.calls[1][1]?.method).toBe('POST')
+    expect(fetchMock.mock.calls[2][1]?.method).toBe('DELETE')
+  })
+})

@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { prepareSelfie } from '../admin/prepareUpload'
+import { checkSelfie, SELFIE_TIPS } from '../admin/selfieCheck'
+import type { SelfieIssue } from '../admin/selfieCheck'
+import { visitorId } from '../lib/activity'
 import { ApiError, publicApi } from '../lib/api'
+import { clearMatchId, loadMatchId, saveMatchId } from '../lib/faceMatch'
 import type { PublicEvent, PublicPhoto } from '../lib/types'
 import { removalRequestLink } from '../shared/privacy'
 import { PhotoGrid } from './PhotoGrid'
 import { PhotoViewer } from './PhotoViewer'
 
 const CONSENT_TEXT =
-  'Take a selfie to see only the photos you’re in. Your selfie is used once for this search and is not saved. Face data for this gallery is deleted when the gallery’s photos are deleted.'
+  'Take a selfie to see only the photos you’re in. Your selfie is used once for this search and is not saved. Face data for this gallery is deleted when the gallery’s photos are deleted. This phone then remembers your photos with a random code, so you don’t need another selfie; tap “Forget me” any time to delete it.'
 
-type Step = 'idle' | 'consent' | 'searching' | 'results' | 'error'
+type Step = 'idle' | 'consent' | 'searching' | 'tips' | 'results' | 'error'
+
+/** After this many selfies that fail the quality check, the guest may send one anyway. */
+const USE_ANYWAY_AFTER = 2
 
 /** The friendly sentence for a failed search. */
 function searchErrorMessage(err: unknown): string {
@@ -53,10 +60,21 @@ export function FindMyPhotos({ event, instagram, onActivity, liked, onToggleLike
   const [photos, setPhotos] = useState<PublicPhoto[]>([])
   const [message, setMessage] = useState('')
   const [selected, setSelected] = useState<number>(-1)
+  // Remember me: the code kept on this phone, and what the server says about it.
+  const [matchId, setMatchId] = useState<string | null>(() => loadMatchId(event.slug))
+  const [remembered, setRemembered] = useState(false)
+  const [hasNew, setHasNew] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const justMade = useRef<string | null>(null) // a code from a search just now: its photos are already on screen
+  const [note, setNote] = useState('')
+  // The selfie quality check: what was wrong, how many tries failed, and the picture to send if the guest insists.
+  const [issues, setIssues] = useState<SelfieIssue[]>([])
+  const [failedChecks, setFailedChecks] = useState(0)
+  const [held, setHeld] = useState<Blob | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const opener = useRef<HTMLButtonElement>(null)
 
-  const full = step === 'searching' || step === 'results' || step === 'error'
+  const full = step === 'searching' || step === 'tips' || step === 'results' || step === 'error'
   useEffect(() => {
     if (!full) return
     const old = document.body.style.overflow
@@ -66,11 +84,75 @@ export function FindMyPhotos({ event, instagram, onActivity, liked, onToggleLike
     }
   }, [full])
 
+  // On opening the gallery: a stored match shows "Photos of you" again, without a selfie and without AWS (a database lookup).
+  useEffect(() => {
+    if (!matchId || justMade.current === matchId) return
+    let active = true
+    publicApi.match(event.slug, matchId).then((m) => {
+      if (!active) return
+      setPhotos(m.photos)
+      setHasNew(m.hasNew)
+      setRemembered(true)
+    }).catch((err) => {
+      if (!active) return
+      if (err instanceof ApiError && err.status === 404) {
+        // Unknown or expired: quietly back to the normal button.
+        clearMatchId(event.slug)
+        setMatchId(null)
+        setRemembered(false)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [matchId, event.slug])
+
   const close = () => {
     setStep('idle')
-    setPhotos([])
     setSelected(-1)
+    setNote('')
+    setFailedChecks(0)
+    setHeld(null)
+    if (!remembered) setPhotos([])
     opener.current?.focus()
+  }
+  const openRemembered = () => {
+    setNote('')
+    setStep('results')
+  }
+
+  const forgetMe = () => {
+    const id = matchId
+    clearMatchId(event.slug)
+    setMatchId(null)
+    setRemembered(false)
+    setHasNew(false)
+    setPhotos([])
+    close()
+    if (id) publicApi.forgetMatch(event.slug, id).catch(() => {})
+  }
+
+  const updatePhotos = async () => {
+    if (!matchId || updating) return
+    setUpdating(true)
+    setNote('')
+    try {
+      const m = await publicApi.refreshMatch(event.slug, matchId, visitorId())
+      setPhotos(m.photos)
+      setHasNew(m.hasNew)
+      setNote(m.photos.length === photos.length ? 'No new photos of you yet.' : 'Your photos are up to date.')
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        clearMatchId(event.slug)
+        setMatchId(null)
+        setRemembered(false)
+        close()
+      } else {
+        setNote(searchErrorMessage(err))
+      }
+    } finally {
+      setUpdating(false)
+    }
   }
   const pick = () => input.current?.click()
   const start = () => {
@@ -84,19 +166,57 @@ export function FindMyPhotos({ event, instagram, onActivity, liked, onToggleLike
     pick()
   }
 
-  const onFile = async (file: File | undefined) => {
-    if (input.current) input.current.value = '' // lets the same file be chosen again
-    if (!file) return
+  const search = async (selfie: Blob) => {
     setStep('searching')
     try {
-      const selfie = await prepareSelfie(file)
-      const result = await publicApi.findMe(event.slug, selfie)
+      const result = await publicApi.findMe(event.slug, selfie, visitorId())
       setPhotos(result.photos)
+      setNote('')
+      setFailedChecks(0)
+      setHeld(null)
+      // "Search again" replaces the old match: the new code is kept, the old one is forgotten.
+      const old = matchId
+      if (result.matchId) {
+        saveMatchId(event.slug, result.matchId)
+        justMade.current = result.matchId
+        setMatchId(result.matchId)
+        setRemembered(true)
+        setHasNew(false)
+      } else {
+        clearMatchId(event.slug)
+        setMatchId(null)
+        setRemembered(false)
+      }
+      if (old && old !== result.matchId) publicApi.forgetMatch(event.slug, old).catch(() => {})
       setStep('results')
     } catch (err) {
       setMessage(searchErrorMessage(err))
       setStep('error')
     }
+  }
+
+  const onFile = async (file: File | undefined) => {
+    if (input.current) input.current.value = '' // lets the same file be chosen again
+    if (!file) return
+    setStep('searching')
+    let selfie: Blob
+    try {
+      selfie = await prepareSelfie(file)
+    } catch (err) {
+      setMessage(searchErrorMessage(err))
+      setStep('error')
+      return
+    }
+    // Quick look on the phone first: a bad selfie costs nothing to retake, a search does.
+    const check = await checkSelfie(selfie)
+    if (!check.ok) {
+      setHeld(selfie)
+      setIssues(check.issues)
+      setFailedChecks((n) => n + 1)
+      setStep('tips')
+      return
+    }
+    await search(selfie)
   }
 
   const ghost = 'inline-flex h-10 items-center justify-center rounded-full border border-line bg-white px-4 text-sm font-medium text-ink'
@@ -105,15 +225,28 @@ export function FindMyPhotos({ event, instagram, onActivity, liked, onToggleLike
   return (
     <>
       <div className="mx-3 mt-3 sm:mx-auto sm:max-w-xl">
-        <button ref={opener} type="button" onClick={start} data-testid="find-my-photos"
-          className="flex w-full items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-left text-white shadow-[0_6px_20px_rgba(0,0,0,0.12)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b37a2c]">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/15"><FaceIcon className="size-6" /></span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold">Find my photos</span>
-            <span className="block text-xs text-white/75">Take a selfie to see only the photos you’re in</span>
-          </span>
-          <span aria-hidden="true" className="text-white/70">→</span>
-        </button>
+        {remembered && matchId ? (
+          <button ref={opener} type="button" onClick={openRemembered} data-testid="my-photos"
+            className="flex w-full items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-left text-white shadow-[0_6px_20px_rgba(0,0,0,0.12)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b37a2c]">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/15"><FaceIcon className="size-6" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Photos of you ({photos.length})</span>
+              <span className="block text-xs text-white/75">{hasNew ? 'New photos may be ready' : 'Saved on this phone. No new selfie needed.'}</span>
+            </span>
+            {hasNew && <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full bg-[#e0a64f]" />}
+            <span aria-hidden="true" className="text-white/70">→</span>
+          </button>
+        ) : (
+          <button ref={opener} type="button" onClick={start} data-testid="find-my-photos"
+            className="flex w-full items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-left text-white shadow-[0_6px_20px_rgba(0,0,0,0.12)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b37a2c]">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/15"><FaceIcon className="size-6" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Find my photos</span>
+              <span className="block text-xs text-white/75">Take a selfie to see only the photos you’re in</span>
+            </span>
+            <span aria-hidden="true" className="text-white/70">→</span>
+          </button>
+        )}
         <input ref={input} type="file" accept="image/*" capture="user" className="sr-only" tabIndex={-1} aria-label="Take a selfie"
           data-testid="selfie-input" onChange={(e) => void onFile(e.target.files?.[0])} />
       </div>
@@ -156,6 +289,22 @@ export function FindMyPhotos({ event, instagram, onActivity, liked, onToggleLike
             <p role="status" className="px-8 py-24 text-center text-sm text-muted">Looking for the photos you’re in. This takes a few seconds.</p>
           )}
 
+          {step === 'tips' && (
+            <Notice title="Let’s get a clearer selfie" body="A clear selfie finds more of your photos.">
+              <ul className="mx-auto mb-1 w-full max-w-sm space-y-2 text-left text-sm text-ink" data-testid="selfie-tips">
+                {issues.map((i) => (
+                  <li key={i} className="rounded-xl border border-line bg-white px-4 py-3">{SELFIE_TIPS[i]}</li>
+                ))}
+              </ul>
+              <div className="flex w-full flex-wrap justify-center gap-2">
+                <button type="button" onClick={pick} className={solid}>Retake</button>
+                {failedChecks >= USE_ANYWAY_AFTER && held && (
+                  <button type="button" onClick={() => void search(held)} className={ghost}>Use anyway</button>
+                )}
+              </div>
+            </Notice>
+          )}
+
           {step === 'error' && (
             <Notice title={message} >
               <button type="button" onClick={pick} className={solid}>Try again</button>
@@ -165,16 +314,23 @@ export function FindMyPhotos({ event, instagram, onActivity, liked, onToggleLike
 
           {step === 'results' && photos.length === 0 && (
             <Notice title="No photos of you yet" body="New photos arrive during the event. Try again later.">
-              <button type="button" onClick={pick} className={solid}>Search again</button>
+              {matchId && <button type="button" onClick={() => void updatePhotos()} disabled={updating} className={solid}>{updating ? 'Updating…' : 'Update my photos'}</button>}
+              <button type="button" onClick={pick} className={matchId ? ghost : solid}>Search again</button>
+              {matchId && <button type="button" onClick={forgetMe} className={ghost}>Forget me</button>}
               <button type="button" onClick={close} className={ghost}>Back to all photos</button>
             </Notice>
           )}
 
           {step === 'results' && photos.length > 0 && (
             <div className="pt-3 pb-12">
-              <div className="mb-3 flex justify-center px-3">
+              <div className="mb-3 flex flex-wrap items-center justify-center gap-2 px-3">
+                {matchId && <button type="button" onClick={() => void updatePhotos()} disabled={updating} className={solid}>{updating ? 'Updating…' : 'Update my photos'}</button>}
                 <button type="button" onClick={pick} className={ghost}>Search again</button>
+                {matchId && <button type="button" onClick={forgetMe} className={ghost}>Forget me</button>}
               </div>
+              {(hasNew || note) && (
+                <p role="status" className="mb-3 px-6 text-center text-sm text-muted">{note || 'New photos may be ready. Tap Update my photos.'}</p>
+              )}
               <PhotoGrid photos={photos} onOpen={(p) => setSelected(photos.findIndex((x) => x.id === p.id))} onNearEnd={() => {}} hasMore={false} />
             </div>
           )}

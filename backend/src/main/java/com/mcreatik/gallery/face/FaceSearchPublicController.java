@@ -13,6 +13,8 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,6 +45,7 @@ public class FaceSearchPublicController {
     @PostMapping(path = "/find-me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<FaceSearchService.FindResult> findMe(@PathVariable String slug,
                                                                @RequestParam(value = "selfie", required = false) MultipartFile selfie,
+                                                               @RequestParam(value = "visitorId", required = false) String visitorId,
                                                                HttpServletRequest request) throws IOException {
         Event event = events.publicEvent(slug);
         faces.requireSearchable(event);
@@ -57,7 +60,29 @@ public class FaceSearchPublicController {
             throw ApiException.badRequest("BAD_IMAGE", "Use a JPEG, PNG or WebP photo");
         }
         byte[] image = readableImage(selfie.getBytes());
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(faces.find(event, image, request.getRemoteAddr()));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(faces.find(event, image, request.getRemoteAddr(), visitorId));
+    }
+
+    /** A remembered match's photos: database only, no cost. 404 when the id is unknown or gone. */
+    @GetMapping("/matches/{matchId}")
+    public ResponseEntity<FaceSearchService.MatchResult> match(@PathVariable String slug, @PathVariable String matchId) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(faces.match(events.publicEvent(slug), matchId));
+    }
+
+    /** "Update my photos": searches again by the remembered faces, only when photos were indexed since the last check. */
+    @PostMapping("/matches/{matchId}/refresh")
+    public ResponseEntity<FaceSearchService.MatchResult> refresh(@PathVariable String slug, @PathVariable String matchId,
+                                                                 @RequestParam(value = "visitorId", required = false) String visitorId,
+                                                                 HttpServletRequest request) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(faces.refresh(events.publicEvent(slug), matchId, request.getRemoteAddr(), visitorId));
+    }
+
+    /** "Forget me". */
+    @DeleteMapping("/matches/{matchId}")
+    public ResponseEntity<Void> forget(@PathVariable String slug, @PathVariable String matchId) {
+        faces.forget(events.publicEvent(slug), matchId);
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
     static ApiException tooLarge() {

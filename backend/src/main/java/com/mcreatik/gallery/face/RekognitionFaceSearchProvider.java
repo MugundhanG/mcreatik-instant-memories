@@ -26,6 +26,7 @@ import software.amazon.awssdk.services.rekognition.model.ResourceAlreadyExistsEx
 import software.amazon.awssdk.services.rekognition.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.rekognition.model.SearchFacesByImageRequest;
 import software.amazon.awssdk.services.rekognition.model.SearchFacesByImageResponse;
+import software.amazon.awssdk.services.rekognition.model.SearchFacesRequest;
 
 /** AWS Rekognition (Mumbai, ap-south-1). Credentials belong to an IAM user limited to Rekognition. */
 public class RekognitionFaceSearchProvider implements FaceSearchProvider {
@@ -85,12 +86,13 @@ public class RekognitionFaceSearchProvider implements FaceSearchProvider {
     }
 
     @Override
-    public List<String> searchFaces(String collection, byte[] imageBytes, float threshold, int maxFaces) {
+    public List<FaceMatch> searchFaces(String collection, byte[] imageBytes, float threshold, int maxFaces) {
         try {
             SearchFacesByImageResponse response = client.searchFacesByImage(SearchFacesByImageRequest.builder()
                     .collectionId(collection).image(Image.builder().bytes(SdkBytes.fromByteArrayUnsafe(imageBytes)).build())
                     .faceMatchThreshold(threshold).maxFaces(maxFaces).qualityFilter(QualityFilter.AUTO).build());
-            return response.faceMatches().stream().map(m -> m.face().faceId()).toList();
+            return response.faceMatches().stream()
+                    .map(m -> new FaceMatch(m.face().faceId(), m.similarity() == null ? 0f : m.similarity())).toList();
         } catch (ResourceNotFoundException e) {
             return List.of(); // nothing indexed yet
         } catch (InvalidImageFormatException e) {
@@ -100,6 +102,17 @@ public class RekognitionFaceSearchProvider implements FaceSearchProvider {
                 throw new NoFaceException();
             }
             throw new BadImageException("The image was refused");
+        }
+    }
+
+    @Override
+    public List<String> searchFacesByFaceId(String collection, String faceId, float threshold, int maxFaces) {
+        try {
+            return client.searchFaces(SearchFacesRequest.builder().collectionId(collection).faceId(faceId)
+                            .faceMatchThreshold(threshold).maxFaces(maxFaces).build())
+                    .faceMatches().stream().map(m -> m.face().faceId()).toList();
+        } catch (ResourceNotFoundException | InvalidParameterException e) {
+            return List.of(); // the collection or that face is gone (its photo was deleted)
         }
     }
 

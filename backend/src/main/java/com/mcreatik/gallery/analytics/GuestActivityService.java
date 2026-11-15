@@ -74,17 +74,22 @@ public class GuestActivityService {
     private static Object[] row(UUID eventId, String visitorId, Item item) {
         GuestActivity.Type type;
         try {
-            type = GuestActivity.Type.valueOf(String.valueOf(item.type()).toUpperCase(Locale.ROOT));
+            type = GuestActivity.Type.valueOf(String.valueOf(item.type()).toUpperCase(Locale.ROOT)); // FACE_* are server-only
         } catch (IllegalArgumentException e) {
             return null;
         }
-        String source = type == GuestActivity.Type.VISIT ? ("qr".equals(item.source()) ? "qr" : "link") : null;
+        String source = null;
+        if (type == GuestActivity.Type.VISIT) {
+            source = "qr".equals(item.source()) ? "qr" : "link";
+        } else if ((type == GuestActivity.Type.DOWNLOAD || type == GuestActivity.Type.LIKE) && "face".equals(item.source())) {
+            source = "face"; // from the "Photos of you" results
+        }
         return new Object[] {eventId, type.name(), visitorId, item.photoId(), source};
     }
 
     public GuestActivity.Summary summary(UUID eventId) {
         GuestActivity.Totals totals = jdbc.queryForObject("""
-                SELECT count(DISTINCT visitor_id),
+                SELECT count(DISTINCT visitor_id) FILTER (WHERE left(type, 5) <> 'FACE_'),
                        count(*) FILTER (WHERE type = 'VISIT' AND source = 'qr'),
                        count(*) FILTER (WHERE type = 'VISIT'),
                        count(*) FILTER (WHERE type = 'PHOTO_VIEW'),
@@ -101,20 +106,41 @@ public class GuestActivityService {
 
         List<GuestActivity.Hour> hours = jdbc.query("""
                 SELECT to_char(date_trunc('hour', created_at AT TIME ZONE '%s'), 'YYYY-MM-DD"T"HH24:00') AS h,
-                       count(DISTINCT visitor_id),
+                       count(DISTINCT visitor_id) FILTER (WHERE left(type, 5) <> 'FACE_'),
                        count(*) FILTER (WHERE type = 'PHOTO_VIEW'),
                        count(*) FILTER (WHERE type = 'DOWNLOAD')
-                FROM guest_activity WHERE event_id = ?
+                FROM guest_activity WHERE event_id = ? AND left(type, 5) <> 'FACE_'
                 GROUP BY h ORDER BY h""".formatted(ZONE),
                 (rs, n) -> new GuestActivity.Hour(rs.getString(1), rs.getLong(2), rs.getLong(3), rs.getLong(4)),
                 eventId);
 
         List<GuestActivity.TopPhoto> top = topPhotos(eventId, "downloads DESC, views DESC", null);
-        Timestamp last = jdbc.queryForObject("SELECT max(created_at) FROM guest_activity WHERE event_id = ?",
+        Timestamp last = jdbc.queryForObject("SELECT max(created_at) FROM guest_activity WHERE event_id = ? AND left(type, 5) <> 'FACE_'",
                 Timestamp.class, eventId);
         Instant lastAt = last == null ? null : last.toInstant();
         return new GuestActivity.Summary(totals, hours, top, lastAt, topPhotos(eventId, "likes DESC, downloads DESC", "likes"),
-                topPhotos(eventId, "downloads DESC, views DESC", "downloads"), topPhotos(eventId, "views DESC, downloads DESC", "views"));
+                topPhotos(eventId, "downloads DESC, views DESC", "downloads"), topPhotos(eventId, "views DESC, downloads DESC", "views"),
+                faceStats(eventId));
+    }
+
+    /** The "Find my photos" numbers, or null when the event does not have the add-on (the section stays hidden). */
+    private GuestActivity.FaceStats faceStats(UUID eventId) {
+        Boolean on = jdbc.queryForObject("SELECT face_search_enabled FROM events WHERE id = ?", Boolean.class, eventId);
+        if (!Boolean.TRUE.equals(on)) {
+            return null;
+        }
+        return jdbc.queryForObject("""
+                SELECT count(*) FILTER (WHERE type = 'FACE_SEARCH'),
+                       count(*) FILTER (WHERE type = 'FACE_FAILED'),
+                       count(*) FILTER (WHERE type = 'FACE_FOUND'),
+                       COALESCE(sum(amount) FILTER (WHERE type IN ('FACE_FOUND', 'FACE_UPDATE')), 0),
+                       count(*) FILTER (WHERE type = 'FACE_UPDATE'),
+                       count(*) FILTER (WHERE type = 'DOWNLOAD' AND source = 'face'),
+                       count(*) FILTER (WHERE type = 'LIKE' AND source = 'face')
+                FROM guest_activity WHERE event_id = ?""",
+                (rs, n) -> new GuestActivity.FaceStats(rs.getLong(1), rs.getLong(2), rs.getLong(3), rs.getLong(4), rs.getLong(5),
+                        rs.getLong(6), rs.getLong(7)),
+                eventId);
     }
 
     /** Photos still in the gallery (deleted or hidden ones drop out), ranked; {@code nonZero}: leave out photos at 0 of it. */

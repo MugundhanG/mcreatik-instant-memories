@@ -32,6 +32,7 @@ public class FakeFaceSearchProvider implements FaceSearchProvider {
     public final List<String> deletedCollections = new CopyOnWriteArrayList<>();
     public final List<String> deletedFaceIds = new CopyOnWriteArrayList<>();
     public final List<String> searchedCollections = new CopyOnWriteArrayList<>();
+    public final List<String> searchedByFaceId = new CopyOnWriteArrayList<>();
 
     /** Forgets everything (between tests). */
     public void reset() {
@@ -43,6 +44,7 @@ public class FakeFaceSearchProvider implements FaceSearchProvider {
         deletedCollections.clear();
         deletedFaceIds.clear();
         searchedCollections.clear();
+        searchedByFaceId.clear();
     }
 
     /** The photo shows these people (one face each). */
@@ -104,7 +106,7 @@ public class FakeFaceSearchProvider implements FaceSearchProvider {
     }
 
     @Override
-    public List<String> searchFaces(String collection, byte[] imageBytes, float threshold, int maxFaces) {
+    public List<FaceMatch> searchFaces(String collection, byte[] imageBytes, float threshold, int maxFaces) {
         searchedCollections.add(collection);
         String key = hash(imageBytes);
         if (noFace.contains(key)) {
@@ -115,7 +117,25 @@ public class FakeFaceSearchProvider implements FaceSearchProvider {
             return List.of();
         }
         String person = selfiePeople.getOrDefault(key, "p-" + key);
-        return faces.stream().filter(f -> f.person().equals(person)).map(Face::faceId).limit(maxFaces).toList();
+        List<String> ids = faces.stream().filter(f -> f.person().equals(person)).map(Face::faceId).limit(maxFaces).toList();
+        List<FaceMatch> matches = new ArrayList<>();
+        for (int i = 0; i < ids.size(); i++) {
+            matches.add(new FaceMatch(ids.get(i), Math.max(80f, 99.9f - i))); // the first indexed face is the best match
+        }
+        return matches;
+    }
+
+    @Override
+    public List<String> searchFacesByFaceId(String collection, String faceId, float threshold, int maxFaces) {
+        searchedByFaceId.add(faceId);
+        List<Face> faces = collections.get(collection);
+        if (faces == null) {
+            return List.of();
+        }
+        return faces.stream().filter(f -> f.faceId().equals(faceId)).findFirst()
+                .map(seed -> faces.stream().filter(f -> f.person().equals(seed.person()) && !f.faceId().equals(faceId))
+                        .map(Face::faceId).limit(maxFaces).toList())
+                .orElse(List.of());
     }
 
     @Override

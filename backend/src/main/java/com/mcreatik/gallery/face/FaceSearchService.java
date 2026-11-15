@@ -1,9 +1,12 @@
 package com.mcreatik.gallery.face;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,8 +46,19 @@ public class FaceSearchService {
     private static final Runnable NOTHING = () -> {
     };
 
-    public record FindResult(List<PhotoDtos.PublicPhoto> photos, int count) {
+    public record FindResult(List<PhotoDtos.PublicPhoto> photos, int count, String matchId) {
     }
+
+    /** A remembered match: its photos now, and whether photos were indexed since it was last checked. */
+    public record MatchResult(List<PhotoDtos.PublicPhoto> photos, int count, boolean hasNew) {
+    }
+
+    /** guest_activity types the server writes for the studio's "Find my photos" stats. */
+    public static final String TYPE_SEARCH = "FACE_SEARCH";
+    public static final String TYPE_FAILED = "FACE_FAILED";
+    public static final String TYPE_FOUND = "FACE_FOUND";
+    public static final String TYPE_UPDATE = "FACE_UPDATE";
+    private static final java.util.regex.Pattern VISITOR_ID = java.util.regex.Pattern.compile("^[A-Za-z0-9-]{8,40}$");
 
     /** {@code indexed} of {@code total} guest photos have their faces in the engine. */
     public record Status(boolean enabled, boolean available, long indexed, long total) {
@@ -54,17 +68,19 @@ public class FaceSearchService {
     private final JdbcTemplate jdbc;
     private final PhotoRepository photos;
     private final PhotoMapper mapper;
+    private final GuestMatchService matches;
     private final GalleryProperties.FaceSearch config;
 
     private final Set<String> knownCollections = ConcurrentHashMap.newKeySet();
     private final Map<String, ArrayDeque<Long>> searchesByIp = new ConcurrentHashMap<>();
 
     public FaceSearchService(FaceSearchProvider provider, JdbcTemplate jdbc, PhotoRepository photos, PhotoMapper mapper,
-                             GalleryProperties properties) {
+                             GuestMatchService matches, GalleryProperties properties) {
         this.provider = provider;
         this.jdbc = jdbc;
         this.photos = photos;
         this.mapper = mapper;
+        this.matches = matches;
         this.config = properties.faceSearch();
     }
 
@@ -110,12 +126,14 @@ public class FaceSearchService {
     public void disable(UUID eventId) {
         jdbc.update("UPDATE events SET face_search_enabled = false, updated_at = now() WHERE id = ?", eventId);
         jdbc.update("DELETE FROM photo_faces WHERE event_id = ?", eventId);
+        matches.deleteForEvent(eventId);
         jdbc.update("UPDATE photos SET face_indexed_at = NULL, face_attempts = 0, face_next_attempt_at = NULL WHERE event_id = ?", eventId);
         dropCollectionAfterCommit(eventId);
     }
 
     /** The event is deleted or its photos are (retention): its collection goes once the change is committed. */
     public void removeEvent(Event event) {
+        matches.deleteForEvent(event.getId()); // an archived event keeps its row, so the cascade is not enough
         if (event.isFaceSearchEnabled()) {
             dropCollectionAfterCommit(event.getId());
         }
@@ -192,11 +210,124 @@ public class FaceSearchService {
     // ---- Guest search ----
 
     /**
-     * Finds the guest photos the selfie appears in. {@code ip} and the event's daily cap bound what a stranger can
-     * spend on AWS. Throws NO_FACE when the selfie has no face, BAD_IMAGE when the engine cannot read it.
+     * Finds the guest photos the selfie appears in and remembers the match ({@code matchId}, null when nothing matched).
+     * {@code ip} and the event's daily cap bound what a stranger can spend on AWS. Throws NO_FACE when the selfie has no
+     * face, BAD_IMAGE when the engine cannot read it. {@code visitorId} (optional) only labels the studio's stats.
      */
-    public FindResult find(Event event, byte[] selfie, String ip) {
+    public FindResult find(Event event, byte[] selfie, String ip, String visitorId) {
         requireSearchable(event);
+        takeSlots(event, ip);
+        String visitor = visitor(visitorId);
+        record(event.getId(), TYPE_SEARCH, visitor, null);
+        Instant checkedAt = matches.now();
+        List<FaceSearchProvider.FaceMatch> found;
+        try {
+            found = provider.searchFaces(collectionName(event.getId()), selfie, config.matchThreshold(), config.maxMatches());
+        } catch (FaceSearchProvider.NoFaceException e) {
+            record(event.getId(), TYPE_FAILED, visitor, null);
+            throw ApiException.badRequest("NO_FACE", "We couldn't find a face in that photo. Try a clear, well-lit selfie.");
+        } catch (FaceSearchProvider.BadImageException e) {
+            record(event.getId(), TYPE_FAILED, visitor, null);
+            throw ApiException.badRequest("BAD_IMAGE", "We couldn't read that photo. Please try another one.");
+        }
+        List<String> faceIds = found.stream().map(FaceSearchProvider.FaceMatch::faceId).distinct().toList();
+        List<String> seeds = found.stream().sorted(Comparator.comparingDouble(FaceSearchProvider.FaceMatch::similarity).reversed())
+                .map(FaceSearchProvider.FaceMatch::faceId).distinct().limit(GuestMatchService.MAX_SEEDS).toList();
+        List<PhotoDtos.PublicPhoto> photosFound = visiblePhotos(event.getId(), faceIds);
+        String matchId = null;
+        if (!faceIds.isEmpty()) {
+            matchId = matches.create(event.getId(), seeds, faceIds, checkedAt).toString();
+            if (!photosFound.isEmpty()) {
+                record(event.getId(), TYPE_FOUND, visitor, photosFound.size());
+            }
+        }
+        return new FindResult(photosFound, photosFound.size(), matchId);
+    }
+
+    /** What a remembered match shows now: a database lookup, no engine call and no cost. */
+    public MatchResult match(Event event, String matchId) {
+        requireSearchable(event);
+        GuestMatchService.Match m = requireMatch(event, matchId);
+        return view(event, m);
+    }
+
+    /**
+     * "Update my photos". The engine is only asked (a search by each seed face, about 10 paise each) when photos were
+     * indexed after the match was last checked; the same per-IP and per-event caps as a search apply then.
+     */
+    public MatchResult refresh(Event event, String matchId, String ip, String visitorId) {
+        requireSearchable(event);
+        GuestMatchService.Match m = requireMatch(event, matchId);
+        if (matches.hasNew(m.id())) {
+            List<String> seeds = existingFaces(event.getId(), m.seedFaceIds());
+            if (seeds.isEmpty()) {
+                matches.update(m.id(), m.seedFaceIds(), m.faceIds(), matches.now()); // nothing to search by; just mark checked
+            } else {
+                takeSlots(event, ip);
+                Instant checkedAt = matches.now();
+                int before = visiblePhotos(event.getId(), m.faceIds()).size();
+                Set<String> merged = new LinkedHashSet<>(m.faceIds());
+                for (String seed : seeds) {
+                    merged.addAll(provider.searchFacesByFaceId(collectionName(event.getId()), seed, config.matchThreshold(),
+                            config.maxMatches()));
+                }
+                List<String> all = List.copyOf(merged);
+                matches.update(m.id(), seeds, all, checkedAt);
+                record(event.getId(), TYPE_UPDATE, visitor(visitorId), Math.max(0, visiblePhotos(event.getId(), all).size() - before));
+                m = new GuestMatchService.Match(m.id(), m.eventId(), seeds, all, checkedAt);
+            }
+            m = matches.find(event.getId(), m.id()).orElse(m);
+        }
+        return view(event, m);
+    }
+
+    /** "Forget me": the match is deleted (always fine to repeat). */
+    public void forget(Event event, String matchId) {
+        UUID id = parse(matchId);
+        if (id != null) {
+            matches.delete(event.getId(), id);
+        }
+    }
+
+    private MatchResult view(Event event, GuestMatchService.Match m) {
+        List<PhotoDtos.PublicPhoto> photosFound = visiblePhotos(event.getId(), m.faceIds());
+        return new MatchResult(photosFound, photosFound.size(), matches.hasNew(m.id()));
+    }
+
+    private GuestMatchService.Match requireMatch(Event event, String matchId) {
+        UUID id = parse(matchId);
+        return (id == null ? java.util.Optional.<GuestMatchService.Match>empty() : matches.find(event.getId(), id))
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MATCH_NOT_FOUND", "That match is gone"));
+    }
+
+    private static UUID parse(String id) {
+        try {
+            return id == null ? null : UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private List<PhotoDtos.PublicPhoto> visiblePhotos(UUID eventId, List<String> faceIds) {
+        List<Photo> found = faceIds.isEmpty() ? List.of() : photos.findVisibleByFaceIds(eventId, faceIds);
+        return found.stream().map(mapper::toPublic).toList();
+    }
+
+    /** The faces of these ids that are still in the event's photos. */
+    private List<String> existingFaces(UUID eventId, List<String> faceIds) {
+        if (faceIds.isEmpty()) {
+            return List.of();
+        }
+        String marks = String.join(",", java.util.Collections.nCopies(faceIds.size(), "?"));
+        List<Object> args = new java.util.ArrayList<>();
+        args.add(eventId);
+        args.addAll(faceIds);
+        List<String> alive = jdbc.queryForList("SELECT DISTINCT face_id FROM photo_faces WHERE event_id = ? AND face_id IN (" + marks + ")",
+                String.class, args.toArray());
+        return faceIds.stream().filter(alive::contains).toList();
+    }
+
+    private void takeSlots(Event event, String ip) {
         if (!takeIpSlot(ip)) {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "FACE_SEARCH_LIMIT",
                     "You have searched a lot in the last hour. Please try again later, or scroll through all the photos.");
@@ -205,16 +336,20 @@ public class FaceSearchService {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "FACE_SEARCH_LIMIT",
                     "Face search has reached its limit for today on this gallery. Please try again tomorrow.");
         }
-        List<String> faceIds;
+    }
+
+    // ---- Studio stats (rows in guest_activity, written here, never by the guest's browser) ----
+
+    private static String visitor(String visitorId) {
+        return visitorId != null && VISITOR_ID.matcher(visitorId).matches() ? visitorId : "face-anonymous";
+    }
+
+    private void record(UUID eventId, String type, String visitor, Integer amount) {
         try {
-            faceIds = provider.searchFaces(collectionName(event.getId()), selfie, config.matchThreshold(), config.maxMatches());
-        } catch (FaceSearchProvider.NoFaceException e) {
-            throw ApiException.badRequest("NO_FACE", "We couldn't find a face in that photo. Try a clear, well-lit selfie.");
-        } catch (FaceSearchProvider.BadImageException e) {
-            throw ApiException.badRequest("BAD_IMAGE", "We couldn't read that photo. Please try another one.");
+            jdbc.update("INSERT INTO guest_activity (event_id, type, visitor_id, amount) VALUES (?, ?, ?, ?)", eventId, type, visitor, amount);
+        } catch (Exception e) {
+            log.warn("Could not record face search activity: {}", e.toString()); // stats never break a search
         }
-        List<Photo> found = faceIds.isEmpty() ? List.of() : photos.findVisibleByFaceIds(event.getId(), faceIds);
-        return new FindResult(found.stream().map(mapper::toPublic).toList(), found.size());
     }
 
     private boolean takeIpSlot(String ip) {
@@ -260,6 +395,14 @@ public class FaceSearchService {
      */
     @Scheduled(cron = "0 47 3 * * *", zone = "UTC")
     public int sweepOrphanCollections() {
+        try {
+            int stale = matches.deleteOrphans();
+            if (stale > 0) {
+                log.info("Face search: deleted {} remembered matches of galleries without the add-on", stale);
+            }
+        } catch (Exception e) {
+            log.warn("Face search: could not clean up remembered matches: {}", e.toString());
+        }
         if (!config.enabled()) {
             return 0;
         }

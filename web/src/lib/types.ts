@@ -314,6 +314,22 @@ export interface GuestAnalytics {
   mostDownloaded?: TopPhoto[]
   mostViewed?: TopPhoto[]
   lastActivityAt: string | null
+  /** "Find my photos" numbers; only present when the event has the add-on. */
+  faceSearch?: FaceSearchStats | null
+}
+
+export interface FaceSearchStats {
+  searches: number
+  /** Searches that failed (no face, unreadable photo). */
+  failed: number
+  /** Guests who found at least one photo. */
+  guestsFound: number
+  photosFound: number
+  /** "Update my photos" taps that searched again. */
+  updates: number
+  /** Downloads and likes of photos opened from the face results. */
+  downloads: number
+  likes: number
 }
 
 /** Where the browser PUTs a full-quality original (see adminApi.originalUpload). */
@@ -431,6 +447,15 @@ export interface Prices {
 export interface FindMeResult {
   photos: PublicPhoto[]
   count: number
+  /** The code this phone keeps to show the photos again ("Remember me"); absent when nothing matched. */
+  matchId?: string | null
+}
+
+/** A remembered match: its photos now, and whether photos were scanned since it was last checked. */
+export interface MatchResult {
+  photos: PublicPhoto[]
+  count: number
+  hasNew: boolean
 }
 
 /** One event's "Find my photos" add-on, for the dashboard. */

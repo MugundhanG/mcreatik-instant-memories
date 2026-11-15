@@ -21,6 +21,10 @@ These are people at the event who scan the QR code. They never log in.
 | It says it couldn't see a face. | Try again in good light, facing the camera, with nothing covering your face. |
 | It says no photos of me yet. | New photos arrive during the event, and every new photo is scanned. Try again later. |
 | It says too many searches. | There is a limit to stop misuse. Try again in a while. |
+| Do I have to take the selfie again next time? | No. This phone remembers you: open the gallery and Photos of you is there. Tap Update my photos for new ones (it says New photos may be ready). It only works on the same phone and browser. |
+| What does Remember me keep? | A random code on your phone, and on our server the same code linked to the faces that matched you (never your selfie). Tap Forget me to delete both. They are also deleted when the gallery's photos are deleted. |
+| How do I forget me? | Tap Forget me on the Photos of you page. |
+| It says my selfie is too dark, blurry or small. | The phone checks the selfie first. Follow the tip (better light, hold still, come closer) and Retake. After two tries you can tap Use anyway. |
 | Is my selfie saved? | No. It is used once for that search and then discarded. We don't keep it or log it. |
 | What happens to my face data? | To match photos, the gallery's photos are scanned and each face becomes a face template (numbers, not a picture), processed by Amazon Web Services in Mumbai, India, only for that event. Templates are deleted when a photo is removed and with the gallery's photos, 30 days after the gallery period. You can ask us to remove yours: connect@mcreatik.com. |
 | Do I have to use it? | No. It is optional and you must agree first. The gallery works the same without it. |

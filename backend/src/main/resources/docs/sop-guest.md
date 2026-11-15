@@ -40,9 +40,12 @@ Some galleries have a **Find my photos** button near the top. It shows only the 
 1. Tap **Find my photos**. Read the short notice, tick **I agree**, and tap **Take a selfie**.
 2. Take a selfie in good light, facing the camera. Your phone's front camera opens (or choose a photo).
 3. In a few seconds you see **Photos of you**. Tap a photo to view, like or download it, as in the main gallery.
-4. Tap **Search again** to try another selfie, or **Back to all photos** to return to everything.
+4. Your phone remembers you. Next time you open the gallery on the same phone, **Photos of you** is already there, with no new selfie. Tap **Update my photos** to look for photos added since (it says **New photos may be ready** when there are some).
+5. Tap **Forget me** to remove it from this phone and our server. Tap **Search again** to try another selfie, or **Back to all photos** to return to everything.
 
-If it says it couldn't see a face, try again in better light, facing the camera. If it shows no photos yet, new photos arrive during the event: try again later. Your selfie is used once for that search and is not saved. The face data for the gallery is deleted when the gallery's photos are deleted.
+If the selfie looks too dark, too bright, blurry or small, the page tells you what to fix (move to better light, hold the phone still, come closer) and you can retake it. If you are sure it is fine, tap **Use anyway** (shown after two tries).
+
+If it says it couldn't see a face, try again in better light, facing the camera. If it shows no photos yet, new photos arrive during the event: try again later. Your selfie is used once for that search and is not saved. Your phone keeps only a random code, which we link to the faces that matched, so your photos can be shown again; **Forget me** deletes it. The face data for the gallery is deleted when the gallery's photos are deleted.
 
 ## 5. Photos after the event
 

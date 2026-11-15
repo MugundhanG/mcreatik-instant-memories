@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, Gallery, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, FaceSearchStatus, FindMeResult, EventType, DocPage, DocPageSummary, GuestAnalytics, HqRequest, HqRequestInput, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, Gallery, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, FaceSearchStatus, FindMeResult, MatchResult, EventType, DocPage, DocPageSummary, GuestAnalytics, HqRequest, HqRequestInput, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export type BulkPhotoAction = 'LIKE' | 'UNLIKE' | 'HIDE' | 'SHOW' | 'DELETE'
 
@@ -111,11 +111,21 @@ export const publicApi = {
   },
   categories: (slug: string) => request<Category[]>(`/api/public/events/${encodeURIComponent(slug)}/categories`),
   /** "Find my photos": the guest's selfie (a JPEG, already resized) in, the photos they appear in out. */
-  findMe: (slug: string, selfie: Blob) => {
+  findMe: (slug: string, selfie: Blob, visitorId?: string) => {
     const form = new FormData()
     form.append('selfie', selfie, 'selfie.jpg')
+    if (visitorId) form.append('visitorId', visitorId) // only labels the studio's stats
     return request<FindMeResult>(`/api/public/events/${encodeURIComponent(slug)}/find-me`, { method: 'POST', body: form })
   },
+  /** "Remember me": the photos of a remembered match (a database lookup, no cost). 404 when it is gone. */
+  match: (slug: string, matchId: string) =>
+    request<MatchResult>(`/api/public/events/${encodeURIComponent(slug)}/matches/${encodeURIComponent(matchId)}`),
+  /** "Update my photos": looks again only if new photos were scanned. */
+  refreshMatch: (slug: string, matchId: string, visitorId?: string) =>
+    request<MatchResult>(`/api/public/events/${encodeURIComponent(slug)}/matches/${encodeURIComponent(matchId)}/refresh${visitorId ? `?visitorId=${encodeURIComponent(visitorId)}` : ''}`, { method: 'POST' }),
+  /** "Forget me". */
+  forgetMatch: (slug: string, matchId: string) =>
+    request<void>(`/api/public/events/${encodeURIComponent(slug)}/matches/${encodeURIComponent(matchId)}`, { method: 'DELETE' }),
   requestHq: (slug: string, body: HqRequestInput) =>
     request<void>(`/api/public/events/${encodeURIComponent(slug)}/hq-requests`, { method: 'POST', body: json(body) }),
   streamUrl: (slug: string) => `${API_BASE_URL}/api/public/events/${encodeURIComponent(slug)}/stream`,

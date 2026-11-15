@@ -62,7 +62,7 @@ All endpoints live under `https://im-api.mcreatik.com`. Requests and responses a
 | GET | `/api/admin/events/{eventId}/logo` | Admin | The owning studio's logo file, for the event and table cards (404 without a logo) |
 | PATCH | `/api/admin/events/{eventId}/access` | Super | `{liveGallery?, clientGallery?}` |
 | GET | `/api/admin/events/{eventId}/stats` | Admin | Counts, storage, per-uploader status |
-| GET | `/api/admin/events/{eventId}/analytics` | Admin | Totals, hourly chart, top photos |
+| GET | `/api/admin/events/{eventId}/analytics` | Admin | Totals, hourly chart, top photos, and `faceSearch` `{searches, failed, guestsFound, photosFound, updates, downloads, likes}` (null unless the event has the Find my photos add-on). Guests' browsers send `DOWNLOAD` / `LIKE` items with `source: "face"` for photos opened from their results; the `FACE_*` rows are written by the server only |
 
 ## Photos
 
@@ -138,7 +138,10 @@ All paths in this section start with `/api/admin/events/{eventId}`.
 | GET | `/api/public/events/{slug}/photos` | `?before=` or `?after=` cursor; 40 default, 100 max, 200 for catch-up; `?category=` filters by category. Guests only ever get `GUEST` photos |
 | GET | `/api/public/events/{slug}/categories` | The event's guest-gallery categories, with photo counts |
 | POST | `/api/public/events/{slug}/hq-requests` | "Get HD photo": `{photoId, contact, name?, visitorId}`; `contact` is an email or a 10-digit WhatsApp number → 204. 400 `INVALID_CONTACT`; 409 `TOO_MANY_REQUESTS` (per visitor) |
-| POST | `/api/public/events/{slug}/find-me` | "Find my photos": multipart field `selfie` (JPEG, PNG or WebP, 5 MB at most) → `{photos[], count}` (the same photo JSON as `/photos`: guest, ready, not hidden, newest first). The selfie is held in memory for the request only: never stored, never logged. 400 `NO_FACE` / `BAD_IMAGE`, 404 `FACE_SEARCH_OFF`, 413 `SELFIE_TOO_LARGE`, 429 `FACE_SEARCH_LIMIT` (per IP per hour, or the event's daily cap) |
+| POST | `/api/public/events/{slug}/find-me` | "Find my photos": multipart field `selfie` (JPEG, PNG or WebP, 5 MB at most) → `{photos[], count, matchId}` (the same photo JSON as `/photos`: guest, ready, not hidden, newest first). Optional field `visitorId` only labels the studio's stats. `matchId` is the "remember me" code the phone keeps (null when nothing matched). The selfie is held in memory for the request only: never stored, never logged. 400 `NO_FACE` / `BAD_IMAGE`, 404 `FACE_SEARCH_OFF`, 413 `SELFIE_TOO_LARGE`, 429 `FACE_SEARCH_LIMIT` (per IP per hour, or the event's daily cap) |
+| GET | `/api/public/events/{slug}/matches/{matchId}` | Remember me: the remembered match's photos `{photos[], count, hasNew}`. A database lookup only (no AWS call, no cost); `hasNew` = photos were indexed since the last check. 404 `MATCH_NOT_FOUND` for an unknown, expired or other event's id (the app then forgets it), 404 `FACE_SEARCH_OFF` |
+| POST | `/api/public/events/{slug}/matches/{matchId}/refresh` | "Update my photos": same JSON. The engine is asked (a search by each stored seed face) only when photos were indexed since the last check; the same 429 `FACE_SEARCH_LIMIT` caps as `find-me` apply then. Otherwise answered from the database |
+| DELETE | `/api/public/events/{slug}/matches/{matchId}` | "Forget me": deletes the match; 204 also when it is already gone |
 | GET | `/api/public/events/{slug}/stream` | `text/event-stream`: `CONNECTED`, `PHOTO_READY`, `PHOTO_REMOVED`, `EVENT_STATUS`, `GALLERY_CLOSED` |
 | POST | `/api/public/events/{slug}/activity` | `{visitorId, items[]}`, max 50 items → 204. Types: `VISIT`, `PHOTO_VIEW`, `DOWNLOAD`, `LIKE` / `UNLIKE` (the heart; one like per visitor and photo), `SHARE` (old clients only; the app no longer sends it), `INSTAGRAM`, `CONTACT` (WhatsApp / call tap, counted as `totals.contacts`) |
 

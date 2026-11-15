@@ -64,6 +64,7 @@ describe('Policy pages', () => {
     expect(screen.getByRole('heading', { name: 'Face search (optional add-on)' })).toBeInTheDocument()
     expect(screen.getByText(/You must tell guests at your event that face search is on/)).toBeInTheDocument()
     expect(screen.getByText(/Find your photos with a selfie/)).toBeInTheDocument()
+    expect(screen.getByText(/random match code is kept on the guest's phone and on our server, linked to their face matches/)).toHaveTextContent(/"Forget me"/)
   })
 
   it('renders the terms and contact pages with links to every policy', () => {

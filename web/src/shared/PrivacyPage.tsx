@@ -48,6 +48,7 @@ export default function PrivacyPage() {
           <ul className="list-disc space-y-1.5 pl-5">
             <li>Your selfie is used once, for that search, to find the photos you are in. It is not saved, and we do not keep it or log it.</li>
             <li>To make the search work, the event's gallery photos are scanned and each face in them becomes a face template (a string of numbers, not a photo). These templates are processed by Amazon Web Services (AWS) in Mumbai, India, only to match photos at that event. They are not used to identify anyone anywhere else, and not shared for any other purpose.</li>
+            <li>So that you do not need another selfie next time, your phone keeps a random match code, and our server keeps the same code linked to the faces that matched you (never your selfie), so your photos can be shown again. It is deleted when you tap <b>Forget me</b> or when the gallery's photos are deleted. The studio sees only counts, never who you are.</li>
             <li>Face templates are deleted when a photo is removed, and with the rest of the gallery's photos 30 days after the gallery's open period ends (or sooner if the studio turns face search off or deletes the event).</li>
             <li>You can ask us to remove your face data at any time: email <a className="underline underline-offset-4" href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a> with the gallery link.</li>
           </ul>

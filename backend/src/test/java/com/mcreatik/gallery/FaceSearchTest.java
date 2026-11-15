@@ -314,6 +314,249 @@ class FaceSearchTest extends IntegrationTest {
         assertThat(fake.hasCollection(collection(id))).isTrue();
     }
 
+    // ---- Remember me (v2) ----
+
+    private String matchIdOf(ResultActions found) throws Exception {
+        return JsonPath.read(found.andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), "$.matchId");
+    }
+
+    private ResultActions getMatch(String slug, String matchId) throws Exception {
+        return mvc.perform(get("/api/public/events/" + slug + "/matches/" + matchId));
+    }
+
+    private ResultActions refresh(String slug, String matchId, String remote) throws Exception {
+        return mvc.perform(post("/api/public/events/" + slug + "/matches/" + matchId + "/refresh").with(r -> {
+            r.setRemoteAddr(remote);
+            return r;
+        }));
+    }
+
+    @Test
+    void aSearchCreatesAMatchWithAtMostFiveSeeds() throws Exception {
+        String event = createEvent("Remember", "LIVE");
+        String id = eventId(event);
+        String up = createUploader(id, "cam");
+        setFaceSearch(id, true);
+        for (int i = 0; i < 7; i++) {
+            photo(id, up, "alice");
+        }
+        indexAll();
+        String matchId = matchIdOf(findMe(slug(event), selfieOf("alice"), ip()).andExpect(jsonPath("$.count").value(7)));
+        UUID mid = UUID.fromString(matchId);
+        assertThat(jdbc.queryForObject("SELECT cardinality(face_ids) FROM guest_matches WHERE id = ?", Integer.class, mid)).isEqualTo(7);
+        assertThat(jdbc.queryForObject("SELECT cardinality(seed_face_ids) FROM guest_matches WHERE id = ?", Integer.class, mid)).isEqualTo(5);
+        // Nothing matched: no match is kept (there is nothing to remember).
+        findMe(slug(event), selfieOf("nobody"), ip()).andExpect(status().isOk()).andExpect(jsonPath("$.count").value(0))
+                .andExpect(jsonPath("$.matchId").doesNotExist());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM guest_matches WHERE event_id = ?", Long.class, UUID.fromString(id))).isEqualTo(1);
+    }
+
+    @Test
+    void gettingAMatchIsADatabaseLookupThatHidesHiddenAndDeletedPhotos() throws Exception {
+        String event = createEvent("Lookup", "LIVE");
+        String id = eventId(event);
+        String up = createUploader(id, "cam");
+        setFaceSearch(id, true);
+        String a = photo(id, up, "alice");
+        String b = photo(id, up, "alice");
+        String c = photo(id, up, "alice");
+        indexAll();
+        String matchId = matchIdOf(findMe(slug(event), selfieOf("alice"), ip()));
+        fake.searchedCollections.clear();
+
+        String body = getMatch(slug(event), matchId).andExpect(status().isOk()).andExpect(jsonPath("$.count").value(3))
+                .andExpect(jsonPath("$.hasNew").value(false)).andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<List<String>>read(body, "$.photos[*].id")).containsExactly(c, b, a);
+        mvc.perform(patch("/api/admin/photos/" + b).header("Authorization", bearer(adminToken()))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"hidden\":true}")).andExpect(status().isOk());
+        mvc.perform(delete("/api/admin/photos/" + c).header("Authorization", bearer(adminToken()))).andExpect(status().isNoContent());
+        body = getMatch(slug(event), matchId).andExpect(jsonPath("$.count").value(1)).andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<List<String>>read(body, "$.photos[*].id")).containsExactly(a);
+        assertThat(fake.searchedCollections).isEmpty();
+        assertThat(fake.searchedByFaceId).isEmpty();
+
+        // Unknown, malformed, and another event's match id are all just "gone".
+        getMatch(slug(event), UUID.randomUUID().toString()).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("MATCH_NOT_FOUND"));
+        getMatch(slug(event), "not-a-uuid").andExpect(status().isNotFound());
+        String other = createEvent("Else", "LIVE");
+        setFaceSearch(eventId(other), true);
+        getMatch(slug(other), matchId).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void refreshAsksTheEngineOnlyWhenPhotosWereIndexedSinceTheLastCheck() throws Exception {
+        String event = createEvent("Refresh", "LIVE");
+        String id = eventId(event);
+        String up = createUploader(id, "cam");
+        setFaceSearch(id, true);
+        photo(id, up, "alice");
+        photo(id, up, "bob");
+        indexAll();
+        String matchId = matchIdOf(findMe(slug(event), selfieOf("alice"), ip()).andExpect(jsonPath("$.count").value(1)));
+        String same = ip();
+
+        // Nothing new: straight from the database.
+        refresh(slug(event), matchId, same).andExpect(status().isOk()).andExpect(jsonPath("$.count").value(1)).andExpect(jsonPath("$.hasNew").value(false));
+        assertThat(fake.searchedByFaceId).isEmpty();
+
+        // A photo of someone else arrives: hasNew, a refresh searches once per seed, finds nothing new, and clears the hint.
+        photo(id, up, "carol");
+        indexAll();
+        getMatch(slug(event), matchId).andExpect(jsonPath("$.hasNew").value(true)).andExpect(jsonPath("$.count").value(1));
+        refresh(slug(event), matchId, same).andExpect(jsonPath("$.count").value(1)).andExpect(jsonPath("$.hasNew").value(false));
+        assertThat(fake.searchedByFaceId).hasSize(1);
+
+        // A new photo of alice: merged in.
+        String fresh = photo(id, up, "alice");
+        indexAll();
+        String body = refresh(slug(event), matchId, same).andExpect(jsonPath("$.count").value(2)).andExpect(jsonPath("$.hasNew").value(false))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<List<String>>read(body, "$.photos[*].id")).contains(fresh);
+        assertThat(fake.searchedByFaceId).hasSize(2);
+        refresh(slug(event), matchId, same).andExpect(jsonPath("$.count").value(2));
+        assertThat(fake.searchedByFaceId).hasSize(2); // checked again, nothing new: no engine call
+        getMatch(slug(event), matchId).andExpect(jsonPath("$.count").value(2));
+        refresh(slug(event), UUID.randomUUID().toString(), same).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void refreshIsBoundByTheSameCapsAsSearch() throws Exception {
+        String event = createEvent("RefreshCaps", "LIVE");
+        String id = eventId(event);
+        String up = createUploader(id, "cam");
+        setFaceSearch(id, true);
+        photo(id, up, "alice");
+        indexAll();
+        String same = ip();
+        String matchId = matchIdOf(findMe(slug(event), selfieOf("alice"), same)); // 1 of this visitor's 4 searches an hour
+        for (int i = 0; i < 3; i++) {
+            photo(id, up, "alice");
+            indexAll();
+            refresh(slug(event), matchId, same).andExpect(status().isOk());
+        }
+        photo(id, up, "alice");
+        indexAll();
+        refresh(slug(event), matchId, same).andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.code").value("FACE_SEARCH_LIMIT"));
+        getMatch(slug(event), matchId).andExpect(status().isOk()).andExpect(jsonPath("$.hasNew").value(true)); // reading is free
+
+        // The event's daily cap (6) is shared with other visitors: 4 used above, 2 left.
+        String other = ip();
+        findMe(slug(event), selfieOf("alice"), other).andExpect(status().isOk());
+        refresh(slug(event), matchId, ip()).andExpect(status().isOk());
+        photo(id, up, "alice");
+        indexAll();
+        refresh(slug(event), matchId, ip()).andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void forgetMeDeletesTheMatch() throws Exception {
+        String event = createEvent("Forget", "LIVE");
+        String id = eventId(event);
+        setFaceSearch(id, true);
+        photo(id, createUploader(id, "cam"), "alice");
+        indexAll();
+        String matchId = matchIdOf(findMe(slug(event), selfieOf("alice"), ip()));
+        mvc.perform(delete("/api/public/events/" + slug(event) + "/matches/" + matchId)).andExpect(status().isNoContent());
+        getMatch(slug(event), matchId).andExpect(status().isNotFound());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM guest_matches", Long.class)).isZero();
+        mvc.perform(delete("/api/public/events/" + slug(event) + "/matches/" + matchId)).andExpect(status().isNoContent()); // repeat is fine
+    }
+
+    @Test
+    void everyCleanupPathRemovesMatches() throws Exception {
+        // Add-on switched off.
+        String off = createEvent("MatchOff", "LIVE");
+        String offId = eventId(off);
+        setFaceSearch(offId, true);
+        photo(offId, createUploader(offId, "cam"), "alice");
+        indexAll();
+        String offMatch = matchIdOf(findMe(slug(off), selfieOf("alice"), ip()));
+        setFaceSearch(offId, false);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM guest_matches WHERE event_id = ?", Long.class, UUID.fromString(offId))).isZero();
+        getMatch(slug(off), offMatch).andExpect(status().isNotFound());
+
+        // Retention: the event row stays (archived), so the matches must be deleted explicitly.
+        String expiring = createEvent("MatchExpiring", "LIVE");
+        String ex = eventId(expiring);
+        setFaceSearch(ex, true);
+        photo(ex, createUploader(ex, "cam"), "alice");
+        indexAll();
+        findMe(slug(expiring), selfieOf("alice"), ip()).andExpect(status().isOk()).andExpect(jsonPath("$.matchId").exists());
+        jdbc.update("UPDATE events SET retention_until = ? WHERE id = ?", java.sql.Date.valueOf(LocalDate.now().minusDays(1)), UUID.fromString(ex));
+        var due = eventService.expiredEvents(LocalDate.now()).stream().filter(e -> e.getId().toString().equals(ex)).findFirst().orElseThrow();
+        eventService.deleteExpired(due);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM guest_matches WHERE event_id = ?", Long.class, UUID.fromString(ex))).isZero();
+
+        // The event is removed.
+        String removed = createEvent("MatchRemoved", "LIVE");
+        String rm = eventId(removed);
+        setFaceSearch(rm, true);
+        photo(rm, createUploader(rm, "cam"), "alice");
+        indexAll();
+        findMe(slug(removed), selfieOf("alice"), ip()).andExpect(status().isOk()).andExpect(jsonPath("$.matchId").exists());
+        mvc.perform(delete("/api/admin/events/" + rm).header("Authorization", bearer(adminToken()))).andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM guest_matches WHERE event_id = ?", Long.class, UUID.fromString(rm))).isZero();
+
+        // The nightly check: a match left behind on an event without the add-on.
+        String stale = createEvent("MatchStale", "LIVE");
+        UUID staleId = UUID.fromString(eventId(stale));
+        jdbc.update("INSERT INTO guest_matches (id, event_id) VALUES (?, ?)", UUID.randomUUID(), staleId);
+        faceService.sweepOrphanCollections();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM guest_matches WHERE event_id = ?", Long.class, staleId)).isZero();
+    }
+
+    // ---- Studio stats ----
+
+    private ResultActions analytics(String eventId) throws Exception {
+        return mvc.perform(get("/api/admin/events/" + eventId + "/analytics").header("Authorization", bearer(adminToken())));
+    }
+
+    @Test
+    void faceSearchStatsCountSearchesFindsUpdatesAndWhatCameOfThem() throws Exception {
+        String event = createEvent("Stats", "LIVE");
+        String id = eventId(event);
+        String slug = slug(event);
+        String up = createUploader(id, "cam");
+        analytics(id).andExpect(status().isOk()).andExpect(jsonPath("$.faceSearch").doesNotExist()); // add-on off: no section
+        setFaceSearch(id, true);
+        String a = photo(id, up, "alice");
+        photo(id, up, "alice");
+        indexAll();
+        analytics(id).andExpect(jsonPath("$.faceSearch.searches").value(0));
+
+        String visitor = "visitor-face-0001";
+        String matchId = matchIdOf(mvc.perform(multipart("/api/public/events/" + slug + "/find-me")
+                .file(new MockMultipartFile("selfie", "s.jpg", "image/jpeg", selfieOf("alice"))).param("visitorId", visitor)
+                .with(r -> {
+                    r.setRemoteAddr(ip());
+                    return r;
+                })));
+        findMe(slug, selfieOf("nobody"), ip()).andExpect(status().isOk()); // a search that finds no one
+        byte[] none = jpeg(90, 90);
+        fake.selfieHasNoFace(none);
+        findMe(slug, none, ip()).andExpect(status().isBadRequest()); // a failed search
+        photo(id, up, "alice");
+        indexAll();
+        refresh(slug, matchId, ip()).andExpect(status().isOk()).andExpect(jsonPath("$.count").value(3));
+        refresh(slug, matchId, ip()).andExpect(status().isOk()); // nothing new: not an update
+        // Downloads and likes from the face results are reported by the browser with source "face".
+        mvc.perform(post("/api/public/events/" + slug + "/activity").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"visitorId\":\"" + visitor + "\",\"items\":[{\"type\":\"DOWNLOAD\",\"photoId\":\"" + a + "\",\"source\":\"face\"},"
+                        + "{\"type\":\"LIKE\",\"photoId\":\"" + a + "\",\"source\":\"face\"},"
+                        + "{\"type\":\"DOWNLOAD\",\"photoId\":\"" + a + "\"},{\"type\":\"FACE_FOUND\"}]}"))
+                .andExpect(status().isNoContent());
+
+        analytics(id).andExpect(status().isOk()).andExpect(jsonPath("$.faceSearch.searches").value(3))
+                .andExpect(jsonPath("$.faceSearch.failed").value(1)).andExpect(jsonPath("$.faceSearch.guestsFound").value(1))
+                .andExpect(jsonPath("$.faceSearch.photosFound").value(3)) // 2 found at first + 1 added by the update
+                .andExpect(jsonPath("$.faceSearch.updates").value(1)).andExpect(jsonPath("$.faceSearch.downloads").value(1))
+                .andExpect(jsonPath("$.faceSearch.likes").value(1))
+                // The usual numbers are not distorted by the face rows (a guest cannot forge FACE_* types either).
+                .andExpect(jsonPath("$.totals.downloads").value(2)).andExpect(jsonPath("$.totals.people").value(1));
+        setFaceSearch(id, false);
+        analytics(id).andExpect(jsonPath("$.faceSearch").doesNotExist());
+    }
+
     // ---- Billing ----
 
     private String studioToken(int plan) throws Exception {

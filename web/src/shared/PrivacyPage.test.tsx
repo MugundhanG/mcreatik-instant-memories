@@ -17,6 +17,14 @@ describe('Privacy page', () => {
     expect(text).toMatch(/ask us to remove your face data/)
   })
 
+  it('explains the remembered match code, where it is kept and how it is deleted', () => {
+    render(<PrivacyPage />)
+    const text = document.body.textContent ?? ''
+    expect(text).toMatch(/phone keeps a random match code, and our server keeps the same code linked to the faces that matched you/)
+    expect(text).toMatch(/never your selfie/)
+    expect(text).toMatch(/deleted when you tap Forget me or when the gallery's photos are deleted/)
+  })
+
   it('no longer claims guests give nothing that identifies them, without the face-search exception', () => {
     render(<PrivacyPage />)
     expect(document.body.textContent).not.toMatch(/Nothing that identifies you\./)
