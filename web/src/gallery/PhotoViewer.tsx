@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, FormEvent, ReactNode, RefObject } from 'react'
 import { ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
-import { downloadPhoto, fetchPhoto, isIOS, sharePhoto } from '../lib/photoActions'
+import { chromeIntentUrl, downloadPhoto, fetchPhoto, guestDownloadUrl, isAndroid, isIOS, sharePhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
 import { INSTAGRAM_HANDLE, InstagramIcon, InstagramLink } from '../shared/StudioLogo'
 import { SLIDE_EASE, SLIDE_GAP, SLIDE_MS, useViewerGestures } from './useViewerGestures'
@@ -40,6 +40,8 @@ interface Props {
 }
 
 const SAVE_HINT = 'Press and hold the photo, then tap “Save image”'
+/** Guests shown the hint still save by press-and-hold, and in-app guests are told how to get out: all count as downloads. */
+const COUNTED_DOWNLOADS = new Set(['saved', 'save-sheet', 'hint', 'in-app'])
 const FOLLOW_SHOWN_KEY = 'mcreatik.follow-invite'
 
 /** The follow card shows on the first download of a visit only. */
@@ -69,6 +71,7 @@ export function PhotoViewer({
   // iPhone: the photo must already be fetched when Download is tapped (see downloadPhoto).
   const [prefetched, setPrefetched] = useState<{ id: string; blob: Blob } | null>(null)
   const [busy, setBusy] = useState<'download' | 'share' | null>(null)
+  const [inAppNotice, setInAppNotice] = useState(false)
   const [hdOpen, setHdOpen] = useState(false)
   const [hdName, setHdName] = useState('')
   const [hdContact, setHdContact] = useState('')
@@ -135,13 +138,13 @@ export function PhotoViewer({
     // iPhone (Download opens the share sheet) and Share both need the photo ready the moment it's tapped.
     if (!currentId || !currentWebUrl || !(isIOS() || shareCaption)) return
     let active = true
-    fetchPhoto(currentWebUrl)
+    fetchPhoto(currentWebUrl, guestDownloadUrl(eventSlug, currentId))
       .then((blob) => active && setPrefetched({ id: currentId, blob }))
       .catch(() => {}) // Download then falls back to the press-and-hold hint
     return () => {
       active = false
     }
-  }, [currentId, currentWebUrl, shareCaption])
+  }, [currentId, currentWebUrl, shareCaption, eventSlug])
 
   if (!photo) return null
 
@@ -149,9 +152,10 @@ export function PhotoViewer({
   const onDownload = async (savedNote?: string) => {
     setBusy('download')
     const blob = prefetched?.id === photo.id ? prefetched.blob : null
-    const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id, blob)
+    const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id, blob, guestDownloadUrl(eventSlug, photo.id))
     setBusy(null)
-    if (result === 'saved' || result === 'save-sheet') onActivity?.('DOWNLOAD', photo.id)
+    if (COUNTED_DOWNLOADS.has(result)) onActivity?.('DOWNLOAD', photo.id)
+    if (result === 'in-app') return setInAppNotice(true)
     if (result === 'unavailable') return setToast({ text: 'Downloads are turned off in this demo', ms: 2500 })
     if (result === 'cancelled') return
     const status = result === 'hint' ? SAVE_HINT : savedNote ?? (result === 'save-sheet' ? 'Love the photos?' : 'Saved to your phone ✓')
@@ -169,7 +173,7 @@ export function PhotoViewer({
     if (!shareCaption) return
     setBusy('share')
     const blob = prefetched?.id === photo.id ? prefetched.blob : null
-    const result = await sharePhoto({ url: photo.webUrl, eventSlug, photoId: photo.id, caption: shareCaption, prefetched: blob })
+    const result = await sharePhoto({ url: photo.webUrl, eventSlug, photoId: photo.id, caption: shareCaption, prefetched: blob, apiUrl: guestDownloadUrl(eventSlug, photo.id) })
     setBusy(null)
     if (result === 'shared') return onActivity?.('SHARE', photo.id)
     if (result === 'cancelled') return
@@ -312,6 +316,25 @@ export function PhotoViewer({
           className="anim-drop-in pointer-events-none absolute top-16 left-1/2 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-white px-4 py-2 text-center text-sm text-ink shadow-lg"
         >
           {toast.text}
+        </div>
+      )}
+
+      {inAppNotice && (
+        <div
+          role="dialog"
+          aria-label="Open in your browser"
+          className="absolute top-16 left-1/2 z-10 w-[min(22rem,calc(100%-2rem))] -translate-x-1/2 rounded-2xl bg-white p-4 text-center text-ink shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+        >
+          <p className="text-sm font-semibold">Open this gallery in Chrome/Safari to download</p>
+          {isAndroid() ? (
+            <a href={chromeIntentUrl(window.location.href)} className="mt-3 inline-block rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white">
+              Open in Chrome
+            </a>
+          ) : (
+            <p className="mt-2 text-sm text-muted">Tap ⋯ then Open in browser</p>
+          )}
+          <p className="mt-2 text-xs text-muted">Or press and hold the photo, then tap “Save image”.</p>
+          <button type="button" onClick={() => setInAppNotice(false)} className="mt-3 rounded-full px-4 py-2 text-sm text-muted hover:bg-stone-100">Close</button>
         </div>
       )}
 

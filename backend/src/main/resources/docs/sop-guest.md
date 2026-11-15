@@ -29,7 +29,7 @@ Keep the page open. New photos appear by themselves, usually within seconds of b
 
 ![Saved to your phone, with an invitation to follow the studio](images/g-after-download.webp)
 
-> **Note** Opened the link inside Instagram or WhatsApp? If Download doesn't save, open the link in Safari or Chrome. On some iPhones, press and hold the photo and tap **Save image**.
+> **Note** Opened the link inside Instagram or Facebook? Download shows **Open this gallery in Chrome/Safari to download**. On Android press **Open in Chrome**; on iPhone tap **⋯** then **Open in browser**. Only if a download still can't start on an iPhone, press and hold the photo and tap **Save image**.
 
 **Categories:** if the studio sorted the photos, tabs at the top (for example Rituals or Candid) let you jump to one moment.
 
@@ -77,7 +77,7 @@ Open the photo and tap **Request removal**. An email opens with the photo's file
 | "This gallery isn't available" | The link is incomplete or wrong. Scan the QR code again. |
 | "This gallery is currently unavailable" | The gallery is switched off for now. Contact the studio named on the page. |
 | No new photos for a while | Keep the page open, or pull down to refresh. On weak venue Wi-Fi, switch to mobile data. |
-| Download doesn't save | Open the link in Safari or Chrome, or press and hold the photo and tap **Save image**. |
+| Download doesn't save | Open the link in Safari or Chrome (in Instagram or Facebook: **Open in Chrome**, or **⋯ → Open in browser**). On an iPhone where it still fails, press and hold the photo and tap **Save image**. |
 
 ![Wrong or incomplete link](images/g-not-found.webp)
 

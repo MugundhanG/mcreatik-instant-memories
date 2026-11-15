@@ -226,7 +226,7 @@ Switch Wi-Fi off, then open the gallery (scan the QR code).
 | "This gallery is currently unavailable" | McreatiK switched the gallery off | Call McreatiK support |
 | "Something went wrong" and **Try again** | Their phone's connection, or the server | Ask them to press **Try again**. If nobody can open it, see card 14 |
 | "The first photos will appear here soon" | No photo has uploaded yet | Check the uploader (section 2) and take a test shot |
-| The page opens but photos don't download | Opened inside Instagram or WhatsApp | Open the link in Safari or Chrome, or press and hold a photo → Save image |
+| The page opens but photos don't download | Opened inside Instagram or WhatsApp | Open the link in Safari or Chrome (the gallery shows how: **Open in Chrome**, or **⋯ → Open in browser** on iPhone); on iPhone, press and hold a photo → Save image as a last resort |
 
 **Fix**
 

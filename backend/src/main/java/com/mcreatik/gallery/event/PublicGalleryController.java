@@ -19,6 +19,8 @@ import com.mcreatik.gallery.photo.PhotoDtos;
 import com.mcreatik.gallery.photo.PhotoMapper;
 import com.mcreatik.gallery.photo.PhotoRepository;
 import com.mcreatik.gallery.realtime.GalleryBroadcaster;
+import com.mcreatik.gallery.storage.StorageArea;
+import com.mcreatik.gallery.storage.StorageService;
 
 /** Guest-facing API. No login. Only READY derivatives are ever exposed. */
 @RestController
@@ -35,9 +37,12 @@ public class PublicGalleryController {
     private final GalleryBroadcaster broadcaster;
 
     private final com.mcreatik.gallery.album.AlbumService album;
+    private final StorageService storage;
 
     public PublicGalleryController(EventService events, PhotoRepository photos, PhotoMapper mapper,
-                                   GalleryBroadcaster broadcaster, com.mcreatik.gallery.album.AlbumService album) {
+                                   GalleryBroadcaster broadcaster, com.mcreatik.gallery.album.AlbumService album,
+                                   StorageService storage) {
+        this.storage = storage;
         this.album = album;
         this.events = events;
         this.photos = photos;
@@ -86,6 +91,31 @@ public class PublicGalleryController {
         }
         return ResponseEntity.ok().cacheControl(CacheControl.noCache())
                 .body(new PhotoDtos.PublicPhotoPage(page.stream().map(mapper::toPublic).toList(), next));
+    }
+
+    /**
+     * Download button fallback: the web-quality photo as an attachment, streamed from storage (never held in memory).
+     * Works without CORS on the media host, and a plain link to it downloads even where scripts cannot save files.
+     * Same visibility rules as the feed: this event's GUEST, READY, not hidden photo; anything else is 404.
+     */
+    @GetMapping("/photos/{photoId}/download")
+    public ResponseEntity<org.springframework.core.io.InputStreamResource> download(@PathVariable String slug,
+                                                                                    @PathVariable java.util.UUID photoId) {
+        Event event = events.publicEvent(slug);
+        Photo photo = photos.findByIdAndEventId(photoId, event.getId())
+                .filter(p -> p.getGallery() == com.mcreatik.gallery.photo.Gallery.GUEST
+                        && p.getStatus() == com.mcreatik.gallery.photo.PhotoStatus.READY && !p.isHidden()
+                        && p.getOptimizedStorageKey() != null)
+                .orElseThrow(() -> ApiException.notFound("Photo"));
+        java.io.InputStream in = storage.open(StorageArea.MEDIA, photo.getOptimizedStorageKey())
+                .orElseThrow(() -> ApiException.notFound("Photo"));
+        String fileName = event.getSlug() + "-" + photo.getId().toString().substring(0, 8) + ".jpg";
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.IMAGE_JPEG)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        org.springframework.http.ContentDisposition.attachment().filename(fileName).build().toString())
+                .cacheControl(CacheControl.maxAge(java.time.Duration.ofMinutes(10)).cachePrivate())
+                .body(new org.springframework.core.io.InputStreamResource(in));
     }
 
     /** The studio's photo categories that have photos guests can see, for the gallery's category tabs. */
