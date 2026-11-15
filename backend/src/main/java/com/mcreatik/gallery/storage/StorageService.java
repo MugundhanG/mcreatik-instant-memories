@@ -24,6 +24,9 @@ public interface StorageService {
 
     byte[] read(StorageArea area, String key);
 
+    /** Streams a stored object without loading it into memory; empty if it does not exist. The caller closes it. */
+    Optional<java.io.InputStream> open(StorageArea area, String key);
+
     void write(StorageArea area, String key, byte[] data, String contentType);
 
     /** Public CDN URL for a {@link StorageArea#MEDIA} object. */

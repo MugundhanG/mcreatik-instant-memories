@@ -8,6 +8,19 @@ import GalleryPage from './GalleryPage'
 
 const SLUG = 'arun-priya-7k3d'
 const base = `/api/public/events/${SLUG}`
+const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile Safari/604.1'
+const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36'
+const ANDROID_INSTAGRAM = 'Mozilla/5.0 (Linux; Android 14) Instagram 312.0.0'
+const apiDownload = (n: number) => `${base}/photos/${photo(n).id}/download`
+
+/** Items the page reported to the analytics endpoint. */
+function reportedTypes(fetchMock: ReturnType<typeof mockFetch>) {
+  flushActivity()
+  return fetchMock.mock.calls
+    .map((c) => c as unknown as [RequestInfo | URL, RequestInit | undefined])
+    .filter(([u]) => String(u).endsWith('/activity'))
+    .flatMap(([, init]) => JSON.parse(String(init?.body)).items.map((i: { type: string }) => i.type))
+}
 
 function renderGallery(path = `/e/${SLUG}`) {
   return render(
@@ -96,8 +109,10 @@ describe('Photo viewer', () => {
     expect(screen.queryByRole('dialog', { name: 'Follow on Instagram' })).not.toBeInTheDocument()
     expect(open).not.toHaveBeenCalled()
     // Bypasses the cached non-CORS copy the <img> loaded, which would make the CORS fetch fail.
-    const call = vi.mocked(fetch).mock.calls.find(([input]) => String(input).endsWith('/web/3.jpg'))
+    // `dl=1` also gives the CDN a separate cache key from the <img> request.
+    const call = vi.mocked(fetch).mock.calls.find(([input]) => String(input).endsWith('/web/3.jpg?dl=1'))
     expect(call?.[1]).toMatchObject({ mode: 'cors', cache: 'no-store' })
+    expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).endsWith('/web/3.jpg'))).toBe(false)
   })
 
   it('guests get Like in place of Share', async () => {
@@ -110,8 +125,9 @@ describe('Photo viewer', () => {
     await user.click(like)
     expect(like).toHaveTextContent('Liked')
   })
-  it('when the photo cannot be fetched, explains press-and-hold instead of opening a new page', async () => {
+  it('iPhone: when every fetch fails, explains press-and-hold instead of opening a new page', async () => {
     const user = userEvent.setup()
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPHONE)
     mockFetch({
       [base]: () => liveEvent,
       [`${base}/photos`]: () => ({ photos: [photo(3)], nextCursor: null }),
@@ -128,8 +144,7 @@ describe('Photo viewer', () => {
 
   it('iPhone: Download opens the Save Image sheet with the photo file', async () => {
     const user = userEvent.setup()
-    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
-      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile Safari/604.1')
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPHONE)
     const share = vi.fn(async (data: ShareData) => void data)
     Object.defineProperty(navigator, 'share', { value: share, configurable: true })
     Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true })
@@ -137,7 +152,7 @@ describe('Photo viewer', () => {
     renderGallery()
     await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
     // prefetched as soon as the photo is shown, so the tap can open the sheet immediately
-    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).endsWith('/web/3.jpg'))).toBe(true))
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).endsWith('/web/3.jpg?dl=1'))).toBe(true))
     await new Promise((r) => setTimeout(r, 0))
 
     await user.click(screen.getByRole('button', { name: 'Download' }))
@@ -147,13 +162,131 @@ describe('Photo viewer', () => {
     expect(files[0].type).toBe('image/jpeg')
   })
 
-  it('Instagram/Facebook in-app browser: shows the press-and-hold hint', async () => {
-    const user = userEvent.setup()
-    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Linux; Android 14) Instagram 312.0.0')
-    renderGallery()
-    await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
-    await user.click(screen.getByRole('button', { name: 'Download' }))
-    expect(await screen.findByText(/Press and hold the photo/)).toBeInTheDocument()
+  describe('download fallbacks and counting', () => {
+    const jpegResponse = () => new Response(new Uint8Array([0xff, 0xd8, 0xff]), { headers: { 'Content-Type': 'image/jpeg' } })
+    let createObjectURL: ReturnType<typeof vi.fn>
+    let anchorClick: ReturnType<typeof vi.spyOn>
+    let clickedHrefs: string[]
+
+    function routes(extra: Record<string, () => unknown>) {
+      return mockFetch({
+        [base]: () => liveEvent,
+        [`${base}/photos`]: () => ({ photos: [photo(3), photo(2), photo(1)], nextCursor: null }),
+        [`${base}/activity`]: () => new Response(null, { status: 204 }),
+        [`${base}/categories`]: () => [],
+        ...extra,
+      })
+    }
+
+    beforeEach(() => {
+      flushActivity() // earlier tests' queued activity is not this test's
+      localStorage.clear()
+      createObjectURL = vi.fn(() => 'blob:photo')
+      vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }))
+      clickedHrefs = []
+      anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        clickedHrefs.push(this.href)
+      })
+    })
+
+    async function openAndDownload() {
+      const user = userEvent.setup()
+      renderGallery()
+      await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
+      await user.click(screen.getByRole('button', { name: 'Download' }))
+      return user
+    }
+
+    it('media fetch fails: saves the blob from the API endpoint and counts the download', async () => {
+      const fetchMock = routes({ [apiDownload(3)]: jpegResponse })
+      await openAndDownload()
+      expect(await screen.findByRole('dialog', { name: 'Follow on Instagram' })).toHaveTextContent('Saved to your phone')
+      const urls = fetchMock.mock.calls.map(([u]) => String(u))
+      expect(urls).toContain('https://media.test/web/3.jpg?dl=1')
+      expect(urls.some((u) => u.endsWith(apiDownload(3)))).toBe(true)
+      expect(createObjectURL).toHaveBeenCalledTimes(1)
+      expect(anchorClick).toHaveBeenCalledTimes(1) // the blob save only
+      expect(clickedHrefs[0]).toBe('blob:photo')
+      expect(reportedTypes(fetchMock).filter((t) => t === 'DOWNLOAD')).toHaveLength(1)
+    })
+
+    it('Android: when both fetches fail, a plain link to the API download starts the download and counts', async () => {
+      vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(ANDROID)
+      const fetchMock = routes({})
+      await openAndDownload()
+      await waitFor(() => expect(clickedHrefs).toHaveLength(1))
+      expect(clickedHrefs[0]).toMatch(new RegExp(`${apiDownload(3)}$`))
+      expect(createObjectURL).not.toHaveBeenCalled()
+      expect(screen.queryByText(/Press and hold/)).not.toBeInTheDocument()
+      await waitFor(() => expect(reportedTypes(fetchMock).filter((t) => t === 'DOWNLOAD')).toHaveLength(1))
+    })
+
+    it('iPhone: when every fetch fails the hint shows, and the download is still counted once', async () => {
+      vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPHONE)
+      const fetchMock = routes({})
+      await openAndDownload()
+      expect(await screen.findByText(/Press and hold the photo/)).toBeInTheDocument()
+      expect(clickedHrefs).toHaveLength(0)
+      expect(reportedTypes(fetchMock).filter((t) => t === 'DOWNLOAD')).toHaveLength(1)
+    })
+
+    it('iPhone: falls back to the API blob for the share sheet when the media fetch fails', async () => {
+      vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPHONE)
+      const share = vi.fn(async (data: ShareData) => void data)
+      Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+      Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true })
+      const fetchMock = routes({ [apiDownload(3)]: jpegResponse })
+      renderGallery()
+      const user = userEvent.setup()
+      await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
+      await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith(apiDownload(3)))).toBe(true))
+      await new Promise((r) => setTimeout(r, 0))
+      await user.click(screen.getByRole('button', { name: 'Download' }))
+      await waitFor(() => expect(share).toHaveBeenCalledTimes(1))
+      await waitFor(() => expect(reportedTypes(fetchMock).filter((t) => t === 'DOWNLOAD')).toHaveLength(1))
+    })
+
+    it('a cancelled share sheet is not counted', async () => {
+      vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPHONE)
+      const share = vi.fn(async () => {
+        throw new DOMException('closed', 'AbortError')
+      })
+      Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+      Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true })
+      const fetchMock = routes({ '/web/3.jpg': jpegResponse })
+      renderGallery()
+      const user = userEvent.setup()
+      await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
+      await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith('/web/3.jpg?dl=1'))).toBe(true))
+      await new Promise((r) => setTimeout(r, 0))
+      await user.click(screen.getByRole('button', { name: 'Download' }))
+      await waitFor(() => expect(share).toHaveBeenCalled())
+      expect(reportedTypes(fetchMock)).not.toContain('DOWNLOAD')
+    })
+
+    it('Android Instagram: tries the API link, then explains how to open Chrome (an intent link) and counts', async () => {
+      vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(ANDROID_INSTAGRAM)
+      const fetchMock = routes({})
+      await openAndDownload()
+      const notice = await screen.findByRole('dialog', { name: 'Open in your browser' })
+      expect(notice).toHaveTextContent('Open this gallery in Chrome/Safari to download')
+      const link = within(notice).getByRole('link', { name: 'Open in Chrome' })
+      expect(link.getAttribute('href')).toMatch(/^intent:\/\/.+#Intent;scheme=https?;package=com\.android\.chrome;/)
+      expect(clickedHrefs.some((h) => h.endsWith(apiDownload(3)))).toBe(true)
+      expect(createObjectURL).not.toHaveBeenCalled()
+      await waitFor(() => expect(reportedTypes(fetchMock).filter((t) => t === 'DOWNLOAD')).toHaveLength(1))
+    })
+
+    it('iPhone Instagram: tells the guest to tap the menu and Open in browser', async () => {
+      vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(`${IPHONE} Instagram 312.0.0`)
+      const fetchMock = routes({})
+      await openAndDownload()
+      const notice = await screen.findByRole('dialog', { name: 'Open in your browser' })
+      expect(notice).toHaveTextContent('Tap ⋯ then Open in browser')
+      expect(within(notice).queryByRole('link', { name: 'Open in Chrome' })).toBeNull()
+      expect(clickedHrefs).toHaveLength(0)
+      await waitFor(() => expect(reportedTypes(fetchMock).filter((t) => t === 'DOWNLOAD')).toHaveLength(1))
+    })
   })
 
   describe('gestures', () => {

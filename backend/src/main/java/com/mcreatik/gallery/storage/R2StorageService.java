@@ -112,6 +112,20 @@ public class R2StorageService implements StorageService {
     }
 
     @Override
+    public Optional<java.io.InputStream> open(StorageArea area, String key) {
+        try {
+            return Optional.of(s3.getObject(r -> r.bucket(bucket(area)).key(key)));
+        } catch (NoSuchKeyException e) {
+            return Optional.empty();
+        } catch (S3Exception e) {
+            if (e.statusCode() == 404) {
+                return Optional.empty();
+            }
+            throw e;
+        }
+    }
+
+    @Override
     public void write(StorageArea area, String key, byte[] data, String contentType) {
         s3.putObject(r -> r.bucket(bucket(area)).key(key).contentType(contentType)
                         // Derivatives never change (new photo = new key), so cache aggressively at the edge.

@@ -109,6 +109,16 @@ public class LocalStorageService implements StorageService {
     }
 
     @Override
+    public Optional<java.io.InputStream> open(StorageArea area, String key) {
+        Path path = resolve(area, key);
+        try {
+            return Files.isRegularFile(path) ? Optional.of(Files.newInputStream(path)) : Optional.empty();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @Override
     public void write(StorageArea area, String key, byte[] data, String contentType) {
         Path path = resolve(area, key);
         try {

@@ -83,7 +83,7 @@ The uploader is amber (**Offline**), so this laptop has no internet. Check the h
 | "This gallery isn't available" | Wrong or incomplete link, or the event is Draft or Archived | Scan the event card again; set the status to Upcoming or Live |
 | "This gallery is currently unavailable" | McreatiK switched the gallery off | McreatiK: Event → Settings → Gallery access |
 | The page opens but there are no photos | No photos uploaded yet, or all are hidden | Check the Photos tab |
-| Download doesn't save | Opened inside Instagram or WhatsApp | Open in Safari or Chrome, or press and hold the photo → Save image |
+| Download doesn't save | Opened inside Instagram or WhatsApp | Open in Safari or Chrome (the gallery shows an **Open in Chrome** button, or **⋯ → Open in browser** on iPhone); on iPhone, press and hold the photo → Save image as a last resort |
 
 ### The dashboard shows a camera Offline
 
