@@ -95,6 +95,18 @@ export default function GalleryPage() {
 
   const selectedIndex = selectedId ? photos.findIndex((p) => p.id === selectedId) : -1
 
+  // The open photo was hidden or deleted (caught up after missing the live stream): move to its neighbour, or close.
+  const lastShown = useRef<{ id: string; index: number } | null>(null)
+  useEffect(() => {
+    if (selectedIndex >= 0 && selectedId) {
+      lastShown.current = { id: selectedId, index: selectedIndex }
+    } else if (selectedId && status === 'ready' && lastShown.current?.id === selectedId) {
+      const next = photos[Math.min(lastShown.current.index, photos.length - 1)]
+      lastShown.current = null
+      setParams(next ? { photo: next.id } : {}, { replace: true })
+    }
+  }, [selectedId, selectedIndex, photos, status, setParams])
+
   const open = (photo: PublicPhoto) => {
     openedHere.current = true
     setParams({ photo: photo.id }) // pushes history: the phone's back button closes the viewer

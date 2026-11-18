@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { adminApi, ApiError } from '../lib/api'
+import { localIsoDate } from '../lib/format'
 import type { BillingSummary, EventStatus, EventType, Studio } from '../lib/types'
 import { useSession } from './auth'
 import { BuyEventsDialog } from './BuyEventsDialog'
@@ -28,7 +29,7 @@ function coverage(b: BillingSummary, type: EventType): string {
 export default function NewEventPage() {
   const navigate = useNavigate()
   const [name, setName] = useState('')
-  const [eventDate, setEventDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [eventDate, setEventDate] = useState(() => localIsoDate())
   const [status, setStatus] = useState<EventStatus>('UPCOMING')
   const [slug, setSlug] = useState('')
   const [error, setError] = useState<string | null>(null)

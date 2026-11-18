@@ -30,7 +30,7 @@ function CredentialsDialog({ credentials, onClose }: { credentials: UploaderCred
   }
   return (
     <div className="anim-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Uploader connection code">
-      <div className="anim-dialog-in w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+      <div className="anim-dialog-in max-h-[95dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <h3 className="text-lg font-semibold">Connect “{credentials.name}”</h3>
         <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-muted">
           <li>Open McreatiK Instant Memories Uploader on the laptop for this camera (not installed yet? use a link below).</li>

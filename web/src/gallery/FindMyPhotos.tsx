@@ -253,7 +253,7 @@ export function FindMyPhotos({ event, instagram, onActivity, liked, onToggleLike
 
       {step === 'consent' && (
         <div className="anim-fade-in fixed inset-0 z-[60] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onKeyDown={(e) => e.key === 'Escape' && setStep('idle')}>
-          <div role="dialog" aria-modal="true" aria-labelledby="fmp-title" className="anim-sheet-up w-full max-w-md rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl">
+          <div role="dialog" aria-modal="true" aria-labelledby="fmp-title" className="anim-sheet-up max-h-[95dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl">
             <div className="flex items-start gap-3">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-stone-100 text-ink"><FaceIcon className="size-6" /></span>
               <div>

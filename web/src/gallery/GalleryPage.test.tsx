@@ -170,12 +170,16 @@ describe('Live gallery', () => {
   })
 
   it('catches up on photos missed while disconnected', async () => {
+    let caughtUp = false
     const fetchMock = mockFetch({
       [base]: () => liveEvent,
-      [`${base}/photos`]: (url) =>
-        url.searchParams.get('after') === 'cursor-2'
-          ? { photos: [photo(3), photo(4)], nextCursor: null }
-          : { photos: [photo(2), photo(1)], nextCursor: null },
+      [`${base}/photos`]: (url) => {
+        if (url.searchParams.get('after') === 'cursor-2') {
+          caughtUp = true
+          return { photos: [photo(3), photo(4)], nextCursor: null }
+        }
+        return { photos: caughtUp ? [photo(4), photo(3), photo(2), photo(1)] : [photo(2), photo(1)], nextCursor: null }
+      },
     })
     renderGallery()
     await screen.findByRole('heading', { name: liveEvent.name })
@@ -188,6 +192,23 @@ describe('Live gallery', () => {
     await waitFor(() => expect(tiles()).toHaveLength(4))
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes('after=cursor-2'))).toBe(true)
     expect(screen.getByText('New photos are being added')).toBeInTheDocument()
+  })
+
+  it('drops a photo hidden while the phone was disconnected, and closes it if it was open', async () => {
+    let hidden = false
+    mockFetch({
+      [base]: () => liveEvent,
+      [`${base}/photos`]: () => ({ photos: hidden ? [photo(2)] : [photo(2), photo(1)], nextCursor: null }),
+    })
+    renderGallery()
+    await screen.findByRole('heading', { name: liveEvent.name })
+    await waitFor(() => expect(MockEventSource.instances).toHaveLength(1))
+    expect(tiles()).toHaveLength(2)
+
+    hidden = true
+    act(() => MockEventSource.latest().fail())
+    act(() => MockEventSource.latest().emit('CONNECTED', {}))
+    await waitFor(() => expect(tiles()).toHaveLength(1))
   })
 
   it('removes a photo deleted by the photographer', async () => {

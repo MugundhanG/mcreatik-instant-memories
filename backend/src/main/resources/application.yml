@@ -90,7 +90,9 @@ gallery:
     secret-access-key: ${AWS_REKOGNITION_SECRET_ACCESS_KEY:}
     collection-prefix: ${FACE_COLLECTION_PREFIX:mck-prod}
     match-threshold: ${FACE_MATCH_THRESHOLD:90}
-    ip-per-hour: ${FACE_SEARCH_IP_PER_HOUR:10}
+    # Per person (the browser's visitor id; per IP when it is missing), and a high per-IP ceiling for a venue's shared Wi-Fi.
+    visitor-per-hour: ${FACE_SEARCH_VISITOR_PER_HOUR:10}
+    ip-per-hour: ${FACE_SEARCH_IP_PER_HOUR:300}
     event-daily-cap: ${FACE_SEARCH_EVENT_DAILY_CAP:2000}
     max-attempts: 5
     max-faces-per-photo: 15

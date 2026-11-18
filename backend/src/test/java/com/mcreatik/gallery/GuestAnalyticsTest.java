@@ -54,6 +54,29 @@ class GuestAnalyticsTest extends IntegrationTest {
     }
 
     @Test
+    void photoTotalsOnlyCountPhotosStillInTheGuestGallery() throws Exception {
+        String event = createEvent("Totals", "LIVE");
+        String eventId = eventId(event);
+        String slug = slug(event);
+        String token = createUploader(eventId, "Camera 1");
+        String kept = uploadPhoto(token, "IMG_1.JPG", jpeg(800, 600));
+        String hidden = uploadPhoto(token, "IMG_2.JPG", jpeg(801, 600));
+        processAll();
+        String both = "{\"type\":\"PHOTO_VIEW\",\"photoId\":\"%1$s\"},{\"type\":\"DOWNLOAD\",\"photoId\":\"%1$s\"},"
+                + "{\"type\":\"LIKE\",\"photoId\":\"%1$s\"},{\"type\":\"SHARE\",\"photoId\":\"%1$s\"},";
+        report(slug, "visitor-aaaa-1111", both.formatted(kept) + both.formatted(hidden) + "{\"type\":\"CONTACT\"}");
+        jdbc.update("update photos set hidden = true where id = ?::uuid", hidden);
+
+        mvc.perform(get("/api/admin/events/" + eventId + "/analytics").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.totals.photoViews").value(1))
+                .andExpect(jsonPath("$.totals.downloads").value(1))
+                .andExpect(jsonPath("$.totals.downloaders").value(1))
+                .andExpect(jsonPath("$.totals.shares").value(1))
+                .andExpect(jsonPath("$.totals.likes").value(1))
+                .andExpect(jsonPath("$.totals.contacts").value(1)); // not photo-scoped: kept as is
+    }
+
+    @Test
     void rejectsMalformedVisitorsAndHiddenGalleries() throws Exception {
         String slug = slug(createEvent("Draft", "DRAFT"));
         mvc.perform(post("/api/public/events/" + slug + "/activity").contentType(MediaType.APPLICATION_JSON)

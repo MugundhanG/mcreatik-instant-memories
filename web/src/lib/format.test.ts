@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatBytes, splitEventName, timeAgo } from './format'
+import { formatBytes, localIsoDate, splitEventName, timeAgo } from './format'
 
 describe('format', () => {
   it('formats storage sizes', () => {
@@ -22,5 +22,10 @@ describe('format', () => {
     expect(splitEventName('Priya & Arun – Engagement')).toEqual({ names: 'Priya & Arun', occasion: 'Engagement' })
     expect(splitEventName('Annual Day 2026')).toEqual({ names: 'Annual Day 2026', occasion: '' })
     expect(splitEventName('Ravi-Kumar Wedding')).toEqual({ names: 'Ravi-Kumar Wedding', occasion: '' })
+  })
+
+  it('uses the local calendar date, not UTC', () => {
+    expect(localIsoDate(new Date(2026, 10, 5, 0, 30))).toBe('2026-11-05') // 00:30 local, whatever UTC says
+    expect(localIsoDate(new Date(2026, 0, 31, 23, 59))).toBe('2026-01-31')
   })
 })

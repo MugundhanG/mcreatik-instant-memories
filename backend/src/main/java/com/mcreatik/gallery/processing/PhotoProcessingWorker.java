@@ -174,6 +174,15 @@ public class PhotoProcessingWorker implements SmartLifecycle {
         }
     }
 
+    /** Uploads started more than an hour ago and never completed become FAILED, so "processing" never sticks. */
+    @Scheduled(fixedDelay = 600_000, initialDelay = 120_000)
+    public void failAbandonedUploads() {
+        Integer n = tx.execute(s -> photos.failAbandonedUploads(Instant.now().minus(java.time.Duration.ofHours(1))));
+        if (n != null && n > 0) {
+            log.warn("Marked {} abandoned uploads as failed", n);
+        }
+    }
+
     private static void sleepQuietly() {
         try {
             Thread.sleep(1_000);

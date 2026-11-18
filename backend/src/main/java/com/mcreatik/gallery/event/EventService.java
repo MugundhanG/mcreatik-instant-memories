@@ -289,7 +289,10 @@ public class EventService {
                                             ? EventDtos.CameraState.CONNECTED : EventDtos.CameraState.NOT_CONNECTED,
                             u.getCameraLastPhotoAt());
                 }).toList();
-        int active = (int) uploaderStats.stream().filter(u -> u.status() != UploaderStatus.OFFLINE).count();
+        // "Cameras connected": the camera itself, not the laptop's heartbeat. Old uploaders that do not report their
+        // camera (UNKNOWN) fall back to the laptop being online.
+        int active = (int) uploaderStats.stream().filter(u -> u.camera() == EventDtos.CameraState.CONNECTED
+                || (u.camera() == EventDtos.CameraState.UNKNOWN && u.status() != UploaderStatus.OFFLINE)).count();
 
         var latest = photos.findByEventIdAndStatusOrderByReadyAtDesc(event.getId(), PhotoStatus.READY, Limit.of(1))
                 .stream().findFirst().map(photoMapper::toAdmin).orElse(null);

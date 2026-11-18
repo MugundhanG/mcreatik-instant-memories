@@ -28,4 +28,37 @@ describe('Guest activity tracking', () => {
       { type: 'DOWNLOAD', photoId: 'p1' },
     ])
   })
+
+  it('keeps a batch that failed on the network and retries it later without losing or doubling it', async () => {
+    vi.useFakeTimers()
+    try {
+      const fetchMock = vi.fn()
+        .mockRejectedValueOnce(new TypeError('offline'))
+        .mockResolvedValue(new Response(null, { status: 204 }))
+      vi.stubGlobal('fetch', fetchMock)
+      track('retry-gallery', { type: 'PHOTO_VIEW', photoId: 'p9' })
+      flushActivity()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(60_000) // backoff elapsed: sent again
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(JSON.parse(String((fetchMock.mock.calls[1] as unknown as [string, RequestInit])[1].body)).items).toEqual([{ type: 'PHOTO_VIEW', photoId: 'p9' }])
+      await vi.advanceTimersByTimeAsync(120_000)
+      expect(fetchMock).toHaveBeenCalledTimes(2) // delivered once, not again
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('hands the queue to sendBeacon when the page is hidden, and does not send it twice', () => {
+    const beacon = vi.fn(() => true)
+    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('navigator', { ...navigator, sendBeacon: beacon })
+    track('beacon-gallery', { type: 'DOWNLOAD', photoId: 'p1' })
+    flushActivity(true)
+    flushActivity(true) // pagehide right after visibilitychange: nothing left
+    expect(beacon).toHaveBeenCalledTimes(1)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })

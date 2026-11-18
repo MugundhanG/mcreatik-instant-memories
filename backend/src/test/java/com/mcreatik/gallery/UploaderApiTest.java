@@ -276,7 +276,8 @@ class UploaderApiTest extends IntegrationTest {
                 .andExpect(status().isOk());
         mvc.perform(get("/api/admin/events/" + eventId + "/stats").header("Authorization", bearer(adminToken())))
                 .andExpect(jsonPath("$.uploaders[0].status").value("ONLINE"))
-                .andExpect(jsonPath("$.uploaders[0].camera").value("UNKNOWN"));
+                .andExpect(jsonPath("$.uploaders[0].camera").value("UNKNOWN"))
+                .andExpect(jsonPath("$.activeUploaders").value(1)); // old app: falls back to the laptop being online
 
         // Laptop online, camera away: the laptop is Online, the camera is not connected.
         mvc.perform(post("/api/uploader/heartbeat").header("Authorization", bearer(token))
@@ -287,14 +288,16 @@ class UploaderApiTest extends IntegrationTest {
         mvc.perform(get("/api/admin/events/" + eventId + "/stats").header("Authorization", bearer(adminToken())))
                 .andExpect(jsonPath("$.uploaders[0].status").value("ONLINE"))
                 .andExpect(jsonPath("$.uploaders[0].camera").value("NOT_CONNECTED"))
-                .andExpect(jsonPath("$.uploaders[0].cameraLastPhotoAt").value("2026-01-01T10:00:00Z"));
+                .andExpect(jsonPath("$.uploaders[0].cameraLastPhotoAt").value("2026-01-01T10:00:00Z"))
+                .andExpect(jsonPath("$.activeUploaders").value(0)); // the "cameras connected" tile is the camera, not the laptop
 
         mvc.perform(post("/api/uploader/heartbeat").header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"queuePending\":0,\"queueFailed\":0,\"cameraConnected\":true}"))
                 .andExpect(status().isOk());
         mvc.perform(get("/api/admin/events/" + eventId + "/stats").header("Authorization", bearer(adminToken())))
-                .andExpect(jsonPath("$.uploaders[0].camera").value("CONNECTED"));
+                .andExpect(jsonPath("$.uploaders[0].camera").value("CONNECTED"))
+                .andExpect(jsonPath("$.activeUploaders").value(1));
 
         // The laptop goes quiet: whatever it last said about the camera is stale, so it is not connected.
         jdbc.update("update uploaders set last_seen_at = now() - interval '10 minutes' where name = 'Camera 1'");

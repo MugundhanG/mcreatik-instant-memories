@@ -134,7 +134,7 @@ Have this ready on any event day:
 
 - Your phone with WhatsApp (+91 99527 58545) and email.
 - These docs open: [Event-day checklist and troubleshooting](/admin/docs/guide-event-day) and the studio's [Event-day problem playbook](/admin/docs/guide-event-day-problems) (read it once, so you know what the studio has been told to do).
-- The event dashboard open on **Overview** to watch **cameras online** and the latest photo.
+- The event dashboard open on **Overview** to watch **cameras connected** and the latest photo.
 
 ![Event overview: photo counts, cameras online, QR code](images/s-overview.webp)
 

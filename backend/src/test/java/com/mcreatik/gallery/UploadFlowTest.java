@@ -33,6 +33,41 @@ class UploadFlowTest extends IntegrationTest {
     int port;
 
     @Test
+    void abandonedUploadsAreFailedAfterAnHourAndNeverCountAsStoredBytes() throws Exception {
+        String event = createEvent("Abandoned", "LIVE");
+        String eventId = eventId(event);
+        String token = createUploader(eventId, "Camera 1");
+        String ready = uploadPhoto(token, "IMG_1.JPG", jpeg(800, 600));
+        String abandoned = uploadPhoto(token, "IMG_2.JPG", jpeg(801, 600));
+        processAll();
+        long readyBytes = jdbc.queryForObject("select media_bytes from photos where id = ?::uuid", Long.class, ready);
+        // The second one's session was opened (bytes declared) but the upload never finished.
+        jdbc.update("update photos set status = 'UPLOADING', media_bytes = 999999, updated_at = now() - interval '30 minutes' where id = ?::uuid", abandoned);
+        mvc.perform(get("/api/admin/events/" + eventId + "/stats").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.inProgressPhotos").value(1))
+                .andExpect(jsonPath("$.storageBytes").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.greaterThan(readyBytes + 1_000_000))));
+        worker.failAbandonedUploads(); // under an hour old: left alone
+        mvc.perform(get("/api/admin/events/" + eventId + "/stats").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.inProgressPhotos").value(1));
+
+        jdbc.update("update photos set updated_at = now() - interval '2 hours' where id = ?::uuid", abandoned);
+        worker.failAbandonedUploads();
+        mvc.perform(get("/api/admin/events/" + eventId + "/stats").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.inProgressPhotos").value(0))
+                .andExpect(jsonPath("$.failedPhotos").value(1))
+                .andExpect(jsonPath("$.readyPhotos").value(1));
+        assertThat(billingBytes(eventId)).isEqualTo(readyBytes + readyOriginalBytes(ready));
+    }
+
+    private long billingBytes(String eventId) {
+        return jdbc.queryForObject("select coalesce(sum(media_bytes + case when original_stored then file_size else 0 end), 0) from photos where event_id = ?::uuid and status = 'READY'", Long.class, eventId);
+    }
+
+    private long readyOriginalBytes(String photoId) {
+        return jdbc.queryForObject("select case when original_stored then file_size else 0 end from photos where id = ?::uuid", Long.class, photoId);
+    }
+
+    @Test
     void fullUploadProcessingAndPublicRetrieval() throws Exception {
         String event = createEvent("Arun & Priya", "UPCOMING");
         String token = createUploader(eventId(event), "Camera 1");

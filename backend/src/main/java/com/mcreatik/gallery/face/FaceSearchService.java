@@ -73,6 +73,7 @@ public class FaceSearchService {
 
     private final Set<String> knownCollections = ConcurrentHashMap.newKeySet();
     private final Map<String, ArrayDeque<Long>> searchesByIp = new ConcurrentHashMap<>();
+    private final Map<String, ArrayDeque<Long>> searchesByVisitor = new ConcurrentHashMap<>();
 
     public FaceSearchService(FaceSearchProvider provider, JdbcTemplate jdbc, PhotoRepository photos, PhotoMapper mapper,
                              GuestMatchService matches, GalleryProperties properties) {
@@ -216,7 +217,7 @@ public class FaceSearchService {
      */
     public FindResult find(Event event, byte[] selfie, String ip, String visitorId) {
         requireSearchable(event);
-        takeSlots(event, ip);
+        Slots slots = takeSlots(event, ip, visitorId);
         String visitor = visitor(visitorId);
         record(event.getId(), TYPE_SEARCH, visitor, null);
         Instant checkedAt = matches.now();
@@ -224,11 +225,16 @@ public class FaceSearchService {
         try {
             found = provider.searchFaces(collectionName(event.getId()), selfie, config.matchThreshold(), config.maxMatches());
         } catch (FaceSearchProvider.NoFaceException e) {
+            slots.refund(); // the engine did no billable search: a bad selfie must not burn the venue's daily cap
             record(event.getId(), TYPE_FAILED, visitor, null);
             throw ApiException.badRequest("NO_FACE", "We couldn't find a face in that photo. Try a clear, well-lit selfie.");
         } catch (FaceSearchProvider.BadImageException e) {
+            slots.refund();
             record(event.getId(), TYPE_FAILED, visitor, null);
             throw ApiException.badRequest("BAD_IMAGE", "We couldn't read that photo. Please try another one.");
+        } catch (RuntimeException e) {
+            slots.refund(); // provider outage: nothing was searched
+            throw e;
         }
         List<String> faceIds = found.stream().map(FaceSearchProvider.FaceMatch::faceId).distinct().toList();
         List<String> seeds = found.stream().sorted(Comparator.comparingDouble(FaceSearchProvider.FaceMatch::similarity).reversed())
@@ -263,13 +269,18 @@ public class FaceSearchService {
             if (seeds.isEmpty()) {
                 matches.update(m.id(), m.seedFaceIds(), m.faceIds(), matches.now()); // nothing to search by; just mark checked
             } else {
-                takeSlots(event, ip);
+                Slots slots = takeSlots(event, ip, visitorId);
                 Instant checkedAt = matches.now();
                 int before = visiblePhotos(event.getId(), m.faceIds()).size();
                 Set<String> merged = new LinkedHashSet<>(m.faceIds());
-                for (String seed : seeds) {
-                    merged.addAll(provider.searchFacesByFaceId(collectionName(event.getId()), seed, config.matchThreshold(),
-                            config.maxMatches()));
+                try {
+                    for (String seed : seeds) {
+                        merged.addAll(provider.searchFacesByFaceId(collectionName(event.getId()), seed, config.matchThreshold(),
+                                config.maxMatches()));
+                    }
+                } catch (RuntimeException e) {
+                    slots.refund();
+                    throw e;
                 }
                 List<String> all = List.copyOf(merged);
                 matches.update(m.id(), seeds, all, checkedAt);
@@ -327,15 +338,55 @@ public class FaceSearchService {
         return faceIds.stream().filter(alive::contains).toList();
     }
 
-    private void takeSlots(Event event, String ip) {
-        if (!takeIpSlot(ip)) {
+    /** What one search took (person and IP hour slots, the event's day slot); {@link #refund()} gives it back. */
+    private final class Slots {
+        private final String personKey;
+        private final String ipKey;
+        private final UUID eventId;
+        private final LocalDate day;
+
+        Slots(String personKey, String ipKey, UUID eventId, LocalDate day) {
+            this.personKey = personKey;
+            this.ipKey = ipKey;
+            this.eventId = eventId;
+            this.day = day;
+        }
+
+        void refund() {
+            giveBackHourSlot(searchesByVisitor, personKey);
+            giveBackHourSlot(searchesByIp, ipKey);
+            try {
+                jdbc.update("UPDATE face_search_usage SET searches = searches - 1 WHERE event_id = ? AND day = ? AND searches > 0", eventId, day);
+            } catch (Exception e) {
+                log.warn("Could not give back a face search slot: {}", e.toString());
+            }
+        }
+    }
+
+    /**
+     * The per-person limit is keyed on the browser's visitor id (a whole venue shares one IP); the IP only has a high
+     * ceiling against scripts. Slots are taken before the engine call and given back when it did not run or failed.
+     */
+    private Slots takeSlots(Event event, String ip, String visitorId) {
+        String ipKey = ip == null ? "?" : ip;
+        String personKey = VISITOR_ID.matcher(visitorId == null ? "" : visitorId).matches() ? "v:" + visitorId : "ip:" + ipKey;
+        if (!takeHourSlot(searchesByVisitor, personKey, config.visitorPerHour())) {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "FACE_SEARCH_LIMIT",
                     "You have searched a lot in the last hour. Please try again later, or scroll through all the photos.");
         }
-        if (!takeEventSlot(event.getId())) {
+        if (!takeHourSlot(searchesByIp, ipKey, config.ipPerHour())) {
+            giveBackHourSlot(searchesByVisitor, personKey);
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "FACE_SEARCH_LIMIT",
+                    "Face search is very busy on this network right now. Please try again in a little while, or scroll through all the photos.");
+        }
+        LocalDate day = LocalDate.now(INDIA);
+        if (!takeEventSlot(event.getId(), day)) {
+            giveBackHourSlot(searchesByVisitor, personKey);
+            giveBackHourSlot(searchesByIp, ipKey);
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "FACE_SEARCH_LIMIT",
                     "Face search has reached its limit for today on this gallery. Please try again tomorrow.");
         }
+        return new Slots(personKey, ipKey, event.getId(), day);
     }
 
     // ---- Studio stats (rows in guest_activity, written here, never by the guest's browser) ----
@@ -352,14 +403,14 @@ public class FaceSearchService {
         }
     }
 
-    private boolean takeIpSlot(String ip) {
+    private boolean takeHourSlot(Map<String, ArrayDeque<Long>> byKey, String key, int limit) {
         long now = System.currentTimeMillis();
-        ArrayDeque<Long> times = searchesByIp.computeIfAbsent(ip == null ? "?" : ip, k -> new ArrayDeque<>());
+        ArrayDeque<Long> times = byKey.computeIfAbsent(key, k -> new ArrayDeque<>());
         synchronized (times) {
             while (!times.isEmpty() && now - times.peekFirst() > HOUR_MS) {
                 times.pollFirst();
             }
-            if (times.size() >= config.ipPerHour()) {
+            if (times.size() >= limit) {
                 return false;
             }
             times.addLast(now);
@@ -367,24 +418,35 @@ public class FaceSearchService {
         }
     }
 
+    private void giveBackHourSlot(Map<String, ArrayDeque<Long>> byKey, String key) {
+        ArrayDeque<Long> times = byKey.get(key);
+        if (times != null) {
+            synchronized (times) {
+                times.pollLast();
+            }
+        }
+    }
+
     /** Counts one search for today (India time) unless the event's daily cap is already used. */
-    private boolean takeEventSlot(UUID eventId) {
+    private boolean takeEventSlot(UUID eventId, LocalDate day) {
         List<Integer> row = jdbc.queryForList("""
                 INSERT INTO face_search_usage (event_id, day, searches) VALUES (?, ?, 1)
                 ON CONFLICT (event_id, day) DO UPDATE SET searches = face_search_usage.searches + 1
                     WHERE face_search_usage.searches < ?
-                RETURNING searches""", Integer.class, eventId, LocalDate.now(INDIA), config.eventDailyCap());
+                RETURNING searches""", Integer.class, eventId, day, config.eventDailyCap());
         return !row.isEmpty();
     }
 
     @Scheduled(fixedDelay = 600_000, initialDelay = 600_000)
     void evictIdleIps() {
         long now = System.currentTimeMillis();
-        searchesByIp.values().removeIf(t -> {
-            synchronized (t) {
-                return t.isEmpty() || now - t.peekLast() > HOUR_MS;
-            }
-        });
+        for (Map<String, ArrayDeque<Long>> byKey : List.of(searchesByIp, searchesByVisitor)) {
+            byKey.values().removeIf(t -> {
+                synchronized (t) {
+                    return t.isEmpty() || now - t.peekLast() > HOUR_MS;
+                }
+            });
+        }
     }
 
     // ---- Nightly check ----

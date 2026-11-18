@@ -35,33 +35,69 @@ export function visitorId() {
   return visitor
 }
 
+/** Most items kept per gallery while the network is down; the oldest go first. */
+const MAX_QUEUE = 500
+const MAX_BACKOFF_MS = 60_000
+let failures = 0
+
+const activityUrl = (slug: string) => `${API_BASE_URL}/api/public/events/${encodeURIComponent(slug)}/activity`
+
+function schedule(ms: number) {
+  if (timer) clearTimeout(timer)
+  timer = setTimeout(() => flushActivity(), ms)
+}
+
+/** A batch that did not get through goes back in front of the queue and is retried with a growing delay. */
+function requeue(slug: string, items: Item[]) {
+  queues.set(slug, [...items, ...(queues.get(slug) ?? [])].slice(-MAX_QUEUE))
+  failures++
+  schedule(Math.min(FLUSH_MS * 2 ** failures, MAX_BACKOFF_MS))
+}
+
 function send(slug: string, items: Item[]) {
   // keepalive lets the last batch go out while the page closes.
-  fetch(`${API_BASE_URL}/api/public/events/${encodeURIComponent(slug)}/activity`, {
+  fetch(activityUrl(slug), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ visitorId: visitorId(), items }),
     keepalive: true,
-  }).catch(() => {
-    // analytics must never disturb the gallery
   })
+    .then((res) => {
+      if (res.ok || (res.status >= 400 && res.status < 500 && res.status !== 429)) failures = 0 // 4xx (gallery closed...): never going to work, drop
+      else requeue(slug, items)
+    })
+    .catch(() => requeue(slug, items)) // analytics must never disturb the gallery, but a flaky venue network must not lose them
 }
 
-export function flushActivity() {
+/** {@code beacon}: the page is going away, so hand the batch to the browser, which delivers it even after unload. */
+export function flushActivity(beacon = false) {
   if (timer) clearTimeout(timer)
   timer = null
-  for (const [slug, items] of queues) {
-    while (items.length > 0) send(slug, items.splice(0, MAX_BATCH))
+  for (const [slug, items] of [...queues]) {
+    queues.delete(slug) // taken out before sending: a batch is never sent twice
+    while (items.length > 0) {
+      const batch = items.splice(0, MAX_BATCH)
+      const body = JSON.stringify({ visitorId: visitorId(), items: batch })
+      let queued = false
+      if (beacon && typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+        try {
+          queued = navigator.sendBeacon(activityUrl(slug), new Blob([body], { type: 'application/json' }))
+        } catch {
+          queued = false
+        }
+      }
+      if (!queued) send(slug, batch)
+    }
   }
-  queues.clear()
 }
 
 export function track(slug: string, item: Item) {
   const items = queues.get(slug) ?? []
   items.push(item)
   queues.set(slug, items)
-  if (items.length >= MAX_BATCH) flushActivity()
-  else timer ??= setTimeout(flushActivity, FLUSH_MS)
+  if (queues.get(slug)!.length > MAX_QUEUE) queues.set(slug, queues.get(slug)!.slice(-MAX_QUEUE))
+  if (items.length >= MAX_BATCH && failures === 0) flushActivity()
+  else timer ??= setTimeout(() => flushActivity(), FLUSH_MS)
 }
 
 /** Counts one gallery visit per browser tab, however often the page reloads. */
@@ -77,8 +113,8 @@ export function trackVisit(slug: string, source: 'qr' | 'link') {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('pagehide', flushActivity)
+  window.addEventListener('pagehide', () => flushActivity(true))
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flushActivity()
+    if (document.visibilityState === 'hidden') flushActivity(true)
   })
 }

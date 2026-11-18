@@ -79,7 +79,7 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID> {
 
     @Query(value = """
             SELECT status, count(*) AS photos,
-                   coalesce(sum(media_bytes + CASE WHEN original_stored THEN file_size ELSE 0 END), 0) AS bytes,
+                   coalesce(sum(media_bytes + CASE WHEN original_stored THEN file_size ELSE 0 END) FILTER (WHERE status = 'READY'), 0) AS bytes,
                    gallery
             FROM photos WHERE event_id = ?1 GROUP BY status, gallery""", nativeQuery = true)
     List<Object[]> countByStatus(UUID eventId);
@@ -106,4 +106,14 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID> {
             UPDATE photos SET status = 'UPLOADED', updated_at = now()
             WHERE status = 'PROCESSING' AND processing_started_at < ?1""", nativeQuery = true)
     int requeueStale(Instant startedBefore);
+
+    /**
+     * Uploads the uploader opened but never completed (laptop closed, file gone): marked FAILED so they stop showing as
+     * "processing" and the uploader can resend them. Their bytes never count as storage (only READY photos do).
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE photos SET status = 'FAILED', failure_reason = 'Upload was never completed', updated_at = now()
+            WHERE status IN ('UPLOADING', 'UPLOADED') AND updated_at < ?1""", nativeQuery = true)
+    int failAbandonedUploads(Instant updatedBefore);
 }

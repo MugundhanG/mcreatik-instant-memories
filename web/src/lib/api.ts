@@ -118,18 +118,18 @@ export const publicApi = {
   },
   categories: (slug: string) => request<Category[]>(`/api/public/events/${encodeURIComponent(slug)}/categories`),
   /** "Find my photos": the guest's selfie (a JPEG, already resized) in, the photos they appear in out. */
-  findMe: (slug: string, selfie: Blob, visitorId?: string) => {
+  findMe: (slug: string, selfie: Blob, visitorId: string) => {
     const form = new FormData()
     form.append('selfie', selfie, 'selfie.jpg')
-    if (visitorId) form.append('visitorId', visitorId) // only labels the studio's stats
+    form.append('visitorId', visitorId) // keys the per-person search limit and labels the studio's stats
     return request<FindMeResult>(`/api/public/events/${encodeURIComponent(slug)}/find-me`, { method: 'POST', body: form })
   },
   /** "Remember me": the photos of a remembered match (a database lookup, no cost). 404 when it is gone. */
   match: (slug: string, matchId: string) =>
     request<MatchResult>(`/api/public/events/${encodeURIComponent(slug)}/matches/${encodeURIComponent(matchId)}`),
   /** "Update my photos": looks again only if new photos were scanned. */
-  refreshMatch: (slug: string, matchId: string, visitorId?: string) =>
-    request<MatchResult>(`/api/public/events/${encodeURIComponent(slug)}/matches/${encodeURIComponent(matchId)}/refresh${visitorId ? `?visitorId=${encodeURIComponent(visitorId)}` : ''}`, { method: 'POST' }),
+  refreshMatch: (slug: string, matchId: string, visitorId: string) =>
+    request<MatchResult>(`/api/public/events/${encodeURIComponent(slug)}/matches/${encodeURIComponent(matchId)}/refresh?visitorId=${encodeURIComponent(visitorId)}`, { method: 'POST' }),
   /** "Forget me". */
   forgetMatch: (slug: string, matchId: string) =>
     request<void>(`/api/public/events/${encodeURIComponent(slug)}/matches/${encodeURIComponent(matchId)}`, { method: 'DELETE' }),

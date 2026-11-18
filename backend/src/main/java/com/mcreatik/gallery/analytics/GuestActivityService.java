@@ -89,27 +89,31 @@ public class GuestActivityService {
 
     public GuestActivity.Summary summary(UUID eventId) {
         GuestActivity.Totals totals = jdbc.queryForObject("""
-                SELECT count(DISTINCT visitor_id) FILTER (WHERE left(type, 5) <> 'FACE_'),
-                       count(*) FILTER (WHERE type = 'VISIT' AND source = 'qr'),
-                       count(*) FILTER (WHERE type = 'VISIT'),
-                       count(*) FILTER (WHERE type = 'PHOTO_VIEW'),
-                       count(*) FILTER (WHERE type = 'DOWNLOAD'),
-                       count(DISTINCT visitor_id) FILTER (WHERE type = 'DOWNLOAD'),
-                       count(*) FILTER (WHERE type = 'SHARE'),
-                       count(*) FILTER (WHERE type = 'INSTAGRAM'),
-                       count(*) FILTER (WHERE type = 'CONTACT'),
-                       count(*) FILTER (WHERE type = 'LIKE')
-                FROM guest_activity WHERE event_id = ?""",
+                SELECT count(DISTINCT a.visitor_id) FILTER (WHERE left(a.type, 5) <> 'FACE_'),
+                       count(*) FILTER (WHERE a.type = 'VISIT' AND a.source = 'qr'),
+                       count(*) FILTER (WHERE a.type = 'VISIT'),
+                       count(*) FILTER (WHERE a.type = 'PHOTO_VIEW' AND p.id IS NOT NULL),
+                       count(*) FILTER (WHERE a.type = 'DOWNLOAD' AND p.id IS NOT NULL),
+                       count(DISTINCT a.visitor_id) FILTER (WHERE a.type = 'DOWNLOAD' AND p.id IS NOT NULL),
+                       count(*) FILTER (WHERE a.type = 'SHARE' AND p.id IS NOT NULL),
+                       count(*) FILTER (WHERE a.type = 'INSTAGRAM'),
+                       count(*) FILTER (WHERE a.type = 'CONTACT'),
+                       count(*) FILTER (WHERE a.type = 'LIKE' AND p.id IS NOT NULL)
+                FROM guest_activity a LEFT JOIN photos p ON p.id = a.photo_id AND p.event_id = a.event_id
+                     AND p.status = 'READY' AND NOT p.hidden AND p.gallery = 'GUEST'
+                WHERE a.event_id = ?""",
                 (rs, n) -> new GuestActivity.Totals(rs.getLong(1), rs.getLong(2), rs.getLong(3), rs.getLong(4),
                         rs.getLong(5), rs.getLong(6), rs.getLong(7), rs.getLong(8), rs.getLong(9), rs.getLong(10)),
                 eventId);
 
         List<GuestActivity.Hour> hours = jdbc.query("""
-                SELECT to_char(date_trunc('hour', created_at AT TIME ZONE '%s'), 'YYYY-MM-DD"T"HH24:00') AS h,
-                       count(DISTINCT visitor_id) FILTER (WHERE left(type, 5) <> 'FACE_'),
-                       count(*) FILTER (WHERE type = 'PHOTO_VIEW'),
-                       count(*) FILTER (WHERE type = 'DOWNLOAD')
-                FROM guest_activity WHERE event_id = ? AND left(type, 5) <> 'FACE_'
+                SELECT to_char(date_trunc('hour', a.created_at AT TIME ZONE '%s'), 'YYYY-MM-DD"T"HH24:00') AS h,
+                       count(DISTINCT a.visitor_id) FILTER (WHERE left(a.type, 5) <> 'FACE_'),
+                       count(*) FILTER (WHERE a.type = 'PHOTO_VIEW' AND p.id IS NOT NULL),
+                       count(*) FILTER (WHERE a.type = 'DOWNLOAD' AND p.id IS NOT NULL)
+                FROM guest_activity a LEFT JOIN photos p ON p.id = a.photo_id AND p.event_id = a.event_id
+                     AND p.status = 'READY' AND NOT p.hidden AND p.gallery = 'GUEST'
+                WHERE a.event_id = ? AND left(a.type, 5) <> 'FACE_'
                 GROUP BY h ORDER BY h""".formatted(ZONE),
                 (rs, n) -> new GuestActivity.Hour(rs.getString(1), rs.getLong(2), rs.getLong(3), rs.getLong(4)),
                 eventId);
