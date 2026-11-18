@@ -37,7 +37,8 @@ class LiveStateTest {
         LiveState s = LiveState.of(engine(Connection.CONNECTING, NONE, null, null, 0, List.of()), ftp(0, null, null), null, now);
         assertThat(s.conn()).isEqualTo(Conn.RECONNECTING);
         assertThat(s.pipeline()).extracting(LiveState.Stage::tone).doesNotContain(Tone.GREEN);
-        assertThat(s.camera()).isEqualTo("No photo yet");
+        assertThat(s.camera()).isEqualTo("Not connected · no photo yet");
+        assertThat(s.cameraConnected()).isFalse();
         assertThat(s.lastPhoto()).isEqualTo("None yet");
         assertThat(s.speed()).isEqualTo("—");
         assertThat(s.total()).isZero();
@@ -136,9 +137,35 @@ class LiveStateTest {
         assertThat(s.conn()).isEqualTo(Conn.PAUSED);
         assertThat(s.tone()).isEqualTo(Tone.AMBER);
         assertThat(s.title()).contains("Paused");
-        assertThat(s.detail()).startsWith("3 photos kept back.");
+        assertThat(s.detail()).startsWith("3 photos kept private.");
         assertThat(s.autoUpload()).isEqualTo("Paused · 3 kept here");
         assertThat(s.pipeline().get(1).status()).isEqualTo("Kept here");
         assertThat(s.pipeline().get(2).status()).isEqualTo("Paused");
+    }
+
+    private FtpPhotoSource.Status ftpSessions(int sessions, Instant last, int received) {
+        return new FtpPhotoSource.Status(true, 2121, "camabcd", "pw", List.of("192.168.43.10"), received, last,
+                "192.168.43.20", null, sessions, 0, null, null);
+    }
+
+    @Test
+    void theCameraIsConnectedOnlyWhileItsSessionIsOpenOrItSentAFileRecentlyNeverJustBecauseTheLaptopIsOnline() {
+        EngineStatus online = engine(Connection.ONLINE, NONE, now.minusSeconds(3000), null, 0, List.of());
+        // Yesterday's camera: the laptop is online but the last file came 20 hours ago and no session is open.
+        LiveState gone = LiveState.of(online, ftpSessions(0, now.minusSeconds(72_000), 40), now.minusSeconds(72_000), now);
+        assertThat(gone.conn()).isEqualTo(Conn.ONLINE);
+        assertThat(gone.cameraConnected()).isFalse();
+        assertThat(gone.camera()).startsWith("Not connected · last photo 20 h");
+        assertThat(gone.pipeline().get(0).status()).isEqualTo("Not connected");
+        assertThat(gone.pipeline().get(0).tone()).isNotEqualTo(Tone.GREEN);
+
+        // An open FTP session counts, even with no file yet.
+        LiveState session = LiveState.of(online, ftpSessions(1, null, 0), null, now);
+        assertThat(session.cameraConnected()).isTrue();
+        assertThat(session.camera()).startsWith("Connected");
+
+        // A file two minutes ago counts (the camera may close the session between shots); ten minutes ago does not.
+        assertThat(LiveState.of(online, ftpSessions(0, now.minusSeconds(120), 3), now.minusSeconds(120), now).cameraConnected()).isTrue();
+        assertThat(LiveState.of(online, ftpSessions(0, now.minusSeconds(600), 3), now.minusSeconds(600), now).cameraConnected()).isFalse();
     }
 }

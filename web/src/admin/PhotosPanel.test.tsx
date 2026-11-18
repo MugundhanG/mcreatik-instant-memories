@@ -190,6 +190,36 @@ describe('Dashboard photos', () => {
     await waitFor(() => expect(api.listings().at(-1)!.url.searchParams.get('offset')).toBe('3'))
   })
 
+  describe('Sticky toolbar', () => {
+    it('keeps Select, the filters and the bulk actions stuck to the top while the photos scroll', async () => {
+      const user = userEvent.setup()
+      mockApi(() => ({ photos: [adminPhoto(1), adminPhoto(2)], nextOffset: null }))
+      renderPanel()
+      await screen.findAllByRole('listitem')
+      const toolbar = screen.getByTestId('photo-toolbar')
+      // Sticky, under the sticky tabs, and inside the same block as Select and the bulk bar.
+      expect(toolbar).toHaveClass('sticky', 'top-11')
+      expect(within(toolbar).getByRole('button', { name: 'Select' })).toBeInTheDocument()
+      expect(within(toolbar).getByLabelText('Sort')).toBeInTheDocument()
+      await user.click(within(toolbar).getByRole('button', { name: 'Select' }))
+      expect(toolbar).toContainElement(screen.getByTestId('select-bar'))
+      // The photos are outside it, so nothing is covered: the toolbar sits in the page flow above the grid.
+      expect(toolbar).not.toContainElement(screen.getByTestId('admin-photos'))
+    })
+
+    it('folds the filters behind one button on phones so the bar stays slim', async () => {
+      const user = userEvent.setup()
+      mockApi(() => ({ photos: [adminPhoto(1)], nextOffset: null }))
+      renderPanel()
+      await screen.findAllByRole('listitem')
+      const filters = screen.getByTestId('photo-filters')
+      expect(filters).toHaveClass('hidden', 'sm:contents')
+      await user.click(screen.getByRole('button', { name: 'Filters' }))
+      expect(filters).toHaveClass('flex')
+      expect(filters).not.toHaveClass('hidden')
+    })
+  })
+
   describe('Select mode', () => {
     const three = () => ({ photos: [adminPhoto(1), adminPhoto(2, { liked: true }), adminPhoto(3, { liked: true })], nextOffset: null })
     const bar = () => screen.getByTestId('select-bar')

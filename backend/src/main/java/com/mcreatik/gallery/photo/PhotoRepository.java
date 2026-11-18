@@ -79,8 +79,9 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID> {
 
     @Query(value = """
             SELECT status, count(*) AS photos,
-                   coalesce(sum(media_bytes + CASE WHEN original_stored THEN file_size ELSE 0 END), 0) AS bytes
-            FROM photos WHERE event_id = ?1 GROUP BY status""", nativeQuery = true)
+                   coalesce(sum(media_bytes + CASE WHEN original_stored THEN file_size ELSE 0 END), 0) AS bytes,
+                   gallery
+            FROM photos WHERE event_id = ?1 GROUP BY status, gallery""", nativeQuery = true)
     List<Object[]> countByStatus(UUID eventId);
 
     @Query(value = """
@@ -89,9 +90,10 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID> {
             FROM photos WHERE event_id = ?1 GROUP BY uploader_id""", nativeQuery = true)
     List<Object[]> countByUploader(UUID eventId);
 
+    /** Ready photos per event and gallery (hidden ones included: they are still in the studio's gallery). */
     @Query(value = """
-            SELECT event_id, count(*) FROM photos
-            WHERE event_id IN (?1) AND status = 'READY' GROUP BY event_id""", nativeQuery = true)
+            SELECT event_id, gallery, count(*) FROM photos
+            WHERE event_id IN (?1) AND status = 'READY' GROUP BY event_id, gallery""", nativeQuery = true)
     List<Object[]> countReadyByEvent(List<UUID> eventIds);
 
     List<Photo> findByEventIdAndStatusOrderByReadyAtDesc(UUID eventId, PhotoStatus status, Limit limit);

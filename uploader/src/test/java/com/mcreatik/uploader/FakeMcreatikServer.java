@@ -42,9 +42,16 @@ public class FakeMcreatikServer implements AutoCloseable {
     public volatile String eventName = "Arun & Priya Wedding";
     /** Privacy pause as the server sees it (the dashboard or the app's PATCH /me sets it). */
     public volatile boolean paused;
+    /** Pause windows as the real server keeps them: a photo that ARRIVED inside one is refused, whenever it is sent. */
+    private final java.util.List<long[]> windows = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private volatile long pauseStart;
+    /** The camera state and arrival time the app reported last. */
+    public volatile String lastHeartbeatBody = "";
+    public final java.util.List<String> receivedAts = new java.util.concurrent.CopyOnWriteArrayList<>();
     public volatile String cameraName = "Camera 1";
     public final AtomicInteger pauseUpdates = new AtomicInteger();
     private static final Pattern NAME = Pattern.compile("\"name\"\\s*:\\s*\"([^\"]*)\"");
+    private static final Pattern RECEIVED = Pattern.compile("\"receivedAt\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern PAUSED = Pattern.compile("\"paused\"\\s*:\\s*(true|false)");
     /** Sent in /me when set (newer servers); null leaves the field out, like an older server. */
     public volatile String eventDate;
@@ -118,25 +125,27 @@ public class FakeMcreatikServer implements AutoCloseable {
             case "GET /api/uploader/me" -> respond(ex, 200, """
                     {"uploaderId":"u1","uploaderName":"%s","eventId":"e1","eventName":"%s",
                      "eventStatus":"LIVE","galleryUrl":"https://gallery.mcreatik.com/e/arun-priya-7k3d",
-                     "heartbeatIntervalSeconds":15,"maxFileSizeBytes":62914560,"paused":%s%s}""".formatted(cameraName,
-                    eventName, paused, eventDate == null ? "" : ",\"eventDate\":\"" + eventDate + "\""));
+                     "heartbeatIntervalSeconds":15,"maxFileSizeBytes":62914560,"paused":%s,"pausedSince":%s%s}""".formatted(cameraName,
+                    eventName, paused, pausedSince(), eventDate == null ? "" : ",\"eventDate\":\"" + eventDate + "\""));
             case "POST /api/uploader/heartbeat" -> {
                 heartbeats.incrementAndGet();
+                lastHeartbeatBody = new String(body, StandardCharsets.UTF_8);
                 respond(ex, 200, "{\"eventStatus\":\"LIVE\",\"acceptingUploads\":true,\"paused\":" + paused
-                        + ",\"uploaderName\":\"" + cameraName + "\"}");
+                        + ",\"pausedSince\":" + pausedSince() + ",\"uploaderName\":\"" + cameraName + "\"}");
             }
             case "PATCH /api/uploader/me" -> {
                 String json = new String(body, StandardCharsets.UTF_8);
                 Matcher p = PAUSED.matcher(json);
                 if (p.find()) {
-                    paused = Boolean.parseBoolean(p.group(1));
+                    pause(Boolean.parseBoolean(p.group(1)));
                     pauseUpdates.incrementAndGet();
                 }
                 Matcher n = NAME.matcher(json);
                 if (n.find()) {
                     cameraName = n.group(1);
                 }
-                respond(ex, 200, "{\"name\":\"" + cameraName + "\",\"paused\":" + paused + "}");
+                respond(ex, 200, "{\"name\":\"" + cameraName + "\",\"paused\":" + paused + ",\"pausedSince\":"
+                        + pausedSince() + "}");
             }
             case "POST /api/uploader/uploads" -> {
                 String json = new String(body, StandardCharsets.UTF_8);
@@ -194,9 +203,46 @@ public class FakeMcreatikServer implements AutoCloseable {
         }
     }
 
+    /** Pause or resume as the dashboard does, recording the window. */
+    public synchronized void pause(boolean on) {
+        paused = on;
+        sync();
+    }
+
+    private synchronized void sync() {
+        if (paused && pauseStart == 0) {
+            pauseStart = System.currentTimeMillis();
+        } else if (!paused && pauseStart != 0) {
+            windows.add(new long[] {pauseStart, System.currentTimeMillis()});
+            pauseStart = 0;
+        }
+    }
+
+    private synchronized String pausedSince() {
+        sync();
+        return pauseStart == 0 ? "null" : "\"" + java.time.Instant.ofEpochMilli(pauseStart) + "\"";
+    }
+
+    private synchronized boolean arrivedWhilePaused(long at) {
+        sync();
+        if (pauseStart != 0 && at >= pauseStart) {
+            return true;
+        }
+        return windows.stream().anyMatch(w -> at >= w[0] && at < w[1]);
+    }
+
     private void createSession(HttpExchange ex, String json) throws IOException {
         sessionCalls.incrementAndGet();
-        if (paused) {
+        Matcher arrival = RECEIVED.matcher(json);
+        boolean isPrivate;
+        if (arrival.find()) {
+            receivedAts.add(arrival.group(1));
+            isPrivate = arrivedWhilePaused(java.time.Instant.parse(arrival.group(1)).toEpochMilli());
+        } else {
+            sync();
+            isPrivate = paused;
+        }
+        if (isPrivate) {
             respond(ex, 409, "{\"code\":\"UPLOADER_PAUSED\",\"message\":\"This camera is paused.\"}");
             return;
         }

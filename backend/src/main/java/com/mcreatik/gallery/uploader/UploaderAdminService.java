@@ -23,9 +23,12 @@ public class UploaderAdminService {
     private final EventService events;
     private final com.mcreatik.gallery.event.EventRepository eventRepository;
     private final GalleryProperties properties;
+    private final UploaderPauseLog pauseLog;
 
     public UploaderAdminService(UploaderRepository uploaders, EventService events,
-                                com.mcreatik.gallery.event.EventRepository eventRepository, GalleryProperties properties) {
+                                com.mcreatik.gallery.event.EventRepository eventRepository, GalleryProperties properties,
+                                UploaderPauseLog pauseLog) {
+        this.pauseLog = pauseLog;
         this.uploaders = uploaders;
         this.events = events;
         this.eventRepository = eventRepository;
@@ -123,6 +126,13 @@ public class UploaderAdminService {
             uploader.rename(clean);
         }
         if (paused != null) {
+            if (paused != uploader.isPaused()) {
+                if (paused) {
+                    pauseLog.paused(uploader.getId(), java.time.Instant.now());
+                } else {
+                    pauseLog.resumed(uploader.getId(), java.time.Instant.now());
+                }
+            }
             uploader.setPaused(paused);
         }
     }

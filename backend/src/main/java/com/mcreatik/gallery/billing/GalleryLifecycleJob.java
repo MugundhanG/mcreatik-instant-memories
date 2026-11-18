@@ -71,7 +71,7 @@ public class GalleryLifecycleJob {
 
     void lockUnpaidStorage(LocalDate today) {
         List<Row> rows = jdbc.query("""
-                UPDATE events e SET client_gallery_enabled = false, storage_locked = true
+                UPDATE events e SET client_gallery_enabled = false, client_gallery_locked = true, storage_locked = true
                 FROM admin_users u
                 WHERE u.id = e.owner_id AND %s AND e.photos_deleted_at IS NULL AND e.event_type IN ('MAIN', 'QUICK') AND NOT e.storage_locked
                   AND e.client_gallery_enabled AND e.event_date < ?

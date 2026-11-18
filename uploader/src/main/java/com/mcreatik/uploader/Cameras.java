@@ -146,7 +146,7 @@ public final class Cameras {
     }
 
     /**
-     * After Change event saved Camera 1's new event: the other cameras get new cameras in that event (same ports and
+     * After Change event saved Camera 1's new event: the other cameras get new cameras in that event (same ports, new random
      * camera login), and every queue starts the new event at 0. Returns the cameras that couldn't be moved.
      */
     public List<Integer> moveToNewEvent(UploaderConfig newCamera1) {

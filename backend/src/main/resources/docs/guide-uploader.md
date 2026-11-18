@@ -78,8 +78,8 @@ On **Live Upload**, from top to bottom:
 | Part | Meaning |
 | --- | --- |
 | Event card | The event name, the camera (for example "Camera 1"), the camera model (read from the first photo), the event's date and time, and how long the laptop has been connected. **Change event…** is on the right (section 4) |
-| Status card | **Online** (green): photos upload automatically. **Reconnecting** (blue): the internet just dropped. **Offline** (amber): no internet for 2 minutes or more, photos are queued. **Error** (red): something needs you, and the reason is shown. Below: photos received from the camera, auto upload, last photo, upload speed and connection time |
-| **Camera Wi-Fi settings** | What to type into the camera: **Server** (this laptop's address), **Port 2121**, **User mcreatik**, **Password**. The password is hidden until you press the eye. Each value has a **Copy** button, which shows **COPIED** |
+| Status card | **Laptop online** (green): photos upload automatically. **Reconnecting** (blue): the internet just dropped. **Offline** (amber): no internet for 2 minutes or more, photos are queued. **Error** (red): something needs you, and the reason is shown. Below: the **Camera** (**Connected** only while the camera has an open Wi-Fi session or sent a photo in the last 3 minutes, otherwise **Not connected** with its last photo), auto upload, last photo, upload speed and the laptop's connection time. The laptop being online never means the camera is connected |
+| **Camera Wi-Fi settings** | What to type into the camera: **Server** (this laptop's address), **Port 2121**, a random **User** (like `camk7m2`) and **Password**. They belong to this camera and this event only: a camera still holding settings from an earlier event is refused (the card says so), so type the new ones into the camera again after **Change event…**, **Add camera**, or a new connection code. The password is hidden until you press the eye. Each value has a **Copy** button, which shows **COPIED** |
 | Waiting · Uploading · Uploaded · Already sent · Failed | The queue counts, with a bar: "Uploaded X of Y photos detected" ("Already sent" means McreatiK already had that photo, so it was skipped) |
 | Live upload pipeline | Camera → Computer → Upload server → Live gallery. Green = done, blue = working, grey = waiting, red = needs attention |
 | Recent photos | The latest photos with a thumbnail, size, time and status. **View all** opens the Gallery page |
@@ -115,7 +115,7 @@ The uploader remembers its event, even after you close it or install an update. 
 
 The uploader restarts by itself and shows the new event's name, with the counters back at 0.
 
-- **The camera settings don't change.** The Server, Port, User and Password stay the same, so the camera needs no setup.
+- **The camera needs new settings.** The Port stays the same, but the User and Password are new for each event: enter them in the camera again. A camera still holding the old event's settings is refused.
 - **Each event gets its own folder** inside McreatiK Photos (for example `McreatiK Photos/Kavin & Nila Reception`). If you chose a folder yourself, it's kept.
 - **Old photos are never sent to the new event.** The uploader remembers every photo it has already sent.
 
@@ -166,7 +166,7 @@ One uploader can receive photos from up to **4 cameras at the same time**, for e
 
 ![Camera 2 is ready: use Port 2122](images/uploader-camera-added.webp)
 
-4. In that camera's FTP settings, use the **same Server, User and Password** as Camera 1, and the camera's own **Port**:
+4. In that camera's FTP settings, use the **same Server** as Camera 1, and that camera's own **Port**, **User** and **Password** (select its tab and read them on the Live Upload page):
 
 | Camera | Port |
 | --- | --- |
@@ -179,7 +179,7 @@ If one of these ports is taken by another program, the uploader picks the next f
 
 **While shooting**
 - Click a camera's tab to see its status, settings, counters, pipeline and photos. The dot on each tab is green when that camera is fine, blue while reconnecting, amber when offline and red when it needs attention.
-- The top right shows all cameras together, for example "Live event · 4 cameras online".
+- The top right shows all cameras together, for example "Live event · 4 uploaders online · 3 of 4 cameras connected".
 - Every event has **one folder**, with **a sub-folder for each camera**, named after the camera:
 
 ```
@@ -196,19 +196,22 @@ Select its tab and press **Rename**. The new name shows here and in the dashboar
 
 **Pause a camera (private moments)**
 Select its tab and press **Pause** (or press **Pause** next to the camera in the dashboard). While a camera is paused:
-- photos that haven't uploaded yet, and **every new photo**, stay on the laptop in that camera's **Not uploaded (paused)** folder;
-- **none of them go to the gallery**, even after you resume;
-- the tab, the status card and the dashboard show **Paused** in amber.
+- photos **still transfer from the camera to the laptop**, but into that camera's **Not uploaded (paused)** folder (inside its photo folder), never into the gallery;
+- each photo is decided **when it arrives on the laptop**: one that arrives during the pause is private for good, **even if the laptop was offline or hadn't heard about the pause yet, and even after you resume**;
+- photos that arrived before you paused and are still waiting upload normally after you resume;
+- the uploader shows **N photos kept private (paused)** with an **Open folder** button, and the tab, status card and dashboard show **Paused** in amber.
+
+Pausing or resuming in the dashboard or in the uploader reaches the other side within about 5 seconds.
 
 ![A paused camera: its photos stay on this laptop](images/uploader-paused.webp)
 
-Press **Resume** to go live again: only photos taken after resuming upload. Use it for moments that shouldn't go live, such as the bride getting ready. To share some of the paused photos later, upload them from the dashboard (**Photos → Guest gallery**).
+Press **Resume** to go live again: only photos that arrive after resuming are published. Use it for moments that shouldn't go live, such as the bride getting ready. To share some of the paused photos later, upload them from the dashboard (**Photos → Guest gallery**).
 
 **Remove a camera**
 Select its tab and press **Remove camera** (Camera 1 can't be removed). It is allowed only when that camera's Waiting and Uploading are 0. Its photos stay in the gallery and in its folder.
 
 **Next event**
-**Change event…** moves **all** cameras to the new event. The ports and password stay the same, so no camera needs new settings.
+**Change event…** moves **all** cameras to the new event. The ports stay the same, but every camera gets a **new User and Password** (so cameras set up for the old event stop working): type the new ones into each camera.
 
 > **Note** All cameras share this laptop's Wi-Fi, internet and battery. Keep it plugged in, close to where you shoot, and on a good hotspot. If the laptop sleeps, every camera stops.
 

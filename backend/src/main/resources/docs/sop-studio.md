@@ -141,7 +141,7 @@ Every camera needs its own **uploader**. One laptop with the McreatiK Instant Me
 
    - **First open:** Windows → More info → Run anyway; Mac → System Settings → Privacy & Security → Open Anyway.
    - **Connect:** in the uploader press **Paste**, choose the photo folder, choose camera Wi-Fi (FTP) or folder, then **Connect**.
-   - **Camera Wi-Fi:** type the Server, Port, User and Password shown on the uploader's **Camera Wi-Fi settings** card (Live Upload page) into the camera's FTP settings, then take a test shot and check it appears.
+   - **Camera Wi-Fi:** type the Server, Port, User and Password shown on the uploader's **Camera Wi-Fi settings** card (Live Upload page) into the camera's FTP settings (the User and Password are new for each event and each camera, so a camera set up for an earlier event is refused until you retype them), then take a test shot and check it appears.
    - **Change to another event:** wait until everything is uploaded (the queue is empty), then **Events → Change event…**, paste the new event's code and press **Connect**. The uploader restarts on the new event ([Switching to another event](/admin/docs/guide-uploader#4-switching-to-another-event)).
 
 ![Add camera & get code: the one-time connection code](images/s-add-uploader.webp)
@@ -150,7 +150,7 @@ Every camera needs its own **uploader**. One laptop with the McreatiK Instant Me
 
 ![Overview: photo counts, cameras online, latest photo, QR code](images/s-overview.webp)
 
-- **Pause / Resume:** a privacy pause for moments that shouldn't go live (for example the bride getting ready). While paused, that camera's photos stay on the laptop and **never** reach the gallery, even after you resume. The camera shows **Paused** in amber here and in the uploader. You can also pause it in the uploader.
+- **Pause / Resume:** a privacy pause for moments that shouldn't go live (for example the bride getting ready). While paused, that camera's photos still arrive on the laptop but go into its **Not uploaded (paused)** folder and **never** reach the gallery, not during the pause and not after you resume (each photo is decided when it arrives). The uploader shows "N photos kept private (paused)" with an Open folder button. The camera shows **Paused** in amber here and in the uploader. You can pause or resume here or in the uploader; each side sees the change within seconds. Each camera row also shows the **laptop** (Online/Offline) and the **camera** (Connected / Not connected · last photo) separately.
 ![Cameras: one paused for a private moment](images/s-cameras-paused.webp)
 
 - **Rename:** for example "Main - Karthik" or "Candid - Divya". The name shows here, in the uploader and on its photo folder.
@@ -226,7 +226,10 @@ At the top of **Photos** you see two tabs: **Guest gallery** and **Client galler
 | **What the couple does with it** | Nothing. They don't see it. | Views it, picks album photos, downloads photos and ZIPs |
 
 - Each tab has its **own categories**. Add them under **Settings → Photo categories**, one list for each tab.
-- If a gallery is turned off, uploads are still saved. Nobody sees them until you turn it on.
+- **Photo counts are per gallery**, ready photos only: the events list and Overview show, for example, **Guest 1,203 · Client 540**. Photos still uploading or failed are not counted, and a retried upload never adds a second copy.
+- **Turn a gallery on or off yourself** under **Settings → Gallery access** (a confirmation asks first). If a gallery is turned off, uploads are still saved to the cloud. Nobody sees them until you turn it on. You can't turn a gallery on if its paid period has ended (use **Keep more months**), its storage is unpaid (the client gallery waits for **Add storage**), or McreatiK turned it off. The switch then shows the reason.
+- The photo toolbar (**Select**, filters, bulk actions) and the gallery tabs stay at the top of the screen while you scroll. On a phone the filters sit behind a **Filters** button.
+- You stay logged in while you work: the dashboard renews your session in the background, and an upload that fails for a passing reason (dropped connection, server hiccup) is retried by itself, then offers **Retry failed**.
 - A **Client gallery only** event shows just the Client gallery tab.
 - **Old events:** on events created before 11 Nov 2026, the couple still sees every photo, as before. There is no split.
 
@@ -308,7 +311,7 @@ Table card text you can copy: "**Scan to see the photos live.** Point your phone
 | The camera can't connect to the laptop | See the camera guide's troubleshooting ([Canon](/admin/docs/guide-canon#troubleshooting) · [Sony](/admin/docs/guide-sony#troubleshooting)). |
 | Couple says photos are missing | New events: the couple sees only the **Client gallery**. Upload the finals there. |
 | Guests say the page is empty | Status is Draft or Archived, or no photos yet. Set Upcoming or Live. |
-| "This gallery is currently unavailable" | McreatiK turned the gallery off. Contact McreatiK. |
+| "This gallery is currently unavailable" | The gallery is turned off. Turn it on under **Settings → Gallery access**; if the switch shows a reason (paid period ended, storage unpaid, turned off by McreatiK), fix that or contact McreatiK. |
 | Upload says "storage is full" | A client gallery has used its GB. Press **Change storage & months** (Overview → Gallery & storage), then **Retry failed**. |
 | Couple says "This gallery has expired" | Its 3 months have passed. Press **Change storage & months** on the Overview before the deletion date shown there. |
 | Can't create an event (payment needed) | Your pack's events are used up, your pack has ended (renew it), or it's a Main event on a Quick pack. The message says which. Use **Buy events** or **Renew pack**. |

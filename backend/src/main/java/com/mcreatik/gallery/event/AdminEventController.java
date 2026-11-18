@@ -60,7 +60,7 @@ public class AdminEventController {
         return events.update(CurrentAdmin.id(auth), eventId, request);
     }
 
-    /** McreatiK only: turn the guests' gallery and the couple's gallery on or off. */
+    /** Turn the guests' gallery and the couple's gallery on or off (the studio on its own event; see EventService). */
     @PatchMapping("/{eventId}/access")
     public EventDtos.EventDetail access(Authentication auth, @PathVariable UUID eventId,
                                         @RequestBody EventDtos.GalleryAccessRequest request) {

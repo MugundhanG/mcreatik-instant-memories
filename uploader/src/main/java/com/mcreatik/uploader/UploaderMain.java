@@ -226,7 +226,7 @@ public final class UploaderMain {
         if (next.isEmpty()) {
             return;
         }
-        // Camera 1 is connected to the new event; the other cameras follow it (same ports and camera login).
+        // Camera 1 is connected to the new event; the other cameras follow it (same ports, new camera logins).
         List<Integer> notMoved = startCameras.moveToNewEvent(next.get());
         if (!notMoved.isEmpty()) {
             javax.swing.JOptionPane.showMessageDialog(null, "Camera " + notMoved.stream().map(String::valueOf)

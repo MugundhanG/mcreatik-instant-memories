@@ -52,14 +52,14 @@ class CameraSetTest {
     }
 
     @Test
-    void aNewCameraSharesCamera1sLoginButNotItsTokenPortOrFolder() {
+    void aNewCameraHasItsOwnTokenPortFolderAndRandomLogin() {
         UploaderConfig c1 = new UploaderConfig("http://x", "tok-1", Path.of("/p/Event"), 2, "dev",
-                new UploaderConfig.Ftp(true, 2121, "mcreatik", "abcd2345"));
+                new UploaderConfig.Ftp(true, 2121, "cam1abcd", "abcd2345"));
         UploaderConfig c2 = CameraSet.newCamera(c1, "tok-2", 2, 2122);
         assertThat(c2.token()).isEqualTo("tok-2");
         assertThat(c2.ftp().port()).isEqualTo(2122);
-        assertThat(c2.ftp().username()).isEqualTo("mcreatik");
-        assertThat(c2.ftp().password()).isEqualTo("abcd2345");
+        assertThat(c2.ftp().username()).isNotEqualTo("cam1abcd").isNotEqualTo("mcreatik");
+        assertThat(c2.ftp().password()).isNotEqualTo("abcd2345").hasSize(8);
         assertThat(c2.watchFolder()).isEqualTo(Path.of("/p/Event - Camera 2"));
         assertThat(c2.deviceId()).isEqualTo("dev");
     }

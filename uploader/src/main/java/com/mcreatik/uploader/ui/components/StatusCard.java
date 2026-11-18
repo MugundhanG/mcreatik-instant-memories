@@ -38,7 +38,7 @@ public final class StatusCard extends Ui.Surface {
         add(head, BorderLayout.NORTH);
 
         String[][] rows = {{"camera", "Camera"}, {"upload", "Auto upload"}, {"clock", "Last photo"},
-                {"zap", "Upload speed"}, {"activity", "Connection"}};
+                {"zap", "Upload speed"}, {"activity", "Laptop"}};
         JPanel grid = Ui.clear(new ResponsiveGrid(128, 8));
         for (int i = 0; i < rows.length; i++) {
             Ui.Surface cell = new Ui.Surface(new BorderLayout(0, 3), "card", "border", 10, new Insets(8, 10, 8, 10));

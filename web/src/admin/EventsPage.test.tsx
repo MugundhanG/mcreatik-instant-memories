@@ -7,11 +7,11 @@ import { auth } from './auth'
 
 const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
 
-function setUp(role: 'STUDIO' | 'SUPER_ADMIN') {
+function setUp(role: 'STUDIO' | 'SUPER_ADMIN', events: unknown[] = []) {
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
     const path = new URL(String(input)).pathname
     if (path === '/api/admin/account') return ok({ email: 'me@test', displayName: 'Lens & Light', role, mustChangePassword: false })
-    if (path === '/api/admin/events') return ok([])
+    if (path === '/api/admin/events') return ok(events)
     if (path === '/api/admin/billing') return ok({ plan: 'UNLIMITED', free: true, monthlyQuota: 0, usedThisMonth: 0, credits: 0, unitPrice: 0, mainCredits: 0, quickCredits: 0, carryOver: 0, packActive: false, planPaidUntil: null, prices: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300 } })
     return ok(null)
   }))
@@ -30,6 +30,13 @@ describe('Events page', () => {
     const first = await screen.findByTestId('first-event')
     expect(within(first).getAllByRole('listitem').map((li) => li.querySelector('p')?.textContent)).toEqual(['Create the event', 'Print the QR poster', 'Connect a camera'])
     expect(within(first).getByRole('link', { name: 'Create your first event' })).toHaveAttribute('href', '/admin/events/new')
+  })
+
+  it('shows each gallery\'s photo count on its own, never the two added together', async () => {
+    setUp('STUDIO', [{ id: 'e1', name: 'Arun Wedding', slug: 'arun', eventDate: '2026-11-01', status: 'LIVE', galleryUrl: '', readyPhotos: 1743, guestPhotos: 1203, clientPhotos: 540, createdAt: '', ownerId: 'o', ownerName: 'S', eventType: 'MAIN' }])
+    const card = await screen.findByRole('link', { name: /Arun Wedding/ })
+    expect(card).toHaveTextContent('Guest 1,203 · Client 540')
+    expect(card).not.toHaveTextContent('1,743')
   })
 
   it('has a phone menu with the same places as the top bar', async () => {

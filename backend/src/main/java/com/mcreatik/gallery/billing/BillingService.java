@@ -662,7 +662,7 @@ public class BillingService {
     /** The couple's gallery of a live event, locked for unpaid storage, comes back once its storage is covered. */
     void unlockIfCovered(UUID eventId) {
         jdbc.update("""
-                UPDATE events SET client_gallery_enabled = true, storage_locked = false
+                UPDATE events SET client_gallery_enabled = true, client_gallery_locked = false, storage_locked = false
                 WHERE id = ? AND storage_locked AND storage_quota_gb::bigint * ? >= ?""", eventId, GB, eventBytes(eventId));
     }
 

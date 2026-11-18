@@ -1,8 +1,9 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { exifCapturedAt, fit } from './prepareUpload'
 import { UploadPhotosPanel } from './UploadPhotosPanel'
+import { RETRY_DELAYS_MS } from './uploadRetry'
 
 vi.mock('./prepareUpload', async (actual) => ({
   ...(await actual<typeof import('./prepareUpload')>()),
@@ -41,8 +42,37 @@ describe('Photo preparation', () => {
 
 describe('Upload photos panel', () => {
   afterEach(() => vi.unstubAllGlobals())
+  // Two quick automatic retries; the first test turns them off to see the failure at once.
+  beforeEach(() => void RETRY_DELAYS_MS.splice(0, RETRY_DELAYS_MS.length, 0, 0))
+
+  it('tries a photo again after a passing failure (dropped connection, server error) before giving up', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    let calls = 0
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      calls++
+      if (calls === 1) throw new TypeError('Failed to fetch')
+      if (calls === 2) return new Response(JSON.stringify({ code: 'X', message: 'Bad gateway' }), { status: 502, headers: { 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ outcome: 'UPLOAD', photoId: 'p1' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }))
+    render(<UploadPhotosPanel eventId="e1" onUploaded={vi.fn()} />)
+    await user.upload(screen.getByLabelText('Photos to upload'), [new File(['x'], 'a.jpg', { type: 'image/jpeg' })])
+    await waitFor(() => expect(screen.getByTestId('upload-progress')).toHaveTextContent('1 added to the gallery'))
+    expect(calls).toBe(3)
+  })
+
+  it('does not retry an answer that will not change (too large) and keeps the photo retryable by hand', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    const fetchMock = vi.fn(async () => new Response('', { status: 413 }))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<UploadPhotosPanel eventId="e1" onUploaded={vi.fn()} />)
+    await user.upload(screen.getByLabelText('Photos to upload'), [new File(['x'], 'a.jpg', { type: 'image/jpeg' })])
+    await waitFor(() => expect(screen.getByTestId('upload-progress')).toHaveTextContent('a.jpg: Too large for the server upload limit'))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Retry failed' })).toBeInTheDocument()
+  })
 
   it('uploads the chosen photos, skips ones already there, and retries failures', async () => {
+    RETRY_DELAYS_MS.splice(0)
     const user = userEvent.setup({ applyAccept: false })
     let failOnce = true
     const sent: string[] = []

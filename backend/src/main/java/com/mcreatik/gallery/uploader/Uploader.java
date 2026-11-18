@@ -46,6 +46,13 @@ public class Uploader {
     @Column(nullable = false)
     private boolean paused;
 
+    /** Reported by the uploader: is the CAMERA itself connected (FTP session open or a file just arrived)? Null: unknown. */
+    @Column(name = "camera_connected")
+    private Boolean cameraConnected;
+
+    @Column(name = "camera_last_photo_at")
+    private Instant cameraLastPhotoAt;
+
     @Column(name = "queue_pending", nullable = false)
     private int queuePending;
 
@@ -91,6 +98,32 @@ public class Uploader {
         this.status = this.lastError == null ? UploaderStatus.ONLINE : UploaderStatus.ERROR;
         this.lastSeenAt = now;
         this.updatedAt = now;
+    }
+
+    /** The camera's own state as the uploader sees it (separate from the laptop's heartbeat). Null connected: not reported. */
+    public void recordCamera(Boolean connected, Instant lastPhotoAt) {
+        this.cameraConnected = connected;
+        if (lastPhotoAt != null) {
+            this.cameraLastPhotoAt = lastPhotoAt;
+        }
+    }
+
+    /**
+     * True only while the laptop is heard from AND it says the camera is connected. A stale heartbeat means we don't
+     * know, which is "not connected": yesterday's camera never shows as connected today.
+     */
+    public boolean cameraConnected(Instant now, Duration onlineThreshold) {
+        return Boolean.TRUE.equals(cameraConnected) && lastSeenAt != null
+                && !lastSeenAt.isBefore(now.minus(onlineThreshold));
+    }
+
+    /** False for uploaders that never reported a camera state (older app versions). */
+    public boolean reportsCamera() {
+        return cameraConnected != null;
+    }
+
+    public Instant getCameraLastPhotoAt() {
+        return cameraLastPhotoAt;
     }
 
     public void rotateToken(String tokenHash, String tokenPrefix) {

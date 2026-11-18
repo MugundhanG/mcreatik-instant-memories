@@ -82,9 +82,11 @@ interface Props {
   onEventChanged: () => void
   /** Photo counts changed (delete / hide): refresh the dashboard numbers. */
   onPhotosChanged: () => void
+  /** Tailwind `top-*` class: where the sticky toolbar stops, just under the sticky tabs above it. */
+  stickyTop?: string
 }
 
-export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refreshKey, uploaders, gallery = 'GUEST', categories, onCategoriesChanged, onCoverChange, onEventChanged, onPhotosChanged }: Props) {
+export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refreshKey, uploaders, gallery = 'GUEST', categories, onCategoriesChanged, onCoverChange, onEventChanged, onPhotosChanged, stickyTop = 'top-11' }: Props) {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
   const [photos, setPhotos] = useState<AdminPhoto[]>([])
   const [hasMore, setHasMore] = useState(false)
@@ -92,6 +94,8 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
   const [facets, setFacets] = useState<PhotoFacets | null>(null)
   const [viewerId, setViewerId] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  // Phones: the filters fold into a "Filters" button so the sticky toolbar stays one slim row.
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [menuId, setMenuId] = useState<string | null>(null)
   // The menu that was last open stays for its fade-out after closing.
   const [lastMenuId, setLastMenuId] = useState<string | null>(null)
@@ -390,7 +394,15 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
 
   return (
     <Card title="Photos" action={<span className="text-xs text-muted">{note ?? `${formatCount(photos.length)}${hasMore ? '+' : ''} shown`}</span>}>
-      <div className="mb-4 flex flex-wrap gap-2" data-testid="photo-filters">
+      {/* Stays at the top of the screen while the photos scroll under it: Select, filters and the bulk actions. */}
+      <div className={`sticky ${stickyTop} z-10 -mx-5 -mt-5 mb-4 border-b border-line bg-white/95 px-5 py-2.5 backdrop-blur`} data-testid="photo-toolbar">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="ghost" className="sm:hidden" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((o) => !o)}>
+          {filtersOpen ? 'Hide filters' : filtered ? 'Filters (on)' : 'Filters'}
+        </Button>
+        <span className="flex-1 sm:hidden" />
+        {!selecting && photos.length > 0 && <Button className="sm:order-last" onClick={() => setSelecting(true)}>Select</Button>}
+        <div className={`${filtersOpen && !selecting ? 'flex' : 'hidden'} w-full flex-wrap gap-2 sm:contents`} data-testid="photo-filters">
         <select aria-label="Camera" className={selectClass} value={filters.uploaderId} onChange={(e) => set({ uploaderId: e.target.value })}>
           <option value="">All cameras</option>
           {uploaders.map((u) => (
@@ -429,13 +441,11 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
             set({ ...NO_FILTERS, sort: filters.sort })
           }}>Clear filters</Button>
         )}
-        <span className="flex-1" />
-        {!selecting && photos.length > 0 && <Button onClick={() => setSelecting(true)}>Select</Button>}
+        <span className="hidden flex-1 sm:block" />
+        </div>
       </div>
-
-      <ZipProgressCard status={zip.status} onClose={zip.dismiss} />
       {selecting && (
-        <div className="anim-sheet-up sticky top-14 z-20 mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white p-2.5 shadow-md" data-testid="select-bar">
+        <div className="anim-sheet-up mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white p-2.5 shadow-md" data-testid="select-bar">
           <span className="px-1 text-sm font-medium tabular-nums">{formatCount(picked.size)} selected</span>
           {!allShownPicked && <Button variant="ghost" onClick={() => setPicked(new Set(photos.map((p) => p.id)))}>Select all</Button>}
           {picked.size > 0 && <Button variant="ghost" onClick={() => setPicked(new Set())}>Clear</Button>}
@@ -467,6 +477,9 @@ export function PhotosPanel({ eventId, eventSlug, eventName, coverPhotoId, refre
           <Button variant="primary" onClick={stopSelecting}>Done</Button>
         </div>
       )}
+      </div>
+
+      <ZipProgressCard status={zip.status} onClose={zip.dismiss} />
 
       {!loading && photos.length === 0 && <p className="text-sm text-muted">{filtered ? 'No photos match these filters.' : 'No photos yet.'}</p>}
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" data-testid="admin-photos">

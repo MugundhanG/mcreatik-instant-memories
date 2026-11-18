@@ -7,7 +7,7 @@ import { ShutterLoader } from '../shared/ShutterLoader'
 import { AnalyticsPanel } from './AnalyticsPanel'
 import { CategoriesCard } from './CategoriesCard'
 import { ClientsCard } from './ClientsCard'
-import { GalleryAccessCard, GalleryAccessNotice } from './GalleryAccessCard'
+import { GalleryAccessCard } from './GalleryAccessCard'
 import { useSession } from './auth'
 import { PhotosPanel } from './PhotosPanel'
 import { QrPanel } from './QrPanel'
@@ -31,8 +31,9 @@ const TABS: Tab[] = ['overview', 'photos', 'guests', 'couple', 'settings']
  */
 function StatStrip({ stats, clientOnly = false }: { stats: EventStats; clientOnly?: boolean }) {
   const items = [
-    [formatCount(stats.totalPhotos), 'photos'],
-    [formatCount(stats.readyPhotos - stats.hiddenPhotos), 'in gallery'],
+    // Per gallery, ready photos only: what was really uploaded, never both galleries added together.
+    ...(clientOnly ? [] : [[formatCount(stats.guestPhotos), 'guest photos']]),
+    [formatCount(stats.clientPhotos), 'client photos'],
     ...(clientOnly ? [] : [[`${stats.activeUploaders} / ${stats.uploaders.length}`, 'cameras online']]),
     [formatBytes(stats.storageBytes), 'stored'],
   ]
@@ -45,6 +46,9 @@ function StatStrip({ stats, clientOnly = false }: { stats: EventStats; clientOnl
       ))}
       {stats.inProgressPhotos > 0 && (
         <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">{formatCount(stats.inProgressPhotos)} processing</span>
+      )}
+      {stats.hiddenPhotos > 0 && (
+        <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600">{formatCount(stats.hiddenPhotos)} hidden</span>
       )}
       {stats.failedPhotos > 0 && (
         <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">{formatCount(stats.failedPhotos)} failed</span>
@@ -186,25 +190,21 @@ export default function EventDashboardPage() {
 
       <ErrorText>{error}</ErrorText>
       <UpgradeBanner event={event} onUpgraded={() => adminApi.event(event.id).then(setEvent).catch(() => {})} />
-      {superAdmin ? (
-        galleryOff && (
-          <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <span><b>{event.liveGalleryEnabled === false ? 'Guest gallery' : 'Client gallery'}{event.liveGalleryEnabled === false && event.clientGalleryEnabled === false ? ' and client gallery' : ''} turned off.</b> Nobody can open it until it is turned back on.</span>
-            <button type="button" onClick={() => openTab('settings')} className="font-medium underline underline-offset-4">Gallery access</button>
-          </div>
-        )
-      ) : (
-        <GalleryAccessNotice event={event} />
+      {galleryOff && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900" data-testid="gallery-off-banner">
+          <span><b>{event.liveGalleryEnabled === false ? 'Guest gallery' : 'Client gallery'}{event.liveGalleryEnabled === false && event.clientGalleryEnabled === false ? ' and client gallery' : ''} turned off.</b> Guests and your client can't open {event.liveGalleryEnabled === false && event.clientGalleryEnabled === false ? 'them' : 'it'} until it is turned back on. Your uploads are still saved.</span>
+          <button type="button" onClick={() => openTab('settings')} className="font-medium underline underline-offset-4">Gallery access</button>
+        </div>
       )}
 
-      <div className="sticky top-0 z-20 -mx-4 bg-stone-50/95 px-4 backdrop-blur sm:-mx-6 sm:px-6">
+      <div className="sticky top-0 z-20 -mx-4 flex h-11 items-end bg-stone-50/95 px-4 backdrop-blur sm:-mx-6 sm:px-6">
         <Tabs<Tab>
           label="Event sections"
           current={shown}
           onChange={openTab}
           tabs={[
             { id: 'overview', label: 'Overview' },
-            { id: 'photos', label: 'Photos', badge: stats ? formatCount(stats.totalPhotos) : undefined },
+            { id: 'photos', label: 'Photos', badge: stats ? (clientOnly ? formatCount(stats.clientPhotos) : `${formatCount(stats.guestPhotos)} · ${formatCount(stats.clientPhotos)}`) : undefined },
             ...(clientOnly ? [] : [{ id: 'guests' as Tab, label: 'Guests' }]),
             { id: 'couple', label: 'Couple', badge: client ? '✓' : undefined },
             { id: 'settings', label: 'Settings' },
@@ -266,15 +266,17 @@ export default function EventDashboardPage() {
       <section {...panel('photos')} className="anim-fade-in space-y-6">
         {/* Both galleries stay mounted (only hidden), so an upload keeps going while you look at the other one. */}
         {!clientOnly && (
-          <Tabs<Gallery>
-            label="Galleries"
-            current={galleryTab}
-            onChange={setGalleryTab}
-            tabs={[
-              { id: 'GUEST', label: 'Guest gallery' },
-              { id: 'CLIENT', label: 'Client gallery' },
-            ]}
-          />
+          <div className="sticky top-11 z-20 -mx-4 flex h-11 items-end bg-stone-50/95 px-4 backdrop-blur sm:-mx-6 sm:px-6" data-testid="gallery-tabs">
+            <Tabs<Gallery>
+              label="Galleries"
+              current={galleryTab}
+              onChange={setGalleryTab}
+              tabs={[
+                { id: 'GUEST', label: 'Guest gallery', badge: stats ? formatCount(stats.guestPhotos) : undefined },
+                { id: 'CLIENT', label: 'Client gallery', badge: stats ? formatCount(stats.clientPhotos) : undefined },
+              ]}
+            />
+          </div>
         )}
         {(clientOnly ? ['CLIENT' as const] : ['GUEST' as const, 'CLIENT' as const]).map((gallery) => {
           const off = gallery === 'GUEST' ? event.liveGalleryEnabled === false : event.clientGalleryEnabled === false
@@ -304,6 +306,7 @@ export default function EventDashboardPage() {
               <PhotosPanel
                 eventId={event.id}
                 gallery={gallery}
+                stickyTop={clientOnly ? 'top-11' : 'top-[88px]'}
                 eventSlug={event.slug}
                 eventName={event.name}
                 coverPhotoId={event.coverPhotoId}
@@ -331,7 +334,7 @@ export default function EventDashboardPage() {
       </section>
 
       <section {...panel('settings')} className="anim-fade-in space-y-6">
-        {superAdmin && <GalleryAccessCard event={event} onChange={setEvent} />}
+        <GalleryAccessCard event={event} superAdmin={superAdmin} onChange={setEvent} />
         <Card title="Privacy & data">
           <div className="flex flex-wrap items-end justify-between gap-4">
             {billing?.free ? (

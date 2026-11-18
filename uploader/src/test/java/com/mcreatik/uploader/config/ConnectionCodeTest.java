@@ -32,15 +32,38 @@ class ConnectionCodeTest {
     @Test
     void configIsSavedAndLoadedWithoutLeakingTokenInToString() throws Exception {
         UploaderConfig config = new UploaderConfig("https://api.mcreatik.com/", "mku_secret", Path.of("/photos"), 3, "dev-1",
-                new UploaderConfig.Ftp(true, 2121, "mcreatik", "k7m2p9xq"));
+                new UploaderConfig.Ftp(true, 2121, "camk7m2", "k7m2p9xq"));
         config.save(dir);
         UploaderConfig loaded = UploaderConfig.load(dir).orElseThrow();
         assertThat(loaded.serverUrl()).isEqualTo("https://api.mcreatik.com");
         assertThat(loaded.token()).isEqualTo("mku_secret");
         assertThat(loaded.concurrency()).isEqualTo(3);
         assertThat(loaded.deviceId()).isEqualTo("dev-1");
-        assertThat(loaded.ftp()).isEqualTo(new UploaderConfig.Ftp(true, 2121, "mcreatik", "k7m2p9xq"));
+        assertThat(loaded.ftp()).isEqualTo(new UploaderConfig.Ftp(true, 2121, "camk7m2", "k7m2p9xq"));
         assertThat(loaded.toString()).doesNotContain("mku_secret").doesNotContain("k7m2p9xq");
+    }
+
+    @Test
+    void theOldSharedLoginIsReplacedOnceWithARandomOneAndKept() throws Exception {
+        new UploaderConfig("https://api.mcreatik.com", "mku_x", Path.of("/photos"), 2, "dev",
+                new UploaderConfig.Ftp(true, 2121, "mcreatik", "k7m2p9xq")).save(dir);
+        UploaderConfig first = UploaderConfig.load(dir).orElseThrow();
+        assertThat(first.ftp().username()).isNotEqualTo("mcreatik").startsWith("cam");
+        assertThat(first.ftp().password()).isNotEqualTo("k7m2p9xq");
+        assertThat(first.ftp().enabled()).isTrue();
+        assertThat(first.ftp().port()).isEqualTo(2121);
+        // saved: the next start shows the same login (it doesn't change under the photographer)
+        assertThat(UploaderConfig.load(dir).orElseThrow().ftp()).isEqualTo(first.ftp());
+    }
+
+    @Test
+    void rotatedKeepsThePortAndSwitchAndChangesTheLogin() {
+        UploaderConfig.Ftp a = new UploaderConfig.Ftp(true, 2123, "camabcd", "abcd2345");
+        UploaderConfig.Ftp b = a.rotated();
+        assertThat(b.enabled()).isTrue();
+        assertThat(b.port()).isEqualTo(2123);
+        assertThat(b.username()).isNotEqualTo(a.username());
+        assertThat(b.password()).isNotEqualTo(a.password());
     }
 
     @Test

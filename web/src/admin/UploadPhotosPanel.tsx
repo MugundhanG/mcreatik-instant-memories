@@ -3,6 +3,7 @@ import { adminApi, ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
 import type { Category, Gallery } from '../lib/types'
 import { ACCEPTED_TYPES, preparePhoto } from './prepareUpload'
+import { TransientError, withRetry } from './uploadRetry'
 import { Button, Card } from './ui'
 
 /** Photos prepared and sent at the same time: keeps the browser responsive and the server unhurried. */
@@ -30,9 +31,13 @@ async function putOriginal(file: File, upload: { url: string; method: string; he
   try {
     res = await fetch(upload.url, { method: upload.method, headers, body: file })
   } catch {
-    throw new Error('Could not reach photo storage (check the storage CORS setting)')
+    throw new TransientError('Could not reach photo storage (check your connection or the storage CORS setting)')
   }
-  if (!res.ok) throw new Error(`Photo storage refused the original (${res.status})`)
+  // 403: the signed link ran out; the next try asks for a new one.
+  if (!res.ok) {
+    const message = `Photo storage refused the original (${res.status})`
+    throw res.status >= 500 || res.status === 403 || res.status === 408 || res.status === 429 ? new TransientError(message) : new Error(message)
+  }
 }
 
 /** One photo: compressed → gallery versions; original → full file to storage, then the gallery versions. */
@@ -128,7 +133,7 @@ export function UploadPhotosPanel({ eventId, gallery = 'GUEST', onUploaded, cate
       set(item, 'working')
       void (async () => {
         try {
-          const outcome = await uploadOne(eventId, item, gallery)
+          const outcome = await withRetry(() => uploadOne(eventId, item, gallery))
           set(item, outcome)
           if (outcome === 'done' && ++sinceRefresh.current >= REFRESH_EVERY) {
             sinceRefresh.current = 0

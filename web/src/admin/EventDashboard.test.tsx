@@ -13,7 +13,7 @@ const event = {
 
 function stats(over: Record<string, number> = {}) {
   return {
-    totalPhotos: 19, readyPhotos: 19, inProgressPhotos: 0, failedPhotos: 0, storageBytes: 18_000_000, activeUploaders: 1,
+    totalPhotos: 19, readyPhotos: 19, guestPhotos: 12, clientPhotos: 7, inProgressPhotos: 0, failedPhotos: 0, storageBytes: 18_000_000, activeUploaders: 1,
     latestPhoto: null, uploaders: [], hiddenPhotos: 0, likedPhotos: 0, ...over,
   }
 }
@@ -74,7 +74,7 @@ describe('Event dashboard', () => {
     serve(stats(), { ...event, eventType: 'CLIENT', liveGalleryEnabled: false })
     open('/events/e1?tab=guests')
     const tabs = await screen.findByRole('tablist', { name: 'Event sections' })
-    expect(within(tabs).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Photos19', 'Couple', 'Settings'])
+    expect(within(tabs).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Photos7', 'Couple', 'Settings'])
     expect(screen.getByRole('tabpanel', { name: 'Overview' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Copy gallery link' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'QR code' })).not.toBeInTheDocument()
@@ -86,7 +86,7 @@ describe('Event dashboard', () => {
     serve()
     open('/events/e1')
     const tabs = await screen.findByRole('tablist', { name: 'Event sections' })
-    expect(within(tabs).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Photos19', 'Guests', 'Couple', 'Settings'])
+    expect(within(tabs).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Photos12 · 7', 'Guests', 'Couple', 'Settings'])
     expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tabpanel', { name: 'Overview' })).toBeVisible()
 
@@ -112,7 +112,10 @@ describe('Event dashboard', () => {
     serve(stats({ failedPhotos: 2 }))
     open('/events/e1')
     const strip = await screen.findByTestId('event-stats')
-    expect(strip).toHaveTextContent('19 photos')
+    // Per gallery, ready photos only: never both galleries added up as one number.
+    expect(strip).toHaveTextContent('12 guest photos')
+    expect(strip).toHaveTextContent('7 client photos')
+    expect(strip).not.toHaveTextContent('19')
     expect(strip).toHaveTextContent('2 failed')
     expect(strip).not.toHaveTextContent('processing')
   })
@@ -139,7 +142,7 @@ describe('Event dashboard', () => {
       open('/events/e1?tab=photos')
       const guest = await screen.findByTestId('gallery-guest')
       const client = screen.getByTestId('gallery-client')
-      expect(screen.getByRole('tab', { name: 'Guest gallery' })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByRole('tab', { name: /^Guest gallery/ })).toHaveAttribute('aria-selected', 'true')
       expect(guest).not.toHaveAttribute('hidden')
       expect(client).toHaveAttribute('hidden')
       expect(guest).toHaveTextContent('Guests see these photos (compressed, from your cameras or uploaded here).')
@@ -149,7 +152,7 @@ describe('Event dashboard', () => {
       expect(within(client).getByTestId('upload-original')).toBeInTheDocument()
       expect(within(client).queryByTestId('upload-compressed')).toBeNull()
 
-      await user.click(screen.getByRole('tab', { name: 'Client gallery' }))
+      await user.click(screen.getByRole('tab', { name: /^Client gallery/ }))
       expect(client).not.toHaveAttribute('hidden')
       expect(guest).toHaveAttribute('hidden')
       // Each gallery asks the server for its own photos, facets and categories.
@@ -166,7 +169,7 @@ describe('Event dashboard', () => {
       const client = await screen.findByTestId('gallery-client')
       expect(client).not.toHaveAttribute('hidden')
       expect(screen.queryByTestId('gallery-guest')).toBeNull()
-      expect(screen.queryByRole('tab', { name: 'Guest gallery' })).toBeNull()
+      expect(screen.queryByRole('tab', { name: /^Guest gallery/ })).toBeNull()
       // The guest gallery being off does not matter here: this is the client gallery.
       expect(screen.queryByTestId('gallery-off-client')).toBeNull()
     })
