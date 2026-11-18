@@ -66,7 +66,7 @@ The **Studios** page has one row for each studio. Press a row to open it: you se
 
 Studios buy extra events from their Events page (see the Studio SOP) by UPI QR.
 
-Payments arrive in **Pricing & payments → Payments to check** with the amount and the **UTR** (UPI transaction ID). What the studio bought is usable at once; you only confirm the money arrived.
+Payments arrive in **Pricing & payments → Payments to check** with the amount and the **UTR** (UPI transaction ID). For a studio with an earlier confirmed payment, what it bought is usable at once and you only confirm the money arrived. A **new studio's** payments are held (marked *New studio · waiting, nothing added yet*, and you get an email): nothing is added until you press **Received**, so a made-up UTR buys nothing. **Not received** on a held payment takes nothing back. Check held payments quickly: the studio is waiting.
 
 1. Open your bank or UPI app and find a credit with **the same UTR and amount**.
 2. Found it → press **Received**. The events are added to the studio straight away.

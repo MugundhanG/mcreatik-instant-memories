@@ -54,6 +54,7 @@ class ClientGalleryTest extends IntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Lens\",\"email\":\"" + email + "\",\"password\":\"temporary-123\",\"plan\":\"PER_EVENT\"}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        trustStudio(studioId);
         int n = IPS.incrementAndGet();
         studio = JsonPath.read(mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\",\"password\":\"temporary-123\"}")
@@ -206,7 +207,7 @@ class ClientGalleryTest extends IntegrationTest {
         assertThat(jdbc.queryForObject("SELECT photos_deleted_at IS NOT NULL FROM events WHERE id = ?", Boolean.class, eventId)).isTrue();
         // The event record, its payment and its charge stay as the business record, and it is not purged twice.
         assertThat(jdbc.queryForObject("SELECT count(*) FROM event_charges WHERE event_id = ?", Integer.class, eventId)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM event_payments WHERE studio_id = ?::uuid", Integer.class, studioId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM event_payments WHERE studio_id = ?::uuid AND utr NOT LIKE 'TRUST%'", Integer.class, studioId)).isEqualTo(1);
         assertThat(events.expiredEvents(today)).noneMatch(e -> e.getId().equals(eventId));
         String archived = detail(id);
         assertThat((String) JsonPath.read(archived, "$.status")).isEqualTo("ARCHIVED");

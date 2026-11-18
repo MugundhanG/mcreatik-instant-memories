@@ -607,6 +607,7 @@ class FaceSearchTest extends IntegrationTest {
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
         mvc.perform(patch("/api/admin/billing/studios/" + studioId).header("Authorization", bearer(adminToken()))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"addCredits\":2,\"addQuickCredits\":2,\"addClientCredits\":1}")).andExpect(status().isOk());
+        trustStudio(studioId);
         String ipAddr = ip();
         return JsonPath.read(mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\",\"password\":\"temporary-123\"}").with(r -> {

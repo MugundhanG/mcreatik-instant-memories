@@ -63,7 +63,9 @@ export function PaymentsToCheck({ onChange }: { onChange: () => void }) {
         {payments.map((p) => (
           <li key={p.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 py-3">
             <div className="min-w-48 flex-1">
-              <p className="font-medium">{p.studioName} · <span className="tabular-nums">{rupees(p.amount)}</span></p>
+              <p className="font-medium">{p.studioName} · <span className="tabular-nums">{rupees(p.amount)}</span>
+                {p.applied === false && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800" data-testid="payment-held">New studio · waiting, nothing added yet</span>}
+              </p>
               <p className="text-xs text-muted">{paymentFor(p)} · {p.events} × {rupees(p.unitPrice)} · {timeAgo(p.createdAt)}</p>
             </div>
             <p className="font-mono text-sm" title="UPI transaction ID">UTR {p.utr}</p>

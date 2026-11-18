@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.mcreatik.gallery.auth.AdminAccess;
 import com.mcreatik.gallery.auth.CurrentAdmin;
+import com.mcreatik.gallery.config.GalleryProperties;
+import com.mcreatik.gallery.mail.Mailer;
 
 @RestController
 @RequestMapping("/api/admin/billing")
@@ -25,10 +27,14 @@ public class BillingController {
 
     private final BillingService billing;
     private final AdminAccess access;
+    private final Mailer mailer;
+    private final GalleryProperties properties;
 
-    public BillingController(BillingService billing, AdminAccess access) {
+    public BillingController(BillingService billing, AdminAccess access, Mailer mailer, GalleryProperties properties) {
         this.billing = billing;
         this.access = access;
+        this.mailer = mailer;
+        this.properties = properties;
     }
 
     /** The logged-in studio's plan, this month's usage, bought events, UPI details and its payments. */
@@ -58,10 +64,31 @@ public class BillingController {
     @PostMapping("/payments")
     @ResponseStatus(HttpStatus.CREATED)
     public BillingService.Payment pay(Authentication auth, @RequestBody PaymentRequest request) {
-        return billing.submitPayment(CurrentAdmin.id(auth), BillingService.normalize(request.item(),
+        BillingService.Payment p = billing.submitPayment(CurrentAdmin.id(auth), BillingService.normalize(request.item(),
                 request.quantity() != null ? request.quantity() : request.events(), request.eventId(), request.plan(),
                 request.storageGb(), request.months()),
                 request.utr());
+        if (!p.applied()) {
+            notifyHeld(p);
+        }
+        return p;
+    }
+
+    /** A new studio's payment waits for McreatiK: tell McreatiK so the studio is not kept waiting. */
+    private void notifyHeld(BillingService.Payment p) {
+        String to = properties.security().bootstrapAdminEmail();
+        if (to == null || to.isBlank()) {
+            return;
+        }
+        String body = """
+                %s paid ₹%,d by UPI and is waiting for you to confirm it (their first payment, so nothing is added yet).
+
+                UPI transaction ID: %s
+
+                Check it in the bank statement, then approve or reject it in the dashboard: Pricing & payments, Payments to check.
+                """.formatted(p.studioName(), p.amount(), p.utr());
+        Thread.ofVirtual().name("payment-held-mail").start(() ->
+                mailer.send(to, "Payment to confirm: " + p.studioName() + ", ₹" + String.format("%,d", p.amount()), body));
     }
 
     // ---- McreatiK (super admin) ----

@@ -507,6 +507,8 @@ export interface EventPayment {
   plan: Plan | null
   /** The months bought (keeping a gallery open, or a client gallery's open months); 0 when not recorded. */
   months?: number
+  /** What it bought is already added; false while a new studio's payment waits for McreatiK to confirm it. */
+  applied?: boolean
 }
 
 /** The logged-in studio's plan and allowance. */

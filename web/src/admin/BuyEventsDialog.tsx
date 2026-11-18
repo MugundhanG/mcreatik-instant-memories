@@ -68,7 +68,7 @@ function GbPicker({ label, value, onChange, allowNone, noneLabel = 'Later' }: { 
 /**
  * Buy Main or Quick events, pay for (or switch to) a monthly pack, upgrade a Quick event to Main, add storage, keep a
  * gallery open more months or set up a client gallery. The one way to pay is McreatiK's UPI QR: scan, pay, enter the
- * transaction ID (UTR); usable at once, McreatiK checks the payment afterwards. The amount shown uses the same prices as the server, which prices every purchase again.
+ * transaction ID (UTR); usable at once for a studio with a confirmed payment, otherwise once McreatiK confirms it. The amount shown uses the same prices as the server, which prices every purchase again.
  */
 export function BuyEventsDialog({ billing, purchase: initial, reason, storage, faceSearchPrice, onPaid, onClose }: {
   billing: BillingSummary
@@ -89,6 +89,8 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, f
   const [qr, setQr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // A new studio's payment waits for McreatiK: say so instead of closing as if it were already added.
+  const [held, setHeld] = useState(false)
   // Months: a client gallery's open months (default 1), more months for an event (default the included months), or
   // the months a gallery has left (storage).
   const months = purchase.months ?? (purchase.item === 'CLIENT_SETUP' ? 1 : billing.prices.activeMonths)
@@ -130,8 +132,13 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, f
     setBusy(true)
     setError(null)
     try {
-      await adminApi.payByUpi(purchase, utr)
-      onPaid()
+      const payment = await adminApi.payByUpi(purchase, utr)
+      if (payment.applied === false) {
+        setHeld(true)
+        setBusy(false)
+      } else {
+        onPaid()
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not save the payment')
       setBusy(false)
@@ -256,7 +263,18 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, f
             </div>
             )}
 
-            {link && (
+            {held && (
+              <div className="space-y-3 rounded-lg border border-line p-4 text-center" data-testid="payment-held">
+                <p className="font-medium">Thank you, we've got your payment details</p>
+                <p className="text-sm text-muted">
+                  As this is your first payment, McreatiK checks it in the bank first, usually within a few hours. It's
+                  added to your account as soon as it's confirmed, and your next payments are ready at once.
+                </p>
+                <Button variant="primary" className="w-full" onClick={onPaid}>Done</Button>
+              </div>
+            )}
+
+            {link && !held && (
               <form onSubmit={submit} className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="size-36 shrink-0 rounded-lg border border-line p-1.5 [&>svg]:size-full" role="img" aria-label={`UPI QR for ${rupees(amount)}`}
@@ -279,7 +297,7 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, f
                 <Button type="submit" variant="primary" disabled={busy || invalid || utr.trim().length < 8} className="w-full">
                   {busy ? 'Saving…' : `I've paid ${rupees(amount)}`}
                 </Button>
-                <p className="text-center text-xs text-muted">It's ready at once; McreatiK confirms the payment within a day.</p>
+                <p className="text-center text-xs text-muted">Your first payment is checked by McreatiK before it's added, usually within a few hours. After that, payments are ready at once.</p>
               </form>
             )}
             {isEvents && (

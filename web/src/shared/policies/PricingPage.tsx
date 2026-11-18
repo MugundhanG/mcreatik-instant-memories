@@ -4,7 +4,7 @@ import type { Prices, PublicPricing } from '../../lib/types'
 import { BUSINESS } from './business'
 import { PolicyLayout, Section } from './PolicyLayout'
 
-const UPDATED = '6 November 2026'
+const UPDATED = '18 November 2026'
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
 function PriceCard({ name, price, unit, body }: { name: string; price: number; unit: string; body: string }) {
@@ -72,13 +72,13 @@ function Packages({ k }: { k: Prices }) {
       </div>
       <h2 className="mt-8 text-lg font-semibold text-ink">Client gallery only</h2>
       <div className="mt-3 grid gap-4 sm:grid-cols-2">
-        <PriceCard name="Client gallery" price={k.clientSetup} unit={`setup per gallery + ${rupees(k.storageGb)} per GB a month`}
-          body={`No live event: a private gallery for the couple to pick album photos and download in full quality, with your branding. You choose the storage (from 5 GB) and how many months it stays open. For example, a full wedding of about 2,000 photos (25 GB) kept for ${k.activeMonths} months is ${rupees(k.clientSetup + 25 * k.storageGb * k.activeMonths)}.`} />
-        <PriceCard name="Storage" price={k.storageGb} unit="per GB per month"
-          body={`Every Main or Quick event includes ${k.freeStorageGb} GB for ${k.activeMonths} months. More storage is ${rupees(k.storageGb)} per GB a month for the months the gallery has left, in sizes from ${k.freeStorageGb} GB, about 80 full-quality photos per GB. Uploads at a live event are never stopped.`} />
+        <PriceCard name="Client gallery" price={k.clientSetup} unit="setup per gallery, then a monthly plan by gallery size"
+          body={`No live event: a private, branded gallery where the couple picks album photos and downloads them in full quality. The monthly plan is ${rupees(k.storageGb)} a month per GB of photos (about 80 full-quality photos per GB, from 5 GB), for as many months as you keep it open. For example, a full wedding of about 2,000 photos kept open for ${k.activeMonths} months is ${rupees(k.clientSetup + 25 * k.storageGb * k.activeMonths)}.`} />
+        <PriceCard name="Bigger or longer galleries" price={k.storageGb} unit="a month per GB of photos"
+          body={`Every Main or Quick event's gallery stays open for ${k.activeMonths} months and includes room for about ${k.freeStorageGb * 80} full-quality photos. For more photos, it's ${rupees(k.storageGb)} a month per extra GB for the months the gallery has left. Uploads at a live event are never stopped.`} />
       </div>
       <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink/85">
-        <li>Galleries stay open for {k.activeMonths} months. Keep one open for as many more months as you like at {rupees(k.storageGb)} per GB of its storage per month.</li>
+        <li>Galleries stay open for {k.activeMonths} months. Keep one open for as many more months as you like, at {rupees(k.storageGb)} a month per GB of its photos.</li>
         <li>A gallery that isn't kept longer closes at the end of its period, and its photos are deleted 30 days later. The event record is kept.</li>
       </ul>
     </div>
@@ -120,7 +120,8 @@ export default function PricingPage() {
       <Section title="Paying">
         <p>
           Prices are in Indian rupees and are the final amount you pay. Pay by UPI QR from your dashboard and enter the
-          UPI transaction ID; what you bought is added at once and McreatiK confirms the payment afterwards.
+          UPI transaction ID. Your first payment is added once McreatiK has confirmed it, usually within a few hours;
+          after that, what you buy is added at once and McreatiK confirms the payment afterwards.
         </p>
         <p>
           See the <a className="underline underline-offset-4" href="/refunds">refund policy</a> and{' '}

@@ -45,7 +45,7 @@ export default function TermsPage() {
       <Section title="Payments">
         <p>
           Prices are shown on the <a className="underline underline-offset-4" href="/pricing">pricing page</a> and in your
-          dashboard, in Indian rupees, and are the final amount you pay. You pay by UPI QR and enter the UPI transaction ID; what you bought is added at once and McreatiK confirms the payment afterwards. Bought events are added to your account at once and never expire. Storage is bought per event and lasts as long as that event's gallery. See the{' '}
+          dashboard, in Indian rupees, and are the final amount you pay. You pay by UPI QR and enter the UPI transaction ID. Your first payment is added once McreatiK has confirmed it; after that, what you buy is added at once and McreatiK confirms the payment afterwards. Bought events never expire. Extra gallery space is bought per event and lasts as long as that event's gallery. See the{' '}
           <a className="underline underline-offset-4" href="/refunds">refund policy</a>.
         </p>
       </Section>
