@@ -337,26 +337,56 @@ class UploadEngineTest {
     }
 
     @Test
-    void aPauseInTheDashboardReachesTheLaptopAndKeepsBackWhatHasntUploaded() throws Exception {
+    void aPauseInTheDashboardKeepsPhotosThatArriveDuringItPrivateAndLeavesEarlierOnesToUpload() throws Exception {
         server.offline.set(true); // photos wait in the queue
         startEngine();
         engine.setPhotoFolder(folder);
-        TestPhotos.write(folder, "IMG_A.JPG");
-        TestPhotos.write(folder, "IMG_B.JPG");
-        await("queued", () -> queue.counts().queued() == 2);
+        TestPhotos.write(folder, "IMG_BEFORE.JPG"); // arrived before the pause: legitimate
+        await("queued", () -> queue.counts().queued() == 1);
+        Thread.sleep(30);
 
-        server.paused = true; // paused in the dashboard
+        server.pause(true); // paused in the dashboard
         server.offline.set(false);
         await("paused here too", () -> engine.status().paused());
-        await("waiting photos kept back", () -> filesIn(folder.resolve(PhotoFiles.PAUSED_DIR)) == 2);
-        // The files move first and the queue records it a moment later: wait for both.
-        await("queue emptied", () -> queue.counts().pending() == 0);
-        assertThat(server.completedShas()).isEmpty();
+        byte[] during = TestPhotos.jpeg();
+        TestPhotos.write(folder, "IMG_DURING.JPG", during);
+        Path held = folder.resolve(PhotoFiles.PAUSED_DIR);
+        await("photo that arrived during the pause kept back", () -> java.nio.file.Files.exists(held.resolve("IMG_DURING.JPG")));
+        assertThat(engine.status().pausedPhotos()).isEqualTo(1);
+        Thread.sleep(300);
+        assertThat(server.completedShas()).as("the photo from the pause is not in the gallery")
+                .doesNotContain(FakeMcreatikServer.sha256(during));
 
-        server.paused = false; // resumed in the dashboard
+        server.pause(false); // resumed in the dashboard
         await("resumed here", () -> !engine.status().paused());
-        TestPhotos.write(folder, "IMG_C.JPG");
-        await("uploads again", () -> queue.counts().done() == 1);
+        await("the earlier photo uploads", () -> queue.counts().done() == 1);
+        Thread.sleep(300);
+        assertThat(server.completedShas()).as("the private one is never uploaded, not even after Resume")
+                .hasSize(1).doesNotContain(FakeMcreatikServer.sha256(during));
+        assertThat(filesIn(held)).isEqualTo(1);
+    }
+
+    @Test
+    void aPhotoQueuedWhileOfflineDuringAPauseIsRefusedAfterResumeEvenThoughTheLaptopNeverHeard() throws Exception {
+        // The wedding bug: the studio paused on a phone while the laptop had no internet. The laptop queued the photos as
+        // normal, then the studio resumed. The server must still know those photos arrived during the pause.
+        server.offline.set(true);
+        startEngine();
+        engine.setPhotoFolder(folder);
+        server.pause(true);
+        Thread.sleep(30);
+        TestPhotos.write(folder, "IMG_OFFLINE_PAUSED.JPG");
+        await("queued, the laptop doesn't know about the pause", () -> queue.counts().queued() == 1);
+        Thread.sleep(30);
+        server.pause(false);
+
+        server.offline.set(false);
+        await("kept back", () -> java.nio.file.Files.exists(folder.resolve(PhotoFiles.PAUSED_DIR).resolve("IMG_OFFLINE_PAUSED.JPG")));
+        assertThat(server.completedShas()).isEmpty();
+        assertThat(server.receivedAts).as("the app tells the server when each photo arrived").isNotEmpty();
+        assertThat(engine.status().paused()).as("not paused now: the server only refused that one photo").isFalse();
+        TestPhotos.write(folder, "IMG_AFTER.JPG");
+        await("a photo after Resume uploads", () -> queue.counts().done() == 1);
     }
 
     @Test
@@ -364,12 +394,43 @@ class UploadEngineTest {
         startEngine();
         engine.setPhotoFolder(folder);
         await("online", () -> engine.status().connection() == EngineStatus.Connection.ONLINE);
-        server.paused = true; // the laptop hasn't heard yet; the server refuses the upload
+        server.pause(true); // the laptop hasn't heard yet; the server refuses the upload
         TestPhotos.write(folder, "IMG_RACE.JPG");
         await("kept back", () -> java.nio.file.Files.exists(folder.resolve(PhotoFiles.PAUSED_DIR).resolve("IMG_RACE.JPG")));
-        assertThat(engine.status().paused()).isTrue();
         assertThat(queue.counts().failed()).isZero();
         assertThat(server.completedShas()).isEmpty();
+        await("the laptop learns of the pause within a heartbeat", () -> engine.status().paused());
+    }
+
+    @Test
+    void aPhotoThatCantBeMovedAsideWhilePausedStaysPrivateAfterResume() throws Exception {
+        startEngine();
+        engine.setPhotoFolder(folder.resolve("missing-subfolder-is-created"));
+        await("online", () -> engine.status().connection() == EngineStatus.Connection.ONLINE);
+        engine.setPaused(true);
+        await("server told", () -> server.paused);
+        // Make the paused folder impossible to create: a plain file sits where the folder should be.
+        java.nio.file.Files.writeString(folder.resolve("missing-subfolder-is-created"), "not a folder");
+        Path stuck = folder.resolve("IMG_STUCK.JPG");
+        TestPhotos.write(folder, "IMG_STUCK.JPG");
+        await("seen while paused", () -> engine.status().paused());
+        Thread.sleep(400);
+        engine.setPaused(false);
+        await("resumed", () -> !server.paused);
+        Thread.sleep(500);
+        assertThat(server.completedShas()).as("never uploaded, even though it couldn't be moved").isEmpty();
+        assertThat(stuck).exists();
+    }
+
+    @Test
+    void theCameraStateIsReportedInEveryHeartbeat() throws Exception {
+        startEngine();
+        engine.setCameraProbe(() -> new com.mcreatik.uploader.source.FtpPhotoSource.CameraState(true,
+                java.time.Instant.parse("2026-11-18T09:30:00Z")));
+        await("camera reported", () -> server.lastHeartbeatBody.contains("\"cameraConnected\":true")
+                && server.lastHeartbeatBody.contains("2026-11-18T09:30:00Z"));
+        engine.setCameraProbe(() -> new com.mcreatik.uploader.source.FtpPhotoSource.CameraState(false, null));
+        await("camera gone", () -> server.lastHeartbeatBody.contains("\"cameraConnected\":false"));
     }
 
     @Test

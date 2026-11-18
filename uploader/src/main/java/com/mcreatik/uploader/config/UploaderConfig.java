@@ -27,8 +27,25 @@ public record UploaderConfig(String serverUrl, String token, Path watchFolder, i
 
         public static final int DEFAULT_PORT = 2121;
 
+        /** Before 1.0.18 every camera of every event used this one login, so a camera set up once worked forever. */
+        public static final String LEGACY_USERNAME = "mcreatik";
+
+        /** A random login for ONE camera slot of ONE event: nothing a camera has saved from before is accepted. */
         public static Ftp generate(boolean enabled) {
-            return new Ftp(enabled, DEFAULT_PORT, "mcreatik", Passwords.cameraFriendly(8));
+            return new Ftp(enabled, DEFAULT_PORT, "cam" + Passwords.cameraFriendly(4), Passwords.cameraFriendly(8));
+        }
+
+        /**
+         * New random user name and password, same port and on/off. Used whenever the camera slot changes (new event or
+         * connection code, camera added): whatever an earlier event left saved in a camera stops working.
+         */
+        public Ftp rotated() {
+            Ftp fresh = generate(enabled);
+            return new Ftp(enabled, port, fresh.username(), fresh.password());
+        }
+
+        public boolean isLegacy() {
+            return LEGACY_USERNAME.equals(username);
         }
 
         public Ftp withEnabled(boolean on) {
@@ -78,9 +95,20 @@ public record UploaderConfig(String serverUrl, String token, Path watchFolder, i
                         Integer.parseInt(p.getProperty("ftpPort", Integer.toString(Ftp.DEFAULT_PORT))),
                         p.getProperty("ftpUser", "mcreatik"), p.getProperty("ftpPassword"));
         // sessionToken/sessionEmail/sessionExpiresAt written by 1.0.15-1.0.17 are ignored.
-        return Optional.of(new UploaderConfig(server, token, Path.of(folder),
+        UploaderConfig loaded = new UploaderConfig(server, token, Path.of(folder),
                 Integer.parseInt(p.getProperty("concurrency", "2")),
-                p.getProperty("deviceId", DeviceId.generate()), ftp));
+                p.getProperty("deviceId", DeviceId.generate()), ftp);
+        if (ftp.isLegacy()) {
+            // The old shared "mcreatik" login: every camera that was ever set up with it could still connect. Replace it
+            // once with a random per-camera login; the camera is then set up again for this event.
+            loaded = loaded.withFtp(ftp.rotated());
+            try {
+                loaded.save(dataDir);
+            } catch (IOException e) {
+                // not saved: it is rotated again (and saved) on the next start
+            }
+        }
+        return Optional.of(loaded);
     }
 
     public void save(Path dataDir) throws IOException {

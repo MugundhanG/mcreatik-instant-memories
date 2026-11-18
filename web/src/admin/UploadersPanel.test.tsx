@@ -55,7 +55,7 @@ describe('Pause and rename a camera', () => {
 
     rerender(<UploadersPanel eventId="e1" uploaders={[cam({ paused: true })]} onChange={onChange} />)
     expect(screen.getByText('Paused')).toBeInTheDocument()
-    expect(screen.getByText(/Paused: new photos stay on the laptop/)).toBeInTheDocument()
+    expect(screen.getByText(/Paused: photos still reach the laptop but are kept private/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Resume' }))
     await waitFor(() => expect(calls[1]).toEqual({ method: 'PATCH', path: '/api/admin/uploaders/u1', body: { paused: false } }))
   })
@@ -71,3 +71,27 @@ describe('Pause and rename a camera', () => {
     await waitFor(() => expect(calls[0]).toEqual({ method: 'PATCH', path: '/api/admin/uploaders/u1', body: { name: 'Main - Karthik' } }))
   })
 })
+describe('Laptop and camera are shown separately', () => {
+  const base: UploaderStats = {
+    id: 'u1', name: 'Main', status: 'ONLINE', lastSeenAt: new Date().toISOString(), deviceIdentifier: null, tokenPrefix: 'mku_abc',
+    photosUploaded: 12, photosReady: 12, queuePending: 0, queueFailed: 0, lastError: null, lastUploadAt: null, paused: false,
+  }
+
+  it('shows an online laptop whose camera went home yesterday as Not connected with its last photo', () => {
+    const yesterday = new Date(Date.now() - 20 * 3600_000).toISOString()
+    render(<UploadersPanel eventId="e1" uploaders={[{ ...base, camera: 'NOT_CONNECTED', cameraLastPhotoAt: yesterday }]} onChange={() => {}} />)
+    expect(screen.getByTestId('laptop-status')).toHaveTextContent('Laptop: Online')
+    expect(screen.getByTestId('camera-status')).toHaveTextContent('Camera: Not connected · last photo 20 hours ago')
+    expect(screen.getByTestId('camera-status')).not.toHaveTextContent('Camera: Connected')
+  })
+
+  it('shows Connected only when the uploader says so, and unknown for an older uploader app', () => {
+    const { rerender } = render(<UploadersPanel eventId="e1" uploaders={[{ ...base, camera: 'CONNECTED' }]} onChange={() => {}} />)
+    expect(screen.getByTestId('camera-status')).toHaveTextContent('Camera: Connected')
+    rerender(<UploadersPanel eventId="e1" uploaders={[{ ...base, camera: 'UNKNOWN' }]} onChange={() => {}} />)
+    expect(screen.getByTestId('camera-status')).toHaveTextContent('Camera: unknown')
+    rerender(<UploadersPanel eventId="e1" uploaders={[{ ...base, camera: 'NOT_CONNECTED', cameraLastPhotoAt: null }]} onChange={() => {}} />)
+    expect(screen.getByTestId('camera-status')).toHaveTextContent('Camera: Not connected · no photo yet')
+  })
+})
+

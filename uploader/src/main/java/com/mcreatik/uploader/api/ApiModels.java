@@ -15,7 +15,14 @@ public final class ApiModels {
     /** {@code eventDate}/{@code eventStartTime} are null with servers that don't send them yet. */
     public record Me(String uploaderId, String uploaderName, String eventId, String eventName, String eventStatus,
                      String galleryUrl, long heartbeatIntervalSeconds, long maxFileSizeBytes,
-                     String eventDate, String eventStartTime, boolean paused) {
+                     String eventDate, String eventStartTime, boolean paused, String pausedSince) {
+
+        public Me(String uploaderId, String uploaderName, String eventId, String eventName, String eventStatus,
+                  String galleryUrl, long heartbeatIntervalSeconds, long maxFileSizeBytes, String eventDate,
+                  String eventStartTime, boolean paused) {
+            this(uploaderId, uploaderName, eventId, eventName, eventStatus, galleryUrl, heartbeatIntervalSeconds,
+                    maxFileSizeBytes, eventDate, eventStartTime, paused, null);
+        }
 
         /** The event date, or null when missing or unreadable. */
         public java.time.LocalDate eventDateValue() {
@@ -36,14 +43,24 @@ public final class ApiModels {
         }
     }
 
+    /** {@code cameraConnected}/{@code cameraLastPhotoAt}: the camera itself (null when there is no camera FTP). */
     public record HeartbeatRequest(String deviceIdentifier, int queuePending, int queueFailed, String lastError,
-                                   String appVersion) {
+                                   String appVersion, Boolean cameraConnected, String cameraLastPhotoAt) {
+        public HeartbeatRequest(String deviceIdentifier, int queuePending, int queueFailed, String lastError,
+                                String appVersion) {
+            this(deviceIdentifier, queuePending, queueFailed, lastError, appVersion, null, null);
+        }
     }
 
     /** {@code paused}/{@code uploaderName} are false/null with servers that don't send them yet. */
-    public record HeartbeatResponse(String eventStatus, boolean acceptingUploads, boolean paused, String uploaderName) {
+    public record HeartbeatResponse(String eventStatus, boolean acceptingUploads, boolean paused, String uploaderName,
+                                    String pausedSince) {
+        public HeartbeatResponse(String eventStatus, boolean acceptingUploads, boolean paused, String uploaderName) {
+            this(eventStatus, acceptingUploads, paused, uploaderName, null);
+        }
+
         public HeartbeatResponse(String eventStatus, boolean acceptingUploads) {
-            this(eventStatus, acceptingUploads, false, null);
+            this(eventStatus, acceptingUploads, false, null, null);
         }
     }
 
@@ -55,14 +72,22 @@ public final class ApiModels {
     public record UpdateSelfRequest(String name, Boolean paused) {
     }
 
-    public record UpdateSelfResponse(String name, boolean paused) {
+    public record UpdateSelfResponse(String name, boolean paused, String pausedSince) {
+        public UpdateSelfResponse(String name, boolean paused) {
+            this(name, paused, null);
+        }
     }
 
     /** {@code prepared} is null when sending the original for server-side processing. */
     public record CreateUploadRequest(String fileName, long fileSize, String mimeType, String checksumSha256,
-                                      PreparedVersions prepared) {
+                                      PreparedVersions prepared, String receivedAt) {
+        public CreateUploadRequest(String fileName, long fileSize, String mimeType, String checksumSha256,
+                                   PreparedVersions prepared) {
+            this(fileName, fileSize, mimeType, checksumSha256, prepared, null);
+        }
+
         public CreateUploadRequest(String fileName, long fileSize, String mimeType, String checksumSha256) {
-            this(fileName, fileSize, mimeType, checksumSha256, null);
+            this(fileName, fileSize, mimeType, checksumSha256, null, null);
         }
     }
 

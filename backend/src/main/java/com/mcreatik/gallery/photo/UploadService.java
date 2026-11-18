@@ -46,6 +46,7 @@ public class UploadService {
     private final TransactionTemplate tx;
     private final ApplicationEventPublisher publisher;
     private final com.mcreatik.gallery.uploader.UploaderRepository uploaders;
+    private final com.mcreatik.gallery.uploader.UploaderPauseLog pauseLog;
     private final com.mcreatik.gallery.billing.BillingService billing;
 
     /**
@@ -69,7 +70,9 @@ public class UploadService {
     public UploadService(PhotoRepository photos, EventRepository events, StorageService storage,
                          GalleryProperties properties, TransactionTemplate tx, ApplicationEventPublisher publisher,
                          com.mcreatik.gallery.uploader.UploaderRepository uploaders,
-                         com.mcreatik.gallery.billing.BillingService billing) {
+                         com.mcreatik.gallery.billing.BillingService billing,
+                         com.mcreatik.gallery.uploader.UploaderPauseLog pauseLog) {
+        this.pauseLog = pauseLog;
         this.uploaders = uploaders;
         this.billing = billing;
         this.photos = photos;
@@ -94,10 +97,16 @@ public class UploadService {
     public record Prepared(long webSize, long thumbnailSize, int width, int height, Instant capturedAt) {
     }
 
+    /** {@code receivedAt}: when the photo reached the laptop (null for older apps and the dashboard). */
     public record UploadSessionRequest(String fileName, long fileSize, String mimeType, String checksumSha256,
-                                       Prepared prepared) {
+                                       Prepared prepared, Instant receivedAt) {
+        public UploadSessionRequest(String fileName, long fileSize, String mimeType, String checksumSha256,
+                                    Prepared prepared) {
+            this(fileName, fileSize, mimeType, checksumSha256, prepared, null);
+        }
+
         public UploadSessionRequest(String fileName, long fileSize, String mimeType, String checksumSha256) {
-            this(fileName, fileSize, mimeType, checksumSha256, null);
+            this(fileName, fileSize, mimeType, checksumSha256, null, null);
         }
     }
 
@@ -124,8 +133,15 @@ public class UploadService {
         if (!event.getStatus().acceptsUploads()) {
             throw ApiException.conflict("EVENT_CLOSED", "This event is archived and no longer accepts photos");
         }
-        // Privacy pause: whatever the app believes, nothing from a paused camera reaches the gallery.
-        if (uploaders.findById(uploader.uploaderId()).map(com.mcreatik.gallery.uploader.Uploader::isPaused).orElse(false)) {
+        // Privacy pause: whatever the app believes, nothing that arrived during a pause reaches the gallery, not even
+        // when it is uploaded later (offline, queued, or after Resume). Without an arrival time (older apps): paused now.
+        var camera = uploaders.findById(uploader.uploaderId());
+        boolean pausedNow = camera.map(com.mcreatik.gallery.uploader.Uploader::isPaused).orElse(false);
+        boolean privatePhoto = request.receivedAt() == null
+                ? pausedNow
+                : pauseLog.wasPausedAt(uploader.uploaderId(), request.receivedAt())
+                        || (pausedNow && pauseLog.pausedSince(uploader.uploaderId()) == null);
+        if (privatePhoto) {
             throw ApiException.conflict("UPLOADER_PAUSED", "This camera is paused. Resume it to upload new photos.");
         }
 

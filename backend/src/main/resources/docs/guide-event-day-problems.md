@@ -16,7 +16,7 @@ Do this at the studio, the day before. It takes about 20 minutes and prevents mo
 - [ ] **The laptop is ready.** Charged, charger packed. On Windows set it to never sleep when plugged in; on a Mac keep the lid open.
 - [ ] **The uploader is installed and up to date.** Open it and check **About** shows the version you expect. To get the latest, press **Install uploader** in the dashboard's top bar. Do this at the studio, not at the venue.
 - [ ] **The connection code works.** The uploader shows green **Online** and **this event's name** and the right camera name on the event card. If it shows an old event, press **Change event…** and paste this event's code.
-- [ ] **Every camera's FTP profile is saved.** Server, **Port** (2121 for Camera 1, 2122 for Camera 2, and so on), User **mcreatik**, the password, plain FTP. Camera guides: [Canon](/admin/docs/guide-canon) · [Sony](/admin/docs/guide-sony). The Server changes on every new network, so you will retype it at the venue.
+- [ ] **Every camera's FTP profile is saved.** Server, **Port** (2121 for Camera 1, 2122 for Camera 2, and so on), the camera's own **User** and **Password** (random, shown on the uploader's Live Upload page, new for every event), plain FTP. Camera guides: [Canon](/admin/docs/guide-canon) · [Sony](/admin/docs/guide-sony). The Server changes on every new network, so you will retype it at the venue.
 - [ ] **A test shot reaches the gallery.** The uploader shows **1 received this session**, and the photo appears in the live gallery within seconds. Hide the test shot afterwards (Photos → Guest gallery).
 - [ ] **A phone hotspot is ready as backup internet.** Charged, with enough mobile data. Allow about **1 MB per photo**, so 1,500 photos is about 1.5 GB. iPhone: turn on Maximize Compatibility. Android: use 2.4 GHz.
 - [ ] **The board and cards are printed.** The studio board, the event card for its frame, and the table cards (Overview → Guest QR code → **Event & table cards**).
@@ -31,7 +31,7 @@ Ask one question: **is it the camera, the laptop, the internet, or the server?**
 
 | It shows | It means |
 | --- | --- |
-| Green **Online — photos upload automatically**, and the Camera line says **N received this session** | Camera, laptop and internet are fine. The problem is on the guests' side (cards 10 and 11) |
+| Green **Laptop online — photos upload automatically**, and the Camera line says **Connected** | Camera, laptop and internet are fine. The problem is on the guests' side (cards 10 and 11) |
 | Camera stage grey **Waiting** ("Same Wi-Fi as this computer"), or the Camera line says **No photo yet** | The **camera** is not reaching the laptop (card 1 or 2) |
 | Red **The camera can't send photos** | The laptop's camera receiver didn't start (card 1) |
 | Blue **Reconnecting…**, or amber **Offline — photos are safely queued** | The laptop can't reach McreatiK: **internet** or **server** (cards 3 and 14) |
@@ -42,7 +42,7 @@ Ask one question: **is it the camera, the laptop, the internet, or the server?**
 
 **B. The dashboard: Overview → Cameras & uploaders**
 
-- A green dot and **Online · last seen …** means the laptop is talking to McreatiK.
+- **Laptop: Online · last seen …** means the laptop is talking to McreatiK. It says nothing about the camera. **Camera: Connected** means the camera has a live Wi-Fi session or sent a photo in the last few minutes; **Camera: Not connected · last photo …** means it is away, off or asleep.
 - **Offline** means the laptop hasn't been heard from for about 45 seconds: it is closed, asleep, or has no internet.
 - **N waiting on laptop** is the backlog. A small number that shrinks is normal. A number that keeps growing is card 3 or card 4.
 - A red line under a camera is the last error the uploader reported.
@@ -79,7 +79,7 @@ Switch Wi-Fi off, then open the gallery (scan the QR code).
 **Fix**
 
 1. Put the laptop and the camera on the **same Wi-Fi or hotspot**. Guest Wi-Fi at venues often stops devices talking to each other, so use your phone hotspot.
-2. In the uploader, find **Camera Wi-Fi settings** and compare, one by one, with the camera: **Server** (use **Copy**), **Port** (2121 for Camera 1), **User** `mcreatik`, and the **Password** (press the eye to show it). If the Server says **No Wi-Fi**, the laptop isn't on a network yet.
+2. In the uploader, find **Camera Wi-Fi settings** and compare, one by one, with the camera: **Server** (use **Copy**), **Port** (2121 for Camera 1), **User** and **Password** (press the eye to show it). If the card says a camera "tried to connect with old or wrong settings", that camera still holds another event's settings: retype them. If the Server says **No Wi-Fi**, the laptop isn't on a network yet.
 3. Plain FTP only (Sony: Secure Protocol **Off**). Toggle **Passive mode** in the camera.
 4. Check the laptop's firewall. Windows: allow **McreatiK Instant Memories Uploader** on **Private and Public** networks (a phone hotspot counts as Public). Mac: allow incoming connections for it in System Settings → Network → Firewall → Options.
 5. Close the uploader, open it again, then turn the camera's Wi-Fi off and on.
@@ -94,7 +94,7 @@ Switch Wi-Fi off, then open the gallery (scan the QR code).
 
 **Fix**
 
-1. **Pause?** If the status card is amber **Paused**, press **Resume** for that camera (in the uploader, or in the dashboard's Cameras & uploaders). Photos taken while paused stay in that camera's **Not uploaded (paused)** folder on the laptop and never reach the gallery. Only photos taken after you resume are uploaded.
+1. **Pause?** If the status card is amber **Paused**, press **Resume** for that camera (in the uploader, or in the dashboard's Cameras & uploaders). Photos taken while paused still arrive on the laptop, into that camera's **Not uploaded (paused)** folder (the uploader shows **N photos kept private** with an **Open folder** button), and never reach the gallery, even after you resume. Only photos that arrive after you resume are published.
 2. **Camera asleep?** Wake it, and set auto power-off to longer or off. After a battery change the camera joins the Wi-Fi by itself: take a test shot.
 3. **Laptop asleep?** See card 5.
 4. **Out of range?** Move the laptop or the hotspot closer to where you shoot.
@@ -173,7 +173,7 @@ Switch Wi-Fi off, then open the gallery (scan the QR code).
 **Fix**
 
 1. In the dashboard, open the event → Overview → **Cameras & uploaders**. If the camera is gone, add it again with **Add camera & get code**. If it is listed, press **Get new code**. Then **Copy code**.
-2. In the uploader press **Change event…**, then **Paste**, then **Switch event**. The uploader restarts. The Server, Port, User and Password stay the same, so the camera needs no changes.
+2. In the uploader press **Change event…**, then **Paste**, then **Switch event**. The uploader restarts. The Port stays the same, but the User and Password are new for this event: enter them in the camera.
 3. Photos still on the laptop upload after the restart.
 
 > **Warning** **Change event…** refuses to run while photos are still waiting on the laptop (see card 8). If that happens, don't delete anything: leave the uploader and its folders as they are, and call McreatiK support.
@@ -201,12 +201,12 @@ Switch Wi-Fi off, then open the gallery (scan the QR code).
 
 **Symptom.** With 2 to 4 cameras on one laptop, one camera's tab shows a red dot (**Needs attention**), or a blue or amber dot (Reconnecting, Offline or Paused), and the others are fine.
 
-**Most likely cause.** That camera has the wrong **Port**, or its Wi-Fi dropped. Each camera has its own port: Camera 1 uses 2121, Camera 2 uses 2122, Camera 3 uses 2123, Camera 4 uses 2124. The **Server, User and Password are the same** for all cameras.
+**Most likely cause.** That camera has the wrong **Port**, or its Wi-Fi dropped. Each camera has its own port: Camera 1 uses 2121, Camera 2 uses 2122, Camera 3 uses 2123, Camera 4 uses 2124. The **Server** is the same for all cameras; each camera has its own **User and Password** too.
 
 **Fix**
 
 1. Click that camera's **tab** in the uploader. Its **Port** is shown on the tab and in **Camera Wi-Fi settings**. If another program had a port, the uploader used the next free one: always use the port on the tab.
-2. Check the camera's FTP profile uses that port, and the same Server, User and Password.
+2. Check the camera's FTP profile uses that port, and that camera's own User and Password.
 3. Read the red message on that camera's tab, then follow card 1 (connection) or card 2 (photos not arriving) for just that camera.
 4. All cameras share the laptop's Wi-Fi, internet and battery. If **every** camera stops, it is the laptop (card 5) or the internet (card 3).
 

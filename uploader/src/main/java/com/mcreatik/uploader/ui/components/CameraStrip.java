@@ -148,7 +148,7 @@ public final class CameraStrip extends JPanel {
         void set(Entry e, boolean isSelected) {
             name.text(e.name());
             String word = switch (e.state().conn()) {
-                case ONLINE -> "Online";
+                case ONLINE -> "Uploader online";
                 case PAUSED -> "Paused";
                 case RECONNECTING -> "Reconnecting";
                 case OFFLINE -> "Offline";
@@ -156,9 +156,12 @@ public final class CameraStrip extends JPanel {
             };
             dot.tone = e.state().tone();
             dot.repaint();
-            setToolTipText(e.name() + " · " + word + (e.port() > 0 ? " · Port " + e.port() : ""));
+            setToolTipText(e.name() + " · Uploader " + word.toLowerCase(Locale.ROOT)
+                    + (e.state().cameraKnown() ? " · Camera " + (e.state().cameraConnected() ? "connected" : "not connected") : "")
+                    + (e.port() > 0 ? " · Port " + e.port() : ""));
             meta.text((e.port() > 0 ? "Port " + e.port() + "  ·  " : "")
-                    + String.format(Locale.ROOT, "%,d uploaded", e.state().uploaded()));
+                    + (e.state().cameraKnown() ? (e.state().cameraConnected() ? "Camera connected" : "Camera not connected")
+                    : String.format(Locale.ROOT, "%,d uploaded", e.state().uploaded())));
             tint(isSelected ? "selected" : "card", isSelected ? "greenStrong" : "border");
             getAccessibleContext().setAccessibleName(e.name() + ", " + word);
         }

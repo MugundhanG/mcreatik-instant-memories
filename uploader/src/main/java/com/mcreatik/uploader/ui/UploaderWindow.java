@@ -168,9 +168,11 @@ public final class UploaderWindow implements AppContext.Actions {
             strip.set(entries, selected, ctx.cameras().canAdd() && !adding, addHint());
             LiveState.Conn worstConn = worst.conn();
             int inWorst = (int) entries.stream().filter(en -> en.state().conn() == worstConn).count();
-            header.setEventStatus(worst.tone(), headerText(anyStatus, worst, entries.size(), inWorst));
+            header.setEventStatus(worst.tone(), headerText(anyStatus, worst, entries.size(), inWorst)
+                    + cameraSuffix(entries.stream().map(CameraStrip.Entry::state).toList()));
             sideStatus.text((entries.size() > 1 ? entries.size() + " cameras · " : (snap.engine().uploaderName() == null ? ""
-                    : snap.engine().uploaderName() + " · ")) + word(worst.conn()));
+                    : snap.engine().uploaderName() + " · ")) + word(worst.conn())
+                    + cameraSuffix(entries.stream().map(CameraStrip.Entry::state).toList()));
             Page p = pages.get(visible);
             p.refresh(snap);
             if (!visible.equals(LiveUploadPage.ID)) {
@@ -192,9 +194,22 @@ public final class UploaderWindow implements AppContext.Actions {
         };
     }
 
+    /** The cameras themselves, apart from the laptop: " · Camera connected", or " · 1 of 2 cameras connected". */
+    static String cameraSuffix(List<LiveState> states) {
+        long known = states.stream().filter(LiveState::cameraKnown).count();
+        if (known == 0) {
+            return "";
+        }
+        long connected = states.stream().filter(s -> s.cameraKnown() && s.cameraConnected()).count();
+        if (states.size() == 1) {
+            return connected == 1 ? " · Camera connected" : " · Camera not connected";
+        }
+        return " · " + connected + " of " + known + (known == 1 ? " camera" : " cameras") + " connected";
+    }
+
     static String word(LiveState.Conn c) {
         return switch (c) {
-            case ONLINE -> "Online";
+            case ONLINE -> "Uploader online";
             case PAUSED -> "Paused";
             case RECONNECTING -> "Reconnecting";
             case OFFLINE -> "Offline";
@@ -217,7 +232,8 @@ public final class UploaderWindow implements AppContext.Actions {
         if (cameras <= 1) {
             conn = word(live.conn());
         } else {
-            String n = inThatState + (inThatState == 1 ? " camera " : " cameras ");
+            String n = inThatState + (live.conn() == LiveState.Conn.ONLINE ? (inThatState == 1 ? " uploader " : " uploaders ")
+                    : inThatState == 1 ? " camera " : " cameras ");
             conn = n + switch (live.conn()) {
                 case ONLINE -> "online";
                 case PAUSED -> "paused";
@@ -301,7 +317,7 @@ public final class UploaderWindow implements AppContext.Actions {
                     JOptionPane.showMessageDialog(frame, "<html><body style='width:320px'><b>" + (n == null || n.isBlank()
                             ? "Camera " + c.number() : n) + " is ready.</b><br><br>In that camera's FTP settings use <b>Port "
                             + c.config().ftp().port()
-                            + "</b>. The Server, User and Password are the same as Camera 1.</body></html>",
+                            + "</b>. Server is the same as Camera 1. This camera has its own <b>User</b> and <b>Password</b>, shown on the Live Upload page.</body></html>",
                             "Camera added", JOptionPane.INFORMATION_MESSAGE);
                 } catch (Exception e) {
                     refresh();

@@ -161,6 +161,9 @@ export interface EventDetail {
   expired?: boolean
 }
 
+/** The camera itself (its FTP session), apart from the laptop: UNKNOWN for an older uploader app. */
+export type CameraState = 'CONNECTED' | 'NOT_CONNECTED' | 'UNKNOWN'
+
 export interface UploaderStats {
   id: string
   name: string
@@ -174,6 +177,9 @@ export interface UploaderStats {
   queueFailed: number
   lastError: string | null
   lastUploadAt: string | null
+  /** Optional so older mocks still type-check; the server always sends them. */
+  camera?: CameraState
+  cameraLastPhotoAt?: string | null
   /** Privacy pause: the camera's new photos stay on the laptop and none reach the gallery. */
   paused: boolean
 }

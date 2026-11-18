@@ -69,6 +69,8 @@ public final class LiveUploadPage implements Page {
     private final Ui.Btn retry = new Ui.Btn("Retry failed", Ui.Kind.SECONDARY, "rotate-cw");
     private final Ui.Btn gallery = new Ui.Btn("Open live gallery", Ui.Kind.PRIMARY, "external-link");
     private final Ui.TLabel where = Ui.label(" ", Font.PLAIN, 12f, "muted");
+    private final Ui.TLabel privateText = Ui.label(" ", Font.BOLD, 13f, "text");
+    private JComponent privateBar;
 
     public LiveUploadPage(AppContext ctx) {
         this.ctx = ctx;
@@ -81,6 +83,7 @@ public final class LiveUploadPage implements Page {
         row.add(status);
         row.add(ctx.ftp() != null ? ftpCard() : folderCard());
         page.section(row);
+        page.section(privateBar());
 
         JPanel grid = Ui.clear(new ResponsiveGrid(150, 12));
         for (MetricCard m : metrics) {
@@ -125,6 +128,30 @@ public final class LiveUploadPage implements Page {
         card.add(grid, BorderLayout.CENTER);
         card.add(ftpNote, BorderLayout.SOUTH);
         return card;
+    }
+
+    /** "N photos kept private (paused)" with a button to the folder they were saved in. Shown only while there are some. */
+    private JComponent privateBar() {
+        Ui.Surface bar = new Ui.Surface(new BorderLayout(12, 0), "amberSoft", "amberLine", 12, new java.awt.Insets(10, 14, 10, 14));
+        privateText.setIcon(Icons.get("circle-pause", 16, "amber"));
+        privateText.setIconTextGap(8);
+        bar.add(privateText, BorderLayout.CENTER);
+        Ui.Btn open = new Ui.Btn("Open folder", Ui.Kind.SECONDARY, "folder-open");
+        open.addActionListener(e -> {
+            Path dir = ctx.engine().pausedFolder();
+            if (dir != null) {
+                try {
+                    java.nio.file.Files.createDirectories(dir);
+                } catch (java.io.IOException ignored) {
+                    // the folder opens where it can
+                }
+                ctx.actions().openFolder(dir);
+            }
+        });
+        bar.add(open, BorderLayout.EAST);
+        bar.setVisible(false);
+        privateBar = bar;
+        return bar;
     }
 
     private JComponent folderCard() {
@@ -206,15 +233,25 @@ public final class LiveUploadPage implements Page {
         where.setToolTipText(folder.toString());
         event.refresh(s);
         status.set(s.live());
+        int kept = e.pausedPhotos();
+        privateBar.setVisible(kept > 0 || e.paused());
+        privateText.text(kept + (kept == 1 ? " photo" : " photos") + " kept private (paused)"
+                + (e.paused() ? " · nothing is going to the gallery" : ""));
         if (s.ftp() != null) {
             FtpPhotoSource.Status f = s.ftp();
             ftpFields[0].set(f.addresses().isEmpty() ? "No Wi-Fi" : String.join(" / ", f.addresses()));
             ftpFields[1].set(Integer.toString(f.port()));
             ftpFields[2].set(f.username());
             ftpFields[3].set(f.password());
+            Instant now = s.now();
+            boolean rejected = f.lastRejectedAt() != null && f.lastRejectedAt().isAfter(now.minusSeconds(600))
+                    && !f.cameraConnected(now);
             ftpNote.text(f.addresses().isEmpty() ? "Join the camera's Wi-Fi or hotspot to get a server address."
-                    : "Plain FTP (not FTPS) · passive mode on or off");
-            ftpNote.tint(f.addresses().isEmpty() ? "amber" : "muted");
+                    : f.cameraConnected(now) ? "Camera connected" + (f.lastClient() == null ? "" : " from " + f.lastClient())
+                    : rejected ? "A camera at " + (f.lastRejectedClient() == null ? "?" : f.lastRejectedClient())
+                    + " tried to connect with old or wrong settings and was refused. Type the User and Password above into that camera."
+                    : "Camera not connected · plain FTP (not FTPS) · passive mode on or off");
+            ftpNote.tint(f.addresses().isEmpty() || rejected ? "amber" : f.cameraConnected(now) ? "green" : "muted");
         }
         QueueCounts c = e.counts();
         int[] v = {c.queued(), c.uploading(), c.done(), c.duplicate(), c.failed()};

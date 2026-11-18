@@ -270,7 +270,11 @@ public class EventService {
                     return new EventDtos.UploaderStats(u.getId(), u.getName(),
                             u.effectiveStatus(now, properties.uploader().onlineThreshold()), u.getLastSeenAt(),
                             u.getDeviceIdentifier(), u.getTokenPrefix(), counts[0], counts[1], u.getQueuePending(),
-                            u.getQueueFailed(), u.getLastError(), lastUpload.get(u.getId()), u.isPaused());
+                            u.getQueueFailed(), u.getLastError(), lastUpload.get(u.getId()), u.isPaused(),
+                            !u.reportsCamera() ? EventDtos.CameraState.UNKNOWN
+                                    : u.cameraConnected(now, properties.uploader().onlineThreshold())
+                                            ? EventDtos.CameraState.CONNECTED : EventDtos.CameraState.NOT_CONNECTED,
+                            u.getCameraLastPhotoAt());
                 }).toList();
         int active = (int) uploaderStats.stream().filter(u -> u.status() != UploaderStatus.OFFLINE).count();
 

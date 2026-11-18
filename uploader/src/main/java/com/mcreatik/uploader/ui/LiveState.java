@@ -16,7 +16,7 @@ import com.mcreatik.uploader.source.FtpPhotoSource;
  */
 public record LiveState(Conn conn, Tone tone, String title, String detail,
                         String camera, String autoUpload, String lastPhoto, String speed, String duration,
-                        List<Stage> pipeline, int uploaded, int total) {
+                        List<Stage> pipeline, int uploaded, int total, boolean cameraConnected, boolean cameraKnown) {
 
     public enum Conn { ONLINE, PAUSED, RECONNECTING, OFFLINE, ERROR }
 
@@ -62,12 +62,13 @@ public record LiveState(Conn conn, Tone tone, String title, String detail,
             conn = Conn.PAUSED;
             tone = Tone.AMBER;
             title = "Paused — photos stay on this laptop";
-            detail = (s.pausedPhotos() > 0 ? count(s.pausedPhotos(), "photo") + " kept back. " : "")
-                    + "New photos go to “Not uploaded (paused)” and never reach the gallery. Press Resume to go live again.";
+            detail = (s.pausedPhotos() > 0 ? count(s.pausedPhotos(), "photo") + " kept private. " : "")
+                    + "Photos still arrive from the camera but go to the “Not uploaded (paused)” folder and never reach the"
+                    + " gallery, not even after Resume. Press Resume to publish new photos again.";
         } else if (s.connection() == EngineStatus.Connection.ONLINE) {
             conn = Conn.ONLINE;
             tone = Tone.GREEN;
-            title = "Online — photos upload automatically";
+            title = "Laptop online — photos upload automatically";
             detail = c.pending() > 0 ? "Uploading the latest photos…"
                     : c.failed() > 0 ? count(c.failed(), "photo") + " couldn't be uploaded. Press Retry failed."
                     : ftp != null ? "Waiting for new photos from the camera." : "Waiting for new photos in the folder.";
@@ -88,15 +89,18 @@ public record LiveState(Conn conn, Tone tone, String title, String detail,
             detail = "Check the hotspot's mobile data. Uploading resumes by itself when it's back.";
         }
 
+        // The camera is judged on its own, never by the laptop's link to McreatiK: connected only while its FTP session
+        // is open or it sent a file in the last few minutes.
+        boolean cameraConnected = ftp != null && ftp.cameraConnected(now);
         String camera;
         if (ftp == null) {
             camera = "Watching the folder";
         } else if (ftpBroken) {
             camera = "Not receiving";
-        } else if (ftp.filesReceived() > 0) {
-            camera = String.format(Locale.ROOT, "%,d received this session", ftp.filesReceived());
+        } else if (cameraConnected) {
+            camera = "Connected" + (ftp.lastFileAt() == null ? "" : " · last photo " + ago(ftp.lastFileAt(), now));
         } else {
-            camera = "No photo yet";
+            camera = "Not connected" + (lastPhotoAt == null ? " · no photo yet" : " · last photo " + ago(lastPhotoAt, now));
         }
 
         String autoUpload = switch (conn) {
@@ -119,7 +123,7 @@ public record LiveState(Conn conn, Tone tone, String title, String detail,
                 serverStage(s, conn),
                 galleryStage(c));
         return new LiveState(conn, tone, title, detail, camera, autoUpload, lastPhoto, speed, duration, pipeline,
-                c.done() + c.duplicate(), c.total());
+                c.done() + c.duplicate(), c.total(), cameraConnected, ftp != null);
     }
 
     private static Stage cameraStage(FtpPhotoSource.Status ftp, Instant lastPhotoAt, Instant now) {
@@ -130,11 +134,14 @@ public record LiveState(Conn conn, Tone tone, String title, String detail,
         if (ftp.error() != null) {
             return new Stage("Camera", "camera", Tone.RED, "Not receiving", "Wi-Fi receiver stopped");
         }
-        if (ftp.filesReceived() == 0) {
-            return new Stage("Camera", "camera", Tone.GREY, "Waiting", "Same Wi-Fi as this computer");
+        if (ftp.cameraConnected(now)) {
+            return new Stage("Camera", "camera", Tone.GREEN, "Connected",
+                    ftp.lastFileAt() == null ? "Waiting for the first photo" : "Last photo " + ago(ftp.lastFileAt(), now));
         }
-        return new Stage("Camera", "camera", Tone.GREEN, "Receiving",
-                ftp.filesReceived() + " this session · " + (ftp.lastFileAt() == null ? "" : ago(ftp.lastFileAt(), now)));
+        if (ftp.filesReceived() == 0) {
+            return new Stage("Camera", "camera", Tone.GREY, "Not connected", "Same Wi-Fi as this computer");
+        }
+        return new Stage("Camera", "camera", Tone.GREY, "Not connected", "Last photo " + ago(ftp.lastFileAt(), now));
     }
 
     private static Stage computerStage(QueueCounts c) {

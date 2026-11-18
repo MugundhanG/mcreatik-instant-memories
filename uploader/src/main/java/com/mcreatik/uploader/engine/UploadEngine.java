@@ -25,6 +25,7 @@ import com.mcreatik.uploader.prepare.PhotoPreparer;
 import com.mcreatik.uploader.queue.QueueCounts;
 import com.mcreatik.uploader.queue.QueueItem;
 import com.mcreatik.uploader.queue.UploadQueue;
+import com.mcreatik.uploader.source.FtpPhotoSource;
 import com.mcreatik.uploader.source.PhotoSource;
 
 /**
@@ -77,6 +78,14 @@ public class UploadEngine implements AutoCloseable {
     private volatile boolean paused;
     /** A pause/resume pressed here that the server hasn't confirmed yet (null when none). */
     private volatile Boolean pendingPause;
+    /** Bumped by every pause/resume pressed here, so a heartbeat answer that was already on its way can't undo it. */
+    private volatile long pauseVersion;
+    /** When the current pause began (server clock if it told us, else ours); null while not paused. */
+    private volatile Instant pausedSince;
+    /** The camera's connection, reported in every heartbeat (null: no camera FTP, e.g. a watched folder). */
+    private volatile java.util.function.Supplier<FtpPhotoSource.CameraState> cameraProbe;
+    /** Photos that arrived while paused but couldn't be moved aside: never uploaded, not even after Resume. */
+    private final java.util.Set<Path> keptPrivate = ConcurrentHashMap.newKeySet();
     /** The camera's name from the latest heartbeat (a rename in the dashboard shows within seconds). */
     private volatile String liveName;
     /** This camera's photo folder, for the paused sub-folder (null: keep paused photos where they are). */
@@ -86,17 +95,17 @@ public class UploadEngine implements AutoCloseable {
     static final long SPEED_WINDOW_MS = 30_000;
     /** Heartbeats since the event details were last fetched: they are re-read every {@link #ME_REFRESH_BEATS}. */
     private int beatsSinceMe;
-    /** Every 4 heartbeats (one minute at the normal 15 s), so a renamed event shows without a restart. */
-    static final int ME_REFRESH_BEATS = 4;
+    /** Every 12 heartbeats (one minute at the normal 5 s), so a renamed event shows without a restart. */
+    static final int ME_REFRESH_BEATS = 12;
 
     public UploadEngine(ApiClient api, UploadQueue queue, PhotoSource source, int concurrency, String deviceId) {
-        this(api, queue, source, concurrency, deviceId, Backoff.DEFAULT, System::currentTimeMillis, Duration.ofSeconds(15));
+        this(api, queue, source, concurrency, deviceId, Backoff.DEFAULT, System::currentTimeMillis, Duration.ofSeconds(5));
     }
 
     public UploadEngine(ApiClient api, UploadQueue queue, PhotoSource source, int concurrency, String deviceId,
                         boolean prepareLocally) {
         this(api, queue, source, concurrency, deviceId, Backoff.DEFAULT, System::currentTimeMillis,
-                Duration.ofSeconds(15), prepareLocally);
+                Duration.ofSeconds(5), prepareLocally);
     }
 
     public UploadEngine(ApiClient api, UploadQueue queue, PhotoSource source, int concurrency, String deviceId,
@@ -120,6 +129,11 @@ public class UploadEngine implements AutoCloseable {
     /** Where this camera's photos are; paused photos go into {@link PhotoFiles#PAUSED_DIR} inside it. */
     public void setPhotoFolder(Path folder) {
         this.photoFolder = folder;
+    }
+
+    /** Where the camera's connection state comes from, for the heartbeat. */
+    public void setCameraProbe(java.util.function.Supplier<FtpPhotoSource.CameraState> probe) {
+        this.cameraProbe = probe;
     }
 
     public synchronized void start() {
@@ -152,9 +166,10 @@ public class UploadEngine implements AutoCloseable {
             BasicFileAttributes attrs = Files.readAttributes(file, BasicFileAttributes.class);
             long size = attrs.size();
             long modified = attrs.lastModifiedTime().toMillis();
-            if (queue.isKnown(file, size, modified)) {
+            if (keptPrivate.contains(file) || queue.isKnown(file, size, modified)) {
                 return;
             }
+            // Decided now, when the photo arrives: a photo that comes in during a pause is private for good.
             if (paused) {
                 holdBack(file);
                 return;
@@ -218,7 +233,8 @@ public class UploadEngine implements AutoCloseable {
             PhotoPreparer.Prepared prepared = prepareLocally ? prepare(item) : null;
             long transferStart = clock.getAsLong();
             ApiModels.UploadSession session = api.createUpload(new ApiModels.CreateUploadRequest(
-                    item.fileName(), item.size(), item.mimeType(), item.sha256(), versions(prepared)));
+                    item.fileName(), item.size(), item.mimeType(), item.sha256(), versions(prepared),
+                    Instant.ofEpochMilli(item.createdAt()).toString()));
             markOnline();
             if (session.isDuplicate()) {
                 queue.markDone(item.id(), session.photoId(), true);
@@ -272,10 +288,9 @@ public class UploadEngine implements AutoCloseable {
 
     private void handleFailure(QueueItem item, ApiException e) {
         if (PAUSED_CODE.equals(e.code())) {
-            // Paused in the dashboard before this laptop heard about it: this photo stays private too.
+            // It arrived during a pause (the server knows when), whatever this laptop believed at the time: private.
             holdBack(item.path());
             queue.remove(item.id());
-            applyPaused(true);
             return;
         }
         lastError = item.fileName() + ": " + e.getMessage();
@@ -318,10 +333,16 @@ public class UploadEngine implements AutoCloseable {
                 int dot = name.lastIndexOf('.');
                 dest = target.resolve(dot < 0 ? name + " (" + n + ")" : name.substring(0, dot) + " (" + n + ")" + name.substring(dot));
             }
-            Files.move(file, dest);
+            try {
+                Files.move(file, dest);
+            } catch (IOException e) {
+                Files.copy(file, dest); // locked or another volume: copy, then try to remove the original
+                Files.deleteIfExists(file);
+            }
             log.info("Paused: kept " + name + " on this computer (not uploaded)");
         } catch (IOException e) {
-            log.warning("Paused: couldn't move " + file.getFileName() + " aside: " + e.getMessage());
+            keptPrivate.add(file); // still private: never queued, even after Resume
+            log.warning("Paused: couldn't move " + file.getFileName() + " aside (it stays private): " + e.getMessage());
         }
     }
 
@@ -346,17 +367,29 @@ public class UploadEngine implements AutoCloseable {
         return paused;
     }
 
+    /** The folder of photos kept back while paused (may not exist yet). */
+    public Path pausedFolder() {
+        Path folder = photoFolder;
+        return folder == null ? null : folder.resolve(PhotoFiles.PAUSED_DIR);
+    }
+
     /** Applies a pause or resume (from here or the dashboard). Going paused keeps back what hasn't uploaded yet. */
-    private void applyPaused(boolean pause) {
+    private void applyPaused(boolean pause, Instant since) {
         synchronized (pauseLock) {
             boolean was = paused;
             paused = pause;
             if (pause && !was) {
+                Instant from = since != null ? since : Instant.ofEpochMilli(clock.getAsLong());
+                pausedSince = from;
+                // Only what ARRIVED since the pause began is private; earlier photos still waiting go up after Resume.
                 for (QueueItem item : queue.waiting()) {
-                    holdBack(item.path());
-                    queue.remove(item.id());
+                    if (item.createdAt() >= from.toEpochMilli()) {
+                        holdBack(item.path());
+                        queue.remove(item.id());
+                    }
                 }
             } else if (!pause && was) {
+                pausedSince = null;
                 wakeWorkers();
             }
         }
@@ -369,8 +402,11 @@ public class UploadEngine implements AutoCloseable {
      * on the next heartbeat, so the dashboard shows it too.
      */
     public void setPaused(boolean pause) {
-        pendingPause = pause;
-        applyPaused(pause);
+        synchronized (pauseLock) {
+            pauseVersion++;
+            pendingPause = pause;
+        }
+        applyPaused(pause, null);
         ScheduledExecutorService s = scheduler;
         if (s != null && !s.isShutdown()) {
             s.execute(this::pushPause);
@@ -386,10 +422,18 @@ public class UploadEngine implements AutoCloseable {
             ApiModels.UpdateSelfResponse r = api.updateSelf(null, wanted);
             if (wanted.equals(pendingPause)) {
                 pendingPause = null;
-                applyPaused(r.paused());
+                applyPaused(r.paused(), r.pausedSince() == null ? null : parse(r.pausedSince()));
             }
         } catch (ApiException e) {
             // offline or an older server: keep the local choice and try again with the next heartbeat
+        }
+    }
+
+    private static Instant parse(String iso) {
+        try {
+            return Instant.parse(iso);
+        } catch (java.time.format.DateTimeParseException e) {
+            return null;
         }
     }
 
@@ -405,23 +449,31 @@ public class UploadEngine implements AutoCloseable {
 
     /** Presence + connectivity probe. Package-private for tests. */
     void heartbeat() {
+        long version = pauseVersion;
         try {
             if (me == null || ++beatsSinceMe >= ME_REFRESH_BEATS) {
                 me = api.me();
                 beatsSinceMe = 0;
-                if (pendingPause == null) {
-                    applyPaused(me.paused()); // on start: a camera paused in the dashboard stays paused
+                if (pendingPause == null && version == pauseVersion) {
+                    applyPaused(me.paused(), me.pausedSince() == null ? null : parse(me.pausedSince()));
                 }
             }
             QueueCounts counts = queue.counts();
+            var probe = cameraProbe;
+            FtpPhotoSource.CameraState cam = probe == null ? null : probe.get();
             ApiModels.HeartbeatResponse response = api.heartbeat(new ApiModels.HeartbeatRequest(
-                    deviceId, counts.pending(), counts.failed(), lastError, APP_VERSION));
+                    deviceId, counts.pending(), counts.failed(), lastError, APP_VERSION,
+                    cam == null ? null : cam.connected(),
+                    cam == null || cam.lastPhotoAt() == null ? null : cam.lastPhotoAt().toString()));
             if (pendingPause != null) {
+                pushPause();
+            } else if (version != pauseVersion) {
+                // pressed here while this answer was on its way: our choice is newer than what the server just said
                 pushPause();
             } else if (paused != response.paused()) {
                 log.info(response.paused() ? "Paused from the dashboard: new photos stay on this computer"
                         : "Resumed from the dashboard");
-                applyPaused(response.paused());
+                applyPaused(response.paused(), response.pausedSince() == null ? null : parse(response.pausedSince()));
             }
             if (response.uploaderName() != null) {
                 liveName = response.uploaderName();

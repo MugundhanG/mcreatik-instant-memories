@@ -133,7 +133,7 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
       </p>
       {uploaders.length === 0 && <p className="text-sm text-muted">No cameras yet. Add one per camera.</p>}
       {uploaders.length > 0 && (
-        <p className="mb-1 text-xs text-muted">Pause a camera for private moments: its new photos stay on the laptop and never reach the gallery.</p>
+        <p className="mb-1 text-xs text-muted">Pause a camera for private moments: its photos still reach the laptop, into a Paused folder, and never go to the gallery.</p>
       )}
       <ul className="divide-y divide-line">
         {uploaders.map((u) => (
@@ -155,9 +155,14 @@ export function UploadersPanel({ eventId, uploaders, onChange }: { eventId: stri
                     {u.paused && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">Paused</span>}
                   </p>
                 )}
-                <p className="text-xs text-muted">
-                  {u.paused ? 'Paused: new photos stay on the laptop, none go to the gallery'
-                    : `${u.status === 'ONLINE' ? 'Online' : u.status === 'ERROR' ? 'Error' : 'Offline'} · last seen ${timeAgo(u.lastSeenAt)}`}
+                {u.paused && <p className="text-xs text-muted">Paused: photos still reach the laptop but are kept private there and never go to the gallery</p>}
+                <p className="text-xs text-muted" data-testid="laptop-status">
+                  Laptop: {u.status === 'ONLINE' ? 'Online' : u.status === 'ERROR' ? 'Error' : 'Offline'} · last seen {timeAgo(u.lastSeenAt)}
+                </p>
+                <p className={`text-xs ${u.camera === 'CONNECTED' ? 'font-medium text-green-700' : 'text-muted'}`} data-testid="camera-status">
+                  {u.camera === 'CONNECTED' ? 'Camera: Connected'
+                    : u.camera === 'NOT_CONNECTED' ? `Camera: Not connected · ${u.cameraLastPhotoAt ? `last photo ${timeAgo(u.cameraLastPhotoAt)}` : 'no photo yet'}`
+                      : 'Camera: unknown (update the uploader app)'}
                 </p>
               </div>
             </div>

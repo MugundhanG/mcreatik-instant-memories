@@ -45,10 +45,10 @@ class CamerasTest {
         throw new IllegalStateException("no free port range");
     }
 
-    private static void sendOverFtp(int port, String name, byte[] jpeg) throws Exception {
+    private static void sendOverFtp(UploaderConfig.Ftp login, String name, byte[] jpeg) throws Exception {
         FTPClient ftp = new FTPClient();
-        ftp.connect("127.0.0.1", port);
-        assertThat(ftp.login("mcreatik", "pw234567")).isTrue();
+        ftp.connect("127.0.0.1", login.port());
+        assertThat(ftp.login(login.username(), login.password())).isTrue();
         ftp.setFileType(FTP.BINARY_FILE_TYPE);
         ftp.enterLocalPassiveMode();
         assertThat(ftp.storeFile(name, new ByteArrayInputStream(jpeg))).isTrue();
@@ -70,7 +70,7 @@ class CamerasTest {
         int base = freeBasePort();
         try (FakeMcreatikServer server = new FakeMcreatikServer()) {
             UploaderConfig c1 = new UploaderConfig(server.url(), FakeMcreatikServer.TOKEN, photos.resolve("Event"), 2, "dev",
-                    new UploaderConfig.Ftp(true, base, "mcreatik", "pw234567"));
+                    new UploaderConfig.Ftp(true, base, "cam1abcd", "pw234567"));
             Cameras cameras = Cameras.start(root, c1, false);
             try {
                 for (int i = 0; i < 3; i++) {
@@ -86,7 +86,7 @@ class CamerasTest {
                 for (CameraRuntime c : cameras.all()) {
                     byte[] jpeg = TestPhotos.jpeg();
                     shas.add(FakeMcreatikServer.sha256(jpeg));
-                    sendOverFtp(c.config().ftp().port(), "IMG_" + c.number() + ".JPG", jpeg);
+                    sendOverFtp(c.config().ftp(), "IMG_" + c.number() + ".JPG", jpeg);
                 }
                 await("all four uploaded", () -> server.completedShas().size() == 4
                         && cameras.all().stream().allMatch(c -> c.queue().counts().done() == 1));
@@ -117,7 +117,7 @@ class CamerasTest {
         int base = freeBasePort();
         try (FakeMcreatikServer server = new FakeMcreatikServer()) {
             UploaderConfig c1 = new UploaderConfig(server.url(), FakeMcreatikServer.TOKEN, photos.resolve("Event"), 2, "dev",
-                    new UploaderConfig.Ftp(true, base, "mcreatik", "pw234567"));
+                    new UploaderConfig.Ftp(true, base, "cam1abcd", "pw234567"));
             Cameras cameras = Cameras.start(root, c1, false);
             try {
                 CameraRuntime second = cameras.add();
@@ -137,11 +137,44 @@ class CamerasTest {
     }
 
     @Test
-    void changeEventMovesEveryCameraKeepingPortsAndLogin() throws Exception {
+    void everyCameraHasItsOwnRandomLoginAndAnotherCamerasLoginIsRefused() throws Exception {
+        int base = freeBasePort();
+        try (FakeMcreatikServer server = new FakeMcreatikServer()) {
+            UploaderConfig c1 = new UploaderConfig(server.url(), FakeMcreatikServer.TOKEN, photos.resolve("Event"), 2, "dev",
+                    new UploaderConfig.Ftp(true, base, "cam1abcd", "pw234567"));
+            Cameras cameras = Cameras.start(root, c1, false);
+            try {
+                CameraRuntime second = cameras.add();
+                UploaderConfig.Ftp l1 = c1.ftp();
+                UploaderConfig.Ftp l2 = second.config().ftp();
+                assertThat(l2.username()).isNotEqualTo(l1.username());
+                assertThat(l2.password()).isNotEqualTo(l1.password());
+                assertThat(l2.isLegacy()).isFalse();
+                // Camera 1's saved settings don't work on camera 2's port, and the other way round.
+                FTPClient ftp = new FTPClient();
+                ftp.connect("127.0.0.1", l2.port());
+                assertThat(ftp.login(l1.username(), l1.password())).isFalse();
+                ftp.disconnect();
+                ftp = new FTPClient();
+                ftp.connect("127.0.0.1", l1.port());
+                assertThat(ftp.login(l2.username(), l2.password())).isFalse();
+                ftp.disconnect();
+                await("the refused tries are counted", () -> second.ftp().status().rejectedLogins() == 1
+                        && cameras.first().ftp().status().rejectedLogins() == 1);
+                assertThat(second.ftp().status().lastRejectedAt()).isNotNull();
+                assertThat(second.ftp().status().cameraConnected(java.time.Instant.now())).isFalse();
+            } finally {
+                cameras.closeAll();
+            }
+        }
+    }
+
+    @Test
+    void changeEventMovesEveryCameraKeepingPortsButIssuesNewLogins() throws Exception {
         int base = freeBasePort();
         try (FakeMcreatikServer server = new FakeMcreatikServer()) {
             UploaderConfig c1 = new UploaderConfig(server.url(), FakeMcreatikServer.TOKEN, photos.resolve("Event A"), 2, "dev",
-                    new UploaderConfig.Ftp(true, base, "mcreatik", "pw234567"));
+                    new UploaderConfig.Ftp(true, base, "cam1abcd", "pw234567"));
             Cameras cameras = Cameras.start(root, c1, false);
             try {
                 CameraRuntime second = cameras.add();
@@ -152,7 +185,9 @@ class CamerasTest {
                 UploaderConfig moved = UploaderConfig.load(CameraSet.dirFor(root, 2)).orElseThrow();
                 assertThat(moved.token()).isNotEqualTo(oldToken);
                 assertThat(moved.ftp().port()).isEqualTo(base + 1);
-                assertThat(moved.ftp().password()).isEqualTo("pw234567");
+                // New event: the camera gets a fresh login, so whatever the old event left saved in it stops working.
+                assertThat(moved.ftp().password()).isNotEqualTo(second.config().ftp().password());
+                assertThat(moved.ftp().username()).isNotEqualTo(second.config().ftp().username());
                 // named after the camera the server created in the new event (the fake numbers cameras across events)
                 assertThat(moved.watchFolder().getFileName().toString()).startsWith("Event B - Camera ");
                 assertThat(moved.watchFolder().getParent()).isEqualTo(photos.toAbsolutePath());
@@ -168,7 +203,7 @@ class CamerasTest {
         try (FakeMcreatikServer server = new FakeMcreatikServer()) {
             server.noCamerasEndpoint = true;
             UploaderConfig c1 = new UploaderConfig(server.url(), FakeMcreatikServer.TOKEN, photos.resolve("Event"), 2, "dev",
-                    new UploaderConfig.Ftp(true, base, "mcreatik", "pw234567"));
+                    new UploaderConfig.Ftp(true, base, "cam1abcd", "pw234567"));
             Cameras cameras = Cameras.start(root, c1, false);
             try {
                 assertThatThrownBy(cameras::add).isInstanceOfSatisfying(ApiException.class,

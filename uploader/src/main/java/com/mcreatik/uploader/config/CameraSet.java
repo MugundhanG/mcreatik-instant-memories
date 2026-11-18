@@ -13,7 +13,7 @@ import java.util.function.IntPredicate;
  * <ul>
  *   <li>Camera 1 is the data folder itself (so existing installs keep working);</li>
  *   <li>Cameras 2–4 live in {@code cameras/2 … cameras/4}, each with its own settings and queue;</li>
- *   <li>each camera has its own FTP port (2121, 2122…) and photo folder, and the same camera login as Camera 1.</li>
+ *   <li>each camera has its own FTP port (2121, 2122…) and photo folder, and its own random camera login (new for every event).</li>
  * </ul>
  */
 public final class CameraSet {
@@ -120,7 +120,7 @@ public final class CameraSet {
         }
     }
 
-    /** Settings for a new camera: its own token, folder and port; Camera 1's computer id and camera login. */
+    /** Settings for a new camera: its own token, folder, port and random camera login; Camera 1's computer id. */
     public static UploaderConfig newCamera(UploaderConfig camera1, String token, int number, int port) {
         return newCamera(camera1, token, number, port, null, EventSwitch.defaultRoot());
     }
@@ -129,7 +129,7 @@ public final class CameraSet {
     public static UploaderConfig newCamera(UploaderConfig camera1, String token, int number, int port, String name,
                                            Path root) {
         return new UploaderConfig(camera1.serverUrl(), token, folderFor(camera1.watchFolder(), number, name, root),
-                camera1.concurrency(), camera1.deviceId(), camera1.ftp().withPort(port));
+                camera1.concurrency(), camera1.deviceId(), camera1.ftp().rotated().withPort(port));
     }
 
     /** Deletes a removed camera's settings and queue (never its photos, which live in the photo folder). */

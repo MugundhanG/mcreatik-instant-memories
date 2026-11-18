@@ -145,7 +145,7 @@ public final class SetupDialog {
                     current.watchFolder(), "x", EventSwitch.defaultRoot()).equals(current.watchFolder());
             folderField.add(UiTheme.label("<html>" + (ownFolders
                     ? "Left as it is, the new event's photos go into their own folder inside McreatiK Photos. " : "")
-                    + "The camera's Wi-Fi settings stay the same.</html>", Font.PLAIN, 12f, UiTheme.MUTED),
+                    + "The camera gets a new user name and password for this event: enter them in the camera again.</html>", Font.PLAIN, 12f, UiTheme.MUTED),
                     BorderLayout.CENTER);
             form.add(field("Folder for photos on this computer", folderField));
         } else {
@@ -200,7 +200,7 @@ public final class SetupDialog {
             new SwingWorker<UploaderConfig, Void>() {
                 @Override
                 protected UploaderConfig doInBackground() throws Exception {
-                    UploaderConfig.Ftp ftpSettings = switching ? current.ftp().withEnabled(ftp.isSelected())
+                    UploaderConfig.Ftp ftpSettings = switching ? current.ftp().rotated().withEnabled(ftp.isSelected())
                             : UploaderConfig.Ftp.generate(ftp.isSelected());
                     UploaderConfig config = new UploaderConfig(parsed.server(), parsed.token(), chosen, concurrency,
                             deviceId, ftpSettings);

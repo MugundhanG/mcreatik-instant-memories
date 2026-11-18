@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.logging.Level;
@@ -67,6 +68,13 @@ public class FtpPhotoSource implements PhotoSource {
     private volatile Instant lastFileAt;
     private volatile String lastClient;
     private volatile String error;
+    /** FTP sessions logged in right now: the camera is connected while it holds one open between shots. */
+    private final Set<String> sessions = ConcurrentHashMap.newKeySet();
+    private final AtomicInteger rejectedLogins = new AtomicInteger();
+    private volatile Instant lastRejectedAt;
+    private volatile String lastRejectedClient;
+    /** A camera that sent a photo this recently still counts as connected (it may close the session between shots). */
+    public static final java.time.Duration RECENT = java.time.Duration.ofMinutes(3);
 
     public FtpPhotoSource(Path photoFolder, int port, String username, String password) {
         this(photoFolder, port, username, password, "50000-50100");
@@ -134,9 +142,32 @@ public class FtpPhotoSource implements PhotoSource {
         Map<String, org.apache.ftpserver.ftplet.Ftplet> ftplets = new java.util.HashMap<>();
         ftplets.put("mcreatik", new DefaultFtplet() {
             @Override
+            public FtpletResult onLogin(FtpSession session, FtpRequest request) throws FtpException, IOException {
+                sessions.add(session.getSessionId().toString());
+                if (session.getClientAddress() instanceof InetSocketAddress client) {
+                    lastClient = client.getAddress().getHostAddress();
+                }
+                return super.onLogin(session, request);
+            }
+
+            @Override
+            public FtpletResult onDisconnect(FtpSession session) throws FtpException, IOException {
+                sessions.remove(session.getSessionId().toString());
+                return super.onDisconnect(session);
+            }
+
+            @Override
             public FtpletResult afterCommand(FtpSession session, FtpRequest request, FtpReply reply)
                     throws FtpException, IOException {
                 String command = request.getCommand().toUpperCase();
+                if ("PASS".equals(command) && reply.getCode() == FtpReply.REPLY_530_NOT_LOGGED_IN) {
+                    // A camera still holding settings from another event (or camera slot): refused, and shown.
+                    rejectedLogins.incrementAndGet();
+                    lastRejectedAt = Instant.now();
+                    if (session.getClientAddress() instanceof InetSocketAddress client) {
+                        lastRejectedClient = client.getAddress().getHostAddress();
+                    }
+                }
                 if (UPLOAD_COMMANDS.contains(command) && reply.getCode() == FtpReply.REPLY_226_CLOSING_DATA_CONNECTION) {
                     onUploadComplete(session, request.getArgument());
                 }
@@ -221,12 +252,41 @@ public class FtpPhotoSource implements PhotoSource {
 
     public Status status() {
         return new Status(server != null && !server.isStopped(), port, username, password, NetworkAddresses.lan(),
-                filesReceived.get(), lastFileAt, lastClient, error);
+                filesReceived.get(), lastFileAt, lastClient, error, sessions.size(), rejectedLogins.get(),
+                lastRejectedAt, lastRejectedClient);
     }
 
-    /** What the photographer types into the camera, plus live receive state. */
+    /** The camera itself, as reported to McreatiK: connected now, and when it last sent a photo. */
+    public record CameraState(boolean connected, Instant lastPhotoAt) {
+    }
+
+    public CameraState cameraState() {
+        return status().cameraState(Instant.now());
+    }
+
+    /**
+     * What the photographer types into the camera, plus live receive state. {@code activeSessions}: cameras logged in
+     * right now; {@code rejectedLogins}: tries with a wrong user or password (a camera set up for another event).
+     */
     public record Status(boolean running, int port, String username, String password, List<String> addresses,
-                         int filesReceived, Instant lastFileAt, String lastClient, String error) {
+                         int filesReceived, Instant lastFileAt, String lastClient, String error, int activeSessions,
+                         int rejectedLogins, Instant lastRejectedAt, String lastRejectedClient) {
+
+        public Status(boolean running, int port, String username, String password, List<String> addresses,
+                      int filesReceived, Instant lastFileAt, String lastClient, String error) {
+            this(running, port, username, password, addresses, filesReceived, lastFileAt, lastClient, error, 0, 0, null,
+                    null);
+        }
+
+        /** Connected only while its FTP session is open, or it sent a file within {@link #RECENT}. */
+        public boolean cameraConnected(Instant now) {
+            return running && error == null && (activeSessions > 0
+                    || (lastFileAt != null && !lastFileAt.isBefore(now.minus(RECENT))));
+        }
+
+        public CameraState cameraState(Instant now) {
+            return new CameraState(cameraConnected(now), lastFileAt);
+        }
     }
 
     @Override

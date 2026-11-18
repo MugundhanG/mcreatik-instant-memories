@@ -270,6 +270,7 @@ function stats(e: DemoEvent) {
       deviceIdentifier: `${u.name.toLowerCase().replace(/\s/g, '-')}-laptop`, tokenPrefix: u.tokenPrefix,
       photosUploaded: mine.length, photosReady: mine.length, queuePending: u.queued, queueFailed: 0, lastError: null,
       lastUploadAt: mine[0]?.readyAt ?? null, paused: false,
+      camera: effectiveStatus(u) === 'ONLINE' ? 'CONNECTED' : 'NOT_CONNECTED', cameraLastPhotoAt: mine[0]?.readyAt ?? null,
     }
   })
   return {

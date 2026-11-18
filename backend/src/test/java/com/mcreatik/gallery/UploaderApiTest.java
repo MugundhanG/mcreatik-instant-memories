@@ -263,4 +263,81 @@ class UploaderApiTest extends IntegrationTest {
                 .andExpect(status().isNotFound());
         assertThat(jdbc.queryForObject("select paused from uploaders", Boolean.class)).isFalse();
     }
+
+    @Test
+    void theCameraIsReportedSeparatelyFromTheLaptop() throws Exception {
+        String eventId = eventId(createEvent("Camera state", "LIVE"));
+        String token = createUploader(eventId, "Camera 1");
+        createUploader(eventId, "Camera 2");
+
+        // An older app reports nothing about the camera: unknown, never "connected".
+        mvc.perform(post("/api/uploader/heartbeat").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"queuePending\":0,\"queueFailed\":0}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/admin/events/" + eventId + "/stats").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.uploaders[0].status").value("ONLINE"))
+                .andExpect(jsonPath("$.uploaders[0].camera").value("UNKNOWN"));
+
+        // Laptop online, camera away: the laptop is Online, the camera is not connected.
+        mvc.perform(post("/api/uploader/heartbeat").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"queuePending\":0,\"queueFailed\":0,\"cameraConnected\":false,"
+                                + "\"cameraLastPhotoAt\":\"2026-01-01T10:00:00Z\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/admin/events/" + eventId + "/stats").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.uploaders[0].status").value("ONLINE"))
+                .andExpect(jsonPath("$.uploaders[0].camera").value("NOT_CONNECTED"))
+                .andExpect(jsonPath("$.uploaders[0].cameraLastPhotoAt").value("2026-01-01T10:00:00Z"));
+
+        mvc.perform(post("/api/uploader/heartbeat").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"queuePending\":0,\"queueFailed\":0,\"cameraConnected\":true}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/admin/events/" + eventId + "/stats").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.uploaders[0].camera").value("CONNECTED"));
+
+        // The laptop goes quiet: whatever it last said about the camera is stale, so it is not connected.
+        jdbc.update("update uploaders set last_seen_at = now() - interval '10 minutes' where name = 'Camera 1'");
+        mvc.perform(get("/api/admin/events/" + eventId + "/stats").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.uploaders[0].status").value("OFFLINE"))
+                .andExpect(jsonPath("$.uploaders[0].camera").value("NOT_CONNECTED"));
+    }
+
+    @Test
+    void aPhotoThatArrivedDuringAPauseNeverReachesTheGalleryEvenAfterResume() throws Exception {
+        String eventId = eventId(createEvent("Pause windows", "LIVE"));
+        String token = createUploader(eventId, "Camera 1");
+        String uploaderId = jdbc.queryForObject("select id::text from uploaders", String.class);
+        java.time.Instant before = java.time.Instant.now().minusSeconds(60);
+
+        mvc.perform(patch("/api/admin/uploaders/" + uploaderId).header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"paused\":true}"))
+                .andExpect(status().isNoContent());
+        mvc.perform(post("/api/uploader/heartbeat").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"queuePending\":0,\"queueFailed\":0}"))
+                .andExpect(jsonPath("$.pausedSince").isNotEmpty());
+        java.time.Instant during = java.time.Instant.now().plusSeconds(1);
+        Thread.sleep(1500);
+
+        // The laptop resumes (the app does it itself); it then uploads what it queued while it was paused.
+        mvc.perform(patch("/api/uploader/me").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"paused\":false}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.paused").value(false));
+
+        byte[] heldBack = jpeg(300, 200);
+        String withArrival = uploadRequestJson("IMG_PAUSED.JPG", heldBack);
+        mvc.perform(post("/api/uploader/uploads").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(withArrival.substring(0, withArrival.length() - 1) + ",\"receivedAt\":\"" + during + "\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("UPLOADER_PAUSED"));
+        assertThat(jdbc.queryForObject("select count(*) from photos", Integer.class)).isZero();
+
+        // A photo that arrived before the pause (still queued on the laptop) is fine.
+        byte[] early = jpeg(310, 200);
+        String earlyJson = uploadRequestJson("IMG_EARLY.JPG", early);
+        mvc.perform(post("/api/uploader/uploads").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(earlyJson.substring(0, earlyJson.length() - 1) + ",\"receivedAt\":\"" + before + "\"}"))
+                .andExpect(status().isOk());
+    }
 }

@@ -62,10 +62,13 @@ public final class EventDtos {
     public record GalleryAccessRequest(Boolean liveGallery, Boolean clientGallery) {
     }
 
+    /** The camera itself, apart from the laptop: CONNECTED, NOT_CONNECTED, or UNKNOWN (an older uploader app). */
+    public enum CameraState { CONNECTED, NOT_CONNECTED, UNKNOWN }
+
     public record UploaderStats(UUID id, String name, UploaderStatus status, Instant lastSeenAt,
                                 String deviceIdentifier, String tokenPrefix, long photosUploaded, long photosReady,
                                 int queuePending, int queueFailed, String lastError, Instant lastUploadAt,
-                                boolean paused) {
+                                boolean paused, CameraState camera, Instant cameraLastPhotoAt) {
     }
 
     public record EventStats(long totalPhotos, long readyPhotos, long inProgressPhotos, long failedPhotos,

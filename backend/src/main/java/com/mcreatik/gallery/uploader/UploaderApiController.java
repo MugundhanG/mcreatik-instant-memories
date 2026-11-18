@@ -37,9 +37,12 @@ public class UploaderApiController {
     private final UploadService uploadService;
     private final GalleryProperties properties;
     private final UploaderAdminService uploaderAdmin;
+    private final UploaderPauseLog pauseLog;
 
     public UploaderApiController(UploaderRepository uploaders, EventRepository events, UploadService uploadService,
-                                 GalleryProperties properties, UploaderAdminService uploaderAdmin) {
+                                 GalleryProperties properties, UploaderAdminService uploaderAdmin,
+                                 UploaderPauseLog pauseLog) {
+        this.pauseLog = pauseLog;
         this.uploaders = uploaders;
         this.events = events;
         this.uploadService = uploadService;
@@ -57,7 +60,7 @@ public class UploaderApiController {
     public record UpdateSelfRequest(@Size(max = 120) String name, Boolean paused) {
     }
 
-    public record UpdateSelfResponse(String name, boolean paused) {
+    public record UpdateSelfResponse(String name, boolean paused, java.time.Instant pausedSince) {
     }
 
     /** Rename this camera, or pause / resume it, from the app. */
@@ -65,7 +68,7 @@ public class UploaderApiController {
     public UpdateSelfResponse updateSelf(@AuthenticationPrincipal UploaderPrincipal principal,
                                          @Valid @RequestBody UpdateSelfRequest request) {
         Uploader u = uploaderAdmin.updateSelf(principal, request.name(), request.paused());
-        return new UpdateSelfResponse(u.getName(), u.isPaused());
+        return new UpdateSelfResponse(u.getName(), u.isPaused(), pauseLog.pausedSince(u.getId()));
     }
 
     /** "Add camera" in the app: another camera (uploader) in this uploader's event. */
@@ -88,7 +91,7 @@ public class UploaderApiController {
     public record MeResponse(UUID uploaderId, String uploaderName, UUID eventId, String eventName,
                              EventStatus eventStatus, String galleryUrl, long heartbeatIntervalSeconds,
                              long maxFileSizeBytes, java.time.LocalDate eventDate, java.time.Instant eventStartTime,
-                             boolean paused) {
+                             boolean paused, java.time.Instant pausedSince) {
     }
 
     @GetMapping("/me")
@@ -97,16 +100,19 @@ public class UploaderApiController {
         var event = events.findById(principal.eventId()).orElseThrow(() -> ApiException.notFound("Event"));
         return new MeResponse(uploader.getId(), uploader.getName(), event.getId(), event.getName(), event.getStatus(),
                 properties.galleryUrl(event.getSlug()), HEARTBEAT_INTERVAL.toSeconds(),
-                properties.upload().maxFileSizeBytes(), event.getEventDate(), event.getStartTime(), uploader.isPaused());
+                properties.upload().maxFileSizeBytes(), event.getEventDate(), event.getStartTime(), uploader.isPaused(),
+                pauseLog.pausedSince(uploader.getId()));
     }
 
     public record HeartbeatRequest(@Size(max = 200) String deviceIdentifier, @Min(0) int queuePending,
                                    @Min(0) int queueFailed, @Size(max = 2000) String lastError,
-                                   @Size(max = 40) String appVersion) {
+                                   @Size(max = 40) String appVersion,
+                                   Boolean cameraConnected, java.time.Instant cameraLastPhotoAt) {
     }
 
     /** {@code paused}/{@code uploaderName}: so a pause or rename in the dashboard reaches the app within seconds. */
-    public record HeartbeatResponse(EventStatus eventStatus, boolean acceptingUploads, boolean paused, String uploaderName) {
+    public record HeartbeatResponse(EventStatus eventStatus, boolean acceptingUploads, boolean paused, String uploaderName,
+                                    java.time.Instant pausedSince) {
     }
 
     @PostMapping("/heartbeat")
@@ -116,16 +122,19 @@ public class UploaderApiController {
         Uploader uploader = uploaders.findById(principal.uploaderId()).orElseThrow(() -> ApiException.notFound("Uploader"));
         uploader.recordHeartbeat(request.deviceIdentifier(), request.queuePending(), request.queueFailed(),
                 request.lastError());
+        uploader.recordCamera(request.cameraConnected(), request.cameraLastPhotoAt());
         var event = events.findById(principal.eventId()).orElseThrow(() -> ApiException.notFound("Event"));
         return new HeartbeatResponse(event.getStatus(), event.getStatus().acceptsUploads(), uploader.isPaused(),
-                uploader.getName());
+                uploader.getName(), pauseLog.pausedSince(uploader.getId()));
     }
 
     public record CreateUploadRequest(@NotBlank @Size(max = 1024) String fileName,
                                       @Positive long fileSize,
                                       @NotBlank @Size(max = 50) String mimeType,
                                       @NotNull @Size(min = 64, max = 64) String checksumSha256,
-                                      @Valid PreparedVersions prepared) {
+                                      @Valid PreparedVersions prepared,
+                                      /** When the photo reached the laptop; decides whether it arrived during a pause. */
+                                      java.time.Instant receivedAt) {
     }
 
     /** Present when the uploader made the web and thumbnail versions itself (see UploadService). */
@@ -140,7 +149,7 @@ public class UploaderApiController {
                 request.fileName(), request.fileSize(), request.mimeType(), request.checksumSha256(),
                 request.prepared() == null ? null : new UploadService.Prepared(request.prepared().webSize(),
                         request.prepared().thumbnailSize(), request.prepared().width(), request.prepared().height(),
-                        request.prepared().capturedAt())));
+                        request.prepared().capturedAt()), request.receivedAt()));
     }
 
     @PostMapping("/uploads/{photoId}/complete")
