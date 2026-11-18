@@ -34,7 +34,7 @@ function StatStrip({ stats, clientOnly = false }: { stats: EventStats; clientOnl
     // Per gallery, ready photos only: what was really uploaded, never both galleries added together.
     ...(clientOnly ? [] : [[formatCount(stats.guestPhotos), 'guest photos']]),
     [formatCount(stats.clientPhotos), 'client photos'],
-    ...(clientOnly ? [] : [[`${stats.activeUploaders} / ${stats.uploaders.length}`, 'cameras online']]),
+    ...(clientOnly ? [] : [[`${stats.activeUploaders} / ${stats.uploaders.length}`, 'cameras connected']]),
     [formatBytes(stats.storageBytes), 'stored'],
   ]
   return (

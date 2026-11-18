@@ -26,6 +26,7 @@ type Action =
   | { type: 'arrived'; photos: PublicPhoto[]; show: boolean }
   | { type: 'showIncoming' }
   | { type: 'removed'; id: string }
+  | { type: 'reconciled'; photos: PublicPhoto[]; complete: boolean }
   | { type: 'loadingMore' }
   | { type: 'moreLoaded'; page: PublicPhotoPage }
   | { type: 'moreFailed' }
@@ -72,6 +73,20 @@ export function reducer(state: LiveGalleryState, action: Action): LiveGallerySta
       const photos = state.photos.filter((p) => p.id !== action.id)
       const incoming = state.incoming.filter((p) => p.id !== action.id)
       const removed = state.photos.length + state.incoming.length - photos.length - incoming.length
+      const event = state.event ? { ...state.event, photoCount: Math.max(0, state.event.photoCount - removed) } : null
+      return { ...state, photos, incoming, event }
+    }
+    case 'reconciled': {
+      // `photos` is the server's current first page. Whatever we hold inside its time range that it no longer returns
+      // was hidden or deleted while this phone missed the live stream. `complete`: it was the whole gallery.
+      if (action.photos.length === 0 && !action.complete) return state
+      const keep = new Set(action.photos.map((p) => p.id))
+      const oldest = action.photos.length > 0 ? action.photos[action.photos.length - 1] : null
+      const stale = (p: PublicPhoto) => !keep.has(p.id) && (action.complete || (oldest !== null && byNewest(p, oldest) <= 0))
+      const photos = state.photos.filter((p) => !stale(p))
+      const incoming = state.incoming.filter((p) => !stale(p))
+      const removed = state.photos.length + state.incoming.length - photos.length - incoming.length
+      if (removed === 0) return state
       const event = state.event ? { ...state.event, photoCount: Math.max(0, state.event.photoCount - removed) } : null
       return { ...state, photos, incoming, event }
     }
@@ -162,12 +177,17 @@ export function useLiveGallery(slug: string, shouldShowImmediately: () => boolea
     }
   }, [slug, category, trackNewest])
 
-  const catchUp = useCallback(async () => {
+  const catchUp = useCallback(async (reconcile = true) => {
     try {
       const page = newest.current
         ? await publicApi.photos(slug, { after: newest.current.cursor, limit: 200, category: categoryRef.current })
         : await publicApi.photos(slug, { limit: 40, category: categoryRef.current })
       arrive(page.photos)
+      if (reconcile) {
+        // Photos hidden or deleted while this phone missed the stream: drop what the first page no longer returns.
+        const first = await publicApi.photos(slug, { limit: 40, category: categoryRef.current })
+        dispatch({ type: 'reconciled', photos: first.photos, complete: first.nextCursor === null })
+      }
     } catch (e) {
       // Turned off by McreatiK while open: show why. Anything else: the next reconnect / poll tries again.
       if (e instanceof ApiError && (e.code === 'GALLERY_UNAVAILABLE' || e.code === 'GALLERY_EXPIRED')) dispatch(failure(e))
@@ -234,7 +254,7 @@ export function useLiveGallery(slug: string, shouldShowImmediately: () => boolea
     }
     connect()
 
-    const poll = setInterval(() => void catchUp(), SAFETY_POLL_MS)
+    const poll = setInterval(() => void catchUp(false), SAFETY_POLL_MS)
     const onVisible = () => {
       if (document.visibilityState === 'visible') void catchUp()
     }

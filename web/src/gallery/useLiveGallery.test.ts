@@ -35,4 +35,18 @@ describe('live gallery reducer', () => {
     const next = reducer(base, { type: 'moreLoaded', page: { photos: [photo(1), photo(0)], nextCursor: null } })
     expect(next.photos.map((p) => p.cursor)).toEqual(['cursor-2', 'cursor-1', 'cursor-0'])
   })
+
+  it('drops photos hidden or deleted while the stream was missed, only inside the first page range', () => {
+    const state = { ...base, photos: [photo(5), photo(4), photo(3), photo(2), photo(1)], nextCursor: 'more' }
+    // The server's first page now holds 5, 3 and 2: 4 was hidden. 1 is older than the page: untouched.
+    const next = reducer(state, { type: 'reconciled', photos: [photo(5), photo(3), photo(2)], complete: false })
+    expect(next.photos.map((p) => p.cursor)).toEqual(['cursor-5', 'cursor-3', 'cursor-2', 'cursor-1'])
+    expect(next.event?.photoCount).toBe(base.event!.photoCount - 1)
+  })
+
+  it('treats a complete first page as the whole gallery', () => {
+    const next = reducer(base, { type: 'reconciled', photos: [photo(2)], complete: true })
+    expect(next.photos.map((p) => p.cursor)).toEqual(['cursor-2'])
+    expect(reducer(base, { type: 'reconciled', photos: [photo(2), photo(1)], complete: true })).toBe(base)
+  })
 })

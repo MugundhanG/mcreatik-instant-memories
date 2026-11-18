@@ -261,22 +261,34 @@ public class AlbumService {
                 FROM album_selections s
                 JOIN photos p ON p.id = s.photo_id
                 LEFT JOIN event_clients c ON c.id = s.client_id
-                WHERE s.event_id = ?
+                WHERE s.event_id = ? AND p.status = 'READY' AND NOT p.hidden
                 ORDER BY coalesce(p.captured_at, p.created_at), p.id""", (rs, n) -> new AlbumDtos.SelectedPhoto(
                 rs.getObject(1, UUID.class), rs.getString(2), photoMapper.url(rs.getString(3)),
                 instant(rs.getTimestamp(4)), rs.getString(5), rs.getObject(6, UUID.class)), eventId);
         return new AlbumDtos.Album(albumLimit(eventId), selected);
     }
 
-    public long selectedCount(UUID eventId) {
-        return jdbc.queryForObject("SELECT count(*) FROM album_selections WHERE event_id = ?", Long.class, eventId);
+    /**
+     * Picks that still count: the photo is READY, not hidden and in the couple's gallery ({@code gallery} null: every
+     * photo, on events from before the split). A hidden, failed or moved photo neither shows in the album nor uses a place.
+     */
+    public long selectedCount(UUID eventId, Gallery gallery) {
+        return jdbc.queryForObject("""
+                SELECT count(*) FROM album_selections s JOIN photos p ON p.id = s.photo_id
+                WHERE s.event_id = ? AND p.status = 'READY' AND NOT p.hidden%s""".formatted(galleryClause(gallery)),
+                Long.class, eventId);
+    }
+
+    private static String galleryClause(Gallery gallery) {
+        return gallery == null ? "" : " AND p.gallery = '" + gallery.name() + "'";
     }
 
     /** The whole album selection, in the order the day happened. */
-    public List<UUID> selectedPhotoIds(UUID eventId) {
+    public List<UUID> selectedPhotoIds(UUID eventId, Gallery gallery) {
         return jdbc.query("""
                 SELECT p.id FROM album_selections s JOIN photos p ON p.id = s.photo_id
-                WHERE s.event_id = ? ORDER BY coalesce(p.captured_at, p.created_at), p.id""",
+                WHERE s.event_id = ? AND p.status = 'READY' AND NOT p.hidden%s
+                ORDER BY coalesce(p.captured_at, p.created_at), p.id""".formatted(galleryClause(gallery)),
                 (rs, n) -> rs.getObject(1, UUID.class), eventId);
     }
 
@@ -296,7 +308,7 @@ public class AlbumService {
     public long select(UUID eventId, UUID clientId, UUID photoId, boolean selected, Gallery gallery) {
         if (!selected) {
             jdbc.update("DELETE FROM album_selections WHERE event_id = ? AND photo_id = ?", eventId, photoId);
-            return selectedCount(eventId);
+            return selectedCount(eventId, gallery);
         }
         // gallery: the one the couple can see (null: every photo, on events from before the split).
         Long visible = jdbc.queryForObject("""
@@ -309,7 +321,7 @@ public class AlbumService {
         // Serialise selections per event so two phones cannot both take the last place.
         jdbc.queryForObject("SELECT id FROM events WHERE id = ? FOR UPDATE", UUID.class, eventId);
         Integer limit = albumLimit(eventId);
-        long count = selectedCount(eventId);
+        long count = selectedCount(eventId, gallery);
         boolean already = jdbc.queryForObject(
                 "SELECT count(*) FROM album_selections WHERE event_id = ? AND photo_id = ?", Long.class, eventId, photoId) > 0;
         if (already) {

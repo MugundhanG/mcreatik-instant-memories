@@ -29,7 +29,7 @@ export function ConfirmDialog({ options, onClose, closing = false }: { options: 
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
-        className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ${closing ? 'anim-dialog-out' : 'anim-dialog-in'}`}
+        className={`max-h-[95dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl ${closing ? 'anim-dialog-out' : 'anim-dialog-in'}`}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 id="confirm-title" className="text-lg font-semibold">{options.title}</h3>

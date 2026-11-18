@@ -76,7 +76,7 @@ public class GalleryLifecycleJob {
                 WHERE u.id = e.owner_id AND %s AND e.photos_deleted_at IS NULL AND e.event_type IN ('MAIN', 'QUICK') AND NOT e.storage_locked
                   AND e.client_gallery_enabled AND e.event_date < ?
                   AND (SELECT coalesce(sum(p.media_bytes + CASE WHEN p.original_stored THEN p.file_size ELSE 0 END), 0)
-                       FROM photos p WHERE p.event_id = e.id) > e.storage_quota_gb::bigint * ?
+                       FROM photos p WHERE p.event_id = e.id AND p.status = 'READY') > e.storage_quota_gb::bigint * ?
                 RETURNING e.id, e.name, u.email, u.display_name, e.event_date""".formatted(PAYING),
                 (rs, n) -> new Row(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4),
                         rs.getDate(5).toLocalDate()), Date.valueOf(today.minusDays(STORAGE_GRACE_DAYS)), BillingService.GB);

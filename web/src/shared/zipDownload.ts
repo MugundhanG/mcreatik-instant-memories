@@ -3,6 +3,8 @@ import { API_BASE_URL, ApiError, openZip } from '../lib/api'
 import type { PreparedZip, ZipProgress } from '../lib/types'
 
 const POLL_MS = 1000
+/** Gives up waiting for a ZIP that never finishes (the server restarted, the link expired). */
+const MAX_WAIT_MS = 10 * 60 * 1000
 /** How long "Done" stays on screen. */
 const DONE_HIDE_MS = 8000
 
@@ -57,16 +59,30 @@ export function useZipDownload() {
     setStatus({ fileName: zip.fileName, state: 'WAITING', done: 0, total: zip.photos, percent: 0 })
     openZip(zip)
 
+    const startedAt = Date.now()
+    const fail = (error: string) => setStatus({ fileName: zip.fileName, state: 'FAILED', done: 0, total: zip.photos, percent: 0, error })
     const poll = async () => {
       if (id !== run.current) return
       let p: ZipProgress | null = null
       try {
         const res = await fetch(`${API_BASE_URL}${zip.progressPath}`)
-        if (res.ok) p = await res.json()
+        if (res.ok) {
+          p = await res.json()
+        } else if (id === run.current) {
+          // 404/410 (the download is gone) or any other refusal: polling again can never succeed.
+          fail(res.status === 404 || res.status === 410
+            ? 'This download is no longer available. Please start it again.'
+            : 'The download could not be completed. Please try again.')
+          return
+        }
       } catch {
-        // a missed poll: try again next second
+        // a missed poll (network blip): try again next second, until the time limit
       }
       if (id !== run.current) return
+      if (Date.now() - startedAt > MAX_WAIT_MS && p?.state !== 'DONE') {
+        fail('The download is taking too long. Please try again.')
+        return
+      }
       if (p) {
         setStatus({ fileName: zip.fileName, ...p })
         if (p.state === 'DONE') {

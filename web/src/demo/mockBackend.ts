@@ -3,6 +3,7 @@
  * It answers the app's real API calls (fetch) and its live stream (EventSource), so the demo runs
  * the production UI code unchanged. Nothing here is included in the production bundle.
  */
+import { localIsoDate } from '../lib/format'
 import { API_BASE_URL } from '../lib/api'
 import type { AdminPhoto, EventStatus, PublicPhoto, UploaderStatus } from '../lib/types'
 import { generatePhoto } from './photos'
@@ -56,7 +57,7 @@ const nowIso = () => {
   clock = Math.max(clock + 1, Date.now())
   return new Date(clock).toISOString()
 }
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => localIsoDate()
 const plusDays = (d: string, n: number) => new Date(Date.parse(d) + n * 86_400_000).toISOString().slice(0, 10)
 
 const events: DemoEvent[] = []

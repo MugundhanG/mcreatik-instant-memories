@@ -76,4 +76,14 @@ describe('New event: how long the galleries stay open', () => {
     await user.selectOptions(months, '4')
     await waitFor(() => expect(months).toHaveValue('4'))
   })
+
+  it('starts the event date on the local calendar day, not UTC', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 10, 4, 0, 30) }) // 00:30 local: UTC may still say the 3rd
+    try {
+      setUp()
+      expect(await screen.findByLabelText('Date')).toHaveValue('2026-11-04')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

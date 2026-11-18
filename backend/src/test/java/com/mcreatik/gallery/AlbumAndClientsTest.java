@@ -133,6 +133,26 @@ class AlbumAndClientsTest extends IntegrationTest {
     }
 
     @Test
+    void hiddenPicksNeitherCountNorUseAPlaceInTheAlbum() throws Exception {
+        Setup s = eventWithPhotos();
+        String email = "couple-" + UUID.randomUUID().toString().substring(0, 6) + "@client.test";
+        mvc.perform(admin(post("/api/admin/events/" + s.eventId() + "/clients"))
+                .content("{\"name\":\"Arun\",\"email\":\"" + email + "\",\"password\":\"temporary-123\"}")).andExpect(status().isCreated());
+        mvc.perform(admin(put("/api/admin/events/" + s.eventId() + "/album")).content("{\"limit\":1}")).andExpect(status().isNoContent());
+        String client = clientLogin(email, "temporary-123");
+        mvc.perform(put("/api/client/photos/" + s.photos().get(0) + "/selected").header("Authorization", bearer(client))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"selected\":true}")).andExpect(jsonPath("$.selectedCount").value(1));
+
+        jdbc.update("update photos set hidden = true where id = ?::uuid", s.photos().get(0));
+        mvc.perform(get("/api/client/me").header("Authorization", bearer(client))).andExpect(jsonPath("$.selectedCount").value(0));
+        // The place is free again, and the ZIP of "my album" holds what the counter says (nothing yet).
+        mvc.perform(put("/api/client/photos/" + s.photos().get(1) + "/selected").header("Authorization", bearer(client))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"selected\":true}")).andExpect(jsonPath("$.selectedCount").value(1));
+        mvc.perform(get("/api/client/me").header("Authorization", bearer(client))).andExpect(jsonPath("$.selectedCount").value(1));
+        mvc.perform(admin(get("/api/admin/events/" + s.eventId() + "/album"))).andExpect(jsonPath("$.selected.length()").value(1));
+    }
+
+    @Test
     void oneEmailCanBeTheClientLoginOfSeveralEventsAndTheSlugOrAChoiceSaysWhich() throws Exception {
         Setup a = eventWithPhotos();
         Setup b = eventWithPhotos();

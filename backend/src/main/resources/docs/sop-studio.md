@@ -148,7 +148,7 @@ Every camera needs its own **uploader**. One laptop with the McreatiK Instant Me
 
 3. When the uploader is running, the camera shows **Online** with a green dot and its photo count.
 
-![Overview: photo counts, cameras online, latest photo, QR code](images/s-overview.webp)
+![Overview: photo counts, cameras connected (the camera itself, not just the laptop), latest photo, QR code](images/s-overview.webp)
 
 - **Pause / Resume:** a privacy pause for moments that shouldn't go live (for example the bride getting ready). While paused, that camera's photos still arrive on the laptop but go into its **Not uploaded (paused)** folder and **never** reach the gallery, not during the pause and not after you resume (each photo is decided when it arrives). The uploader shows "N photos kept private (paused)" with an Open folder button. The camera shows **Paused** in amber here and in the uploader. You can pause or resume here or in the uploader; each side sees the change within seconds. Each camera row also shows the **laptop** (Online/Offline) and the **camera** (Connected / Not connected · last photo) separately.
 ![Cameras: one paused for a private moment](images/s-cameras-paused.webp)

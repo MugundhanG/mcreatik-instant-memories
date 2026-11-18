@@ -60,6 +60,16 @@ describe('Pause and rename a camera', () => {
     await waitFor(() => expect(calls[1]).toEqual({ method: 'PATCH', path: '/api/admin/uploaders/u1', body: { paused: false } }))
   })
 
+  it('keeps the show-once connection code dialog scrollable on a short phone screen', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ uploaderId: 'u9', name: 'Camera 1', token: 't', connectionCode: 'MCK-CODE' }),
+      { status: 201, headers: { 'Content-Type': 'application/json' } })))
+    render(<UploadersPanel eventId="e1" uploaders={[]} onChange={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Add camera & get code' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Uploader connection code' })
+    expect(dialog.firstElementChild).toHaveClass('max-h-[95dvh]', 'overflow-y-auto')
+  })
+
   it('renames a camera inline', async () => {
     const user = userEvent.setup()
     const calls = server()

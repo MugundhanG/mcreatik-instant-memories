@@ -49,7 +49,7 @@ public record GalleryProperties(
      * {@code collectionPrefix}: collections are named {@code <prefix>-event-<eventId>} (mck-prod, mck-beta).
      */
     public record FaceSearch(boolean enabled, boolean workerEnabled, String region, String accessKeyId,
-                             String secretAccessKey, String collectionPrefix, float matchThreshold, int ipPerHour,
+                             String secretAccessKey, String collectionPrefix, float matchThreshold, int visitorPerHour, int ipPerHour,
                              int eventDailyCap, int maxAttempts, int maxFacesPerPhoto, int maxMatches) {
         public boolean hasKeys() {
             return accessKeyId != null && !accessKeyId.isBlank() && secretAccessKey != null && !secretAccessKey.isBlank();

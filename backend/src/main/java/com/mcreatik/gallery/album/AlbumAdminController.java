@@ -128,7 +128,7 @@ public class AlbumAdminController {
                                           @RequestBody AlbumDtos.DownloadRequest request) {
         Event event = owned(auth, eventId);
         boolean wholeAlbum = Boolean.TRUE.equals(request.album());
-        List<UUID> ids = wholeAlbum ? album.selectedPhotoIds(eventId) : request.photoIds();
+        List<UUID> ids = wholeAlbum ? album.selectedPhotoIds(eventId, event.isSplitGalleries() ? Gallery.CLIENT : null) : request.photoIds();
         return downloads.prepare(eventId, ids, true, event.getName() + (wholeAlbum ? " album selection" : " photos"));
     }
 }

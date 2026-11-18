@@ -647,11 +647,11 @@ public class BillingService {
         return (int) Math.max(1, (bytes + GB - 1) / GB);
     }
 
-    /** Everything an event stores: web versions, thumbnails and the kept full-quality originals. */
+    /** Everything an event stores (READY photos only; abandoned uploads store nothing): web versions, thumbnails, kept originals. */
     public long eventBytes(UUID eventId) {
         return jdbc.queryForObject("""
                 SELECT coalesce(sum(media_bytes + CASE WHEN original_stored THEN file_size ELSE 0 END), 0)
-                FROM photos WHERE event_id = ?""", Long.class, eventId);
+                FROM photos WHERE event_id = ? AND status = 'READY'""", Long.class, eventId);
     }
 
     /** McreatiK itself or an unlimited studio: no prices, no storage limit, dates set by hand. */

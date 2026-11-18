@@ -40,3 +40,8 @@ export function timeAgo(iso: string | null, now: number = Date.now()): string {
 export function formatCount(n: number): string {
   return n.toLocaleString()
 }
+
+/** Today's date (YYYY-MM-DD) on this device's calendar, not UTC: right after midnight in India UTC is still yesterday. */
+export function localIsoDate(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}

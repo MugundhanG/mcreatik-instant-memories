@@ -36,7 +36,7 @@ import com.mcreatik.gallery.support.IntegrationTest;
 
 /** "Find my photos" with the in-memory fake engine (no AWS calls). */
 @TestPropertySource(properties = {"gallery.face-search.enabled=true", "gallery.face-search.worker-enabled=false",
-        "gallery.face-search.ip-per-hour=4", "gallery.face-search.event-daily-cap=6", "gallery.face-search.collection-prefix=mck-test"})
+        "gallery.face-search.visitor-per-hour=4", "gallery.face-search.ip-per-hour=300", "gallery.face-search.event-daily-cap=6", "gallery.face-search.collection-prefix=mck-test"})
 class FaceSearchTest extends IntegrationTest {
 
     private static final AtomicInteger IPS = new AtomicInteger();
@@ -212,6 +212,46 @@ class FaceSearchTest extends IntegrationTest {
         findMe(slug(event), jpeg(100, 100), ip()).andExpect(status().isOk());
         findMe(slug(event), jpeg(100, 100), ip()).andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("FACE_SEARCH_LIMIT"));
+    }
+
+    private ResultActions findMeAs(String slug, byte[] selfie, String remote, String visitor) throws Exception {
+        return mvc.perform(multipart("/api/public/events/" + slug + "/find-me")
+                .file(new MockMultipartFile("selfie", "selfie.jpg", "image/jpeg", selfie)).param("visitorId", visitor)
+                .with(r -> {
+                    r.setRemoteAddr(remote);
+                    return r;
+                }));
+    }
+
+    @Test
+    void theHourlyLimitIsPerVisitorSoAVenueSharingOneIpIsNotBlocked() throws Exception {
+        String event = createEvent("Venue", "LIVE");
+        setFaceSearch(eventId(event), true);
+        String wifi = ip();
+        findMeAs(slug(event), jpeg(100, 100), wifi, "visitor-aaaa1111").andExpect(status().isOk());
+        findMeAs(slug(event), jpeg(100, 100), wifi, "visitor-bbbb2222").andExpect(status().isOk());
+        for (int i = 0; i < 2; i++) {
+            findMeAs(slug(event), jpeg(100, 100), wifi, "visitor-cccc3333").andExpect(status().isOk());
+        }
+        // Daily cap is 6, 4 used. The same person keeps their own 4-an-hour limit even on another IP.
+        findMeAs(slug(event), jpeg(100, 100), wifi, "visitor-cccc3333").andExpect(status().isOk());
+        findMeAs(slug(event), jpeg(100, 100), ip(), "visitor-cccc3333").andExpect(status().isOk());
+        findMeAs(slug(event), jpeg(100, 100), ip(), "visitor-cccc3333").andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void searchesThatFindNoFaceDoNotBurnTheEventDailyCap() throws Exception {
+        String event = createEvent("NoBurn", "LIVE");
+        setFaceSearch(eventId(event), true);
+        byte[] none = jpeg(100, 100);
+        fake.selfieHasNoFace(none);
+        for (int i = 0; i < 8; i++) { // more than the daily cap of 6
+            findMe(slug(event), none, ip()).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("NO_FACE"));
+        }
+        for (int i = 0; i < 6; i++) {
+            findMe(slug(event), jpeg(100, 100), ip()).andExpect(status().isOk());
+        }
+        findMe(slug(event), jpeg(100, 100), ip()).andExpect(status().isTooManyRequests());
     }
 
     @Test

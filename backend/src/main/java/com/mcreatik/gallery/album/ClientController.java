@@ -249,7 +249,7 @@ public class ClientController {
                 SELECT count(*) FROM photos WHERE event_id = ? AND status = 'READY' AND NOT hidden AND category_id IS NULL"""
                 + only, Long.class, e.getId());
         return new Me(c.name(), c.email(), c.mustChange(), new EventInfo(e.getName(), e.getEventDate(), pub.coverUrl(),
-                branding.ofOwner(e.getOwnerId())), album.albumLimit(e.getId()), album.selectedCount(e.getId()), total,
+                branding.ofOwner(e.getOwnerId())), album.albumLimit(e.getId()), album.selectedCount(e.getId(), portalGallery(e)), total,
                 unsorted, album.visibleCategories(e.getId(), portalGallery(e)));
     }
 
@@ -365,7 +365,7 @@ public class ClientController {
         List<UUID> ids;
         String name = e.getName();
         if (Boolean.TRUE.equals(request.album())) {
-            ids = album.selectedPhotoIds(e.getId());
+            ids = album.selectedPhotoIds(e.getId(), portalGallery(e));
             name += " album";
         } else if (request.photoIds() != null && !request.photoIds().isEmpty()) {
             ids = request.photoIds();
