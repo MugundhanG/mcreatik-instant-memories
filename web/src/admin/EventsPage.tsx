@@ -186,7 +186,8 @@ export default function EventsPage() {
               </p>
               {superAdmin && e.ownerName && <p className="mt-1 text-xs font-medium text-[#8a5a1c]">{e.ownerName}</p>}
               <p className="mt-4 text-sm">
-                <span className="font-semibold tabular-nums">{formatCount(e.readyPhotos)}</span> <span className="text-muted">photos</span>
+                {e.eventType !== 'CLIENT' && <><span className="text-muted">Guest</span> <span className="font-semibold tabular-nums">{formatCount(e.guestPhotos)}</span><span className="text-muted"> · </span></>}
+                <span className="text-muted">Client</span> <span className="font-semibold tabular-nums">{formatCount(e.clientPhotos)}</span>
               </p>
             </Link>
           </li>

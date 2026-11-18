@@ -3,7 +3,7 @@ import type { EventSummary } from '../lib/types'
 import { applyFilter, EMPTY_FILTER, filterFromParams, filterToParams } from './eventFilters'
 
 const ev = (id: string, name: string, eventDate: string, extra: Partial<EventSummary> = {}): EventSummary =>
-  ({ id, name, slug: id, eventDate, status: 'LIVE', galleryUrl: '', readyPhotos: 0, createdAt: '', ownerId: 'o1', ownerName: 'Studio A', ...extra })
+  ({ id, name, slug: id, eventDate, status: 'LIVE', galleryUrl: '', readyPhotos: 0, guestPhotos: 0, clientPhotos: 0, createdAt: '', ownerId: 'o1', ownerName: 'Studio A', ...extra })
 
 const events = [ev('a', 'Beta', '2026-03-10'), ev('b', 'Alpha', '2026-11-02', { status: 'COMPLETED', eventType: 'QUICK' }), ev('c', 'Gamma', '2025-03-20', { ownerId: 'o2' })]
 

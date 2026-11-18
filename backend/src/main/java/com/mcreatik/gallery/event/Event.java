@@ -78,6 +78,16 @@ public class Event {
     @Column(name = "client_gallery_enabled", nullable = false)
     private boolean clientGalleryEnabled = true;
 
+    /** McreatiK (or the unpaid-storage job) turned the guest gallery off: the studio cannot turn it back on. */
+    @Column(name = "live_gallery_locked", nullable = false)
+    private boolean liveGalleryLocked;
+
+    @Column(name = "client_gallery_locked", nullable = false)
+    private boolean clientGalleryLocked;
+
+    @Column(name = "photos_deleted_at", insertable = false, updatable = false)
+    private Instant photosDeletedAt;
+
     /** "Find my photos" (face search) is on for this event: bought as an add-on, or switched on by McreatiK. */
     @Column(name = "face_search_enabled", nullable = false)
     private boolean faceSearchEnabled;
@@ -233,6 +243,26 @@ public class Event {
 
     public void setClientGalleryEnabled(boolean clientGalleryEnabled) {
         this.clientGalleryEnabled = clientGalleryEnabled;
+    }
+
+    public boolean isLiveGalleryLocked() {
+        return liveGalleryLocked;
+    }
+
+    public void setLiveGalleryLocked(boolean locked) {
+        this.liveGalleryLocked = locked;
+    }
+
+    public boolean isClientGalleryLocked() {
+        return clientGalleryLocked;
+    }
+
+    public void setClientGalleryLocked(boolean locked) {
+        this.clientGalleryLocked = locked;
+    }
+
+    public boolean arePhotosDeleted() {
+        return photosDeletedAt != null;
     }
 
     public boolean isFaceSearchEnabled() {

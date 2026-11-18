@@ -77,16 +77,20 @@ public class EventService {
         List<Event> owned = isSuperAdmin(ownerId) ? events.findAllByOrderByEventDateDescCreatedAtDesc()
                 : events.findByOwnerIdOrderByEventDateDescCreatedAtDesc(ownerId);
         Map<UUID, String> names = ownerNames();
-        Map<UUID, Long> counts = new HashMap<>();
+        Map<UUID, long[]> counts = new HashMap<>(); // [guest, client] READY photos
         if (!owned.isEmpty()) {
             for (Object[] row : photos.countReadyByEvent(owned.stream().map(Event::getId).toList())) {
-                counts.put((UUID) row[0], ((Number) row[1]).longValue());
+                long[] c = counts.computeIfAbsent((UUID) row[0], k -> new long[2]);
+                c["CLIENT".equals(row[1]) ? 1 : 0] += ((Number) row[2]).longValue();
             }
         }
-        return owned.stream().map(e -> new EventDtos.EventSummary(e.getId(), e.getName(), e.getSlug(),
-                e.getEventDate(), e.getStatus(), properties.galleryUrl(e.getSlug()),
-                counts.getOrDefault(e.getId(), 0L), e.getCreatedAt(), e.getOwnerId(), names.get(e.getOwnerId()),
-                e.getEventType())).toList();
+        return owned.stream().map(e -> {
+            long[] c = counts.getOrDefault(e.getId(), new long[2]);
+            return new EventDtos.EventSummary(e.getId(), e.getName(), e.getSlug(),
+                    e.getEventDate(), e.getStatus(), properties.galleryUrl(e.getSlug()),
+                    c[0] + c[1], c[0], c[1], e.getCreatedAt(), e.getOwnerId(), names.get(e.getOwnerId()),
+                    e.getEventType());
+        }).toList();
     }
 
     @Transactional
@@ -240,13 +244,22 @@ public class EventService {
         long failed = 0;
         long inProgress = 0;
         long bytes = 0;
+        long guest = 0;
+        long client = 0;
         for (Object[] row : photos.countByStatus(event.getId())) {
             PhotoStatus status = PhotoStatus.valueOf((String) row[0]);
             long count = ((Number) row[1]).longValue();
             total += count;
             bytes += ((Number) row[2]).longValue();
             switch (status) {
-                case READY -> ready += count;
+                case READY -> {
+                    ready += count;
+                    if ("CLIENT".equals(row[3])) {
+                        client += count;
+                    } else {
+                        guest += count;
+                    }
+                }
                 case FAILED -> failed += count;
                 default -> inProgress += count;
             }
@@ -283,7 +296,7 @@ public class EventService {
 
         Object[] flags = photos.countHiddenAndLiked(event.getId()).getFirst();
         return new EventDtos.EventStats(total, ready, inProgress, failed, bytes, active, latest, uploaderStats,
-                ((Number) flags[0]).longValue(), ((Number) flags[1]).longValue());
+                ((Number) flags[0]).longValue(), ((Number) flags[1]).longValue(), guest, client);
     }
 
     /** A hidden photo cannot stay the cover guests see. */
@@ -357,7 +370,8 @@ public class EventService {
                 e.getRetentionUntil(), e.getCreatedAt(), e.getUpdatedAt(), e.getOwnerId(),
                 admins.findById(e.getOwnerId()).map(AdminUser::getDisplayName).orElse(null),
                 branding.ofOwner(e.getOwnerId()), e.isLiveGalleryEnabled(), e.isClientGalleryEnabled(), e.getEventType(),
-                e.getActiveUntil(), e.getStorageQuotaGb(), billing.eventBytes(e.getId()), e.isStorageLocked(), e.isExpired(today()));
+                e.getActiveUntil(), e.getStorageQuotaGb(), billing.eventBytes(e.getId()), e.isStorageLocked(), e.isExpired(today()),
+                turnOnBlocked(e, true), turnOnBlocked(e, false));
     }
 
     /** Guests and the couple see this when McreatiK has turned their gallery off. */
@@ -366,16 +380,53 @@ public class EventService {
                 "This gallery is currently unavailable. Please contact " + branding.ofOwner(e.getOwnerId()).name() + ".");
     }
 
-    /** McreatiK only: turn an event's guest gallery or client gallery on or off. Uploads keep working either way. */
+    /**
+     * Why a studio cannot turn this gallery on right now (null: it can). The billing rules: a gallery whose paid
+     * active period has ended or whose photos were deleted stays off, a couple's gallery waits for unpaid storage,
+     * and a gallery McreatiK turned off stays off until McreatiK turns it on.
+     */
+    String turnOnBlocked(Event e, boolean guest) {
+        if (guest && e.getEventType() == EventType.CLIENT) {
+            return "A client-gallery event has no guest gallery.";
+        }
+        if (e.arePhotosDeleted()) {
+            return "This event's photos have been deleted.";
+        }
+        if (e.isExpired(today())) {
+            return "The paid period of this gallery ended on " + e.getActiveUntil()
+                    + ". Keep it open longer (Settings) to turn it on.";
+        }
+        if (!guest && e.isStorageLocked()) {
+            return "The client gallery is paused until storage is added (Overview > Storage).";
+        }
+        if (guest ? e.isLiveGalleryLocked() : e.isClientGalleryLocked()) {
+            return "McreatiK turned this gallery off. Contact connect@mcreatik.com to turn it back on.";
+        }
+        return null;
+    }
+
+    /**
+     * Turn an event's guest gallery or client gallery on or off. The studio does it on its own events (turning on
+     * only when {@link #turnOnBlocked} allows); McreatiK on any event, overriding the billing rules and locking the
+     * gallery off for the studio. Uploads keep working either way.
+     */
     @Transactional
     public EventDtos.EventDetail setGalleryAccess(UUID adminId, UUID eventId, EventDtos.GalleryAccessRequest r) {
-        if (!isSuperAdmin(adminId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Only McreatiK can turn galleries on or off");
+        boolean superAdmin = isSuperAdmin(adminId);
+        Event event = (superAdmin ? events.findById(eventId) : events.findByIdAndOwnerId(eventId, adminId))
+                .orElseThrow(() -> ApiException.notFound("Event"));
+        if (r.liveGallery() != null) {
+            requireAllowed(event, true, r.liveGallery(), superAdmin);
         }
-        Event event = events.findById(eventId).orElseThrow(() -> ApiException.notFound("Event"));
+        if (r.clientGallery() != null) {
+            requireAllowed(event, false, r.clientGallery(), superAdmin);
+        }
         if (r.liveGallery() != null) {
             boolean closing = event.isLiveGalleryEnabled() && !r.liveGallery();
             event.setLiveGalleryEnabled(r.liveGallery());
+            if (superAdmin) {
+                event.setLiveGalleryLocked(!r.liveGallery());
+            }
             if (closing) {
                 // Tell open galleries only once the change is saved, so a reload sees it too.
                 String message = galleryUnavailable(event).getMessage();
@@ -389,8 +440,21 @@ public class EventService {
         }
         if (r.clientGallery() != null) {
             event.setClientGalleryEnabled(r.clientGallery());
+            if (superAdmin) {
+                event.setClientGalleryLocked(!r.clientGallery());
+            }
         }
+        event.touch();
         return toDetail(event);
+    }
+
+    private void requireAllowed(Event event, boolean guest, boolean on, boolean superAdmin) {
+        if (on && !superAdmin) {
+            String why = turnOnBlocked(event, guest);
+            if (why != null) {
+                throw new ApiException(HttpStatus.CONFLICT, "GALLERY_CANNOT_TURN_ON", why);
+            }
+        }
     }
 
     private String coverUrl(Event e) {

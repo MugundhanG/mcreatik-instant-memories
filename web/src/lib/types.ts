@@ -122,7 +122,10 @@ export interface EventSummary {
   eventDate: string
   status: EventStatus
   galleryUrl: string
+  /** Ready photos in both galleries (guest + client); show the two numbers, not this one. */
   readyPhotos: number
+  guestPhotos: number
+  clientPhotos: number
   createdAt: string
   ownerId: string
   /** The studio that owns the event (shown to the super admin). */
@@ -150,6 +153,9 @@ export interface EventDetail {
   /** McreatiK (super admin) can turn these off; the studio only sees them. */
   liveGalleryEnabled?: boolean
   clientGalleryEnabled?: boolean
+  /** Why a studio cannot turn the gallery on right now (null: it can). */
+  liveGalleryBlocked?: string | null
+  clientGalleryBlocked?: string | null
   eventType?: EventType
   /** Open until this day (null: no end); deleted on retentionUntil. */
   activeUntil?: string | null
@@ -250,8 +256,12 @@ export interface PhotoFacets {
 }
 
 export interface EventStats {
+  /** Every row, unfinished and failed ones included: never shown as "the photo count". */
   totalPhotos: number
   readyPhotos: number
+  /** Ready photos per gallery (hidden ones included): exactly what was uploaded there. */
+  guestPhotos: number
+  clientPhotos: number
   inProgressPhotos: number
   failedPhotos: number
   storageBytes: number

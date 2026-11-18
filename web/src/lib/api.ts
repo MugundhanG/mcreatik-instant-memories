@@ -23,23 +23,29 @@ export class ApiError extends Error {
 
 type TokenProvider = () => string | null
 let tokenProvider: TokenProvider = () => null
-let onUnauthorized: () => void = () => {}
+/** Called with the token the rejected request carried, so a late 401 never logs out a newer, refreshed session. */
+let onUnauthorized: (rejectedToken: string | null) => void = () => {}
+/** Runs before every logged-in request: swaps a token that is getting old for a fresh one (sliding session). */
+let beforeAuthRequest: () => Promise<void> = async () => {}
 
-export function configureAuth(provider: TokenProvider, unauthorized: () => void) {
+export function configureAuth(provider: TokenProvider, unauthorized: (rejectedToken: string | null) => void, beforeRequest?: () => Promise<void>) {
   tokenProvider = provider
   onUnauthorized = unauthorized
+  beforeAuthRequest = beforeRequest ?? (async () => {})
 }
 
 async function request<T>(path: string, init: RequestInit = {}, auth = false): Promise<T> {
   const headers = new Headers(init.headers)
   // JSON bodies are strings; FormData (photo uploads) sets its own multipart Content-Type.
   if (typeof init.body === 'string' && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  let sent: string | null = null
   if (auth) {
-    const token = tokenProvider()
-    if (token) headers.set('Authorization', `Bearer ${token}`)
+    if (!path.endsWith('/account/refresh')) await beforeAuthRequest()
+    sent = tokenProvider()
+    if (sent) headers.set('Authorization', `Bearer ${sent}`)
   }
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
-  if (response.status === 401 && auth) onUnauthorized()
+  if (response.status === 401 && auth) onUnauthorized(sent)
   if (!response.ok) {
     let code = 'HTTP_' + response.status
     let message = response.statusText || 'Request failed'
@@ -61,10 +67,11 @@ const json = (body: unknown) => JSON.stringify(body)
 /** Fetches a logged-in file (a documentation screenshot) as a Blob, for an object URL. */
 async function requestBlob(path: string): Promise<Blob> {
   const headers = new Headers()
+  await beforeAuthRequest()
   const token = tokenProvider()
   if (token) headers.set('Authorization', `Bearer ${token}`)
   const response = await fetch(`${API_BASE_URL}${path}`, { headers })
-  if (response.status === 401) onUnauthorized()
+  if (response.status === 401) onUnauthorized(token)
   if (!response.ok) throw new ApiError(response.status, 'HTTP_' + response.status, response.statusText || 'Request failed')
   return response.blob()
 }
@@ -288,6 +295,8 @@ export const adminApi = {
   updateBillingSettings: (s: BillingSettings) =>
     request<BillingSettings>('/api/admin/billing/settings', { method: 'PUT', body: json(s) }, true),
   account: () => request<Account>('/api/admin/account', {}, true),
+  /** A fresh token for the same account: the dashboard calls it before the current one gets old. */
+  refreshSession: () => request<LoginResponse>('/api/admin/account/refresh', { method: 'POST' }, true),
   /** Returns a fresh login for this device: the change logs out every other device. */
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ token: string; expiresAt: string } | undefined>('/api/admin/account/password', { method: 'POST', body: json({ currentPassword, newPassword }) }, true),

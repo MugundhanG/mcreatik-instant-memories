@@ -81,7 +81,7 @@ class GalleryAccessAndPasswordResetTest extends IntegrationTest {
     }
 
     @Test
-    void onlyMcreatikTurnsGalleriesOffAndGuestsAndCouplesSeeAFriendlyMessage() throws Exception {
+    void studiosAndMcreatikTurnGalleriesOffAndGuestsAndCouplesSeeAFriendlyMessage() throws Exception {
         String studioEmail = studio("switch-" + UUID.randomUUID().toString().substring(0, 6) + "@studio.test");
         String studio = JsonPath.read(studioLogin(studioEmail, "temporary-123").andReturn().getResponse().getContentAsString(), "$.token");
         String event = json(post("/api/admin/events"), studio, "{\"name\":\"Arun Priya Wedding\",\"eventDate\":\"2026-12-01\",\"status\":\"LIVE\"}")
@@ -93,8 +93,9 @@ class GalleryAccessAndPasswordResetTest extends IntegrationTest {
                 "{\"name\":\"Arun & Priya\",\"email\":\"" + clientEmail + "\",\"password\":\"temporary-123\"}").andExpect(status().isCreated());
         String client = JsonPath.read(clientLogin(clientEmail, "temporary-123").andReturn().getResponse().getContentAsString(), "$.token");
 
-        // A studio cannot use the switches, even on its own event.
-        json(patch("/api/admin/events/" + eventId + "/access"), studio, "{\"liveGallery\":false}").andExpect(status().isForbidden());
+        // The studio can use the switches on its own event.
+        json(patch("/api/admin/events/" + eventId + "/access"), studio, "{\"liveGallery\":false}").andExpect(status().isOk());
+        json(patch("/api/admin/events/" + eventId + "/access"), studio, "{\"liveGallery\":true}").andExpect(status().isOk());
 
         // McreatiK turns both off: guests and the couple get a clear message naming the studio.
         json(patch("/api/admin/events/" + eventId + "/access"), adminToken(), "{\"liveGallery\":false,\"clientGallery\":false}")

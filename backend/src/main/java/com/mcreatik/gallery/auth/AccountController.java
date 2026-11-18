@@ -54,6 +54,19 @@ public class AccountController {
         return new Account(u.getEmail(), u.getDisplayName(), u.getRole(), u.isMustChangePassword(), branding.of(u));
     }
 
+    /**
+     * Sliding session: the dashboard swaps its token for a fresh one well before the old one expires, so a studio that
+     * keeps working (a long upload) is never logged out. A disabled account or a changed password is still refused
+     * by the authentication filter before this is reached.
+     */
+    @PostMapping("/refresh")
+    public AuthController.LoginResponse refresh(Authentication auth) {
+        AdminUser user = access.current(auth);
+        JwtService.IssuedToken token = jwt.issue(user);
+        return new AuthController.LoginResponse(token.token(), token.expiresAt(), user.getEmail(),
+                user.getDisplayName(), user.getRole(), user.isMustChangePassword());
+    }
+
     @GetMapping
     public Account me(Authentication auth) {
         return account(access.current(auth));

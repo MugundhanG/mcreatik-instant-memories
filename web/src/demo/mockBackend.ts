@@ -274,7 +274,7 @@ function stats(e: DemoEvent) {
     }
   })
   return {
-    totalPhotos: e.photos.length, readyPhotos: e.photos.length, inProgressPhotos: 0, failedPhotos: 0,
+    totalPhotos: e.photos.length, readyPhotos: e.photos.length, guestPhotos: e.photos.length, clientPhotos: 0, inProgressPhotos: 0, failedPhotos: 0,
     storageBytes: e.photos.reduce((s, p) => s + Math.round(p.fileSize / 12), 0), activeUploaders: uploaders.filter((u) => u.status !== 'OFFLINE').length,
     latestPhoto: e.photos[0] ? toAdmin(e.photos[0]) : null, uploaders,
     hiddenPhotos: e.photos.filter((p) => p.hidden).length, likedPhotos: e.photos.filter((p) => p.liked).length,
@@ -435,7 +435,7 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
     return json(demoAnalytics(e))
   }
   if (path === '/api/admin/events' && method === 'GET') {
-    return json(events.map((e) => ({ id: e.id, name: e.name, slug: e.slug, eventDate: e.eventDate, status: e.status, galleryUrl: GALLERY_BASE + e.slug, readyPhotos: e.photos.length, createdAt: e.createdAt, ownerId: DEMO_OWNER, ownerName: 'Demo' })))
+    return json(events.map((e) => ({ id: e.id, name: e.name, slug: e.slug, eventDate: e.eventDate, status: e.status, galleryUrl: GALLERY_BASE + e.slug, readyPhotos: e.photos.length, guestPhotos: e.photos.length, clientPhotos: 0, createdAt: e.createdAt, ownerId: DEMO_OWNER, ownerName: 'Demo' })))
   }
   if (path === '/api/admin/events' && method === 'POST') {
     const b = body as { name: string; eventDate: string; status?: EventStatus; slug?: string }
