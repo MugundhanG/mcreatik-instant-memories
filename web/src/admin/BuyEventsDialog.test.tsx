@@ -41,6 +41,21 @@ describe('Buy events by UPI', () => {
     expect(JSON.parse(String(init.body))).toEqual({ item: 'MAIN_EVENT', quantity: 3, utr: '418299301122' })
   })
 
+  it("tells a new studio its first payment waits for McreatiK instead of closing as if it were added", async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ id: 'pay1', status: 'PENDING', applied: false }),
+      { status: 201, headers: { 'Content-Type': 'application/json' } })))
+    const onPaid = vi.fn()
+    render(<BuyEventsDialog billing={billing} onPaid={onPaid} onClose={vi.fn()} />)
+    await user.type(screen.getByPlaceholderText(/418299301122/), '418299301122')
+    await user.click(screen.getByRole('button', { name: /I've paid/ }))
+    expect(await screen.findByTestId('payment-held')).toHaveTextContent('first payment')
+    expect(onPaid).not.toHaveBeenCalled()
+    expect(screen.queryByPlaceholderText(/418299301122/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Done' }))
+    expect(onPaid).toHaveBeenCalled()
+  })
+
   it('switches between Main and Quick events, and pays for a pack or an upgrade at the server prices', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: 'pay1' }), { status: 201, headers: { 'Content-Type': 'application/json' } }))

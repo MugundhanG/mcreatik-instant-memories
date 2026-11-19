@@ -17,7 +17,7 @@ export default function RefundsPage() {
       <Section title="No refunds for bought events">
         <p>
           Because events are delivered instantly and never expire, payments for events, upgrades, monthly packs, client
-          galleries, storage and extra months are not refunded, and cannot be exchanged for cash.
+          galleries, extra gallery space and extra months are not refunded, and cannot be exchanged for cash.
         </p>
       </Section>
 

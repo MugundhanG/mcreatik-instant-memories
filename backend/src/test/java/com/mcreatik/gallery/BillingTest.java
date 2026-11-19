@@ -41,6 +41,7 @@ class BillingTest extends IntegrationTest {
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
         mvc.perform(patch("/api/admin/billing/studios/" + studioId).header("Authorization", bearer(adminToken()))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"monthlyQuota\":2}")).andExpect(status().isOk());
+        trustStudio(studioId);
         int n = IPS.incrementAndGet();
         studio = JsonPath.read(mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\",\"password\":\"temporary-123\"}")
@@ -129,6 +130,31 @@ class BillingTest extends IntegrationTest {
                 .andExpect(status().isConflict());
         // Studios cannot review payments.
         mvc.perform(get("/api/admin/billing/payments").header("Authorization", bearer(studio))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void aNewStudiosPaymentIsHeldUntilMcreatikApprovesIt() throws Exception {
+        jdbc.update("DELETE FROM event_payments WHERE studio_id = ?::uuid", studioId); // No confirmed payment yet.
+        String held = JsonPath.read(pay(2, "UTR55556666").andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.applied").value(false))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        mvc.perform(get("/api/admin/billing").header("Authorization", bearer(studio))).andExpect(jsonPath("$.credits").value(0));
+        // A made-up transaction ID: rejecting a held payment takes nothing back.
+        String fake = JsonPath.read(pay(1, "UTR77778888").andExpect(jsonPath("$.applied").value(false))
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        mvc.perform(post("/api/admin/billing/payments/" + fake + "/reject").header("Authorization", bearer(adminToken()))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNoContent());
+        mvc.perform(get("/api/admin/billing").header("Authorization", bearer(studio))).andExpect(jsonPath("$.credits").value(0));
+        // Found in the bank: added now, once.
+        mvc.perform(post("/api/admin/billing/payments/" + held + "/approve").header("Authorization", bearer(adminToken())))
+                .andExpect(status().isNoContent());
+        mvc.perform(post("/api/admin/billing/payments/" + held + "/approve").header("Authorization", bearer(adminToken())))
+                .andExpect(status().isConflict());
+        mvc.perform(get("/api/admin/billing").header("Authorization", bearer(studio))).andExpect(jsonPath("$.credits").value(2));
+        // From now on the studio is trusted: the next payment counts at once.
+        pay(1, "UTR99990000").andExpect(jsonPath("$.applied").value(true));
+        mvc.perform(get("/api/admin/billing").header("Authorization", bearer(studio))).andExpect(jsonPath("$.credits").value(3));
     }
 
     @Test

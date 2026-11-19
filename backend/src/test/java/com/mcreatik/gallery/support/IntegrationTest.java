@@ -66,6 +66,17 @@ public abstract class IntegrationTest {
         return JsonPath.read(r.getResponse().getContentAsString(), "$.token");
     }
 
+    /**
+     * Gives a studio an earlier confirmed payment, so its UPI payments count at once (a new studio's are held until
+     * McreatiK approves them).
+     */
+    protected void trustStudio(String studioId) {
+        jdbc.update("""
+                INSERT INTO event_payments (id, studio_id, events, unit_price, amount, utr, status, reviewed_at)
+                VALUES (gen_random_uuid(), ?::uuid, 0, 0, 0, ?, 'APPROVED', now())""",
+                studioId, "TRUST" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 20).toUpperCase());
+    }
+
     protected static String bearer(String token) {
         return "Bearer " + token;
     }

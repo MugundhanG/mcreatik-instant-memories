@@ -132,10 +132,13 @@ public class BillingService {
         }
     }
 
-    /** {@code method}: always UPI_QR (checked by McreatiK). {@code months}: the months bought (EXTEND, CLIENT_SETUP). */
+    /**
+     * {@code method}: always UPI_QR (checked by McreatiK). {@code months}: the months bought (EXTEND, CLIENT_SETUP).
+     * {@code applied}: what it bought is already added (false while a new studio's payment waits for McreatiK).
+     */
     public record Payment(UUID id, UUID studioId, String studioName, int events, int unitPrice, int amount, String utr,
                           String status, String note, Instant createdAt, Instant reviewedAt, String method,
-                          Item item, UUID eventId, String eventName, Plan plan, int months) {
+                          Item item, UUID eventId, String eventName, Plan plan, int months, boolean applied) {
     }
 
     /** Every current price, for the dashboard (the server prices each purchase again). */
@@ -748,7 +751,17 @@ public class BillingService {
                 + " expiry_notified_for = NULL WHERE id = ? AND active_until IS NOT NULL", eventId);
     }
 
-    /** The studio paid by UPI and reports the transaction: what it bought is usable at once, checked later. */
+    /**
+     * A studio McreatiK has confirmed a payment from before (or a free account): purchases are usable at once and
+     * checked later. A new studio's payments are held until McreatiK finds them in the bank statement, so a made-up
+     * transaction ID buys nothing.
+     */
+    public boolean trusted(UUID studioId) {
+        return freeAccount(studioId) || Boolean.TRUE.equals(jdbc.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM event_payments WHERE studio_id = ? AND status = 'APPROVED')", Boolean.class, studioId));
+    }
+
+    /** The studio paid by UPI and reports the transaction: added at once for a trusted studio, otherwise on approval. */
     @Transactional
     public Payment submitPayment(UUID studioId, Purchase purchase, String rawUtr) {
         Account a = account(studioId, true);
@@ -762,15 +775,18 @@ public class BillingService {
             throw ApiException.conflict("UPI_NOT_SET", "Payments are not set up yet. Please contact McreatiK.");
         }
         UUID id = UUID.randomUUID();
+        boolean now = trusted(studioId);
         try {
             jdbc.update("""
-                    INSERT INTO event_payments (id, studio_id, events, unit_price, amount, utr, item, event_id, plan, storage_gb, months)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", id, studioId, q.events(), q.unitPrice(), q.amount(), utr,
-                    q.item().name(), q.eventId(), q.plan() == null ? null : q.plan().name(), q.storageGb(), q.months());
+                    INSERT INTO event_payments (id, studio_id, events, unit_price, amount, utr, item, event_id, plan, storage_gb, months, applied)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", id, studioId, q.events(), q.unitPrice(), q.amount(), utr,
+                    q.item().name(), q.eventId(), q.plan() == null ? null : q.plan().name(), q.storageGb(), q.months(), now);
         } catch (DuplicateKeyException e) {
             throw ApiException.conflict("UTR_USED", "This transaction ID was already submitted");
         }
-        apply(studioId, q.item(), q.events(), q.eventId(), q.plan(), 1, q.storageGb(), q.months());
+        if (now) {
+            apply(studioId, q.item(), q.events(), q.eventId(), q.plan(), 1, q.storageGb(), q.months());
+        }
         return payments("p.id = ?", id, 1).getFirst();
     }
 
@@ -797,7 +813,7 @@ public class BillingService {
     private List<Payment> payments(String where, Object arg, int limit) {
         String sql = """
                 SELECT p.id, p.studio_id, u.display_name, p.events, p.unit_price, p.amount, p.utr, p.status, p.note,
-                       p.created_at, p.reviewed_at, p.method, p.item, p.event_id, e.name, p.plan, p.months
+                       p.created_at, p.reviewed_at, p.method, p.item, p.event_id, e.name, p.plan, p.months, p.applied
                 FROM event_payments p JOIN admin_users u ON u.id = p.studio_id LEFT JOIN events e ON e.id = p.event_id
                 WHERE p.status <> 'CREATED' AND %s ORDER BY p.created_at DESC LIMIT %d""".formatted(where, limit);
         Object[] args = arg == null ? new Object[0] : new Object[] {arg};
@@ -806,29 +822,38 @@ public class BillingService {
                 rs.getString(9), rs.getTimestamp(10).toInstant(),
                 rs.getTimestamp(11) == null ? null : rs.getTimestamp(11).toInstant(), rs.getString(12),
                 Item.valueOf(rs.getString(13)), rs.getObject(14, UUID.class), rs.getString(15),
-                rs.getString(16) == null ? null : Plan.valueOf(rs.getString(16)), rs.getInt(17)), args);
+                rs.getString(16) == null ? null : Plan.valueOf(rs.getString(16)), rs.getInt(17), rs.getBoolean(18)), args);
     }
 
-    /** Found in the bank statement: confirmed. */
+    /** Found in the bank statement: confirmed. A held payment's purchase is added now, exactly once. */
+    @Transactional
     public void approve(UUID paymentId) {
-        if (jdbc.update("UPDATE event_payments SET status = 'APPROVED', reviewed_at = now() WHERE id = ? AND status = 'PENDING'",
-                paymentId) == 0) {
+        List<Bought> rows = jdbc.query("SELECT studio_id, item, events, event_id, plan, storage_gb, months, applied FROM event_payments WHERE id = ? AND status = 'PENDING' FOR UPDATE",
+                (rs, n) -> rs.getBoolean(8) ? null : bought(rs), paymentId);
+        if (rows.isEmpty()) {
             throw ApiException.conflict("NOT_PENDING", "This payment was already reviewed");
+        }
+        jdbc.update("UPDATE event_payments SET status = 'APPROVED', reviewed_at = now(), applied = true WHERE id = ?", paymentId);
+        Bought b = rows.getFirst();
+        if (b != null) {
+            apply(b.studioId(), b.item(), b.quantity(), b.eventId(), b.plan(), 1, b.storageGb(), b.months());
         }
     }
 
     /** Not received: what it bought is taken back (an event balance may go below zero until it is sorted out). */
     @Transactional
     public void reject(UUID paymentId, String note) {
-        List<Bought> rows = jdbc.query("SELECT studio_id, item, events, event_id, plan, storage_gb, months FROM event_payments WHERE id = ? AND status = 'PENDING' FOR UPDATE",
-                (rs, n) -> bought(rs), paymentId);
+        List<Bought> rows = jdbc.query("SELECT studio_id, item, events, event_id, plan, storage_gb, months, applied FROM event_payments WHERE id = ? AND status = 'PENDING' FOR UPDATE",
+                (rs, n) -> rs.getBoolean(8) ? bought(rs) : null, paymentId);
         if (rows.isEmpty()) {
             throw ApiException.conflict("NOT_PENDING", "This payment was already reviewed");
         }
         jdbc.update("UPDATE event_payments SET status = 'REJECTED', reviewed_at = now(), note = ? WHERE id = ?",
                 note == null || note.isBlank() ? null : note.trim(), paymentId);
         Bought b = rows.getFirst();
-        apply(b.studioId(), b.item(), b.quantity(), b.eventId(), b.plan(), -1, b.storageGb(), b.months());
+        if (b != null) { // A held payment added nothing, so there is nothing to take back.
+            apply(b.studioId(), b.item(), b.quantity(), b.eventId(), b.plan(), -1, b.storageGb(), b.months());
+        }
     }
 
     public List<StudioBilling> studios() {
