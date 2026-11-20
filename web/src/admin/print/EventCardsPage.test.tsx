@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import EventCardsPage from './EventCardsPage'
@@ -20,6 +20,8 @@ describe('Event cards page', () => {
       </MemoryRouter>,
     )
     expect(await screen.findByText('A4 poster')).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: 'Download JPG' })).toBeEnabled()
+    // The button turns on once the poster has rendered (QR and logo load asynchronously): wait for it.
+    const download = await screen.findByRole('button', { name: 'Download JPG' })
+    await waitFor(() => expect(download).toBeEnabled(), { timeout: 5000 })
   })
 })
