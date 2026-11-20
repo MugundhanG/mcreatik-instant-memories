@@ -209,6 +209,9 @@ public class EventService {
                 event.setRetentionUntil(r.retentionUntil());
             }
         }
+        if (r.watermark() != null) {
+            event.setWatermark(r.watermark());
+        }
         event.touch();
         if (previousStatus != event.getStatus()) {
             broadcaster.eventStatusChanged(event.getId(), event.getStatus());
@@ -362,7 +365,8 @@ public class EventService {
         long count = photos.countVisible(event.getId());
         return new EventDtos.PublicEvent(event.getName(), event.getSlug(), event.getEventDate(), event.getStatus(),
                 event.getStatus() == EventStatus.LIVE, coverUrl(event), count,
-                branding.ofOwner(event.getOwnerId()), faces.searchable(event), faces.isPrivate(event));
+                branding.ofOwner(event.getOwnerId()), faces.searchable(event), faces.isPrivate(event),
+                event.isWatermark());
     }
 
     // ---- helpers ----
@@ -374,7 +378,7 @@ public class EventService {
                 admins.findById(e.getOwnerId()).map(AdminUser::getDisplayName).orElse(null),
                 branding.ofOwner(e.getOwnerId()), e.isLiveGalleryEnabled(), e.isClientGalleryEnabled(), e.getEventType(),
                 e.getActiveUntil(), e.getStorageQuotaGb(), billing.eventBytes(e.getId()), e.isStorageLocked(), e.isExpired(today()),
-                turnOnBlocked(e, true), turnOnBlocked(e, false));
+                turnOnBlocked(e, true), turnOnBlocked(e, false), e.isWatermark());
     }
 
     /** Guests and the couple see this when McreatiK has turned their gallery off. */

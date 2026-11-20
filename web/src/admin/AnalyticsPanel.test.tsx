@@ -4,6 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { GuestAnalytics } from '../lib/types'
 import { AnalyticsPanel } from './AnalyticsPanel'
 
+// Painting canvases is the browser's job; the panel only has to call the report maker.
+const generateReport = vi.hoisted(() => vi.fn(async () => undefined))
+vi.mock('./guestReport', () => ({ generateReport }))
+
 const analytics: GuestAnalytics = {
   totals: { people: 200, qrScans: 150, visits: 250, photoViews: 2400, downloads: 180, downloaders: 90, shares: 0, instagramClicks: 21 },
   // 19:00 and 22:00 with quiet hours in between: the chart fills them in.
@@ -94,5 +98,35 @@ describe('Guest analytics', () => {
     render(<AnalyticsPanel eventId="e2" live={false} />)
     await screen.findByTestId('analytics')
     expect(screen.queryByTestId('face-search-stats')).not.toBeInTheDocument()
+  })
+})
+
+describe('Generate report', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('offers image and PDF downloads once analytics are loaded', async () => {
+    const user = userEvent.setup()
+    generateReport.mockClear()
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(analytics), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    render(<AnalyticsPanel eventId="e1" live={false} eventName="Arun & Priya" eventDate="2026-10-31" studioName="Lens" />)
+    await screen.findByTestId('analytics')
+    await user.click(screen.getByRole('button', { name: 'Generate report' }))
+    await user.click(screen.getByRole('button', { name: 'Download PDF' }))
+    expect(generateReport).toHaveBeenCalledWith(expect.objectContaining({ eventId: 'e1', eventName: 'Arun & Priya', studioName: 'Lens', format: 'pdf' }))
+    // The menu closes after a successful download.
+    await user.click(screen.getByRole('button', { name: 'Generate report' }))
+    await user.click(screen.getByRole('button', { name: 'Download image' }))
+    expect(generateReport).toHaveBeenLastCalledWith(expect.objectContaining({ format: 'image' }))
+  })
+
+  it('shows a message when the report fails', async () => {
+    const user = userEvent.setup()
+    generateReport.mockRejectedValueOnce(new Error('Canvas too big'))
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(analytics), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    render(<AnalyticsPanel eventId="e1" live={false} />)
+    await screen.findByTestId('analytics')
+    await user.click(screen.getByRole('button', { name: 'Generate report' }))
+    await user.click(screen.getByRole('button', { name: 'Download image' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Canvas too big')
   })
 })

@@ -40,6 +40,43 @@ class GuestPhotoDownloadTest extends IntegrationTest {
     }
 
     @Test
+    void watermarkIsOnByDefaultAndTheStudioCanSwitchItOff() throws Exception {
+        String event = createEvent("Watermark", "LIVE");
+        String slug = slug(event);
+        String id = eventId(event);
+        assertThat((Boolean) com.jayway.jsonpath.JsonPath.read(event, "$.watermark")).isTrue();
+        mvc.perform(get("/api/public/events/" + slug)).andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.watermark").value(true));
+        String photo = uploadPhoto(createUploader(id, "Camera 1"), "IMG_1.JPG", jpeg(800, 600));
+        processAll();
+
+        byte[] marked = mvc.perform(get(download(slug, photo))).andExpect(status().isOk()).andReturn()
+                .getResponse().getContentAsByteArray();
+
+        mvc.perform(patch("/api/admin/events/" + id).header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"watermark\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.watermark").value(false));
+        mvc.perform(get("/api/public/events/" + slug))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.watermark").value(false));
+        byte[] clean = mvc.perform(get(download(slug, photo))).andExpect(status().isOk()).andReturn()
+                .getResponse().getContentAsByteArray();
+
+        // Off: the stored web photo exactly; on: a re-encoded JPEG of the same size with the label on it.
+        assertThat(marked).isNotEqualTo(clean);
+        var a = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(marked));
+        var b = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(clean));
+        assertThat(a.getWidth()).isEqualTo(b.getWidth());
+        assertThat(a.getHeight()).isEqualTo(b.getHeight());
+    }
+
+    @Test
+    void theStudioLogoIsServedForTheGalleryAnd404WithoutOne() throws Exception {
+        String slug = slug(createEvent("Logo", "LIVE"));
+        mvc.perform(get("/api/public/events/" + slug + "/logo")).andExpect(status().isNotFound());
+    }
+
+    @Test
     void hiddenNotReadyClientOtherEventAndUnknownPhotosAre404() throws Exception {
         String event = createEvent("Rules", "LIVE");
         String slug = slug(event);

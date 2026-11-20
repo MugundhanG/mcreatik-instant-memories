@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import com.mcreatik.gallery.auth.StudioBranding;
 import com.mcreatik.gallery.common.ApiException;
 import com.mcreatik.gallery.photo.Cursor;
 import com.mcreatik.gallery.photo.Photo;
@@ -39,11 +40,17 @@ public class PublicGalleryController {
     private final com.mcreatik.gallery.album.AlbumService album;
     private final StorageService storage;
     private final com.mcreatik.gallery.face.FaceSearchService faces;
+    private final com.mcreatik.gallery.photo.Watermark watermark;
+    private final StudioBranding branding;
 
     public PublicGalleryController(EventService events, PhotoRepository photos, PhotoMapper mapper,
                                    GalleryBroadcaster broadcaster, com.mcreatik.gallery.album.AlbumService album,
-                                   StorageService storage, com.mcreatik.gallery.face.FaceSearchService faces) {
+                                   StorageService storage, com.mcreatik.gallery.face.FaceSearchService faces,
+                                   com.mcreatik.gallery.photo.Watermark watermark,
+                                   StudioBranding branding) {
         this.faces = faces;
+        this.watermark = watermark;
+        this.branding = branding;
         this.storage = storage;
         this.album = album;
         this.events = events;
@@ -100,6 +107,7 @@ public class PublicGalleryController {
      * Download button fallback: the web-quality photo as an attachment, streamed from storage (never held in memory).
      * Works without CORS on the media host, and a plain link to it downloads even where scripts cannot save files.
      * Same visibility rules as the feed: this event's GUEST, READY, not hidden photo; anything else is 404.
+     * With the event's watermark on, the photo carries the studio's logo (or name).
      */
     @GetMapping("/photos/{photoId}/download")
     public ResponseEntity<org.springframework.core.io.InputStreamResource> download(@PathVariable String slug,
@@ -118,12 +126,43 @@ public class PublicGalleryController {
         java.io.InputStream in = storage.open(StorageArea.MEDIA, photo.getOptimizedStorageKey())
                 .orElseThrow(() -> ApiException.notFound("Photo"));
         String fileName = event.getSlug() + "-" + photo.getId().toString().substring(0, 8) + ".jpg";
+        if (event.isWatermark()) {
+            byte[] marked;
+            try {
+                marked = watermark.apply(in, event.getOwnerId());
+            } catch (java.io.IOException e) {
+                throw ApiException.notFound("Photo");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw ApiException.notFound("Photo");
+            }
+            return ResponseEntity.ok()
+                    .contentType(org.springframework.http.MediaType.IMAGE_JPEG)
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                            org.springframework.http.ContentDisposition.attachment().filename(fileName).build().toString())
+                    .cacheControl(CacheControl.maxAge(java.time.Duration.ofMinutes(10)).cachePrivate())
+                    .body(new org.springframework.core.io.InputStreamResource(new java.io.ByteArrayInputStream(marked)));
+        }
         return ResponseEntity.ok()
                 .contentType(org.springframework.http.MediaType.IMAGE_JPEG)
                 .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
                         org.springframework.http.ContentDisposition.attachment().filename(fileName).build().toString())
                 .cacheControl(CacheControl.maxAge(java.time.Duration.ofMinutes(10)).cachePrivate())
                 .body(new org.springframework.core.io.InputStreamResource(in));
+    }
+
+    /**
+     * The logo of the studio that owns the event, through the API: the gallery draws it onto photos guests download
+     * and share (the watermark), and a canvas may only read images served with CORS, which the API allows.
+     */
+    @GetMapping("/logo")
+    public ResponseEntity<byte[]> logo(@PathVariable String slug) {
+        Event event = events.publicEvent(slug);
+        StudioBranding.LogoFile file = branding.logoFile(event.getOwnerId()).orElseThrow(() -> ApiException.notFound("Logo"));
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(java.time.Duration.ofMinutes(10)).cachePublic())
+                .contentType(org.springframework.http.MediaType.parseMediaType(file.contentType()))
+                .body(file.data());
     }
 
     /** The studio's photo categories that have photos guests can see, for the gallery's category tabs. */

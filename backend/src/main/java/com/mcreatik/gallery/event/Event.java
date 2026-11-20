@@ -100,6 +100,10 @@ public class Event {
     @Column(name = "face_search_paid", insertable = false, updatable = false)
     private boolean faceSearchPaid;
 
+    /** Guests' downloads and shares carry the studio's logo (or name). On by default; the studio switches it. */
+    @Column(name = "watermark", nullable = false)
+    private boolean watermark = true;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -283,6 +287,14 @@ public class Event {
 
     public boolean isFaceSearchPaid() {
         return faceSearchPaid;
+    }
+
+    public boolean isWatermark() {
+        return watermark;
+    }
+
+    public void setWatermark(boolean watermark) {
+        this.watermark = watermark;
     }
 
     public Instant getCreatedAt() {

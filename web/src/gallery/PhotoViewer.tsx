@@ -4,6 +4,7 @@ import { ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
 import { chromeIntentUrl, downloadPhoto, fetchPhoto, guestDownloadUrl, isAndroid, isIOS, sharePhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
+import type { Watermarker } from '../lib/watermark'
 import { INSTAGRAM_HANDLE, InstagramIcon, InstagramLink } from '../shared/StudioLogo'
 import { SLIDE_EASE, SLIDE_GAP, SLIDE_MS, useViewerGestures } from './useViewerGestures'
 import type { Zoom } from './useViewerGestures'
@@ -39,6 +40,8 @@ interface Props {
   caption?: (photo: PublicPhoto) => ReactNode
   /** Find my photos: the guest's match, sent with downloads (a private gallery serves only the guest's own photos). */
   matchId?: string | null
+  /** The studio's watermark for what guests download and share; unset: photos are saved as they are. */
+  watermark?: Watermarker
 }
 
 const SAVE_HINT = 'Press and hold the photo, then tap “Save image”'
@@ -64,7 +67,7 @@ function markFollowInviteShown() {
 }
 
 export function PhotoViewer({
-  photos, index, total, eventSlug, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity, hideDownload = false, shareCaption, liked, onToggleLike, onRequestHd, matchId,
+  photos, index, total, eventSlug, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity, hideDownload = false, shareCaption, liked, onToggleLike, onRequestHd, matchId, watermark,
 }: Props) {
   const photo = photos[index]
   const count = Math.max(total, photos.length)
@@ -141,20 +144,38 @@ export function PhotoViewer({
     if (!currentId || !currentWebUrl || !(isIOS() || shareCaption)) return
     let active = true
     fetchPhoto(currentWebUrl, guestDownloadUrl(eventSlug, currentId, matchId))
+      .then((blob) => (watermark ? watermark(blob) : blob))
       .then((blob) => active && setPrefetched({ id: currentId, blob }))
       .catch(() => {}) // Download then falls back to the press-and-hold hint
     return () => {
       active = false
     }
-  }, [currentId, currentWebUrl, shareCaption, eventSlug, matchId])
+  }, [currentId, currentWebUrl, shareCaption, eventSlug, matchId, watermark])
+
+  /**
+   * The photo to save or share, ready in hand: the prefetched one, or (with a watermark, which has to be drawn
+   * here) fetched and marked now. Null leaves it to downloadPhoto / sharePhoto; if marking fails, their fallback
+   * is the API download link, which the server watermarks itself.
+   */
+  const photoToSave = async (p: PublicPhoto): Promise<Blob | null> => {
+    if (prefetched?.id === p.id) return prefetched.blob
+    if (!watermark) return null
+    try {
+      return await watermark(await fetchPhoto(p.webUrl, guestDownloadUrl(eventSlug, p.id, matchId)))
+    } catch {
+      return null
+    }
+  }
 
   if (!photo) return null
 
   /** `savedNote` replaces the "saved" message (Share's fallback adds the caption hint). */
   const onDownload = async (savedNote?: string) => {
     setBusy('download')
-    const blob = prefetched?.id === photo.id ? prefetched.blob : null
-    const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id, blob, guestDownloadUrl(eventSlug, photo.id, matchId))
+    const blob = await photoToSave(photo)
+    const apiUrl = guestDownloadUrl(eventSlug, photo.id, matchId)
+    // With a watermark, never fall back to the clean media file: the API link is marked by the server.
+    const result = await downloadPhoto(watermark ? apiUrl : photo.webUrl, eventSlug, photo.id, blob, apiUrl)
     setBusy(null)
     if (COUNTED_DOWNLOADS.has(result)) onActivity?.('DOWNLOAD', photo.id)
     if (result === 'in-app') return setInAppNotice(true)
@@ -174,8 +195,9 @@ export function PhotoViewer({
   const onShare = async () => {
     if (!shareCaption) return
     setBusy('share')
-    const blob = prefetched?.id === photo.id ? prefetched.blob : null
-    const result = await sharePhoto({ url: photo.webUrl, eventSlug, photoId: photo.id, caption: shareCaption, prefetched: blob, apiUrl: guestDownloadUrl(eventSlug, photo.id, matchId) })
+    const blob = await photoToSave(photo)
+    const apiUrl = guestDownloadUrl(eventSlug, photo.id, matchId)
+    const result = await sharePhoto({ url: watermark ? apiUrl : photo.webUrl, eventSlug, photoId: photo.id, caption: shareCaption, prefetched: blob, apiUrl })
     setBusy(null)
     if (result === 'shared') return onActivity?.('SHARE', photo.id)
     if (result === 'cancelled') return
