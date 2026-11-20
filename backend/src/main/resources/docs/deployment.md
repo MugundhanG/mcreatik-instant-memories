@@ -223,7 +223,7 @@ Updates need SSH. Keep two ways in:
 - build variable `VITE_API_BASE_URL=https://im-api.mcreatik.com` (optional `VITE_MEDIA_BASE_URL`, default `https://im-media.mcreatik.com`)
 - beta: `env.beta` names the Worker `mcreatik-instant-memories-beta` (`npx wrangler deploy --env beta`)
 
-`not_found_handling: single-page-application` serves `index.html` for every route. Automatic deploys on push are an **(assumption)**: that setting lives in the Cloudflare dashboard. Security headers come from `web/scripts/headers.template`: `npm run build` runs `scripts/gen-headers.mjs`, which writes `dist/_headers` with the API and media origins of that build, so each environment's CSP allows only its own servers.
+`not_found_handling: single-page-application` serves `index.html` for every route. Cloudflare Workers Builds deploys automatically on every push to the **production branch**, set in the dashboard (Worker, Settings, Build). It must be `main`. Pushes to any other branch are preview builds and never reach `live.mcreatik.com`. In November 2026 it pointed at an old working branch, and merges to `main` silently stayed off the site. To redeploy without a push, call the Worker's `main` deploy hook (Settings, Build, Deploy Hooks; the URL is a secret): `curl -X POST "<hook URL>"`. After a merge, check that `/pricing` shows the expected "Last updated" date. Security headers come from `web/scripts/headers.template`: `npm run build` runs `scripts/gen-headers.mjs`, which writes `dist/_headers` with the API and media origins of that build, so each environment's CSP allows only its own servers.
 
 ## Configuration
 
