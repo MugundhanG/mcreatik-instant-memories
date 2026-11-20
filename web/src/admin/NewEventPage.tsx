@@ -5,7 +5,7 @@ import { localIsoDate } from '../lib/format'
 import type { BillingSummary, EventStatus, EventType, Studio } from '../lib/types'
 import { useSession } from './auth'
 import { BuyEventsDialog } from './BuyEventsDialog'
-import { eventCovered, rupees } from './plans'
+import { eventCovered, includedGb, rupees } from './plans'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
 
 /** How this event will be paid for: the pack, a bought event, or a price to pay. */
@@ -58,7 +58,7 @@ export default function NewEventPage() {
   const pays = !!billing && !billing.free && !ownerId
   const showMonths = pays && (client ? billing.clientCredits === 0 : true)
   const extraMonths = client ? 0 : Math.max(0, months - included)
-  const extraPrice = billing ? extraMonths * billing.prices.freeStorageGb * billing.prices.storageGb : 0
+  const extraPrice = billing ? extraMonths * includedGb(billing.prices, eventType) * billing.prices.storageGb : 0
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -111,7 +111,7 @@ export default function NewEventPage() {
         <BuyEventsDialog
           billing={billing}
           purchase={{ item: 'STORAGE_EXTEND', eventId: extend.eventId, storageGb: 0, months: extend.months }}
-          storage={{ quota: billing.prices.freeStorageGb, usedGb: 1, monthsLeft: included }}
+          storage={{ quota: includedGb(billing.prices, eventType), usedGb: 1, monthsLeft: included }}
           reason={`Your event is created. It includes ${included} months; you chose ${extend.months + included}. Pay for the extra ${extend.months} month${extend.months === 1 ? '' : 's'}, or close this to keep ${included}.`}
           onClose={() => navigate(`/admin/events/${extend.eventId}`, { replace: true })}
           onPaid={() => navigate(`/admin/events/${extend.eventId}`, { replace: true })}
@@ -171,7 +171,7 @@ export default function NewEventPage() {
           {showMonths && (
             <Field label="Gallery open for" hint={client
               ? 'The months are part of the client gallery purchase: setup + storage × months.'
-              : `${included} months are included. Each extra month is ${rupees(billing.prices.freeStorageGb * billing.prices.storageGb)} (${billing.prices.freeStorageGb} GB × ${rupees(billing.prices.storageGb)}).`}>
+              : `${included} months are included. Each extra month is ${rupees(includedGb(billing.prices, eventType) * billing.prices.storageGb)} (${includedGb(billing.prices, eventType)} GB × ${rupees(billing.prices.storageGb)}).`}>
               <select className={inputClass} value={months} onChange={(e) => setMonthsChoice(Number(e.target.value))} aria-label="Gallery open for">
                 {Array.from({ length: 12 - (client ? 0 : included - 1) }, (_, i) => i + (client ? 1 : included)).map((m) => (
                   <option key={m} value={m}>{m} month{m === 1 ? '' : 's'}{!client && m === included ? ' (included)' : ''}</option>

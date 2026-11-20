@@ -93,7 +93,7 @@ gallery:
     # Per person (the browser's visitor id; per IP when it is missing), and a high per-IP ceiling for a venue's shared Wi-Fi.
     visitor-per-hour: ${FACE_SEARCH_VISITOR_PER_HOUR:10}
     ip-per-hour: ${FACE_SEARCH_IP_PER_HOUR:300}
-    event-daily-cap: ${FACE_SEARCH_EVENT_DAILY_CAP:2000}
+    event-daily-cap: ${FACE_SEARCH_EVENT_DAILY_CAP:3000}
     max-attempts: 5
     max-faces-per-photo: 15
     max-matches: 100

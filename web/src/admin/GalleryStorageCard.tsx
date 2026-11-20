@@ -92,7 +92,7 @@ export function GalleryStorageCard({ event, billing, bytes, onChanged }: {
             </Button>
           </div>
         )}
-        {!free && <p className="text-xs text-muted">Storage is {rupees(storageGb)} per GB a month ({rupees(storageGb * months)} per GB for the {months} month{months === 1 ? '' : 's'} this gallery has left), about {photosPerGb(1)} full-quality photos per GB. Main and Quick events include {billing.prices.freeStorageGb} GB for {activeMonths} months; storage is added from 5 GB.</p>}
+        {!free && <p className="text-xs text-muted">Storage is {rupees(storageGb)} per GB a month ({rupees(storageGb * months)} per GB for the {months} month{months === 1 ? '' : 's'} this gallery has left), about {photosPerGb(1)} full-quality photos per GB. Main events include {billing.prices.freeStorageGb} GB and Quick events {billing.prices.freeStorageGbQuick ?? billing.prices.freeStorageGb} GB for {activeMonths} months; storage is added from 5 GB.</p>}
       </div>
     </Card>
   )

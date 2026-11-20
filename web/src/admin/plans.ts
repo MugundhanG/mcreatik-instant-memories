@@ -15,8 +15,13 @@ export const PACKS: Plan[] = ['MAIN_2', 'MAIN_4', 'QUICK_2', 'QUICK_4']
 export const isPack = (p: Plan) => PACKS.includes(p)
 
 /** Shown until the server sends the add-on's prices (older servers). */
-export const FACE_SEARCH_MAIN_DEFAULT = 999
-export const FACE_SEARCH_QUICK_DEFAULT = 499
+export const FACE_SEARCH_MAIN_DEFAULT = 699
+export const FACE_SEARCH_QUICK_DEFAULT = 399
+
+/** GB included with a new event of this type (a Quick event has its own, smaller allowance; older servers send one). */
+export function includedGb(prices: Pick<Prices, 'freeStorageGb' | 'freeStorageGbQuick'>, type: EventType): number {
+  return type === 'QUICK' ? prices.freeStorageGbQuick ?? prices.freeStorageGb : prices.freeStorageGb
+}
 
 export const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`
 

@@ -146,7 +146,7 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, f
   }
 
   const defaultReason = combined
-    ? `Add storage, keep the gallery open longer, or both: one total, one payment. Storage is ${rupees(billing.prices.storageGb)} per GB a month; the ${billing.prices.freeStorageGb} GB × ${billing.prices.activeMonths} months included with every Main or Quick event are already covered.`
+    ? `Add storage, keep the gallery open longer, or both: one total, one payment. Storage is ${rupees(billing.prices.storageGb)} per GB a month; the storage included with the event (${billing.prices.freeStorageGb} GB for Main, ${billing.prices.freeStorageGbQuick ?? billing.prices.freeStorageGb} GB for Quick, for ${billing.prices.activeMonths} months) is already covered.`
     : purchase.item === 'FACE_SEARCH'
     ? `Guests take a selfie in the live gallery and see only the photos they are in. One payment for this event, ${rupees(unit)}; it works for the whole life of the gallery.`
     : purchase.item === 'STORAGE'
@@ -154,7 +154,7 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, f
     : purchase.item === 'CLIENT_SETUP'
       ? `A gallery for the couple only, without a live event: ${rupees(billing.prices.clientSetup)} each to set up, then storage at ${rupees(billing.prices.storageGb)} per GB a month for the months you choose.`
       : purchase.item === 'EXTEND'
-        ? `Keeps the guests' and the couple's galleries open for the months you choose: ${rupees(billing.prices.storageGb)} per GB a month for the ${quantity} GB it can hold. The ${billing.prices.freeStorageGb} GB × ${billing.prices.activeMonths} months included with every Main or Quick event are already covered.`
+        ? `Keeps the guests' and the couple's galleries open for the months you choose: ${rupees(billing.prices.storageGb)} per GB a month for the ${quantity} GB it can hold. The storage included with the event (${billing.prices.freeStorageGb} GB for Main, ${billing.prices.freeStorageGbQuick ?? billing.prices.freeStorageGb} GB for Quick, for ${billing.prices.activeMonths} months) is already covered.`
         : purchase.item === 'UPGRADE'
     ? `Bigger than planned? Upgrade this Quick event to Main for ${rupees(billing.prices.upgrade)}. The gallery keeps working either way.`
     : purchase.item === 'PLAN'

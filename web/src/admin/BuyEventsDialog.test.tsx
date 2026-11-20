@@ -162,7 +162,7 @@ describe('Buy events by UPI', () => {
     vi.stubGlobal('fetch', fetchMock)
     render(<BuyEventsDialog billing={billing} purchase={{ item: 'EXTEND', eventId: 'e-1', quantity: 5, months: 3 }} onPaid={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByRole('dialog', { name: 'Keep more months' })).toBeInTheDocument()
-    expect(screen.getByText(/5 GB × 3 months included with every Main or Quick event are already covered/)).toBeInTheDocument()
+    expect(screen.getByText(/storage included with the event \(5 GB for Main, 5 GB for Quick, for 3 months\) is already covered/)).toBeInTheDocument()
     expect(screen.getByTestId('amount')).toHaveTextContent('₹225') // 5 GB × ₹15 × 3
     await user.click(screen.getByRole('button', { name: 'Fewer months' }))
     await user.click(screen.getByRole('button', { name: 'Fewer months' }))

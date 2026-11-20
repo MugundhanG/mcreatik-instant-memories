@@ -443,8 +443,10 @@ export interface Prices {
   upgradeGuests: number
   /** Storage price per GB per month. */
   storageGb: number
-  /** GB included with every live (Main / Quick) event. */
+  /** GB included with a Main event. */
   freeStorageGb: number
+  /** GB included with a Quick event (absent from older servers: then the Main value). */
+  freeStorageGbQuick?: number
   /** Setting up one client gallery. */
   clientSetup: number
   /** How long a gallery stays open. */
@@ -578,6 +580,7 @@ export interface BillingSettings {
   upgradeGuests: number
   storageGbPrice: number
   freeStorageGb: number
+  freeStorageGbQuick?: number
   clientSetupPrice: number
   activeMonths: number
   main2ExtraPrice: number

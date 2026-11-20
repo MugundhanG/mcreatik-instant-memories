@@ -127,7 +127,7 @@ public class EventService {
             // The months chosen when the gallery was bought (at least 1).
             event.setActiveUntil(today().plusMonths(bought ? billing.takeClientMonths(owner) : prices.activeMonths()));
         } else {
-            event.setStorageQuotaGb(prices.freeStorageGb());
+            event.setStorageQuotaGb(prices.includedStorageGb(type));
             event.setActiveUntil(request.eventDate().plusMonths(prices.activeMonths()));
         }
         // McreatiK and unlimited studios may choose the date themselves.

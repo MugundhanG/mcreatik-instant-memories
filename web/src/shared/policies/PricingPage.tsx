@@ -63,7 +63,7 @@ function Packages({ k }: { k: Prices }) {
       <div className="mt-3 rounded-2xl border border-line bg-white p-5" data-testid="face-search-addon">
         <p className="font-semibold text-ink">Find my photos</p>
         <p className="mt-1 text-sm text-ink/85">
-          AI face search for guests: +{rupees(k.faceSearchMain ?? 999)} per Main event, +{rupees(k.faceSearchQuick ?? 499)} per Quick event.
+          AI face search for guests: +{rupees(k.faceSearchMain ?? 699)} per Main event, +{rupees(k.faceSearchQuick ?? 399)} per Quick event.
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink/85">
           <li>Guests take one selfie with their phone’s front camera and see only the photos they are in. New photos of them appear by themselves, with no second selfie.</li>
@@ -80,7 +80,7 @@ function Packages({ k }: { k: Prices }) {
         <PriceCard name="Client gallery" price={k.clientSetup} unit="setup per gallery, then a monthly plan by gallery size"
           body={`No live event: a private, branded gallery where the couple picks album photos and downloads them in full quality. The monthly plan is ${rupees(k.storageGb)} a month per GB of photos (about 80 full-quality photos per GB, from 5 GB), for as many months as you keep it open. For example, a full wedding of about 2,000 photos kept open for ${k.activeMonths} months is ${rupees(k.clientSetup + 25 * k.storageGb * k.activeMonths)}.`} />
         <PriceCard name="Bigger or longer galleries" price={k.storageGb} unit="a month per GB of photos"
-          body={`Every Main or Quick event's gallery stays open for ${k.activeMonths} months and includes room for about ${k.freeStorageGb * 80} full-quality photos. For more photos, it's ${rupees(k.storageGb)} a month per extra GB for the months the gallery has left. Uploads at a live event are never stopped.`} />
+          body={`Every event's gallery stays open for ${k.activeMonths} months. A Main event includes ${k.freeStorageGb} GB (about ${(k.freeStorageGb * 80).toLocaleString('en-IN')} full-quality photos) and a Quick event ${k.freeStorageGbQuick ?? k.freeStorageGb} GB (about ${((k.freeStorageGbQuick ?? k.freeStorageGb) * 80).toLocaleString('en-IN')} photos). For more photos, it's ${rupees(k.storageGb)} a month per extra GB for the months the gallery has left. Uploads at a live event are never stopped.`} />
       </div>
       <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink/85">
         <li>Galleries stay open for {k.activeMonths} months. Keep one open for as many more months as you like, at {rupees(k.storageGb)} a month per GB of its photos.</li>

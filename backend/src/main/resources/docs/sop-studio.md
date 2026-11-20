@@ -87,17 +87,17 @@ Guests see your name, logo and Instagram on the gallery and on the printed QR po
 | --- | --- |
 | **Client gallery only** | ₹250 setup per gallery + storage, for 1 month unless you choose more |
 | **Storage** | ₹15 per GB per month (1 GB ≈ 80 full-quality photos) |
-| **Main or Quick event** | 5 GB for 3 months included free; extra storage starts at 5 GB (5, 10, 25, 50 or your own number), ₹15 per GB per month |
+| **Main or Quick event** | 25 GB (Main) or 10 GB (Quick) for 3 months included free; extra storage starts at 5 GB (5, 10, 25, 50 or your own number), ₹15 per GB per month |
 | **Change storage & months** | One button: add GB, add months, or both. You see one total and make one UPI payment |
-| **One more month on a Main or Quick event** | 5 GB × ₹15 = ₹75 |
+| **One more month on a Main or Quick event** | ₹15 per GB the gallery holds: 25 GB × ₹15 = ₹375 (Main), 10 GB × ₹15 = ₹150 (Quick) |
 
 - **What counts:** everything stored for the event, both the gallery versions and the full-quality originals. A typical wedding of 2,000 photos with originals is about 25 GB.
 - **Event page → Overview → Gallery & storage** shows what the event uses, how many more photos fit, and when it closes. **Change storage & months** is the one button for more space or more time. Choose the GB to add (5, 10, 25, 50 or your own number, at least 5), the months to add, or both.
 - **Client galleries** start with 0 GB. Choose the storage when you create it; when it is full, uploads stop with "storage is full" until you add more.
-- **Main and Quick events** are never stopped during the event. If the event uses more than 5 GB, add the extra GB within **14 days of the event date**. If you don't, the couple's gallery is paused (the guests' gallery keeps working) until you add it.
+- **Main and Quick events** are never stopped during the event. If the event uses more than its included storage (25 GB Main, 10 GB Quick), add the extra GB within **14 days of the event date**. If you don't, the couple's gallery is paused (the guests' gallery keeps working) until you add it.
 - **Main and Quick galleries are open 3 months (about 90 days)** from the event date. A client gallery is open for the months you chose, 1 by default, from the day it was created. After that, guests and the couple see "This gallery has expired", and the photos are **deleted for good 30 days later**. The event stays in your list as a record (archived). Studios can't delete events; only McreatiK can. We email you 14 days before and on the day.
 - **More months:** use **Change storage & months** on the same card. You can use it as many times as you need, any time until the deletion date.
-- **How it is charged:** the GB you add are charged for the months the gallery has left (rounded up to whole months), plus all the gallery's GB for the months you add, at ₹15 per GB per month. The free 5 GB for 3 months is never charged. A client gallery has no free storage: you choose its months when you create it (setup + GB × ₹15 × months).
+- **How it is charged:** the GB you add are charged for the months the gallery has left (rounded up to whole months), plus all the gallery's GB for the months you add, at ₹15 per GB per month. The included storage (25 GB Main, 10 GB Quick) for 3 months is never charged. A client gallery has no free storage: you choose its months when you create it (setup + GB × ₹15 × months).
 - **Selling it on:** you decide what to charge your couple for the digital gallery. For example, a 25 GB wedding gallery for 3 months is ₹250 + 25 × ₹15 × 3 = ₹1,375 to you (for 1 month it is ₹625), so you could charge your couple ₹2,500 or more for a private online album. Uploading only the edited finals (not every original) keeps the GB, and your cost, down.
 
 Current prices are always on [the pricing page](https://live.mcreatik.com/pricing).
@@ -108,15 +108,15 @@ Current prices are always on [the pricing page](https://live.mcreatik.com/pricin
 
 | | Price |
 | --- | --- |
-| **Main event** | +₹999 |
-| **Quick event** | +₹499 |
+| **Main event** | +₹699 |
+| **Quick event** | +₹399 |
 
 - **How to buy:** open the event, go to **Settings → Face search** and press **Add face search**. Pay with the same UPI QR and UTR as any other purchase; it switches on once the payment counts. McreatiK can also switch it on for an event (for example a free trial). A client gallery has no guest gallery, so it has no face search.
 - **Switches (Settings → Face search):** once bought for an event, you switch **Find my photos** on and off yourself, like the gallery switches. Turning it off deletes the event's face data; turning it on again scans all photos again. You are never charged twice for the same event.
 - **Private gallery:** a second switch (needs Find my photos on). Guests then see **no photos** until they take a selfie, and after that **only the photos they are in**; nobody sees the whole gallery. Good for families who want privacy. Guests who don't take a selfie see nothing, so tell them clearly on your board. Your client gallery is not affected.
 - **What guests see:** a **Find my photos** button at the top of the live gallery. They read a short notice, tick **I agree**, and the **front camera** opens inside the page (no back camera, no saved photos, so a guest can only search for themselves). A short face scan plays, then a **Photos of you** page.
 - **Scanning:** once it is on, the photos already in the gallery and every new one are scanned automatically. The card shows **Faces indexed x of y**. If you switch it on after the event, give it a few minutes for a big gallery.
-- **One selfie only:** a guest's phone remembers their photos, so reopening the gallery shows **Photos of you** again, and new photos of them appear by themselves (checked at most every 10 minutes while the page is open, and only when new photos were scanned). **Forget me** deletes it. Until a first photo of them is found, their selfie stays on their own phone (never on our server) so the page can keep looking. The guest's phone also checks the selfie (light, sharpness, size) before searching and shows tips, so fewer searches are wasted.
+- **One selfie only:** a guest's phone remembers their photos, so reopening the gallery shows **Photos of you** again, and new photos of them appear by themselves (checked at most every 15 minutes while the page is open, and only when new photos were scanned). **Forget me** deletes it. Until a first photo of them is found, their selfie stays on their own phone (never on our server) so the page can keep looking. The guest's phone also checks the selfie (light, sharpness, size) before searching and shows tips, so fewer searches are wasted.
 - **Stats:** the event's **Analytics** page has a **Find my photos** section (shown only when the add-on is on): searches (and how many failed), guests who found their photos, photos found, updates, and the downloads and likes that came from face results, for example *186 guests found their photos, 1,240 photos found, 410 downloads from face search*.
 - **Tell your guests:** put it on your board or table card, for example **"Find your photos with a selfie"**. You are responsible for telling guests it is on (see the Terms).
 - **Privacy:** face data is processed by Amazon Web Services in Mumbai, India, only to match photos at that event. It is deleted when a photo is removed, and with the gallery's photos 30 days after the gallery period. If a guest asks to remove their face data, email connect@mcreatik.com.

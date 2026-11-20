@@ -44,7 +44,7 @@ public class FaceSearchService {
     private static final ZoneId INDIA = ZoneId.of("Asia/Kolkata");
     private static final long HOUR_MS = 3_600_000L;
     /** Searches one automatic update makes (the strongest faces of the guest's first match). */
-    static final int REFRESH_SEEDS = 3;
+    static final int REFRESH_SEEDS = 1;
     private static final Runnable NOTHING = () -> {
     };
 

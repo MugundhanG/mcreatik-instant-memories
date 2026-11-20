@@ -34,7 +34,7 @@ The uploader connects with a **connection code** (`MCK1...`) copied from the eve
 | Main (weddings, big functions) | ₹2,499 | Main 2: ₹3,499 | Main 4: ₹4,999 |
 | Quick (up to about 200 guests) | ₹1,499 | Quick 2: ₹2,499 | Quick 4: ₹3,999 |
 
-- Main and Quick events include **5 GB for 3 months**.
+- Main events include **25 GB** and Quick events **10 GB**, for 3 months.
 - **Client gallery only:** ₹250 setup plus storage at ₹15 per GB per month, for the months chosen.
 - Payment is by **UPI QR with the UTR** entered in the dashboard; McreatiK confirms it. There is no payment gateway.
 - **Retention:** a gallery is open for its months; its photos are deleted for good 30 days after it closes. The event record is kept (archived).
