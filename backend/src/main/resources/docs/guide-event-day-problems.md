@@ -227,6 +227,10 @@ Switch Wi-Fi off, then open the gallery (scan the QR code).
 | "Something went wrong" and **Try again** | Their phone's connection, or the server | Ask them to press **Try again**. If nobody can open it, see card 14 |
 | "The first photos will appear here soon" | No photo has uploaded yet | Check the uploader (section 2) and take a test shot |
 | The page opens but photos don't download | Opened inside Instagram or WhatsApp | Open the link in Safari or Chrome (the gallery shows how: **Open in Chrome**, or **⋯ → Open in browser** on iPhone); on iPhone, press and hold a photo → Save image as a last resort |
+| **Find my photos** shows an **Allow the camera** screen | The browser has blocked the camera, or the link is open in an in-app browser | Allow the camera in the browser's site settings, or open the link in Chrome or Safari, not inside Instagram or WhatsApp |
+| **Find my photos** says **No photos of you yet** | Their photos are still arriving or being scanned | Nothing to do: the page updates by itself, with no new selfie. Check **Faces indexed** in **Settings → Face search** is rising |
+| A private gallery shows no photos | Private gallery is on: guests see nothing until they take a selfie | Tell the guest to tap **Find my photos** and take the selfie. Put a line on the board saying so |
+| **Faces indexed** is stuck, or the card says **Face scanning is paused** | A setup problem on McreatiK's side | Tell McreatiK. Photos are scanned automatically once it is fixed, and guests catch up by themselves |
 
 **Fix**
 

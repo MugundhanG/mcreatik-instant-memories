@@ -31,6 +31,7 @@ describe('Policy pages', () => {
     expect(screen.getByText(/a full wedding of about 2,000 photos kept open for 3 months is ₹1,375/)).toBeInTheDocument()
     expect(screen.getByTestId('face-search-addon')).toHaveTextContent('Find my photos')
     expect(screen.getByTestId('face-search-addon')).toHaveTextContent('+₹1,099 per Main event, +₹549 per Quick event')
+    expect(screen.getByTestId('face-search-addon')).toHaveTextContent('Private gallery')
     expect(screen.getAllByText(/a month per GB of photos/).length).toBeGreaterThan(0)
     expect(screen.getByText(/Every Main or Quick event's gallery stays open for 3 months and includes room for about 400/)).toBeInTheDocument()
     expect(screen.getByText(/Galleries stay open for 3 months/)).toBeInTheDocument()

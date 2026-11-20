@@ -24,6 +24,7 @@ The uploader connects with a **connection code** (`MCK1...`) copied from the eve
 - **Guest gallery and Client gallery.** Each event has two photo sets. The Guest gallery holds compressed photos (2048 px) from the uploader or the dashboard, shown live at `/e/<slug>`. The Client gallery holds full-quality photos uploaded from the dashboard, private to the couple (`/client`): album picks, downloads and ZIPs. Events made before 11 Nov 2026 keep a single set.
 - **Likes, HD photo requests and categories.** Guests like photos and can tap Get HD photo to leave an email or WhatsApp number for the studio. Studios sort photos into categories (separate lists for each gallery).
 - **Analytics.** People, QR scans, photo views, downloads, likes, peak hour and most loved, viewed and downloaded photos. Guests stay anonymous.
+- **Find my photos and Private gallery.** An optional add-on per event: guests take one selfie with the front camera and see the photos they are in, and new ones appear by themselves. Private gallery makes guests see only their own photos. Face data is processed by AWS in Mumbai and deleted with the photos.
 - **Many cameras.** Up to 4 cameras per laptop; a dropped venue connection never loses a photo.
 
 ## Packs and pricing

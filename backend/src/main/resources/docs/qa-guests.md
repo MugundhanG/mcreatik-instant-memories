@@ -18,6 +18,8 @@ These are people at the event who scan the QR code. They never log in.
 | Can strangers see these photos? | Only people with the link or QR code can open the gallery. The address can't be guessed and isn't on Google. If you forward the link, whoever you send it to can see the gallery. |
 | Does the photo show where it was taken? | No. Location (GPS) data is removed from every gallery photo. |
 | What is "Find my photos"? | A button some galleries have. You take a selfie and see only the photos you are in. Tap it, read the notice, tick I agree, take a selfie, and the Photos of you page opens. It only appears if the studio added it to the event. |
+| Why can't I choose a photo from my phone or use the back camera? | By design. Find my photos opens only the front camera inside the page, so you can only search for yourself. |
+| What is a private gallery? | Some studios make the gallery private. Then you see no photos at all until you take your selfie, and after that only the photos you are in. Nobody sees the whole gallery. |
 | It says it couldn't see a face. | Try again in good light, facing the camera, with nothing covering your face. |
 | It says no photos of me yet. | New photos arrive during the event, and every new photo is scanned. Try again later. |
 | It says too many searches. | There is a limit to stop misuse. Try again in a while. |

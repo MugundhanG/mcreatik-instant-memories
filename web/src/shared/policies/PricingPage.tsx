@@ -4,7 +4,7 @@ import type { Prices, PublicPricing } from '../../lib/types'
 import { BUSINESS } from './business'
 import { PolicyLayout, Section } from './PolicyLayout'
 
-const UPDATED = '18 November 2026'
+const UPDATED = '20 November 2026'
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
 function PriceCard({ name, price, unit, body }: { name: string; price: number; unit: string; body: string }) {
@@ -65,9 +65,14 @@ function Packages({ k }: { k: Prices }) {
         <p className="mt-1 text-sm text-ink/85">
           AI face search for guests: +{rupees(k.faceSearchMain ?? 999)} per Main event, +{rupees(k.faceSearchQuick ?? 499)} per Quick event.
         </p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink/85">
+          <li>Guests take one selfie with their phone’s front camera and see only the photos they are in. New photos of them appear by themselves, with no second selfie.</li>
+          <li><b className="font-medium">Private gallery</b> included: switch it on and guests see no photos until their selfie, then only their own. Nobody sees the whole gallery. Ideal for families who want privacy.</li>
+          <li>Switch it on and off per event from your dashboard (Settings → Face search); you are never charged twice for the same event.</li>
+        </ul>
         <p className="mt-2 text-sm text-muted">
-          Guests take a selfie in the live gallery and see only the photos they are in. Optional, added per event from your dashboard, and
-          guests must agree before using it. See the <a className="underline underline-offset-4" href="/privacy">privacy notice</a>.
+          Optional, and guests must agree before using it. Face data is processed in Mumbai, India, only to match photos at that event, and
+          deleted with the gallery’s photos. See the <a className="underline underline-offset-4" href="/privacy">privacy notice</a>.
         </p>
       </div>
       <h2 className="mt-8 text-lg font-semibold text-ink">Client gallery only</h2>

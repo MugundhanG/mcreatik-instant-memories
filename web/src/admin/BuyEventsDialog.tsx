@@ -302,7 +302,7 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, f
             )}
             {isEvents && (
               <p className="text-center text-xs text-muted" data-testid="face-search-addon">
-                Add-on: <b className="font-medium text-ink">Find my photos</b>, AI face search for guests, +{rupees(billing.prices.faceSearchMain ?? FACE_SEARCH_MAIN_DEFAULT)} per Main event, +{rupees(billing.prices.faceSearchQuick ?? FACE_SEARCH_QUICK_DEFAULT)} per Quick event. Add it from the event's page.
+                Add-on: <b className="font-medium text-ink">Find my photos</b>, AI face search for guests, +{rupees(billing.prices.faceSearchMain ?? FACE_SEARCH_MAIN_DEFAULT)} per Main event, +{rupees(billing.prices.faceSearchQuick ?? FACE_SEARCH_QUICK_DEFAULT)} per Quick event. Includes a private gallery option. Add it in the event's Settings → Face search.
               </p>
             )}
             <p className="text-center text-xs text-muted">
