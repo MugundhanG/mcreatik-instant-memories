@@ -629,6 +629,34 @@ class FaceSearchTest extends IntegrationTest {
     }
 
     @Test
+    void anAwsSetupRefusalIsShownAndPhotosCatchUpByThemselvesOnceFixed() throws Exception {
+        String event = createEvent("Refused", "LIVE");
+        String id = eventId(event);
+        String up = createUploader(id, "cam");
+        String mine = photo(id, up, "alice");
+        setFaceSearch(id, true);
+        fake.denied = "User: arn:aws:iam::1:user/x is not authorized to perform: rekognition:CreateCollection with an explicit deny in a service control policy: p-test";
+        for (int i = 0; i < 10; i++) {
+            faceWorker.processNext(); // refused: not counted against the photo
+        }
+        assertThat(jdbc.queryForObject("SELECT face_attempts FROM photos WHERE id = ?", Integer.class, UUID.fromString(mine))).isZero();
+        // McreatiK sees what AWS refused and why; a guest gets a friendly "not working right now", not an error page.
+        mvc.perform(get("/api/admin/events/" + id + "/face-search").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.indexed").value(0))
+                .andExpect(jsonPath("$.problem").value(org.hamcrest.Matchers.containsString("rekognition:CreateCollection with an explicit deny in a service control policy")));
+        findMe(slug(event), selfieOf("alice"), ip()).andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("FACE_SEARCH_UNAVAILABLE"));
+
+        // Fixed in AWS: the photo is tried again soon by itself (no switching off and on), and the note goes away.
+        fake.denied = null;
+        jdbc.update("UPDATE photos SET face_next_attempt_at = now() WHERE id = ?", UUID.fromString(mine)); // the few minutes pass
+        indexAll();
+        mvc.perform(get("/api/admin/events/" + id + "/face-search").header("Authorization", bearer(adminToken())))
+                .andExpect(jsonPath("$.indexed").value(1)).andExpect(jsonPath("$.problem").doesNotExist());
+        findMe(slug(event), selfieOf("alice"), ip()).andExpect(status().isOk()).andExpect(jsonPath("$.count").value(1));
+    }
+
+    @Test
     void aPrivateGalleryShowsEachGuestOnlyTheirOwnPhotos() throws Exception {
         String event = createEvent("Private", "LIVE");
         String id = eventId(event);

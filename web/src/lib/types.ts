@@ -489,6 +489,8 @@ export interface FaceSearchStatus {
   paid?: boolean
   /** Guests see only the photos they are in (selfie first). Needs face search on. */
   privateGallery?: boolean
+  /** Why scanning and searching are paused (an AWS setup refusal); the exact reason for McreatiK, a plain note for studios. */
+  problem?: string | null
 }
 
 export interface EventPayment {

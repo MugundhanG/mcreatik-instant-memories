@@ -51,6 +51,41 @@ public interface FaceSearchProvider {
         }
     }
 
+    /**
+     * The engine refused because of how the account is set up (permissions, an organization policy, wrong keys), not
+     * because of this photo or selfie. Retrying soon is right; giving up on the photo is not.
+     */
+    class AccessException extends RuntimeException {
+        public AccessException(String message) {
+            super(message);
+        }
+    }
+
+    /** True when {@code e} (or a cause) is an account setup refusal: AccessException, or AWS's access / key errors. */
+    static boolean isAccessProblem(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof AccessException) {
+                return true;
+            }
+            String name = t.getClass().getSimpleName();
+            String message = String.valueOf(t.getMessage());
+            if (name.equals("AccessDeniedException") || name.equals("UnrecognizedClientException")
+                    || name.equals("InvalidSignatureException") || message.contains("is not authorized to perform")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The useful part of an access refusal for the dashboard: what was refused and by which policy (no keys in it). */
+    static String describeAccessProblem(Throwable e) {
+        String m = String.valueOf(e.getMessage());
+        int at = m.indexOf("is not authorized to perform:");
+        String text = at >= 0 ? m.substring(at) : m;
+        int cut = text.indexOf(" (Service:");
+        return (cut > 0 ? text.substring(0, cut) : text).trim();
+    }
+
     /** Not an image the engine can read. */
     class BadImageException extends RuntimeException {
         public BadImageException(String message) {

@@ -34,8 +34,18 @@ public class FakeFaceSearchProvider implements FaceSearchProvider {
     public final List<String> searchedCollections = new CopyOnWriteArrayList<>();
     public final List<String> searchedByFaceId = new CopyOnWriteArrayList<>();
 
+    /** Tests: when set, every engine call is refused like an AWS account setup problem (AccessDeniedException). */
+    public volatile String denied;
+
+    private void checkAccess() {
+        if (denied != null) {
+            throw new AccessException(denied);
+        }
+    }
+
     /** Forgets everything (between tests). */
     public void reset() {
+        denied = null;
         collections.clear();
         photoPeople.clear();
         selfiePeople.clear();
@@ -78,6 +88,7 @@ public class FakeFaceSearchProvider implements FaceSearchProvider {
 
     @Override
     public void createCollection(String collection) {
+        checkAccess();
         if (collections.putIfAbsent(collection, new CopyOnWriteArrayList<>()) == null) {
             createdCollections.add(collection);
         }
@@ -91,6 +102,7 @@ public class FakeFaceSearchProvider implements FaceSearchProvider {
 
     @Override
     public List<String> indexFaces(String collection, UUID photoId, byte[] jpegBytes) {
+        checkAccess();
         List<Face> faces = collections.get(collection);
         if (faces == null) {
             throw new IllegalStateException("No such collection " + collection);
@@ -107,6 +119,7 @@ public class FakeFaceSearchProvider implements FaceSearchProvider {
 
     @Override
     public List<FaceMatch> searchFaces(String collection, byte[] imageBytes, float threshold, int maxFaces) {
+        checkAccess();
         searchedCollections.add(collection);
         String key = hash(imageBytes);
         if (noFace.contains(key)) {

@@ -29,8 +29,9 @@ public class FaceSearchAdminController {
 
     /** {@code available}: face search is switched on for the whole system; {@code indexed} of {@code total} guest photos. */
     /** {@code paid}: bought for this event (the studio may switch it); {@code privateGallery}: guests see only their photos. */
+    /** {@code problem}: why the engine refuses (account setup), shown to McreatiK; studios get a plain sentence. */
     public record FaceSearchState(boolean enabled, boolean available, long indexed, long total, int mainPrice, int quickPrice,
-                                  boolean paid, boolean privateGallery) {
+                                  boolean paid, boolean privateGallery, String problem) {
     }
 
     /** Either or both: {@code enabled} (face search) and {@code privateGallery}. */
@@ -51,7 +52,7 @@ public class FaceSearchAdminController {
 
     @GetMapping
     public FaceSearchState get(Authentication auth, @PathVariable UUID eventId) {
-        return state(events.owned(CurrentAdmin.id(auth), eventId));
+        return state(events.owned(CurrentAdmin.id(auth), eventId), access.isSuperAdmin(CurrentAdmin.id(auth)));
     }
 
     @PutMapping
@@ -81,13 +82,15 @@ public class FaceSearchAdminController {
             }
             faces.setPrivate(eventId, on);
         }
-        return state(events.owned(CurrentAdmin.id(auth), eventId));
+        return state(events.owned(CurrentAdmin.id(auth), eventId), superAdmin);
     }
 
-    private FaceSearchState state(Event event) {
+    private FaceSearchState state(Event event, boolean superAdmin) {
         FaceSearchService.Status s = faces.status(event);
         BillingService.Settings prices = billing.settings();
         return new FaceSearchState(s.enabled(), s.available(), s.indexed(), s.total(), prices.faceSearchMainPrice(),
-                prices.faceSearchQuickPrice(), event.isFaceSearchPaid(), s.enabled() && event.isFacePrivate());
+                prices.faceSearchQuickPrice(), event.isFaceSearchPaid(), s.enabled() && event.isFacePrivate(),
+                s.problem() == null || !s.enabled() ? null
+                        : superAdmin ? s.problem() : "Face search is paused by a setup problem at McreatiK. We are on it; photos are scanned as soon as it is fixed.");
     }
 }

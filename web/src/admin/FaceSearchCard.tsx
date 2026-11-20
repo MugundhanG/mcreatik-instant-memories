@@ -133,6 +133,13 @@ export function FaceSearchCard({ event, billing, superAdmin, onChanged }: {
         </div>
       )}
 
+      {status.enabled && status.problem && (
+        <p role="alert" data-testid="face-search-problem" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+          <b>Face scanning is paused.</b> {status.problem}
+          {superAdmin && <span className="mt-1 block text-xs">Fix it in AWS, then run deploy/oracle/face-search-check.sh. Photos are rescanned by themselves within a few minutes.</span>}
+        </p>
+      )}
+
       {status.enabled && (
         <div className="mt-4 text-sm">
           <p><b className="tabular-nums">Faces indexed {formatCount(status.indexed)} of {formatCount(status.total)}</b> <span className="text-muted">photos</span></p>

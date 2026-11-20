@@ -42,6 +42,9 @@ public class FaceIndexWorker implements SmartLifecycle {
     private final FaceSearchService service;
     private final GalleryProperties.FaceSearch config;
 
+    /** How soon a photo is tried again after the account refused (a setup problem, not the photo's). */
+    static final java.time.Duration ACCESS_RETRY = java.time.Duration.ofMinutes(3);
+
     private final Object signal = new Object();
     private Thread thread;
     private volatile boolean running;
@@ -135,9 +138,21 @@ public class FaceIndexWorker implements SmartLifecycle {
                 faceIds = List.of();
             }
         } catch (Exception e) {
+            if (FaceSearchProvider.isAccessProblem(e)) {
+                // The account refuses (permissions, an organization policy, keys): not this photo's fault. It keeps its
+                // tries and is tried again in a few minutes, so photos catch up by themselves once the setup is fixed.
+                service.reportAccessProblem(e);
+                jdbc.sql("""
+                                UPDATE photos SET face_attempts = GREATEST(0, face_attempts - 1),
+                                       face_next_attempt_at = now() + make_interval(secs => :wait)
+                                WHERE id = :photo""")
+                        .param("wait", ACCESS_RETRY.toSeconds()).param("photo", c.photoId()).update();
+                return;
+            }
             log.warn("Face indexing of photo {} failed (will retry later): {}", c.photoId(), e.toString());
             return;
         }
+        service.clearProblem();
         List<String> ids = faceIds;
         Boolean kept = tx.execute(s -> {
             // Gone (deleted while indexing) or add-on switched off meanwhile: the rows are not wanted.
