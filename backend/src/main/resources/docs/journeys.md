@@ -103,6 +103,18 @@ sequenceDiagram
 - **Removal requests.** Every photo has a "Request removal" email link to connect@mcreatik.com.
 - **No originals.** Guests only get gallery copies.
 
+### With Find my photos
+
+Only when the event has the add-on switched on.
+
+1. The guest taps **Find my photos**, reads the notice and ticks **I agree**.
+2. The front camera opens inside the page (no back camera, no saved photo). The guest takes one selfie.
+3. The page sends it to `POST /api/public/events/{slug}/find-me`. A short face-scan animation plays, then **Photos of you** opens.
+4. The phone keeps a random "remember me" code. On later visits the page asks `/matches/{matchId}`, and new photos of the guest appear by themselves. If no photo of them is found yet, the selfie stays only on their own phone and the page keeps looking as new photos arrive.
+5. **Forget me** deletes the code on the phone and on the server.
+
+**Private gallery variant.** When the studio has switched Private gallery on, the gallery shows no photos until the guest takes the selfie, and afterwards only the photos they are in. The couple's Client gallery is not affected.
+
 ## The couple
 
 ```mermaid

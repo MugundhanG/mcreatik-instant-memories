@@ -23,7 +23,7 @@ const USE_ANYWAY_AFTER = 2
 /** How often this page looks at the guest's photos (a free database lookup). */
 const TICK_MS = 60_000
 /** At most this often it asks the face engine for new photos of the guest (each costs a few searches). */
-export const AUTO_UPDATE_MS = 10 * 60_000
+export const AUTO_UPDATE_MS = 15 * 60_000
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

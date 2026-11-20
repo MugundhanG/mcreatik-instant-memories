@@ -14,6 +14,7 @@ Use this on the day. Print it, or keep it open on a phone. It works for the stud
 - [ ] The event card is printed and in your studio board, and the table cards are printed (Overview → QR code → **Event & table cards**).
 - [ ] Laptops and phone hotspot are charged; chargers, a power bank and spare camera batteries are packed.
 - [ ] The hotspot phone has enough mobile data. Allow about **1 MB per photo**, so 1,500 photos ≈ 1.5 GB.
+- [ ] Face-search events: **Find my photos** is switched on in **Settings → Face search**, and **Faces indexed** rises after the test shot. Put "Find your photos with a selfie" on the board. If **Private gallery** is on, the board must say a selfie is needed to see any photos.
 - [ ] The couple's login is created, or planned for after the event. They see only the Client gallery, so it stays empty until you upload finals.
 
 ## At the venue (30 minutes before guests)

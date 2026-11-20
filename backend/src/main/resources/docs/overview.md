@@ -8,11 +8,17 @@ McreatiK Instant Memories puts wedding photos on guests' phones within seconds o
 
 | Who | What they do | Where |
 | --- | --- | --- |
-| Guests | Scan a QR code, watch photos arrive live, download and share | `/e/{slug}` |
+| Guests | Scan a QR code, watch photos arrive live, download and share. With the optional **Find my photos** add-on they take a selfie and see the photos they are in; with **Private gallery** they see only those | `/e/{slug}` |
 | Studios | Create events, connect cameras, manage photos, give the couple a login | `/admin` |
 | McreatiK | Everything a studio can, plus studios, plans, payments and gallery switches | `/admin` (super admin) |
 | Couples | Pick album photos, download originals and ZIPs | `/client` |
 | Camera operator | Runs the uploader app on a laptop at the venue | Desktop app |
+
+## Find my photos and Private gallery
+
+**Find my photos** is an optional add-on per event (+₹699 per Main event, +₹399 per Quick event; not for Client-only events). The studio buys it in the event's **Settings → Face search** and switches it on and off there. A guest taps **Find my photos**, agrees to a short notice, takes one selfie with the front camera inside the page, and sees **Photos of you**. The phone remembers the guest, so new photos of them appear by themselves. Face data is processed by AWS in Mumbai and deleted with the photos.
+
+**Private gallery** is a second switch in the same card (needs Find my photos on). Guests then see no photos until they take a selfie, and afterwards only the photos they are in. The couple's Client gallery is not affected. The event's **Analytics** page has a **Find my photos** section.
 
 ## The three apps
 

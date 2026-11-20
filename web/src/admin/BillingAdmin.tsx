@@ -146,10 +146,10 @@ export function BillingSettingsCard() {
           <input className={inputClass} inputMode="numeric" value={s.quickPackMainPrice} onChange={num('quickPackMainPrice')} />
         </Field>
         <Field label="Find my photos: Main event (₹)" hint="Face-search add-on, per event">
-          <input className={inputClass} inputMode="numeric" value={s.faceSearchMainPrice ?? 999} onChange={num('faceSearchMainPrice')} />
+          <input className={inputClass} inputMode="numeric" value={s.faceSearchMainPrice ?? 699} onChange={num('faceSearchMainPrice')} />
         </Field>
         <Field label="Find my photos: Quick event (₹)" hint="Face-search add-on, per event">
-          <input className={inputClass} inputMode="numeric" value={s.faceSearchQuickPrice ?? 499} onChange={num('faceSearchQuickPrice')} />
+          <input className={inputClass} inputMode="numeric" value={s.faceSearchQuickPrice ?? 399} onChange={num('faceSearchQuickPrice')} />
         </Field>
         <Field label="Upgrade a Quick event to Main (₹)">
           <input className={inputClass} inputMode="numeric" value={s.upgradePrice} onChange={num('upgradePrice')} />
@@ -160,8 +160,11 @@ export function BillingSettingsCard() {
         <Field label="Storage (₹ per GB per month)">
           <input className={inputClass} inputMode="numeric" value={s.storageGbPrice} onChange={num('storageGbPrice')} />
         </Field>
-        <Field label="Storage included with a Main or Quick event (GB)" hint="Free for the included months below">
+        <Field label="Storage included with a Main event (GB)" hint="Free for the included months below">
           <input className={inputClass} inputMode="numeric" value={s.freeStorageGb} onChange={num('freeStorageGb')} />
+        </Field>
+        <Field label="Storage included with a Quick event (GB)" hint="Free for the included months below">
+          <input className={inputClass} inputMode="numeric" value={s.freeStorageGbQuick ?? s.freeStorageGb} onChange={num('freeStorageGbQuick')} />
         </Field>
         <Field label="Client gallery setup (₹ each)">
           <input className={inputClass} inputMode="numeric" value={s.clientSetupPrice} onChange={num('clientSetupPrice')} />

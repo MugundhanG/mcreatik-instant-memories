@@ -24,6 +24,7 @@ The uploader connects with a **connection code** (`MCK1...`) copied from the eve
 - **Guest gallery and Client gallery.** Each event has two photo sets. The Guest gallery holds compressed photos (2048 px) from the uploader or the dashboard, shown live at `/e/<slug>`. The Client gallery holds full-quality photos uploaded from the dashboard, private to the couple (`/client`): album picks, downloads and ZIPs. Events made before 11 Nov 2026 keep a single set.
 - **Likes, HD photo requests and categories.** Guests like photos and can tap Get HD photo to leave an email or WhatsApp number for the studio. Studios sort photos into categories (separate lists for each gallery).
 - **Analytics.** People, QR scans, photo views, downloads, likes, peak hour and most loved, viewed and downloaded photos. Guests stay anonymous.
+- **Find my photos and Private gallery.** An optional add-on per event: guests take one selfie with the front camera and see the photos they are in, and new ones appear by themselves. Private gallery makes guests see only their own photos. Face data is processed by AWS in Mumbai and deleted with the photos.
 - **Many cameras.** Up to 4 cameras per laptop; a dropped venue connection never loses a photo.
 
 ## Packs and pricing
@@ -33,7 +34,7 @@ The uploader connects with a **connection code** (`MCK1...`) copied from the eve
 | Main (weddings, big functions) | ₹2,499 | Main 2: ₹3,499 | Main 4: ₹4,999 |
 | Quick (up to about 200 guests) | ₹1,499 | Quick 2: ₹2,499 | Quick 4: ₹3,999 |
 
-- Main and Quick events include **5 GB for 3 months**.
+- Main events include **25 GB** and Quick events **10 GB**, for 3 months.
 - **Client gallery only:** ₹250 setup plus storage at ₹15 per GB per month, for the months chosen.
 - Payment is by **UPI QR with the UTR** entered in the dashboard; McreatiK confirms it. There is no payment gateway.
 - **Retention:** a gallery is open for its months; its photos are deleted for good 30 days after it closes. The event record is kept (archived).

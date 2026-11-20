@@ -107,7 +107,12 @@ public class BillingService {
                            Integer freeStorageGb, Integer clientSetupPrice, Integer activeMonths,
                            Integer main2ExtraPrice, Integer main4ExtraPrice, Integer quick2ExtraPrice,
                            Integer quick4ExtraPrice, Integer quickPackMainPrice, Integer faceSearchMainPrice,
-                           Integer faceSearchQuickPrice) {
+                           Integer faceSearchQuickPrice, Integer freeStorageGbQuick) {
+
+        /** Storage included with a new event of this type: {@code freeStorageGb} for Main, its own value for Quick. */
+        public int includedStorageGb(EventType type) {
+            return type == EventType.QUICK ? freeStorageGbQuick : freeStorageGb;
+        }
 
         /** What one event past the pack's monthly allowance costs while the pack is paid up. */
         int extraPrice(Plan plan) {
@@ -145,7 +150,7 @@ public class BillingService {
     public record Prices(int main, int quick, int main2, int main4, int quick2, int quick4, int upgrade, int upgradeGuests,
                          int storageGb, int freeStorageGb, int clientSetup, int activeMonths,
                          int main2Extra, int main4Extra, int quick2Extra, int quick4Extra, int quickPackMain,
-                         int faceSearchMain, int faceSearchQuick) {
+                         int faceSearchMain, int faceSearchQuick, int freeStorageGbQuick) {
     }
 
     /**
@@ -266,11 +271,11 @@ public class BillingService {
                        main4_price, quick2_price, quick4_price, upgrade_price, upgrade_guests, storage_gb_price,
                        free_storage_gb, client_setup_price, active_months, main2_extra_price, main4_extra_price,
                        quick2_extra_price, quick4_extra_price, quick_pack_main_price, face_search_main_price,
-                       face_search_quick_price FROM billing_settings""",
+                       face_search_quick_price, free_storage_gb_quick FROM billing_settings""",
                 (rs, n) -> new Settings(rs.getString(1), rs.getString(2), rs.getInt(3), rs.getInt(4), rs.getInt(5),
                         rs.getInt(6), rs.getInt(7), rs.getInt(8), rs.getInt(9), rs.getInt(10), rs.getInt(11), rs.getInt(12),
                         rs.getInt(13), rs.getInt(14), rs.getInt(15), rs.getInt(16), rs.getInt(17), rs.getInt(18),
-                        rs.getInt(19), rs.getInt(20), rs.getInt(21), rs.getInt(22), rs.getInt(23)));
+                        rs.getInt(19), rs.getInt(20), rs.getInt(21), rs.getInt(22), rs.getInt(23), rs.getInt(24)));
     }
 
     private static int orKeep(Integer value, int current) {
@@ -293,10 +298,11 @@ public class BillingService {
                 orKeep(s.quick2ExtraPrice(), now.quick2ExtraPrice()), orKeep(s.quick4ExtraPrice(), now.quick4ExtraPrice()),
                 orKeep(s.quickPackMainPrice(), now.quickPackMainPrice()),
                 orKeep(s.faceSearchMainPrice(), now.faceSearchMainPrice()),
-                orKeep(s.faceSearchQuickPrice(), now.faceSearchQuickPrice())};
+                orKeep(s.faceSearchQuickPrice(), now.faceSearchQuickPrice()),
+                orKeep(s.freeStorageGbQuick(), now.freeStorageGbQuick())};
         for (int i = 0; i < prices.length; i++) {
-            // The free storage may be 0 GB; everything else must be at least 1.
-            if (prices[i] < (i == 11 ? 0 : 1)) {
+            // The included storage (Main, Quick) may be 0 GB; everything else must be at least 1.
+            if (prices[i] < (i == 11 || i == 21 ? 0 : 1)) {
                 throw ApiException.badRequest("INVALID_PRICE", "Prices must be positive");
             }
         }
@@ -306,10 +312,10 @@ public class BillingService {
                        upgrade_price = ?, upgrade_guests = ?, storage_gb_price = ?, free_storage_gb = ?,
                        client_setup_price = ?, active_months = ?, main2_extra_price = ?, main4_extra_price = ?,
                        quick2_extra_price = ?, quick4_extra_price = ?, quick_pack_main_price = ?,
-                       face_search_main_price = ?, face_search_quick_price = ?""",
+                       face_search_main_price = ?, face_search_quick_price = ?, free_storage_gb_quick = ?""",
                 upi == null || upi.isEmpty() ? null : upi, s.payeeName() == null ? null : s.payeeName().trim(),
                 prices[0], prices[1], prices[2], prices[3], prices[4], prices[5], prices[6], prices[7], prices[8], prices[9],
-                prices[10], prices[11], prices[12], prices[13], prices[14], prices[15], prices[16], prices[17], prices[18], prices[19], prices[20]);
+                prices[10], prices[11], prices[12], prices[13], prices[14], prices[15], prices[16], prices[17], prices[18], prices[19], prices[20], prices[21]);
         return settings();
     }
 
@@ -421,7 +427,8 @@ public class BillingService {
         return new Prices(s.perEventPrice(), s.quickPrice(), s.main2Price(), s.main4Price(), s.quick2Price(),
                 s.quick4Price(), s.upgradePrice(), s.upgradeGuests(), s.storageGbPrice(), s.freeStorageGb(),
                 s.clientSetupPrice(), s.activeMonths(), s.main2ExtraPrice(), s.main4ExtraPrice(), s.quick2ExtraPrice(),
-                s.quick4ExtraPrice(), s.quickPackMainPrice(), s.faceSearchMainPrice(), s.faceSearchQuickPrice());
+                s.quick4ExtraPrice(), s.quickPackMainPrice(), s.faceSearchMainPrice(), s.faceSearchQuickPrice(),
+                s.freeStorageGbQuick());
     }
 
     /** The current prices for the public /pricing page. */
@@ -684,8 +691,19 @@ public class BillingService {
         switch (item) {
             case MAIN_EVENT -> jdbc.update("UPDATE admin_users SET main_credits = main_credits + ? WHERE id = ?", sign * quantity, studioId);
             case QUICK_EVENT -> jdbc.update("UPDATE admin_users SET quick_credits = quick_credits + ? WHERE id = ?", sign * quantity, studioId);
-            case UPGRADE -> jdbc.update("UPDATE events SET event_type = ?, updated_at = now() WHERE id = ? AND owner_id = ?",
-                    sign > 0 ? EventType.MAIN.name() : EventType.QUICK.name(), eventId, studioId);
+            case UPGRADE -> {
+                // A Main event includes more storage than a Quick one: the upgrade adds the difference (a rejected
+                // payment takes it back).
+                Settings s = settings();
+                int more = Math.max(0, s.includedStorageGb(EventType.MAIN) - s.includedStorageGb(EventType.QUICK));
+                jdbc.update("""
+                        UPDATE events SET event_type = ?, storage_quota_gb = GREATEST(0, storage_quota_gb + ?), updated_at = now()
+                        WHERE id = ? AND owner_id = ?""",
+                        sign > 0 ? EventType.MAIN.name() : EventType.QUICK.name(), sign * more, eventId, studioId);
+                if (sign > 0) {
+                    unlockIfCovered(eventId);
+                }
+            }
             case FACE_SEARCH -> {
                 // On at once (indexing starts by itself); a rejected payment switches it off and deletes the face data.
                 faces.setPaid(eventId, sign > 0);

@@ -269,21 +269,29 @@ class PackagesTest extends IntegrationTest {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_PLAN"));
     }
 
+    private int quota(String eventId) {
+        return jdbc.queryForObject("SELECT storage_quota_gb FROM events WHERE id = ?::uuid", Integer.class, eventId);
+    }
+
     @Test
     void aQuickEventCanBeUpgradedToMainOnceAndARejectedUpgradeIsUndone() throws Exception {
+        jdbc.update("UPDATE billing_settings SET free_storage_gb = 25, free_storage_gb_quick = 10");
         buy("{\"item\":\"QUICK_EVENT\",\"utr\":\"" + utr() + "\"}");
         String quick = eventId(event("QUICK").andReturn().getResponse().getContentAsString());
+        assertThat(quota(quick)).isEqualTo(10); // a Quick event includes 10 GB, a Main event 25 GB
         String payment = JsonPath.read(buy("{\"item\":\"UPGRADE\",\"eventId\":\"" + quick + "\",\"utr\":\"" + utr() + "\"}")
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.amount").value(1000))
                 .andExpect(jsonPath("$.eventName").value("Arun & Priya")).andReturn().getResponse().getContentAsString(), "$.id");
         mvc.perform(get("/api/admin/events/" + quick).header("Authorization", bearer(studio))).andExpect(jsonPath("$.eventType").value("MAIN"));
+        assertThat(quota(quick)).isEqualTo(25); // the upgrade brings a Main event's larger included storage
         buy("{\"item\":\"UPGRADE\",\"eventId\":\"" + quick + "\",\"utr\":\"" + utr() + "\"}")
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("NOT_QUICK"));
 
         mvc.perform(post("/api/admin/billing/payments/" + payment + "/reject").header("Authorization", bearer(adminToken()))
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNoContent());
         mvc.perform(get("/api/admin/events/" + quick).header("Authorization", bearer(studio))).andExpect(jsonPath("$.eventType").value("QUICK"));
+        assertThat(quota(quick)).isEqualTo(10);
 
         // Another studio's event can't be upgraded by this one.
         String other = eventId(createEvent("McreatiK's own", "UPCOMING"));
