@@ -37,6 +37,8 @@ interface Props {
   onRequestHd?: (photoId: string, name: string, contact: string) => Promise<void>
   /** Shown under the counter, e.g. the file name in the dashboard. */
   caption?: (photo: PublicPhoto) => ReactNode
+  /** Find my photos: the guest's match, sent with downloads (a private gallery serves only the guest's own photos). */
+  matchId?: string | null
 }
 
 const SAVE_HINT = 'Press and hold the photo, then tap “Save image”'
@@ -62,7 +64,7 @@ function markFollowInviteShown() {
 }
 
 export function PhotoViewer({
-  photos, index, total, eventSlug, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity, hideDownload = false, shareCaption, liked, onToggleLike, onRequestHd,
+  photos, index, total, eventSlug, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity, hideDownload = false, shareCaption, liked, onToggleLike, onRequestHd, matchId,
 }: Props) {
   const photo = photos[index]
   const count = Math.max(total, photos.length)
@@ -138,13 +140,13 @@ export function PhotoViewer({
     // iPhone (Download opens the share sheet) and Share both need the photo ready the moment it's tapped.
     if (!currentId || !currentWebUrl || !(isIOS() || shareCaption)) return
     let active = true
-    fetchPhoto(currentWebUrl, guestDownloadUrl(eventSlug, currentId))
+    fetchPhoto(currentWebUrl, guestDownloadUrl(eventSlug, currentId, matchId))
       .then((blob) => active && setPrefetched({ id: currentId, blob }))
       .catch(() => {}) // Download then falls back to the press-and-hold hint
     return () => {
       active = false
     }
-  }, [currentId, currentWebUrl, shareCaption, eventSlug])
+  }, [currentId, currentWebUrl, shareCaption, eventSlug, matchId])
 
   if (!photo) return null
 
@@ -152,7 +154,7 @@ export function PhotoViewer({
   const onDownload = async (savedNote?: string) => {
     setBusy('download')
     const blob = prefetched?.id === photo.id ? prefetched.blob : null
-    const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id, blob, guestDownloadUrl(eventSlug, photo.id))
+    const result = await downloadPhoto(photo.webUrl, eventSlug, photo.id, blob, guestDownloadUrl(eventSlug, photo.id, matchId))
     setBusy(null)
     if (COUNTED_DOWNLOADS.has(result)) onActivity?.('DOWNLOAD', photo.id)
     if (result === 'in-app') return setInAppNotice(true)
@@ -173,7 +175,7 @@ export function PhotoViewer({
     if (!shareCaption) return
     setBusy('share')
     const blob = prefetched?.id === photo.id ? prefetched.blob : null
-    const result = await sharePhoto({ url: photo.webUrl, eventSlug, photoId: photo.id, caption: shareCaption, prefetched: blob, apiUrl: guestDownloadUrl(eventSlug, photo.id) })
+    const result = await sharePhoto({ url: photo.webUrl, eventSlug, photoId: photo.id, caption: shareCaption, prefetched: blob, apiUrl: guestDownloadUrl(eventSlug, photo.id, matchId) })
     setBusy(null)
     if (result === 'shared') return onActivity?.('SHARE', photo.id)
     if (result === 'cancelled') return

@@ -362,7 +362,7 @@ public class EventService {
         long count = photos.countVisible(event.getId());
         return new EventDtos.PublicEvent(event.getName(), event.getSlug(), event.getEventDate(), event.getStatus(),
                 event.getStatus() == EventStatus.LIVE, coverUrl(event), count,
-                branding.ofOwner(event.getOwnerId()), faces.searchable(event));
+                branding.ofOwner(event.getOwnerId()), faces.searchable(event), faces.isPrivate(event));
     }
 
     // ---- helpers ----

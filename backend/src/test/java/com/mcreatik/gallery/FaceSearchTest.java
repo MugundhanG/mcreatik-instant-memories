@@ -629,6 +629,48 @@ class FaceSearchTest extends IntegrationTest {
     }
 
     @Test
+    void aPrivateGalleryShowsEachGuestOnlyTheirOwnPhotos() throws Exception {
+        String event = createEvent("Private", "LIVE");
+        String id = eventId(event);
+        String slug = slug(event);
+        String up = createUploader(id, "cam");
+        // It needs face search.
+        mvc.perform(put("/api/admin/events/" + id + "/face-search").header("Authorization", bearer(adminToken()))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"privateGallery\":true}")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("FACE_SEARCH_OFF"));
+        setFaceSearch(id, true);
+        String alice = photo(id, up, "alice");
+        String bob = photo(id, up, "bob");
+        indexAll();
+        mvc.perform(put("/api/admin/events/" + id + "/face-search").header("Authorization", bearer(adminToken()))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"privateGallery\":true}")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.privateGallery").value(true));
+
+        mvc.perform(get("/api/public/events/" + slug)).andExpect(jsonPath("$.privateGallery").value(true))
+                .andExpect(jsonPath("$.faceSearch").value(true));
+        // Nothing lists the whole gallery.
+        mvc.perform(get("/api/public/events/" + slug + "/photos")).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PRIVATE_GALLERY"));
+        mvc.perform(get("/api/public/events/" + slug + "/stream")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/public/events/" + slug + "/categories")).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/public/events/" + slug + "/photos/" + alice + "/download")).andExpect(status().isNotFound());
+
+        String found = findMe(slug, selfieOf("alice"), ip()).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<List<String>>read(found, "$.photos[*].id")).containsExactly(alice);
+        String match = JsonPath.read(found, "$.matchId");
+        // Downloads: only the guest's own photos, and only with their match.
+        mvc.perform(get("/api/public/events/" + slug + "/photos/" + alice + "/download").param("match", match)).andExpect(status().isOk());
+        mvc.perform(get("/api/public/events/" + slug + "/photos/" + bob + "/download").param("match", match)).andExpect(status().isNotFound());
+
+        // Turning face search off ends the private gallery too: everyone sees the whole gallery again.
+        setFaceSearch(id, false);
+        mvc.perform(get("/api/public/events/" + slug)).andExpect(jsonPath("$.privateGallery").value(false));
+        mvc.perform(get("/api/public/events/" + slug + "/photos")).andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT face_private FROM events WHERE id = ?", Boolean.class, UUID.fromString(id))).isFalse();
+    }
+
+    @Test
     void theAddOnIsPricedByEventTypeAndSwitchesFaceSearchOn() throws Exception {
         mvc.perform(put("/api/admin/billing/settings").header("Authorization", bearer(adminToken()))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -649,7 +691,8 @@ class FaceSearchTest extends IntegrationTest {
         quote(studio, client).andExpect(status().isBadRequest());
         // A studio cannot switch it on for free.
         mvc.perform(put("/api/admin/events/" + main + "/face-search").header("Authorization", bearer(studio))
-                .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}")).andExpect(status().isForbidden());
+                .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}")).andExpect(status().isPaymentRequired())
+                .andExpect(jsonPath("$.code").value("FACE_SEARCH_NOT_PAID"));
         mvc.perform(get("/api/admin/events/" + main + "/face-search").header("Authorization", bearer(studio)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false));
 
@@ -664,6 +707,14 @@ class FaceSearchTest extends IntegrationTest {
         mvc.perform(post("/api/admin/billing/payments/" + paid + "/approve").header("Authorization", bearer(adminToken())))
                 .andExpect(status().isNoContent());
         assertThat(jdbc.queryForObject("SELECT face_search_enabled FROM events WHERE id = ?", Boolean.class, UUID.fromString(main))).isTrue();
+        // Paid: the studio switches it off and on itself, and is never charged twice.
+        mvc.perform(put("/api/admin/events/" + main + "/face-search").header("Authorization", bearer(studio))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false}")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabled").value(false)).andExpect(jsonPath("$.paid").value(true));
+        quote(studio, main).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ALREADY_PAID"));
+        mvc.perform(put("/api/admin/events/" + main + "/face-search").header("Authorization", bearer(studio))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabled").value(true));
 
         // A rejected payment takes it back.
         String q = JsonPath.read(payFace(studio, quick, "FACE" + System.nanoTime()).andExpect(status().isCreated())

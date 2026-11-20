@@ -162,3 +162,14 @@ input::-ms-reveal,
 input::-ms-clear {
   display: none;
 }
+
+/* Find my photos: the face scan shown while a selfie is searched (FaceScan.tsx). */
+@keyframes face-scan-line { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(var(--scan-travel, 220px)); } }
+@keyframes face-scan-dot { 0%, 100% { opacity: 0.25; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes face-scan-ring { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.face-scan-line { animation: face-scan-line 1.6s ease-in-out infinite; }
+.face-scan-dot { animation: face-scan-dot 1.2s ease-in-out infinite; }
+.face-scan-ring { animation: face-scan-ring 2.4s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .face-scan-line, .face-scan-dot, .face-scan-ring { animation: none; }
+}

@@ -289,8 +289,8 @@ export const adminApi = {
   updateStudioBilling: (studioId: string, input: { plan?: Plan; monthlyQuota?: number; addCredits?: number; addQuickCredits?: number; addClientCredits?: number; planPaidUntil?: string }) =>
     request<StudioBilling>(`/api/admin/billing/studios/${studioId}`, { method: 'PATCH', body: json(input) }, true),
   faceSearch: (eventId: string) => request<FaceSearchStatus>(`/api/admin/events/${eventId}/face-search`, {}, true),
-  setFaceSearch: (eventId: string, enabled: boolean) =>
-    request<FaceSearchStatus>(`/api/admin/events/${eventId}/face-search`, { method: 'PUT', body: json({ enabled }) }, true),
+  setFaceSearch: (eventId: string, change: { enabled?: boolean; privateGallery?: boolean }) =>
+    request<FaceSearchStatus>(`/api/admin/events/${eventId}/face-search`, { method: 'PUT', body: json(change) }, true),
   billingSettings: () => request<BillingSettings>('/api/admin/billing/settings', {}, true),
   updateBillingSettings: (s: BillingSettings) =>
     request<BillingSettings>('/api/admin/billing/settings', { method: 'PUT', body: json(s) }, true),

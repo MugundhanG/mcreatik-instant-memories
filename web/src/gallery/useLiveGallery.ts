@@ -163,7 +163,12 @@ export function useLiveGallery(slug: string, shouldShowImmediately: () => boolea
   useEffect(() => {
     let cancelled = false
     newest.current = null
-    Promise.all([publicApi.event(slug), publicApi.photos(slug, { limit: 40, category })])
+    // A private gallery never lists its photos (guests see only their own, through Find my photos).
+    const firstPage = publicApi.photos(slug, { limit: 40, category }).catch((e) => {
+      if (e instanceof ApiError && e.code === 'PRIVATE_GALLERY') return { photos: [], nextCursor: null } as PublicPhotoPage
+      throw e
+    })
+    Promise.all([publicApi.event(slug), firstPage])
       .then(([event, page]) => {
         if (cancelled) return
         trackNewest(page.photos)
@@ -191,11 +196,13 @@ export function useLiveGallery(slug: string, shouldShowImmediately: () => boolea
     } catch (e) {
       // Turned off by McreatiK while open: show why. Anything else: the next reconnect / poll tries again.
       if (e instanceof ApiError && (e.code === 'GALLERY_UNAVAILABLE' || e.code === 'GALLERY_EXPIRED')) dispatch(failure(e))
+      // Made private while open: reload into the private page (Find my photos only).
+      if (e instanceof ApiError && e.code === 'PRIVATE_GALLERY') window.location.reload()
     }
   }, [slug, arrive])
 
   // Live stream
-  const loaded = state.status === 'ready'
+  const loaded = state.status === 'ready' && !state.event?.privateGallery
   useEffect(() => {
     if (!loaded || typeof EventSource === 'undefined') return
     let source: EventSource | null = null

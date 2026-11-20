@@ -222,7 +222,6 @@ export default function EventDashboardPage() {
               adminApi.billing().then(setBilling).catch(() => {})
               loadStats()
             }} />
-            {!clientOnly && <FaceSearchCard event={event} billing={billing} superAdmin={superAdmin} />}
             {clientOnly ? (
               <Card title="Client gallery">
                 <ol className="list-decimal space-y-1.5 pl-5 text-sm text-stone-700" data-testid="client-steps">
@@ -335,6 +334,7 @@ export default function EventDashboardPage() {
 
       <section {...panel('settings')} className="anim-fade-in space-y-6">
         <GalleryAccessCard event={event} superAdmin={superAdmin} onChange={setEvent} />
+        {!clientOnly && <FaceSearchCard event={event} billing={billing} superAdmin={superAdmin} />}
         <Card title="Privacy & data">
           <div className="flex flex-wrap items-end justify-between gap-4">
             {billing?.free ? (

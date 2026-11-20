@@ -29,6 +29,8 @@ export interface PublicEvent {
   brand?: Brand
   /** The studio bought "Find my photos" for this event: guests can search with a selfie. Absent from older servers. */
   faceSearch?: boolean
+  /** Private gallery: guests see only the photos a selfie finds them in, never the whole gallery. */
+  privateGallery?: boolean
 }
 
 export interface PublicPhoto {
@@ -483,6 +485,10 @@ export interface FaceSearchStatus {
   total: number
   mainPrice: number
   quickPrice: number
+  /** Bought for this event: the studio may switch it on and off itself. */
+  paid?: boolean
+  /** Guests see only the photos they are in (selfie first). Needs face search on. */
+  privateGallery?: boolean
 }
 
 export interface EventPayment {

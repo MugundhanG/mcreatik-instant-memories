@@ -492,12 +492,15 @@ public class BillingService {
             }
             case FACE_SEARCH -> {
                 ownedEvent(studioId, p.eventId());
-                var row = jdbc.queryForMap("SELECT event_type, face_search_enabled FROM events WHERE id = ?", p.eventId());
+                var row = jdbc.queryForMap("SELECT event_type, face_search_enabled, face_search_paid FROM events WHERE id = ?", p.eventId());
                 if (EventType.CLIENT.name().equals(row.get("event_type"))) {
                     throw ApiException.badRequest("NOT_AVAILABLE", "Face search is for guest galleries (Main and Quick events)");
                 }
                 if (Boolean.TRUE.equals(row.get("face_search_enabled"))) {
                     throw ApiException.conflict("ALREADY_ENABLED", "Face search is already on for this event");
+                }
+                if (Boolean.TRUE.equals(row.get("face_search_paid"))) {
+                    throw ApiException.conflict("ALREADY_PAID", "Face search is already paid for this event: turn it on in Settings");
                 }
                 int price = EventType.QUICK.name().equals(row.get("event_type")) ? s.faceSearchQuickPrice() : s.faceSearchMainPrice();
                 yield new Quote(Item.FACE_SEARCH, 1, price, price, p.eventId(), null);
@@ -685,6 +688,7 @@ public class BillingService {
                     sign > 0 ? EventType.MAIN.name() : EventType.QUICK.name(), eventId, studioId);
             case FACE_SEARCH -> {
                 // On at once (indexing starts by itself); a rejected payment switches it off and deletes the face data.
+                faces.setPaid(eventId, sign > 0);
                 if (sign > 0) {
                     faces.enable(eventId);
                 } else {

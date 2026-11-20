@@ -23,8 +23,10 @@ export function withDownloadParam(url: string): string {
 }
 
 /** The API's own download of a guest photo (attachment, no CORS needed for a plain link). */
-export function guestDownloadUrl(eventSlug: string, photoId: string): string {
-  return `${API_BASE_URL}/api/public/events/${encodeURIComponent(eventSlug)}/photos/${encodeURIComponent(photoId)}/download`
+/** {@code matchId}: a Find my photos match (a private gallery serves a guest only their own photos, with it). */
+export function guestDownloadUrl(eventSlug: string, photoId: string, matchId?: string | null): string {
+  const base = `${API_BASE_URL}/api/public/events/${encodeURIComponent(eventSlug)}/photos/${encodeURIComponent(photoId)}/download`
+  return matchId ? `${base}?match=${encodeURIComponent(matchId)}` : base
 }
 
 async function fetchBlob(url: string): Promise<Blob> {

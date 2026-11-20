@@ -163,6 +163,8 @@ export default function GalleryPage() {
   const contactText = `Hi ${brand.name}, I saw your photos at ${event.name} and would like to know about booking you for an event.`
   // The photographer's chosen cover; until one is set, the newest photo.
   const cover = event.coverUrl ?? photos[0]?.webUrl ?? null
+  // Private gallery: guests see only the photos a selfie finds them in (Find my photos is the whole page).
+  const isPrivate = !!event.privateGallery && !!event.faceSearch
 
   return (
     <div className="min-h-dvh">
@@ -192,7 +194,7 @@ export default function GalleryPage() {
       <div className="relative z-10 mx-3 -mt-6 flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.12)] sm:mx-auto sm:max-w-xl">
         <StatusBadge status={event.status} connection={connection} />
         <span className="shrink-0 text-xs whitespace-nowrap text-muted">
-          {event.photoCount > 0 ? `${formatCount(event.photoCount)} photos` : 'Photos coming soon'}
+          {isPrivate ? 'Private gallery' : event.photoCount > 0 ? `${formatCount(event.photoCount)} photos` : 'Photos coming soon'}
         </span>
         {brand.instagram && (
           <InstagramLink handle={brand.instagram} onClick={() => onActivity('INSTAGRAM')} className="-my-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-[#b37a2c] hover:bg-stone-100">
@@ -220,10 +222,10 @@ export default function GalleryPage() {
       )}
 
       {event.faceSearch && (
-        <FindMyPhotos event={event} instagram={brand.instagram} onActivity={onFaceActivity} liked={isLiked} onToggleLike={toggleFaceLike} onRequestHd={requestHd} />
+        <FindMyPhotos event={event} instagram={brand.instagram} onActivity={onFaceActivity} liked={isLiked} onToggleLike={toggleFaceLike} onRequestHd={requestHd} privateMode={isPrivate} />
       )}
 
-      {incoming.length > 0 && (
+      {!isPrivate && incoming.length > 0 && (
         <div className="anim-drop-in sticky top-3 z-30 flex justify-center">
           <button
             type="button"
@@ -235,7 +237,7 @@ export default function GalleryPage() {
         </div>
       )}
 
-      <main className="pt-4">
+      {!isPrivate && <main className="pt-4">
         {categories.length > 0 && (
           <div role="tablist" aria-label="Photo categories" className="mb-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none]">
             {[{ id: null, name: 'All' }, ...categories].map((c) => {
@@ -258,7 +260,7 @@ export default function GalleryPage() {
           <PhotoGrid photos={photos} onOpen={open} onNearEnd={loadMore} hasMore={nextCursor !== null} />
         )}
         {gallery.loadingMore && <ShutterLoader label="Loading more" className="py-6 [&_svg]:size-8" />}
-      </main>
+      </main>}
 
       <footer className="px-4 pt-10 pb-12 text-center">
         {brand.instagram && <div className="mx-auto mb-6 flex max-w-md items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-[0_6px_24px_rgba(0,0,0,0.08)]">
@@ -284,7 +286,7 @@ export default function GalleryPage() {
         </p>
       </footer>
 
-      {selectedIndex >= 0 && (
+      {!isPrivate && selectedIndex >= 0 && (
         <PhotoViewer
           photos={photos}
           index={selectedIndex}
