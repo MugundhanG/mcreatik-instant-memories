@@ -24,7 +24,7 @@ function serve(initial: FaceSearchStatus) {
   const fn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
     if (url.endsWith('/face-search')) {
-      if (init?.method === 'PUT') current = { ...current, enabled: JSON.parse(String(init.body)).enabled }
+      if (init?.method === 'PUT') current = { ...current, ...JSON.parse(String(init.body)) }
       return new Response(JSON.stringify(current), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
     return new Response('{}', { status: 404 })
@@ -41,7 +41,9 @@ describe('Face search card', () => {
     render(<FaceSearchCard event={event()} billing={billing} superAdmin={false} />)
     expect(await screen.findByRole('button', { name: 'Add face search — ₹999' })).toBeInTheDocument()
     expect(screen.getByTestId('face-search-state')).toHaveTextContent('Off')
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    // Not bought yet: both switches are there but locked.
+    expect(screen.getByRole('switch', { name: 'Find my photos' })).toBeDisabled()
+    expect(screen.getByRole('switch', { name: 'Private gallery' })).toBeDisabled()
     await userEvent.click(screen.getByRole('button', { name: /Add face search/ }))
     expect(screen.getByRole('dialog', { name: 'Find my photos' })).toBeInTheDocument()
     expect(screen.getByTestId('amount')).toHaveTextContent('₹999')
@@ -72,14 +74,39 @@ describe('Face search card', () => {
     expect(await screen.findByText('Server feature flag is off.')).toBeInTheDocument()
   })
 
-  it('lets only the super admin switch it on and off', async () => {
+  it('lets the super admin switch it on for a free trial', async () => {
     const fn = serve(status())
     render(<FaceSearchCard event={event()} billing={billing} superAdmin />)
-    const toggle = await screen.findByRole('switch', { name: 'Face search for this event' })
-    await userEvent.click(toggle)
+    await userEvent.click(await screen.findByRole('switch', { name: 'Find my photos' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Turn on' }))
     await waitFor(() => expect(screen.getByTestId('face-search-state')).toHaveTextContent('On'))
     const put = fn.mock.calls.find(([, init]) => init?.method === 'PUT')!
     expect(JSON.parse(String(put[1]!.body))).toEqual({ enabled: true })
+  })
+
+  it('lets a studio that paid switch face search and the private gallery itself', async () => {
+    const fn = serve(status({ enabled: true, paid: true, indexed: 10, total: 10 }))
+    render(<FaceSearchCard event={event()} billing={billing} superAdmin={false} />)
+    const privateSwitch = await screen.findByRole('switch', { name: 'Private gallery' })
+    expect(privateSwitch).toBeEnabled()
+    await userEvent.click(privateSwitch)
+    await userEvent.click(await screen.findByRole('button', { name: 'Make private' }))
+    await waitFor(() => expect(screen.getByTestId('private-gallery-state')).toHaveTextContent('On'))
+    const puts = () => fn.mock.calls.filter(([, init]) => init?.method === 'PUT').map(([, init]) => JSON.parse(String(init!.body)))
+    expect(puts()).toEqual([{ privateGallery: true }])
+
+    await userEvent.click(screen.getByRole('switch', { name: 'Find my photos' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Turn off' }))
+    await waitFor(() => expect(screen.getByTestId('face-search-state')).toHaveTextContent('Off'))
+    expect(puts()).toEqual([{ privateGallery: true }, { enabled: false }])
+  })
+
+  it('keeps the private gallery locked while face search is off', async () => {
+    serve(status({ paid: true }))
+    render(<FaceSearchCard event={event()} billing={billing} superAdmin={false} />)
+    expect(await screen.findByRole('switch', { name: 'Private gallery' })).toBeDisabled()
+    expect(screen.getByText('Needs Find my photos on.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Add face search/ })).not.toBeInTheDocument() // paid already
   })
 
   it('is not shown for a client gallery', async () => {

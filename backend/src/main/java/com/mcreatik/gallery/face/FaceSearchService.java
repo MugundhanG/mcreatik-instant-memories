@@ -43,6 +43,8 @@ public class FaceSearchService {
     private static final Logger log = LoggerFactory.getLogger(FaceSearchService.class);
     private static final ZoneId INDIA = ZoneId.of("Asia/Kolkata");
     private static final long HOUR_MS = 3_600_000L;
+    /** Searches one automatic update makes (the strongest faces of the guest's first match). */
+    static final int REFRESH_SEEDS = 3;
     private static final Runnable NOTHING = () -> {
     };
 
@@ -99,6 +101,29 @@ public class FaceSearchService {
         return config.enabled() && event.isFaceSearchEnabled() && event.getEventType() != EventType.CLIENT;
     }
 
+    /** Private gallery: guests see only the photos a selfie found them in, never the whole gallery. */
+    public boolean isPrivate(Event event) {
+        return searchable(event) && event.isFacePrivate();
+    }
+
+    /** Turns the private gallery on or off; it needs face search, so turning face search off also ends it. */
+    public void setPrivate(UUID eventId, boolean on) {
+        jdbc.update("UPDATE events SET face_private = ?, updated_at = now() WHERE id = ?", on, eventId);
+    }
+
+    /** The studio bought (sign 1) or a rejected payment took back (sign -1) the add-on for this event. */
+    public void setPaid(UUID eventId, boolean paid) {
+        jdbc.update("UPDATE events SET face_search_paid = ? WHERE id = ?", paid, eventId);
+    }
+
+    /** True when the photo is one of the remembered match's (a private gallery's downloads need this). */
+    public boolean matchShows(Event event, String matchId, UUID photoId) {
+        UUID id = parse(matchId);
+        return id != null && matches.find(event.getId(), id)
+                .map(m -> visiblePhotos(event.getId(), m.faceIds()).stream().anyMatch(p -> p.id().equals(photoId)))
+                .orElse(false);
+    }
+
     public void requireSearchable(Event event) {
         if (!searchable(event)) {
             throw new ApiException(HttpStatus.NOT_FOUND, "FACE_SEARCH_OFF", "Face search is not available for this gallery");
@@ -125,7 +150,7 @@ public class FaceSearchService {
     /** The add-on is off (or a payment was rejected): the event's faces and collection are deleted. */
     @Transactional
     public void disable(UUID eventId) {
-        jdbc.update("UPDATE events SET face_search_enabled = false, updated_at = now() WHERE id = ?", eventId);
+        jdbc.update("UPDATE events SET face_search_enabled = false, face_private = false, updated_at = now() WHERE id = ?", eventId);
         jdbc.update("DELETE FROM photo_faces WHERE event_id = ?", eventId);
         matches.deleteForEvent(eventId);
         jdbc.update("UPDATE photos SET face_indexed_at = NULL, face_attempts = 0, face_next_attempt_at = NULL WHERE event_id = ?", eventId);
@@ -265,7 +290,8 @@ public class FaceSearchService {
         requireSearchable(event);
         GuestMatchService.Match m = requireMatch(event, matchId);
         if (matches.hasNew(m.id())) {
-            List<String> seeds = existingFaces(event.getId(), m.seedFaceIds());
+            // At most REFRESH_SEEDS searches per update: guests' galleries update by themselves, so this bounds the cost.
+            List<String> seeds = existingFaces(event.getId(), m.seedFaceIds()).stream().limit(REFRESH_SEEDS).toList();
             if (seeds.isEmpty()) {
                 matches.update(m.id(), m.seedFaceIds(), m.faceIds(), matches.now()); // nothing to search by; just mark checked
             } else {

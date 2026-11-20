@@ -9,8 +9,10 @@ describe('Privacy page', () => {
     const text = document.body.textContent ?? ''
     expect(text).toMatch(/only at events where the studio has bought it/)
     expect(text).toMatch(/your choice/)
-    expect(text).toMatch(/selfie is used once/)
-    expect(text).toMatch(/not saved/)
+    expect(text).toMatch(/sent once, for that search/)
+    expect(text).toMatch(/Our server does not save it or log it/)
+    expect(text).toMatch(/stays only on your own phone/)
+    expect(text).toMatch(/gallery private/)
     expect(text).toMatch(/Amazon Web Services \(AWS\) in Mumbai, India/)
     expect(text).toMatch(/Face templates are deleted when a photo is removed/)
     expect(text).toMatch(/30 days after the gallery's open period ends/)

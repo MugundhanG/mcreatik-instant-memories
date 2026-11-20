@@ -70,7 +70,7 @@ export function mockFetch(routes: Record<string, Handler>) {
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
     const handler = routes[url.pathname]
     if (!handler) return new Response(JSON.stringify({ code: 'NOT_FOUND', message: 'Not found' }), { status: 404 })
-    const result = handler(url)
+    const result = await handler(url)
     if (result instanceof Response) return result
     return new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } })
   })

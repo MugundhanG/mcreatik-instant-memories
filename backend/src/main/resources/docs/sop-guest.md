@@ -37,11 +37,13 @@ Keep the page open. New photos appear by themselves, usually within seconds of b
 
 Some galleries have a **Find my photos** button near the top. It shows only the photos you are in.
 
-1. Tap **Find my photos**. Read the short notice, tick **I agree**, and tap **Take a selfie**.
-2. Take a selfie in good light, facing the camera. Your phone's front camera opens (or choose a photo).
-3. In a few seconds you see **Photos of you**. Tap a photo to view, like or download it, as in the main gallery.
-4. Your phone remembers you. Next time you open the gallery on the same phone, **Photos of you** is already there, with no new selfie. Tap **Update my photos** to look for photos added since (it says **New photos may be ready** when there are some).
-5. Tap **Forget me** to remove it from this phone and our server. Tap **Search again** to try another selfie, or **Back to all photos** to return to everything.
+1. Tap **Find my photos**. Read the short notice, tick **I agree**, and tap **Open the camera**. Allow the camera if your phone asks.
+2. Your phone's **front camera** opens inside the page (only the front camera: you can't switch to the back camera or pick a saved photo). Fit your face in the oval, in good light, and tap the round button. Tap **OK, find my photos**, or **Retake**.
+3. A short face scan plays while we look, then you see **Photos of you**. Tap a photo to view, like or download it, as in the main gallery.
+4. You take the selfie **once**. Your phone remembers you: new photos of you appear by themselves while the page is open and whenever you come back, with no new selfie. If no photos of you are there yet, the page keeps looking as new photos arrive.
+5. Tap **Forget me** to remove it all from this phone and our server (then you could take a new selfie).
+
+**Private galleries:** some studios make the gallery private. Then you see no photos at all until you take your selfie, and after that only the photos you are in.
 
 If the selfie looks too dark, too bright, blurry or small, the page tells you what to fix (move to better light, hold the phone still, come closer) and you can retake it. If you are sure it is fine, tap **Use anyway** (shown after two tries).
 

@@ -38,10 +38,12 @@ public class PublicGalleryController {
 
     private final com.mcreatik.gallery.album.AlbumService album;
     private final StorageService storage;
+    private final com.mcreatik.gallery.face.FaceSearchService faces;
 
     public PublicGalleryController(EventService events, PhotoRepository photos, PhotoMapper mapper,
                                    GalleryBroadcaster broadcaster, com.mcreatik.gallery.album.AlbumService album,
-                                   StorageService storage) {
+                                   StorageService storage, com.mcreatik.gallery.face.FaceSearchService faces) {
+        this.faces = faces;
         this.storage = storage;
         this.album = album;
         this.events = events;
@@ -69,6 +71,7 @@ public class PublicGalleryController {
             throw ApiException.badRequest("INVALID_QUERY", "Use either before or after, not both");
         }
         Event event = events.publicEvent(slug);
+        requireOpen(event);
         List<Photo> page;
         String next = null;
         if (after != null) {
@@ -100,8 +103,13 @@ public class PublicGalleryController {
      */
     @GetMapping("/photos/{photoId}/download")
     public ResponseEntity<org.springframework.core.io.InputStreamResource> download(@PathVariable String slug,
-                                                                                    @PathVariable java.util.UUID photoId) {
+                                                                                    @PathVariable java.util.UUID photoId,
+                                                                                    @RequestParam(required = false) String match) {
         Event event = events.publicEvent(slug);
+        // A private gallery: only a photo of the guest's own match (no match, or not in it, looks like a missing photo).
+        if (faces.isPrivate(event) && !faces.matchShows(event, match, photoId)) {
+            throw ApiException.notFound("Photo");
+        }
         Photo photo = photos.findByIdAndEventId(photoId, event.getId())
                 .filter(p -> p.getGallery() == com.mcreatik.gallery.photo.Gallery.GUEST
                         && p.getStatus() == com.mcreatik.gallery.photo.PhotoStatus.READY && !p.isHidden()
@@ -122,6 +130,9 @@ public class PublicGalleryController {
     @GetMapping("/categories")
     public ResponseEntity<List<com.mcreatik.gallery.album.AlbumDtos.Category>> categories(@PathVariable String slug) {
         Event event = events.publicEvent(slug);
+        if (faces.isPrivate(event)) {
+            return ResponseEntity.ok().cacheControl(CacheControl.noCache()).body(List.of());
+        }
         return ResponseEntity.ok().cacheControl(CacheControl.noCache())
                 .body(album.visibleCategories(event.getId(), com.mcreatik.gallery.photo.Gallery.GUEST).stream().filter(c -> c.photos() > 0).toList());
     }
@@ -129,9 +140,18 @@ public class PublicGalleryController {
     @GetMapping(path = "/stream", produces = "text/event-stream")
     public ResponseEntity<SseEmitter> stream(@PathVariable String slug) {
         Event event = events.publicEvent(slug);
+        requireOpen(event); // a private gallery's guests get their new photos through their own match instead
         return ResponseEntity.ok()
                 .header("Cache-Control", "no-cache, no-transform")
                 .header("X-Accel-Buffering", "no")
                 .body(broadcaster.subscribe(event.getId()));
+    }
+
+    /** A private gallery never lists all its photos: guests see only the ones their selfie found. */
+    private void requireOpen(Event event) {
+        if (faces.isPrivate(event)) {
+            throw new ApiException(org.springframework.http.HttpStatus.FORBIDDEN, "PRIVATE_GALLERY",
+                    "This gallery is private: take a selfie to see the photos you are in");
+        }
     }
 }

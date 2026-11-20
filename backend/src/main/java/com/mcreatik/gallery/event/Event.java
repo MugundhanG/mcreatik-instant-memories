@@ -92,6 +92,14 @@ public class Event {
     @Column(name = "face_search_enabled", nullable = false)
     private boolean faceSearchEnabled;
 
+    /** "Private gallery": guests see only the photos they are in (written with SQL by FaceSearchService). */
+    @Column(name = "face_private", insertable = false, updatable = false)
+    private boolean facePrivate;
+
+    /** The studio bought face search for this event, so it may switch it on and off (written with SQL). */
+    @Column(name = "face_search_paid", insertable = false, updatable = false)
+    private boolean faceSearchPaid;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -267,6 +275,14 @@ public class Event {
 
     public boolean isFaceSearchEnabled() {
         return faceSearchEnabled;
+    }
+
+    public boolean isFacePrivate() {
+        return facePrivate;
+    }
+
+    public boolean isFaceSearchPaid() {
+        return faceSearchPaid;
     }
 
     public Instant getCreatedAt() {
