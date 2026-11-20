@@ -62,8 +62,11 @@ public class FaceSearchService {
     public static final String TYPE_UPDATE = "FACE_UPDATE";
     private static final java.util.regex.Pattern VISITOR_ID = java.util.regex.Pattern.compile("^[A-Za-z0-9-]{8,40}$");
 
-    /** {@code indexed} of {@code total} guest photos have their faces in the engine. */
-    public record Status(boolean enabled, boolean available, long indexed, long total) {
+    /**
+     * {@code indexed} of {@code total} guest photos have their faces in the engine. {@code problem}: the engine is
+     * refusing because of the account setup (permissions, an organization policy, keys), null when it works.
+     */
+    public record Status(boolean enabled, boolean available, long indexed, long total, String problem) {
     }
 
     private final FaceSearchProvider provider;
@@ -74,6 +77,8 @@ public class FaceSearchService {
     private final GalleryProperties.FaceSearch config;
 
     private final Set<String> knownCollections = ConcurrentHashMap.newKeySet();
+    /** The engine's latest account setup refusal (shown on the dashboard), cleared by the next call that works. */
+    private volatile String problem;
     private final Map<String, ArrayDeque<Long>> searchesByIp = new ConcurrentHashMap<>();
     private final Map<String, ArrayDeque<Long>> searchesByVisitor = new ConcurrentHashMap<>();
 
@@ -99,6 +104,23 @@ public class FaceSearchService {
     /** Guests can search this event: the switch is on, the event has the add-on (the gallery being open is checked by the caller). */
     public boolean searchable(Event event) {
         return config.enabled() && event.isFaceSearchEnabled() && event.getEventType() != EventType.CLIENT;
+    }
+
+    /** The engine refused because of the account setup: remembered for the dashboard (once per change in the log). */
+    public void reportAccessProblem(Throwable e) {
+        String text = FaceSearchProvider.describeAccessProblem(e);
+        if (!text.equals(problem)) {
+            log.warn("Face search: the engine refuses because of the AWS account setup: {}", text);
+        }
+        problem = text;
+    }
+
+    /** A call to the engine worked: any setup problem is fixed. */
+    public void clearProblem() {
+        if (problem != null) {
+            log.info("Face search: the engine works again");
+        }
+        problem = null;
     }
 
     /** Private gallery: guests see only the photos a selfie found them in, never the whole gallery. */
@@ -230,7 +252,8 @@ public class FaceSearchService {
         Long indexed = jdbc.queryForObject("""
                 SELECT count(*) FROM photos WHERE event_id = ? AND gallery = 'GUEST' AND status = 'READY'
                   AND face_indexed_at IS NOT NULL""", Long.class, event.getId());
-        return new Status(event.isFaceSearchEnabled(), config.enabled(), indexed == null ? 0 : indexed, total == null ? 0 : total);
+        return new Status(event.isFaceSearchEnabled(), config.enabled(), indexed == null ? 0 : indexed, total == null ? 0 : total,
+                problem);
     }
 
     // ---- Guest search ----
@@ -259,8 +282,9 @@ public class FaceSearchService {
             throw ApiException.badRequest("BAD_IMAGE", "We couldn't read that photo. Please try another one.");
         } catch (RuntimeException e) {
             slots.refund(); // provider outage: nothing was searched
-            throw e;
+            throw unavailable(e);
         }
+        clearProblem();
         List<String> faceIds = found.stream().map(FaceSearchProvider.FaceMatch::faceId).distinct().toList();
         List<String> seeds = found.stream().sorted(Comparator.comparingDouble(FaceSearchProvider.FaceMatch::similarity).reversed())
                 .map(FaceSearchProvider.FaceMatch::faceId).distinct().limit(GuestMatchService.MAX_SEEDS).toList();
@@ -306,8 +330,9 @@ public class FaceSearchService {
                     }
                 } catch (RuntimeException e) {
                     slots.refund();
-                    throw e;
+                    throw unavailable(e);
                 }
+                clearProblem();
                 List<String> all = List.copyOf(merged);
                 matches.update(m.id(), seeds, all, checkedAt);
                 record(event.getId(), TYPE_UPDATE, visitor(visitorId), Math.max(0, visiblePhotos(event.getId(), all).size() - before));
@@ -316,6 +341,16 @@ public class FaceSearchService {
             m = matches.find(event.getId(), m.id()).orElse(m);
         }
         return view(event, m);
+    }
+
+    /** An account setup refusal becomes a friendly 503 for the guest (and a note for the dashboard); anything else as is. */
+    private RuntimeException unavailable(RuntimeException e) {
+        if (!FaceSearchProvider.isAccessProblem(e)) {
+            return e;
+        }
+        reportAccessProblem(e);
+        return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "FACE_SEARCH_UNAVAILABLE",
+                "Find my photos isn't working right now. Please try again in a little while.");
     }
 
     /** "Forget me": the match is deleted (always fine to repeat). */

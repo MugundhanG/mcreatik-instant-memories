@@ -101,6 +101,15 @@ describe('Face search card', () => {
     expect(puts()).toEqual([{ privateGallery: true }, { enabled: false }])
   })
 
+  it('shows why scanning is paused when AWS refuses', async () => {
+    serve(status({ enabled: true, paid: true, total: 53, problem: 'is not authorized to perform: rekognition:CreateCollection' }))
+    render(<FaceSearchCard event={event()} billing={billing} superAdmin />)
+    const note = await screen.findByTestId('face-search-problem')
+    expect(note).toHaveTextContent('Face scanning is paused.')
+    expect(note).toHaveTextContent('rekognition:CreateCollection')
+    expect(note).toHaveTextContent('face-search-check.sh')
+  })
+
   it('keeps the private gallery locked while face search is off', async () => {
     serve(status({ paid: true }))
     render(<FaceSearchCard event={event()} billing={billing} superAdmin={false} />)

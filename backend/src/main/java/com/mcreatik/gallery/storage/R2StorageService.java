@@ -56,7 +56,11 @@ public class R2StorageService implements StorageService {
                 .region(Region.of("auto"))
                 .credentialsProvider(credentials)
                 .serviceConfiguration(s3Config)
-                .httpClient(UrlConnectionHttpClient.create())
+                // Connect and idle-read limits (no whole-call limit: big originals stream for a while), so a stalled
+                // connection fails instead of blocking a worker for good.
+                .httpClient(UrlConnectionHttpClient.builder()
+                        .connectionTimeout(java.time.Duration.ofSeconds(10))
+                        .socketTimeout(java.time.Duration.ofSeconds(60)).build())
                 // R2 recommends only sending checksums when required.
                 .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
                 .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
