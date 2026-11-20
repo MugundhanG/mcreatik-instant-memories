@@ -52,6 +52,8 @@ public abstract class IntegrationTest {
         jdbc.execute("TRUNCATE photos, uploaders, events CASCADE");
     }
 
+    private static final java.util.concurrent.atomic.AtomicInteger LOGIN_IPS = new java.util.concurrent.atomic.AtomicInteger();
+
     protected String adminToken() throws Exception {
         if (cachedAdminToken == null) {
             cachedAdminToken = login(ADMIN_EMAIL, ADMIN_PASSWORD);
@@ -59,9 +61,15 @@ public abstract class IntegrationTest {
         return cachedAdminToken;
     }
 
+    /** Each login comes from its own address, so the shared brute-force limit never depends on test order or speed. */
     protected String login(String email, String password) throws Exception {
+        int n = LOGIN_IPS.incrementAndGet();
         MvcResult r = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}"))
+                        .content("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}")
+                        .with(req -> {
+                            req.setRemoteAddr("10.250." + (n / 250) % 250 + "." + (n % 250 + 1));
+                            return req;
+                        }))
                 .andExpect(status().isOk()).andReturn();
         return JsonPath.read(r.getResponse().getContentAsString(), "$.token");
     }
