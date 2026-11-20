@@ -41,7 +41,13 @@ public class RekognitionFaceSearchProvider implements FaceSearchProvider {
         this.client = RekognitionClient.builder()
                 .region(Region.of(region))
                 .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
-                .httpClient(UrlConnectionHttpClient.create())
+                // A call that hangs must never stall the face worker: connect, idle-read and whole-call time limits.
+                .httpClient(UrlConnectionHttpClient.builder()
+                        .connectionTimeout(java.time.Duration.ofSeconds(10))
+                        .socketTimeout(java.time.Duration.ofSeconds(30)).build())
+                .overrideConfiguration(software.amazon.awssdk.core.client.config.ClientOverrideConfiguration.builder()
+                        .apiCallAttemptTimeout(java.time.Duration.ofSeconds(30))
+                        .apiCallTimeout(java.time.Duration.ofSeconds(90)).build())
                 .build();
     }
 

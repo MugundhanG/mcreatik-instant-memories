@@ -45,9 +45,16 @@ public class FaceIndexWorker implements SmartLifecycle {
     /** How soon a photo is tried again after the account refused (a setup problem, not the photo's). */
     static final java.time.Duration ACCESS_RETRY = java.time.Duration.ofMinutes(3);
 
+    /** A worker that has not finished a round for this long is stuck (a call that never returns): a new one takes over. */
+    static final java.time.Duration STUCK_AFTER = java.time.Duration.ofMinutes(5);
+
     private final Object signal = new Object();
     private Thread thread;
     private volatile boolean running;
+    /** Each worker thread runs while its generation is current; the watchdog starts a new generation. */
+    private volatile int generation;
+    /** When the worker last finished a round (or started). */
+    private volatile long lastBeat = System.currentTimeMillis();
 
     public FaceIndexWorker(JdbcClient jdbc, TransactionTemplate tx, StorageService storage, FaceSearchProvider provider,
                            FaceSearchService service, GalleryProperties properties) {
@@ -65,8 +72,27 @@ public class FaceIndexWorker implements SmartLifecycle {
             return;
         }
         running = true;
-        thread = Thread.ofPlatform().name("face-worker").daemon(true).start(this::loop);
+        startThread();
         log.info("Started the face index worker");
+    }
+
+    private synchronized void startThread() {
+        int mine = ++generation;
+        lastBeat = System.currentTimeMillis();
+        thread = Thread.ofPlatform().name("face-worker-" + mine).daemon(true).start(() -> loop(mine));
+    }
+
+    /** Watchdog: a worker stuck in one round for STUCK_AFTER is replaced, so face scanning never stops for good. */
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
+    public void watchdog() {
+        if (running && System.currentTimeMillis() - lastBeat > STUCK_AFTER.toMillis()) {
+            log.error("Face worker made no progress for {} minutes: starting a new one", STUCK_AFTER.toMinutes());
+            Thread old = thread;
+            startThread();
+            if (old != null) {
+                old.interrupt();
+            }
+        }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
@@ -80,8 +106,9 @@ public class FaceIndexWorker implements SmartLifecycle {
         }
     }
 
-    private void loop() {
-        while (running) {
+    private void loop(int mine) {
+        while (running && mine == generation) {
+            lastBeat = System.currentTimeMillis();
             try {
                 if (!processNext()) {
                     synchronized (signal) {
@@ -91,7 +118,7 @@ public class FaceIndexWorker implements SmartLifecycle {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
-            } catch (Exception e) {
+            } catch (Throwable e) { // also Errors: the worker thread must never die quietly
                 log.error("Face worker loop error", e);
                 try {
                     Thread.sleep(2_000);
