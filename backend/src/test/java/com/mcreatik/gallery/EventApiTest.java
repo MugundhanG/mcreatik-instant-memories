@@ -26,7 +26,9 @@ class EventApiTest extends IntegrationTest {
         // Open for 3 months after the event, deleted 30 days later.
         assertThat((String) JsonPath.read(json, "$.activeUntil")).isEqualTo("2027-01-10");
         assertThat((String) JsonPath.read(json, "$.retentionUntil")).isEqualTo("2027-02-09");
-        assertThat((Integer) JsonPath.read(json, "$.storageQuotaGb")).isEqualTo(5);
+        // A Main event gets the storage included with a Main event (a setting other tests may change, so read it).
+        assertThat((Integer) JsonPath.read(json, "$.storageQuotaGb"))
+                .isEqualTo(jdbc.queryForObject("SELECT free_storage_gb FROM billing_settings", Integer.class));
         assertThat((String) JsonPath.read(json, "$.eventType")).isEqualTo("MAIN");
     }
 
