@@ -115,6 +115,29 @@ describe('Photo viewer', () => {
     expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).endsWith('/web/3.jpg'))).toBe(false)
   })
 
+  it('watermark on: the photo is marked before saving, and the clean media file is never the fallback', async () => {
+    const user = userEvent.setup()
+    const createObjectURL = vi.fn(() => 'blob:photo')
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }))
+    // jsdom has no canvas image decoding: marking fails here, so the server-marked API download must be used.
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => { throw new Error('no decoder') }))
+    const fetchMock = mockFetch({
+      [base]: () => ({ ...liveEvent, watermark: true }),
+      [`${base}/photos`]: () => ({ photos: [photo(3), photo(2), photo(1)], nextCursor: null }),
+      '/web/3.jpg': () => new Response(new Uint8Array([0xff, 0xd8, 0xff]), { headers: { 'Content-Type': 'image/jpeg' } }),
+      [apiDownload(3)]: () => new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), { headers: { 'Content-Type': 'image/jpeg' } }),
+    })
+    renderGallery()
+    await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
+    await user.click(screen.getByRole('button', { name: 'Download' }))
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
+    const urls = fetchMock.mock.calls.map(([u]) => String(u))
+    expect(urls.some((u) => u.includes(apiDownload(3)))).toBe(true)
+    // Only the attempt to mark it in the browser read the media file; the saved file came from the API.
+    const saved = (createObjectURL.mock.calls[0] as unknown as [Blob])[0]
+    expect(saved.size).toBe(4)
+  })
+
   it('guests get Like in place of Share', async () => {
     const user = userEvent.setup()
     renderGallery()

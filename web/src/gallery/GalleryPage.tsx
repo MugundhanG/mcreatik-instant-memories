@@ -17,6 +17,7 @@ import { removalRequestLink } from '../shared/privacy'
 import { PhotoViewer } from './PhotoViewer'
 import { FindMyPhotos } from './FindMyPhotos'
 import { useLiveGallery } from './useLiveGallery'
+import { useWatermarker } from '../lib/watermark'
 import EnvBadge from '../shared/EnvBadge'
 
 /** Guests closer than this to the top see new photos inserted immediately. */
@@ -46,6 +47,7 @@ export default function GalleryPage() {
   }, [slug])
   const gallery = useLiveGallery(slug, shouldShowImmediately, category)
   const { event, photos, incoming, status, connection, nextCursor, loadMore, showIncoming } = gallery
+  const watermark = useWatermarker({ slug, watermark: event?.watermark, brand: event?.brand, name: event?.name ?? '' })
 
   // Analytics: one visit per tab, marked as a QR scan when the poster's QR (…?src=qr) opened it.
   const [source] = useState<'qr' | 'link'>(() => (params.get('src') === 'qr' ? 'qr' : 'link'))
@@ -301,6 +303,7 @@ export default function GalleryPage() {
           liked={isLiked}
           onToggleLike={toggleLike}
           onRequestHd={requestHd}
+          watermark={watermark}
           actions={(p) => (
             <a href={removalRequestLink(event.name, p)}
               className="inline-flex h-10 items-center justify-center rounded-full px-4 text-xs text-white/70 underline-offset-4 hover:text-white hover:underline">

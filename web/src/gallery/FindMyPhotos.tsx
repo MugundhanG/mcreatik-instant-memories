@@ -12,6 +12,7 @@ import { FaceScan, SCAN_MIN_MS } from './FaceScan'
 import { PhotoGrid } from './PhotoGrid'
 import { PhotoViewer } from './PhotoViewer'
 import { SelfieCamera } from './SelfieCamera'
+import { useWatermarker } from '../lib/watermark'
 
 const CONSENT_TEXT =
   'Take a selfie to see only the photos you’re in. Your selfie is sent once to find you and is not saved on our server. This phone then remembers your photos with a random code, so you never need another selfie; until your first photo is found, the selfie stays only on this phone to keep looking as new photos arrive. Tap “Forget me” any time to delete it all.'
@@ -65,6 +66,7 @@ export function FindMyPhotos({ event, instagram, onActivity, liked, onToggleLike
   privateMode?: boolean
 }) {
   const slug = event.slug
+  const watermark = useWatermarker(event)
   const [step, setStep] = useState<Step>('idle')
   const [agreed, setAgreed] = useState(false)
   const [photos, setPhotos] = useState<PublicPhoto[]>([])
@@ -379,6 +381,7 @@ export function FindMyPhotos({ event, instagram, onActivity, liked, onToggleLike
           onToggleLike={onToggleLike}
           onRequestHd={onRequestHd}
           matchId={matchId}
+          watermark={watermark}
           actions={(p) => (
             <a href={removalRequestLink(event.name, p)}
               className="inline-flex h-10 items-center justify-center rounded-full px-4 text-xs text-white/70 underline-offset-4 hover:text-white hover:underline">

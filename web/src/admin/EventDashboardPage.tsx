@@ -14,6 +14,7 @@ import { QrPanel } from './QrPanel'
 import { UpgradeBanner } from './UpgradeBanner'
 import { GalleryStorageCard } from './GalleryStorageCard'
 import { FaceSearchCard } from './FaceSearchCard'
+import { WatermarkCard } from './WatermarkCard'
 import { EventStatusMenu } from './EventStatusMenu'
 import { Button, Card, ErrorText, Field, inputClass, Tabs } from './ui'
 import { useConfirm } from './useConfirm'
@@ -324,7 +325,7 @@ export default function EventDashboardPage() {
 
       {!clientOnly && (
         <section {...panel('guests')} className="anim-fade-in">
-          <AnalyticsPanel eventId={event.id} live={event.status === 'LIVE'} eventName={event.name} />
+          <AnalyticsPanel eventId={event.id} live={event.status === 'LIVE'} eventName={event.name} eventDate={event.eventDate} studioName={event.brand?.name ?? event.ownerName ?? ''} />
         </section>
       )}
 
@@ -334,6 +335,7 @@ export default function EventDashboardPage() {
 
       <section {...panel('settings')} className="anim-fade-in space-y-6">
         <GalleryAccessCard event={event} superAdmin={superAdmin} onChange={setEvent} />
+        {!clientOnly && <WatermarkCard event={event} onChange={setEvent} />}
         {!clientOnly && <FaceSearchCard event={event} billing={billing} superAdmin={superAdmin} />}
         <Card title="Privacy & data">
           <div className="flex flex-wrap items-end justify-between gap-4">

@@ -31,6 +31,8 @@ export interface PublicEvent {
   faceSearch?: boolean
   /** Private gallery: guests see only the photos a selfie finds them in, never the whole gallery. */
   privateGallery?: boolean
+  /** Photos guests download or share carry the studio's logo (or name). Absent from older servers: off. */
+  watermark?: boolean
 }
 
 export interface PublicPhoto {
@@ -167,6 +169,8 @@ export interface EventDetail {
   /** The couple's gallery is waiting for storage to be bought. */
   storageLocked?: boolean
   expired?: boolean
+  /** The studio's logo on photos guests download and share (on by default). */
+  watermark?: boolean
 }
 
 /** The camera itself (its FTP session), apart from the laptop: UNKNOWN for an older uploader app. */

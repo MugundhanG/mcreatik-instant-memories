@@ -1,68 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { adminApi } from '../lib/api'
-import { formatCount, timeAgo } from '../lib/format'
+import { formatCount, formatEventDate, timeAgo } from '../lib/format'
 import type { GuestAnalytics, HqRequest, TopPhoto } from '../lib/types'
 import { waLink } from '../shared/phone'
 import { ShutterLoader } from '../shared/ShutterLoader'
-import { Card, Stat, Tabs } from './ui'
+import { buckets } from './analyticsBuckets'
+import { generateReport, type ReportFormat } from './guestReport'
+import { Button, Card, Stat, Tabs } from './ui'
 
 const REFRESH_MS = 30_000
-/** Longer than this, the chart shows days instead of hours. */
-const MAX_HOURS = 48
 const BAR = '#b37a2c'
-
-interface Bucket {
-  key: string
-  label: string
-  people: number
-  photoViews: number
-  downloads: number
-}
-
-const pad = (n: number) => String(n).padStart(2, '0')
-/** "2026-10-31T19:00" (India time from the server) as a wall-clock date we can step through by hours. */
-const parseHour = (h: string) => new Date(`${h}:00Z`)
-const hourKey = (d: Date) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:00`
-const hourLabel = (d: Date) => {
-  const h = d.getUTCHours()
-  return `${h % 12 || 12} ${h < 12 ? 'AM' : 'PM'}`
-}
-const dayLabel = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-
-/** Hourly buckets with the quiet hours filled in, or daily ones for events spread over several days. */
-function buckets(hours: GuestAnalytics['hours']): { unit: 'hour' | 'day'; items: Bucket[] } {
-  if (hours.length === 0) return { unit: 'hour', items: [] }
-  const first = parseHour(hours[0].hour)
-  const last = parseHour(hours[hours.length - 1].hour)
-  const span = (last.getTime() - first.getTime()) / 3_600_000 + 1
-  const byKey = new Map(hours.map((h) => [h.hour, h]))
-  if (span <= MAX_HOURS) {
-    const items: Bucket[] = []
-    for (let t = first.getTime(); t <= last.getTime(); t += 3_600_000) {
-      const d = new Date(t)
-      const h = byKey.get(hourKey(d))
-      items.push({ key: hourKey(d), label: hourLabel(d), people: h?.people ?? 0, photoViews: h?.photoViews ?? 0, downloads: h?.downloads ?? 0 })
-    }
-    return { unit: 'hour', items }
-  }
-  // Per day: people are summed over hours (a guest active in two hours counts twice), as an activity measure.
-  const days = new Map<string, Bucket>()
-  for (const h of hours) {
-    const key = h.hour.slice(0, 10)
-    const b = days.get(key) ?? { key, label: dayLabel(parseHour(h.hour)), people: 0, photoViews: 0, downloads: 0 }
-    b.people += h.people
-    b.photoViews += h.photoViews
-    b.downloads += h.downloads
-    days.set(key, b)
-  }
-  return { unit: 'day', items: [...days.values()] }
-}
-
 const plural = (n: number, word: string) => `${formatCount(n)} ${word}${n === 1 ? '' : 's'}`
 const percent = (part: number, whole: number) => (whole > 0 ? `${Math.round((part / whole) * 100)}%` : '–')
 
 /** Guest analytics for one event: how many people opened the gallery, what they viewed and saved. */
-export function AnalyticsPanel({ eventId, live, eventName = 'the event' }: { eventId: string; live: boolean; eventName?: string }) {
+export function AnalyticsPanel({ eventId, live, eventName = 'the event', eventDate, studioName = '' }: { eventId: string; live: boolean; eventName?: string; eventDate?: string; studioName?: string }) {
   const [data, setData] = useState<GuestAnalytics | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -98,7 +50,7 @@ export function AnalyticsPanel({ eventId, live, eventName = 'the event' }: { eve
 
   const t = data.totals
   return (
-    <Card title="Guest activity">
+    <Card title="Guest activity" action={<ReportMenu eventId={eventId} eventName={eventName} dateLabel={eventDate ? formatEventDate(eventDate) : ''} studioName={studioName} data={data} />}>
       <div className="space-y-6" data-testid="analytics">
         <p className="-mt-1 text-xs text-muted">
           {data.lastActivityAt ? `Last activity ${timeAgo(data.lastActivityAt)}` : 'No guest activity yet. Share the QR code and it shows up here.'}
@@ -132,6 +84,42 @@ export function AnalyticsPanel({ eventId, live, eventName = 'the event' }: { eve
         <HqRequests eventId={eventId} eventName={eventName} />
       </div>
     </Card>
+  )
+}
+
+/** "Generate report": a one-page picture to send to the couple, or a PDF that also holds all the numbers. */
+function ReportMenu({ eventId, eventName, dateLabel, studioName, data }: { eventId: string; eventName: string; dateLabel: string; studioName: string; data: GuestAnalytics }) {
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const alive = useRef(true)
+  useEffect(() => () => { alive.current = false }, [])
+
+  const make = async (format: ReportFormat) => {
+    setBusy(true)
+    setError(null)
+    try {
+      await generateReport({ eventId, eventName, dateLabel, studioName, data, format })
+      if (alive.current) setOpen(false)
+    } catch (e) {
+      if (alive.current) setError(e instanceof Error && e.message ? e.message : 'Could not make the report. Please try again.')
+    } finally {
+      if (alive.current) setBusy(false)
+    }
+  }
+
+  return (
+    <div className="relative" data-testid="report-menu">
+      <Button onClick={() => setOpen((o) => !o)} disabled={busy} aria-expanded={open}>{busy ? 'Making report…' : 'Generate report'}</Button>
+      {open && (
+        <div className="absolute right-0 z-20 mt-2 w-60 space-y-2 rounded-xl border border-line bg-white p-3 shadow-lg">
+          <p className="text-xs text-muted">Share it with your client, or keep it as data.</p>
+          <Button className="w-full" disabled={busy} onClick={() => make('image')}>Download image</Button>
+          <Button className="w-full" disabled={busy} onClick={() => make('pdf')}>Download PDF</Button>
+          {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
+        </div>
+      )}
+    </div>
   )
 }
 

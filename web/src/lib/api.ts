@@ -159,6 +159,8 @@ export interface UpdateEventInput {
   coverPhotoId?: string
   retentionUntil?: string
   clearRetention?: boolean
+  /** The studio's logo on photos guests download and share. */
+  watermark?: boolean
 }
 
 export const adminApi = {

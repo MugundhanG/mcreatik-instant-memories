@@ -40,7 +40,9 @@ public final class EventDtos {
                                      EventStatus status,
                                      UUID coverPhotoId,
                                      LocalDate retentionUntil,
-                                     Boolean clearRetention) {
+                                     Boolean clearRetention,
+                                     /* the studio logo on guests' downloads and shares */
+                                     Boolean watermark) {
     }
 
     /** {@code ownerName}: the studio, shown to the super admin. */
@@ -55,7 +57,8 @@ public final class EventDtos {
                               UUID ownerId, String ownerName, StudioBranding.Brand brand,
                               boolean liveGalleryEnabled, boolean clientGalleryEnabled, EventType eventType,
                               LocalDate activeUntil, int storageQuotaGb, long storageBytes, boolean storageLocked,
-                              boolean expired, String liveGalleryBlocked, String clientGalleryBlocked) {
+                              boolean expired, String liveGalleryBlocked, String clientGalleryBlocked,
+                              boolean watermark) {
     }
 
     /**
@@ -87,6 +90,6 @@ public final class EventDtos {
 
     public record PublicEvent(String name, String slug, LocalDate eventDate, EventStatus status, boolean live,
                               String coverUrl, long photoCount, StudioBranding.Brand brand,
-                              boolean faceSearch, boolean privateGallery) {
+                              boolean faceSearch, boolean privateGallery, boolean watermark) {
     }
 }
