@@ -13,7 +13,7 @@ describe('Policy pages', () => {
       perEventPrice: 2499, monthlyPrice: 5000, monthlyEvents: 4, extraEventPrice: 999, currency: 'INR',
       packages: { main: 2499, quick: 1499, main2: 3499, main4: 4999, quick2: 2499, quick4: 3999, upgrade: 1000, upgradeGuests: 300,
         storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3,
-    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799, quickPackMain: 1499, faceSearchMain: 1099, faceSearchQuick: 549 },
+    main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799, quickPackMain: 1499, faceSearchMain: 499, faceSearchQuick: 299, facePackMain2: 500, facePackMain4: 1000, facePackQuick2: 500, facePackQuick4: 1000 },
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
     render(<PricingPage />)
     expect((await screen.findAllByText('₹2,499')).length).toBeGreaterThan(0)
@@ -30,7 +30,13 @@ describe('Policy pages', () => {
     expect(screen.getByText('Client gallery').parentElement).toHaveTextContent('₹250')
     expect(screen.getByText(/a full wedding of about 2,000 photos kept open for 3 months is ₹1,375/)).toBeInTheDocument()
     expect(screen.getByTestId('face-search-addon')).toHaveTextContent('Find my photos')
-    expect(screen.getByTestId('face-search-addon')).toHaveTextContent('+₹1,099 per Main event, +₹549 per Quick event')
+    expect(screen.getByTestId('face-search-addon')).toHaveTextContent('₹499 per Main event, ₹299 per Quick event')
+    // Pack + Find my photos totals.
+    expect(screen.getByRole('row', { name: /Main · 2 events a month/ })).toHaveTextContent('₹3,999')
+    expect(main4).toHaveTextContent('₹5,999')
+    expect(screen.getByRole('row', { name: /Quick · 2 events a month/ })).toHaveTextContent('₹2,999')
+    expect(screen.getByRole('row', { name: /Quick · 4 events a month/ })).toHaveTextContent('₹4,999')
+    expect(screen.getByText('With Find my photos')).toBeInTheDocument()
     expect(screen.getByTestId('face-search-addon')).toHaveTextContent('Private gallery')
     expect(screen.getAllByText(/a month per GB of photos/).length).toBeGreaterThan(0)
     expect(screen.getByText(/A Main event includes 5 GB \(about 400 full-quality photos\)/)).toBeInTheDocument()

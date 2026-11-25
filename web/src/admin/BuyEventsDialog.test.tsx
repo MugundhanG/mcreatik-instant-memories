@@ -186,4 +186,28 @@ describe('Buy events by UPI', () => {
     expect(screen.getByRole('link', { name: 'Pay with UPI app' })).toBeInTheDocument()
     expect(document.body.textContent).not.toMatch(/razorpay|card, netbanking/i)
   })
+
+  it('buys Find my photos for the pack by the month', async () => {
+    const user = userEvent.setup()
+    const fetchMock = paid()
+    vi.stubGlobal('fetch', fetchMock)
+    const main4 = { ...billing, plan: 'MAIN_4' as const, packActive: true, prices: { ...billing.prices, facePackMain4: 1000 } }
+    render(<BuyEventsDialog billing={main4} purchase={{ item: 'FACE_PACK', quantity: 1 }} onPaid={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByRole('dialog', { name: 'Find my photos for your Main 4 pack' })).toBeInTheDocument()
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹1,000')
+    expect(screen.getByTestId('face-pack-line')).toHaveTextContent('₹1,000 a month on top of your pack · covers face search on your pack’s 4 events each month')
+    await user.click(screen.getByRole('button', { name: 'More months' }))
+    await user.click(screen.getByRole('button', { name: 'More months' }))
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹3,000')
+    await user.type(screen.getByPlaceholderText(/418299301122/), '418299301122')
+    await user.click(screen.getByRole('button', { name: "I've paid ₹3,000" }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(sentBody(fetchMock)).toEqual({ item: 'FACE_PACK', quantity: 3, utr: '418299301122' })
+  })
+
+  it('does not take a Find my photos pack payment without a paid-up pack', () => {
+    render(<BuyEventsDialog billing={{ ...billing, plan: 'PER_EVENT' as const, packActive: false }} purchase={{ item: 'FACE_PACK', quantity: 1 }} onPaid={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByTestId('pack-needed')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /I've paid/ })).toBeDisabled()
+  })
 })

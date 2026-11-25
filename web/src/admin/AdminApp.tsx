@@ -19,6 +19,7 @@ const InstallUploaderPage = lazy(() => import('./InstallUploaderPage'))
 const NewEventPage = lazy(() => import('./NewEventPage'))
 const PrintQrPage = lazy(() => import('./PrintQrPage'))
 const PricingPage = lazy(() => import('./PricingPage'))
+const FaceUsagePage = lazy(() => import('./FaceUsagePage'))
 const StudiosPage = lazy(() => import('./StudiosPage'))
 const DocsPage = lazy(() => import('./docs/DocsPage'))
 const EventCardsPage = lazy(() => import('./print/EventCardsPage'))
@@ -49,7 +50,7 @@ function Layout({ wide = false }: { wide?: boolean }) {
   const phoneLinks = [
     { to: '/admin', label: 'Events' },
     { to: '/admin/install', label: 'Install uploader' },
-    ...(superAdmin ? [{ to: '/admin/studios', label: 'Studios' }, { to: '/admin/pricing', label: 'Pricing & payments' }] : []),
+    ...(superAdmin ? [{ to: '/admin/studios', label: 'Studios' }, { to: '/admin/pricing', label: 'Pricing & payments' }, { to: '/admin/face-usage', label: 'Face usage' }] : []),
     { to: '/admin/docs', label: superAdmin ? 'Docs' : 'Guides' },
     { to: '/admin/account', label: session?.displayName ? `Account · ${session.displayName}` : 'Account' },
   ]
@@ -73,6 +74,7 @@ function Layout({ wide = false }: { wide?: boolean }) {
             </NavLink>
             {superAdmin && <NavLink to="/admin/studios" className={navClass}>Studios</NavLink>}
             {superAdmin && <NavLink to="/admin/pricing" className={navClass}>Pricing &amp; payments</NavLink>}
+            {superAdmin && <NavLink to="/admin/face-usage" className={navClass}>Face usage</NavLink>}
             <NavLink to="/admin/docs" className={navClass}>{superAdmin ? 'Docs' : 'Guides'}</NavLink>
             <NavLink to="/admin/account" className={navClass} title={session?.email}>{session?.displayName}</NavLink>
             <button type="button" onClick={auth.signOut} className="text-muted hover:text-ink">
@@ -143,6 +145,7 @@ export default function AdminApp() {
           <Route path="events/:eventId/cards" element={<Suspense fallback={<PageLoader />}><EventCardsPage /></Suspense>} />
           <Route path="studios" element={<StudiosPage />} />
           <Route path="pricing" element={<PricingPage />} />
+          <Route path="face-usage" element={<FaceUsagePage />} />
           <Route path="account" element={<AccountPage />} />
           <Route path="install" element={<InstallUploaderPage />} />
         </Route>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { adminApi, ApiError } from '../lib/api'
 import { timeAgo } from '../lib/format'
 import type { BillingSettings, EventPayment, Plan, StudioBilling } from '../lib/types'
-import { isPack, PACKS, PLAN_LABEL } from './plans'
+import { FACE_SEARCH_MAIN_DEFAULT, FACE_SEARCH_QUICK_DEFAULT, isPack, PACK_EVENTS, PACKS, packShortName, PLAN_LABEL } from './plans'
 import { Button, Card, ErrorText, Field, inputClass } from './ui'
 import { useConfirm } from './useConfirm'
 
@@ -19,6 +19,7 @@ function paymentFor(p: EventPayment): string {
     case 'CLIENT_SETUP': return `${n} client galler${n === 1 ? 'y' : 'ies'}`
     case 'STORAGE_EXTEND': return `${n} GB${p.months ? ` + ${p.months} month${p.months === 1 ? '' : 's'}` : ''}${p.eventName ? `: ${p.eventName}` : ''}`
     case 'FACE_SEARCH': return `Find my photos${p.eventName ? `: ${p.eventName}` : ''}`
+    case 'FACE_PACK': return `Find my photos · ${p.plan ? packShortName(p.plan) : 'pack'} · ${n} month${n === 1 ? '' : 's'}`
     case 'EXTEND': return `More months (${n} GB)${p.eventName ? `: ${p.eventName}` : ''}`
     default: return `${n} Main event${n === 1 ? '' : 's'}`
   }
@@ -146,10 +147,22 @@ export function BillingSettingsCard() {
           <input className={inputClass} inputMode="numeric" value={s.quickPackMainPrice} onChange={num('quickPackMainPrice')} />
         </Field>
         <Field label="Find my photos: Main event (₹)" hint="Face-search add-on, per event">
-          <input className={inputClass} inputMode="numeric" value={s.faceSearchMainPrice ?? 699} onChange={num('faceSearchMainPrice')} />
+          <input className={inputClass} inputMode="numeric" value={s.faceSearchMainPrice ?? FACE_SEARCH_MAIN_DEFAULT} onChange={num('faceSearchMainPrice')} />
         </Field>
         <Field label="Find my photos: Quick event (₹)" hint="Face-search add-on, per event">
-          <input className={inputClass} inputMode="numeric" value={s.faceSearchQuickPrice ?? 399} onChange={num('faceSearchQuickPrice')} />
+          <input className={inputClass} inputMode="numeric" value={s.faceSearchQuickPrice ?? FACE_SEARCH_QUICK_DEFAULT} onChange={num('faceSearchQuickPrice')} />
+        </Field>
+        <Field label="Find my photos with Main 2 pack (₹ a month on top)" hint="Added to the pack's price while it is on">
+          <input className={inputClass} inputMode="numeric" value={s.facePackMain2Price ?? 500} onChange={num('facePackMain2Price')} />
+        </Field>
+        <Field label="Find my photos with Main 4 pack (₹ a month on top)" hint="Added to the pack's price while it is on">
+          <input className={inputClass} inputMode="numeric" value={s.facePackMain4Price ?? 1000} onChange={num('facePackMain4Price')} />
+        </Field>
+        <Field label="Find my photos with Quick 2 pack (₹ a month on top)" hint="Added to the pack's price while it is on">
+          <input className={inputClass} inputMode="numeric" value={s.facePackQuick2Price ?? 500} onChange={num('facePackQuick2Price')} />
+        </Field>
+        <Field label="Find my photos with Quick 4 pack (₹ a month on top)" hint="Added to the pack's price while it is on">
+          <input className={inputClass} inputMode="numeric" value={s.facePackQuick4Price ?? 1000} onChange={num('facePackQuick4Price')} />
         </Field>
         <Field label="Upgrade a Quick event to Main (₹)">
           <input className={inputClass} inputMode="numeric" value={s.upgradePrice} onChange={num('upgradePrice')} />
@@ -194,9 +207,6 @@ function CreditStepper({ label, value, busy, onStep }: { label: string; value: n
     </span>
   )
 }
-
-/** Events a pack gives each month. */
-const PACK_EVENTS: Partial<Record<Plan, number>> = { MAIN_2: 2, MAIN_4: 4, QUICK_2: 2, QUICK_4: 4 }
 
 /**
  * One studio's plan, this month's usage, pack paid-until date and the events it has to use. McreatiK changes the

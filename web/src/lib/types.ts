@@ -416,8 +416,8 @@ export type Plan = 'PER_EVENT' | 'MAIN_2' | 'MAIN_4' | 'QUICK_2' | 'QUICK_4' | '
 export type EventType = 'MAIN' | 'QUICK' | 'CLIENT'
 
 /** What a payment buys. */
-/** FACE_SEARCH: the "Find my photos" add-on for one event. STORAGE: GB for one event; CLIENT_SETUP: client galleries; EXTEND: another open period for one event (per GB per month). */
-export type PurchaseItem = 'MAIN_EVENT' | 'QUICK_EVENT' | 'UPGRADE' | 'PLAN' | 'STORAGE' | 'CLIENT_SETUP' | 'EXTEND' | 'STORAGE_EXTEND' | 'FACE_SEARCH'
+/** FACE_PACK: "Find my photos" for a paid-up pack's events, month by month (quantity = months). FACE_SEARCH: the "Find my photos" add-on for one event. STORAGE: GB for one event; CLIENT_SETUP: client galleries; EXTEND: another open period for one event (per GB per month). */
+export type PurchaseItem = 'MAIN_EVENT' | 'QUICK_EVENT' | 'UPGRADE' | 'PLAN' | 'STORAGE' | 'CLIENT_SETUP' | 'EXTEND' | 'STORAGE_EXTEND' | 'FACE_SEARCH' | 'FACE_PACK'
 
 /** A purchase as the dashboard asks for it; the server sets the price. quantity: events or months. */
 export interface Purchase {
@@ -465,6 +465,11 @@ export interface Prices {
   /** "Find my photos" (AI face search for guests) add-on, per event; older servers omit them. */
   faceSearchMain?: number
   faceSearchQuick?: number
+  /** What "Find my photos" ADDS to each pack a month (₹); older servers omit them. */
+  facePackMain2?: number
+  facePackMain4?: number
+  facePackQuick2?: number
+  facePackQuick4?: number
 }
 
 /** The result of a guest's face search. */
@@ -493,6 +498,8 @@ export interface FaceSearchStatus {
   quickPrice: number
   /** Bought for this event: the studio may switch it on and off itself. */
   paid?: boolean
+  /** Not paid yet, but the studio's pack covers it now: it may switch it on without paying. */
+  packCovered?: boolean
   /** Guests see only the photos they are in (selfie first). Needs face search on. */
   privateGallery?: boolean
   /** Why scanning and searching are paused (an AWS setup refusal); the exact reason for McreatiK, a plain note for studios. */
@@ -549,6 +556,9 @@ export interface BillingSummary {
   /** The pack is paid up (or within its few days' grace). */
   packActive: boolean
   planPaidUntil: string | null
+  /** "Find my photos" on the pack is paid up (or within its grace days), and until when. */
+  facePackActive?: boolean
+  facePackPaidUntil?: string | null
   prices: Prices
   /** Client galleries paid for and not created yet. */
   clientCredits: number
@@ -594,6 +604,42 @@ export interface BillingSettings {
   quickPackMainPrice: number
   faceSearchMainPrice?: number
   faceSearchQuickPrice?: number
+  /** What "Find my photos" adds to each pack a month (₹). */
+  facePackMain2Price?: number
+  facePackMain4Price?: number
+  facePackQuick2Price?: number
+  facePackQuick4Price?: number
+}
+
+/** One event's face-search usage, as AWS Rekognition bills it (McreatiK only). */
+export interface FaceUsageEvent {
+  eventId: string
+  eventName: string | null
+  studioName: string | null
+  /** null once the event is deleted. */
+  eventType: 'MAIN' | 'QUICK' | null
+  eventDate: string | null
+  /** Paid by the studio; false is a McreatiK free trial. */
+  paid: boolean
+  photosScanned: number
+  facesIndexed: number
+  searches: number
+  firstDay: string | null
+  lastDay: string | null
+}
+
+export interface FaceUsageDay {
+  day: string
+  photosScanned: number
+  facesIndexed: number
+  searches: number
+}
+
+export interface FaceUsage {
+  from: string
+  to: string
+  events: FaceUsageEvent[]
+  days: FaceUsageDay[]
 }
 
 /** Current prices for the public /pricing page. */
