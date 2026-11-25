@@ -80,9 +80,10 @@ public class BillingService {
      * CLIENT_SETUP: client galleries (one used per gallery created), with the storage and open months chosen for it;
      * EXTEND: more open months for one event, per GB of its storage quota per month;
      * STORAGE_EXTEND: both at once (GB added and months added, one payment);
-     * FACE_SEARCH: the "Find my photos" add-on for one Main or Quick event (price by event type).
+     * FACE_SEARCH: the "Find my photos" add-on for one Main or Quick event (price by event type);
+     * FACE_PACK: Find my photos for a paid-up pack's events, month by month ({@code quantity} = months), priced per pack.
      */
-    public enum Item { MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN, STORAGE, CLIENT_SETUP, EXTEND, STORAGE_EXTEND, FACE_SEARCH }
+    public enum Item { MAIN_EVENT, QUICK_EVENT, UPGRADE, PLAN, STORAGE, CLIENT_SETUP, EXTEND, STORAGE_EXTEND, FACE_SEARCH, FACE_PACK }
 
     /** One GB as storage is counted and sold (1024^3 bytes). */
     public static final long GB = 1024L * 1024 * 1024;
@@ -107,7 +108,19 @@ public class BillingService {
                            Integer freeStorageGb, Integer clientSetupPrice, Integer activeMonths,
                            Integer main2ExtraPrice, Integer main4ExtraPrice, Integer quick2ExtraPrice,
                            Integer quick4ExtraPrice, Integer quickPackMainPrice, Integer faceSearchMainPrice,
-                           Integer faceSearchQuickPrice, Integer freeStorageGbQuick) {
+                           Integer faceSearchQuickPrice, Integer freeStorageGbQuick, Integer facePackMain2Price,
+                           Integer facePackMain4Price, Integer facePackQuick2Price, Integer facePackQuick4Price) {
+
+        /** What Find my photos adds to this pack a month (the pack's own price is on top). */
+        int facePackPrice(Plan plan) {
+            return switch (plan) {
+                case MAIN_2 -> facePackMain2Price;
+                case MAIN_4 -> facePackMain4Price;
+                case QUICK_2 -> facePackQuick2Price;
+                case QUICK_4 -> facePackQuick4Price;
+                default -> 0;
+            };
+        }
 
         /** Storage included with a new event of this type: {@code freeStorageGb} for Main, its own value for Quick. */
         public int includedStorageGb(EventType type) {
@@ -150,7 +163,8 @@ public class BillingService {
     public record Prices(int main, int quick, int main2, int main4, int quick2, int quick4, int upgrade, int upgradeGuests,
                          int storageGb, int freeStorageGb, int clientSetup, int activeMonths,
                          int main2Extra, int main4Extra, int quick2Extra, int quick4Extra, int quickPackMain,
-                         int faceSearchMain, int faceSearchQuick, int freeStorageGbQuick) {
+                         int faceSearchMain, int faceSearchQuick, int freeStorageGbQuick,
+                         int facePackMain2, int facePackMain4, int facePackQuick2, int facePackQuick4) {
     }
 
     /**
@@ -163,7 +177,8 @@ public class BillingService {
     public record Summary(Plan plan, boolean free, int monthlyQuota, int usedThisMonth, int credits, int unitPrice,
                           int monthlyPrice, String upiId, String payeeName, List<Payment> payments,
                           int mainCredits, int quickCredits, int carryOver, boolean packActive, LocalDate planPaidUntil,
-                          Prices prices, int clientCredits, int quickUnitPrice) {
+                          Prices prices, int clientCredits, int quickUnitPrice, LocalDate facePackPaidUntil,
+                          boolean facePackActive) {
     }
 
     /**
@@ -271,11 +286,13 @@ public class BillingService {
                        main4_price, quick2_price, quick4_price, upgrade_price, upgrade_guests, storage_gb_price,
                        free_storage_gb, client_setup_price, active_months, main2_extra_price, main4_extra_price,
                        quick2_extra_price, quick4_extra_price, quick_pack_main_price, face_search_main_price,
-                       face_search_quick_price, free_storage_gb_quick FROM billing_settings""",
+                       face_search_quick_price, free_storage_gb_quick, face_pack_main2_price, face_pack_main4_price,
+                       face_pack_quick2_price, face_pack_quick4_price FROM billing_settings""",
                 (rs, n) -> new Settings(rs.getString(1), rs.getString(2), rs.getInt(3), rs.getInt(4), rs.getInt(5),
                         rs.getInt(6), rs.getInt(7), rs.getInt(8), rs.getInt(9), rs.getInt(10), rs.getInt(11), rs.getInt(12),
                         rs.getInt(13), rs.getInt(14), rs.getInt(15), rs.getInt(16), rs.getInt(17), rs.getInt(18),
-                        rs.getInt(19), rs.getInt(20), rs.getInt(21), rs.getInt(22), rs.getInt(23), rs.getInt(24)));
+                        rs.getInt(19), rs.getInt(20), rs.getInt(21), rs.getInt(22), rs.getInt(23), rs.getInt(24),
+                        rs.getInt(25), rs.getInt(26), rs.getInt(27), rs.getInt(28)));
     }
 
     private static int orKeep(Integer value, int current) {
@@ -299,7 +316,9 @@ public class BillingService {
                 orKeep(s.quickPackMainPrice(), now.quickPackMainPrice()),
                 orKeep(s.faceSearchMainPrice(), now.faceSearchMainPrice()),
                 orKeep(s.faceSearchQuickPrice(), now.faceSearchQuickPrice()),
-                orKeep(s.freeStorageGbQuick(), now.freeStorageGbQuick())};
+                orKeep(s.freeStorageGbQuick(), now.freeStorageGbQuick()),
+                orKeep(s.facePackMain2Price(), now.facePackMain2Price()), orKeep(s.facePackMain4Price(), now.facePackMain4Price()),
+                orKeep(s.facePackQuick2Price(), now.facePackQuick2Price()), orKeep(s.facePackQuick4Price(), now.facePackQuick4Price())};
         for (int i = 0; i < prices.length; i++) {
             // The included storage (Main, Quick) may be 0 GB; everything else must be at least 1.
             if (prices[i] < (i == 11 || i == 21 ? 0 : 1)) {
@@ -312,10 +331,12 @@ public class BillingService {
                        upgrade_price = ?, upgrade_guests = ?, storage_gb_price = ?, free_storage_gb = ?,
                        client_setup_price = ?, active_months = ?, main2_extra_price = ?, main4_extra_price = ?,
                        quick2_extra_price = ?, quick4_extra_price = ?, quick_pack_main_price = ?,
-                       face_search_main_price = ?, face_search_quick_price = ?, free_storage_gb_quick = ?""",
+                       face_search_main_price = ?, face_search_quick_price = ?, free_storage_gb_quick = ?,
+                       face_pack_main2_price = ?, face_pack_main4_price = ?, face_pack_quick2_price = ?, face_pack_quick4_price = ?""",
                 upi == null || upi.isEmpty() ? null : upi, s.payeeName() == null ? null : s.payeeName().trim(),
                 prices[0], prices[1], prices[2], prices[3], prices[4], prices[5], prices[6], prices[7], prices[8], prices[9],
-                prices[10], prices[11], prices[12], prices[13], prices[14], prices[15], prices[16], prices[17], prices[18], prices[19], prices[20], prices[21]);
+                prices[10], prices[11], prices[12], prices[13], prices[14], prices[15], prices[16], prices[17], prices[18], prices[19], prices[20], prices[21],
+                prices[22], prices[23], prices[24], prices[25]);
         return settings();
     }
 
@@ -428,7 +449,8 @@ public class BillingService {
                 s.quick4Price(), s.upgradePrice(), s.upgradeGuests(), s.storageGbPrice(), s.freeStorageGb(),
                 s.clientSetupPrice(), s.activeMonths(), s.main2ExtraPrice(), s.main4ExtraPrice(), s.quick2ExtraPrice(),
                 s.quick4ExtraPrice(), s.quickPackMainPrice(), s.faceSearchMainPrice(), s.faceSearchQuickPrice(),
-                s.freeStorageGbQuick());
+                s.freeStorageGbQuick(), s.facePackMain2Price(), s.facePackMain4Price(), s.facePackQuick2Price(),
+                s.facePackQuick4Price());
     }
 
     /** The current prices for the public /pricing page. */
@@ -444,7 +466,46 @@ public class BillingService {
                 eventPrice(a, EventType.MAIN, s, today), a.plan() == Plan.MONTHLY ? s.monthlyPrice() : s.packPrice(a.plan()),
                 s.upiId(), s.payeeName(), payments("p.studio_id = ?", studioId, 20),
                 a.mainCredits(), a.quickCredits(), carryOver(studioId, a), a.packActive(today), a.paidUntil(), prices(s),
-                a.clientCredits(), eventPrice(a, EventType.QUICK, s, today));
+                a.clientCredits(), eventPrice(a, EventType.QUICK, s, today), facePackPaidUntil(studioId),
+                facePackActive(studioId, a, today));
+    }
+
+    // ---- Find my photos with a pack ----
+
+    LocalDate facePackPaidUntil(UUID studioId) {
+        Date d = jdbc.queryForObject("SELECT face_pack_paid_until FROM admin_users WHERE id = ?", Date.class, studioId);
+        return d == null ? null : d.toLocalDate();
+    }
+
+    /** The face search add-on is paid up (or within the grace days) and so is the pack it belongs to. */
+    private boolean facePackActive(UUID studioId, Account a, LocalDate today) {
+        LocalDate until = facePackPaidUntil(studioId);
+        return a.plan().pack() && a.packActive(today) && until != null && !today.isAfter(until.plusDays(GRACE_DAYS));
+    }
+
+    /** Events switched on under the pack's face search this month (one charge each). */
+    private int facePackUsed(UUID studioId) {
+        return charges(studioId, "FACE", monthStart(), Instant.now().plusSeconds(60));
+    }
+
+    /**
+     * Whether the studio's pack face search covers one more event of this type now: the add-on is paid up, the pack
+     * covers the type (a Main pack covers Quick events too) and fewer events than the pack's monthly allowance have
+     * used it this month.
+     */
+    public boolean facePackCovers(UUID studioId, EventType type) {
+        if (type == EventType.CLIENT) {
+            return false;
+        }
+        Account a = account(studioId, false);
+        return !a.free() && facePackActive(studioId, a, today()) && a.plan().covers(type) && facePackUsed(studioId) < a.monthlyEvents();
+    }
+
+    /** Uses one of this month's pack face searches for an event; the caller checked {@link #facePackCovers}. */
+    @Transactional
+    public void useFacePack(UUID studioId, UUID eventId) {
+        recordCharge(studioId, eventId, "FACE");
+        faces.setPaid(eventId, true);
     }
 
     /** Fills the defaults: a missing item is Main events (the older API sent only a count). */
@@ -509,8 +570,24 @@ public class BillingService {
                 if (Boolean.TRUE.equals(row.get("face_search_paid"))) {
                     throw ApiException.conflict("ALREADY_PAID", "Face search is already paid for this event: turn it on in Settings");
                 }
+                if (facePackCovers(studioId, EventType.valueOf((String) row.get("event_type")))) {
+                    throw ApiException.conflict("INCLUDED_IN_PACK", "Included in your pack's face search: turn it on in Settings");
+                }
                 int price = EventType.QUICK.name().equals(row.get("event_type")) ? s.faceSearchQuickPrice() : s.faceSearchMainPrice();
                 yield new Quote(Item.FACE_SEARCH, 1, price, price, p.eventId(), null);
+            }
+            case FACE_PACK -> {
+                if (a.free()) {
+                    throw ApiException.badRequest("NOT_NEEDED", "Face search is free on your plan");
+                }
+                if (!a.plan().pack() || !a.packActive(today())) {
+                    throw ApiException.badRequest("PACK_NEEDED", "Face search for a pack needs a paid-up monthly pack");
+                }
+                if (p.quantity() < 1 || p.quantity() > MAX_MONTHS_PER_PAYMENT) {
+                    throw ApiException.badRequest("INVALID_MONTHS", "Pay for 1 to " + MAX_MONTHS_PER_PAYMENT + " months at a time");
+                }
+                int price = s.facePackPrice(a.plan());
+                yield new Quote(Item.FACE_PACK, p.quantity(), price, p.quantity() * price, null, a.plan());
             }
             case PLAN -> {
                 if (a.free()) {
@@ -711,6 +788,19 @@ public class BillingService {
                     faces.enable(eventId);
                 } else {
                     faces.disable(eventId);
+                }
+            }
+            case FACE_PACK -> {
+                if (sign > 0) {
+                    // From its paid-until date while it is still running, otherwise from today.
+                    jdbc.update("""
+                            UPDATE admin_users SET face_pack_paid_until =
+                                (GREATEST(coalesce(face_pack_paid_until, ?), ?) + make_interval(months => ?))::date
+                            WHERE id = ?""", Date.valueOf(today()), Date.valueOf(today()), quantity, studioId);
+                } else {
+                    jdbc.update("""
+                            UPDATE admin_users SET face_pack_paid_until = (face_pack_paid_until - make_interval(months => ?))::date
+                            WHERE id = ? AND face_pack_paid_until IS NOT NULL""", quantity, studioId);
                 }
             }
             case CLIENT_SETUP -> jdbc.update("""

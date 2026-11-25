@@ -142,6 +142,20 @@ flowchart TB
   G --> OK[Live in the new slot]
 ```
 
+### Where Caddy's config is
+
+On the production VM Caddy runs **in Docker** (a container named `caddy`, not a system service), and its config is
+`/home/opc/caddy/Caddyfile` (mounted into the container as `/etc/caddy/Caddyfile`). `deploy.sh` looks at
+`/etc/caddy/Caddyfile` by default, so tell it where the file is, once, in the shell profile:
+
+```bash
+echo 'export CADDYFILE=$HOME/caddy/Caddyfile' >> ~/.bashrc
+```
+
+Without it the deploy stops with "Caddy is not set up for updates without downtime yet" and changes nothing. Check
+with `docker inspect caddy --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'`.
+The VM's checkout must be on `main` (`git checkout main && git pull`), like Cloudflare's production branch.
+
 ### One-time Caddy step (before the first deploy of this version)
 
 `deploy.sh` refuses to run until Caddy balances across both slots, so a missed step can never cause an outage.

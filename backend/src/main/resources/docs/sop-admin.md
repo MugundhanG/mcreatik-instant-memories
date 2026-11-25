@@ -89,7 +89,16 @@ Open a studio on the **Studios** page to see its events, photos and storage.
 
 ### 4.3 Payment settings and prices
 
-On the **Pricing & payments** page, under **Payments & prices**, set your **UPI ID**, the **name shown in the UPI app**, and every price: Main and Quick single events, the four monthly packs and each pack's extra-event price (a Main pack's covers Quick events too), the upgrade price, after how many guests a Quick event is offered the upgrade, the storage price per GB per month, the GB included with live events, the client gallery setup price and how many months a gallery stays open. Studios see the prices in Buy events, the new-event form and the public pricing page. Press **Save**.
+On the **Pricing & payments** page, under **Payments & prices**, set your **UPI ID**, the **name shown in the UPI app**, and every price: Main and Quick single events, the four monthly packs and each pack's extra-event price (a Main pack's covers Quick events too), the upgrade price, after how many guests a Quick event is offered the upgrade, the storage price per GB per month, the GB included with live events, the client gallery setup price and how many months a gallery stays open, Find my photos one by one (Main and Quick) and what Find my photos adds to each pack a month (Main 2 ₹500, Main 4 ₹1,000, Quick 2 ₹500, Quick 4 ₹1,000 by default; studios see the pack's total). Studios see the prices in Buy events, the new-event form and the public pricing page. Press **Save**.
+
+### 4.4 Face search usage (what AWS really costs)
+
+The **Face search usage** page (McreatiK only) shows, per event, what Find my photos used on AWS: **photos scanned**, **faces stored** and **guest searches** (selfie searches plus automatic updates), counted as AWS bills them, from 25 November 2026. Pick **This month**, **Last month** or **Last 90 days**.
+
+- It turns the counts into an **estimated cost** with AWS's list prices (US$0.001 per photo or search, US$0.00001 per face a month, ₹90 per US$, 18% GST; change them on the page to match your bill).
+- **Averages per Main and per Quick event** sit next to what studios pay for face search (one by one, and a pack's share per event), with the difference, so you can see whether an event made or lost money.
+- Events a studio did not pay for (**Paid: no**) are your free trials.
+- The **AWS bill** (Billing and Cost Management in the AWS console) is the real figure; use this page to see which events and studios drove it.
 
 ## 5. Create an event for a studio
 
