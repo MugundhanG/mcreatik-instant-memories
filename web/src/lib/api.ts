@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, Gallery, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, FaceSearchStatus, FindMeResult, MatchResult, EventType, DocPage, DocPageSummary, GuestAnalytics, HqRequest, HqRequestInput, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, Gallery, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, FaceSearchStatus, FaceUsage, FindMeResult, MatchResult, EventType, DocPage, DocPageSummary, GuestAnalytics, HqRequest, HqRequestInput, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export type BulkPhotoAction = 'LIKE' | 'UNLIKE' | 'HIDE' | 'SHOW' | 'DELETE'
 
@@ -293,6 +293,13 @@ export const adminApi = {
   faceSearch: (eventId: string) => request<FaceSearchStatus>(`/api/admin/events/${eventId}/face-search`, {}, true),
   setFaceSearch: (eventId: string, change: { enabled?: boolean; privateGallery?: boolean }) =>
     request<FaceSearchStatus>(`/api/admin/events/${eventId}/face-search`, { method: 'PUT', body: json(change) }, true),
+  /** McreatiK only: what face search used on AWS in a period (dates as YYYY-MM-DD). */
+  faceUsage: (from?: string, to?: string) => {
+    const q = new URLSearchParams()
+    if (from) q.set('from', from)
+    if (to) q.set('to', to)
+    return request<FaceUsage>(`/api/admin/face-usage${q.size ? `?${q}` : ''}`, {}, true)
+  },
   billingSettings: () => request<BillingSettings>('/api/admin/billing/settings', {}, true),
   updateBillingSettings: (s: BillingSettings) =>
     request<BillingSettings>('/api/admin/billing/settings', { method: 'PUT', body: json(s) }, true),

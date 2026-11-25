@@ -3,7 +3,7 @@ import { adminApi, ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
 import type { BillingSummary, Plan, Purchase } from '../lib/types'
 import { qrSvg } from '../shared/qr'
-import { describe, FACE_SEARCH_MAIN_DEFAULT, FACE_SEARCH_QUICK_DEFAULT, PACKS, photosPerGb, PLAN_LABEL, packPrice, rupees, storageExtendPrice, unitPrice, type StorageContext } from './plans'
+import { describe, FACE_SEARCH_MAIN_DEFAULT, FACE_SEARCH_QUICK_DEFAULT, isPack, PACK_EVENTS, packShortName, PACKS, photosPerGb, PLAN_LABEL, packPrice, rupees, storageExtendPrice, unitPrice, type StorageContext } from './plans'
 import { Button, ErrorText, inputClass } from './ui'
 
 /** upi://pay link: any UPI app (GPay, PhonePe, Paytm…) opens it with payee and amount filled in. */
@@ -22,6 +22,7 @@ const TITLE: Record<Purchase['item'], string> = {
   EXTEND: 'Keep more months',
   STORAGE_EXTEND: 'Change storage & months',
   FACE_SEARCH: 'Find my photos',
+  FACE_PACK: 'Find my photos for your pack',
 }
 
 /** Preset storage sizes; any whole number of GB from MIN_GB can be typed too. */
@@ -100,18 +101,21 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, f
   const ctx: StorageContext = storage ?? { quota: 0, usedGb: 1, monthsLeft: billing.prices.activeMonths }
   const ext = storageExtendPrice(billing.prices, ctx, addGb, addMonths)
   const unit = purchase.item === 'FACE_SEARCH' && faceSearchPrice !== undefined ? faceSearchPrice : unitPrice(purchase.item, billing, purchase.plan, months)
-  const title = TITLE[purchase.item]
+  const facePack = purchase.item === 'FACE_PACK'
+  // The server uses the studio's current pack for it, so the dialog never offers another one.
+  const packOk = !facePack || (isPack(billing.plan) && billing.packActive)
+  const title = facePack ? `Find my photos for your ${packShortName(billing.plan)}` : TITLE[purchase.item]
   // A client gallery can be paid together with its storage for the months chosen (one gallery at a time).
   const setupGb = purchase.item === 'CLIENT_SETUP' ? purchase.storageGb ?? 0 : 0
   const perSetupGb = billing.prices.storageGb * months
   const amount = combined ? ext.total : quantity * unit + setupGb * perSetupGb
-  const invalid = (purchase.item === 'STORAGE' && quantity < MIN_GB) || (setupGb !== 0 && setupGb < MIN_GB)
+  const invalid = !packOk || (purchase.item === 'STORAGE' && quantity < MIN_GB) || (setupGb !== 0 && setupGb < MIN_GB)
     || (combined && ((addGb !== 0 && addGb < MIN_GB) || (addGb === 0 && addMonths === 0)))
   const label = describe(purchase, billing)
   const link = billing.upiId ? upiLink(billing.upiId, billing.payeeName, amount, label) : null
   const isEvents = purchase.item === 'MAIN_EVENT' || purchase.item === 'QUICK_EVENT'
-  const max = purchase.item === 'PLAN' ? 12 : purchase.item === 'UPGRADE' || purchase.item === 'EXTEND' || purchase.item === 'FACE_SEARCH' || setupGb > 0 ? 1 : 50
-  const unitWord = purchase.item === 'PLAN' ? 'month' : purchase.item === 'STORAGE' ? 'GB'
+  const max = purchase.item === 'PLAN' || facePack ? 12 : purchase.item === 'UPGRADE' || purchase.item === 'EXTEND' || purchase.item === 'FACE_SEARCH' || setupGb > 0 ? 1 : 50
+  const unitWord = purchase.item === 'PLAN' || facePack ? 'month' : purchase.item === 'STORAGE' ? 'GB'
     : purchase.item === 'CLIENT_SETUP' ? 'gallery' : 'event'
   const change = (p: Partial<Purchase>) => {
     setPurchase((old) => ({ ...old, ...p }))
@@ -147,6 +151,8 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, f
 
   const defaultReason = combined
     ? `Add storage, keep the gallery open longer, or both: one total, one payment. Storage is ${rupees(billing.prices.storageGb)} per GB a month; the storage included with the event (${billing.prices.freeStorageGb} GB for Main, ${billing.prices.freeStorageGbQuick ?? billing.prices.freeStorageGb} GB for Quick, for ${billing.prices.activeMonths} months) is already covered.`
+    : facePack
+    ? 'Guests take a selfie and see only the photos they are in, on your pack’s events. Paid month by month, on top of your pack, and it stays on until you stop renewing.'
     : purchase.item === 'FACE_SEARCH'
     ? `Guests take a selfie in the live gallery and see only the photos they are in. One payment for this event, ${rupees(unit)}; it works for the whole life of the gallery.`
     : purchase.item === 'STORAGE'
@@ -220,6 +226,9 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, f
                 </div>
               </div>
             )}
+            {facePack && !packOk && (
+              <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900" role="alert" data-testid="pack-needed">Find my photos for packs needs a paid-up monthly pack. Renew or choose a pack first.</p>
+            )}
             {purchase.item === 'PLAN' && (
               <label className="block text-sm">
                 <span className="font-medium">Pack</span>
@@ -261,6 +270,10 @@ export function BuyEventsDialog({ billing, purchase: initial, reason, storage, f
                 <span className="text-xl font-semibold tabular-nums" data-testid="amount">{rupees(amount)}</span>
               </p>
             </div>
+            )}
+
+            {facePack && packOk && (
+              <p className="text-sm text-muted" data-testid="face-pack-line">{rupees(unit)} a month on top of your pack · covers face search on your pack’s {PACK_EVENTS[billing.plan]} events each month</p>
             )}
 
             {held && (

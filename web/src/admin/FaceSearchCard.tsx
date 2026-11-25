@@ -3,7 +3,7 @@ import { adminApi, ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
 import type { BillingSummary, EventDetail, FaceSearchStatus } from '../lib/types'
 import { BuyEventsDialog } from './BuyEventsDialog'
-import { rupees } from './plans'
+import { facePackAddOn, isPack, packPrice, packShortName, PACK_EVENTS, rupees } from './plans'
 import { Button, Card } from './ui'
 import { useConfirm } from './useConfirm'
 
@@ -23,7 +23,7 @@ export function FaceSearchCard({ event, billing, superAdmin, onChanged }: {
   onChanged?: () => void
 }) {
   const [status, setStatus] = useState<FaceSearchStatus | null>(null)
-  const [buying, setBuying] = useState(false)
+  const [buying, setBuying] = useState<'event' | 'pack' | null>(null)
   const [busy, setBusy] = useState<Which | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirm, confirmDialog] = useConfirm()
@@ -46,8 +46,19 @@ export function FaceSearchCard({ event, billing, superAdmin, onChanged }: {
 
   const price = event.eventType === 'QUICK' ? status.quickPrice : status.mainPrice
   const percent = status.total > 0 ? Math.min(100, Math.round((status.indexed / status.total) * 100)) : 0
-  const mayToggle = superAdmin || !!status.paid
+  // packCovered: not paid for yet, but the pack's Find my photos covers it, so the studio may switch it on for free.
+  const covered = !!status.packCovered && !status.paid
+  const mayToggle = superAdmin || !!status.paid || covered
   const canBuy = !status.enabled && !mayToggle && status.available && !!billing && !billing.free
+  const hasPack = !!billing && !billing.free && isPack(billing.plan) && billing.packActive
+  // A paid-up pack without Find my photos: offer it by the month, with the total a studio thinks in.
+  const canOfferPack = canBuy && hasPack && !billing.facePackActive
+  const packTotal = billing && isPack(billing.plan) ? packPrice(billing.plan, billing.prices) + facePackAddOn(billing.plan, billing.prices) : 0
+  // Find my photos is on the pack but does not reach this event: say why in one line.
+  const packNotCovering = canBuy && hasPack && !!billing.facePackActive
+  const notCoveringWhy = !packNotCovering ? '' : event.eventType === 'MAIN' && billing.plan.startsWith('QUICK')
+    ? 'Your Quick pack’s Find my photos covers Quick events only.'
+    : `This month’s ${PACK_EVENTS[billing.plan] ?? ''} events with Find my photos on your pack are used.`
 
   const toggle = async (which: Which, on: boolean) => {
     const ok = await confirm(which === 'enabled'
@@ -70,7 +81,7 @@ export function FaceSearchCard({ event, billing, superAdmin, onChanged }: {
     }
   }
 
-  const rows: { key: Which; label: string; hint: string; on: boolean; disabled: boolean; why?: string }[] = [
+  const rows: { key: Which; label: string; hint: string; on: boolean; disabled: boolean; why?: string; note?: string }[] = [
     {
       key: 'enabled',
       label: 'Find my photos',
@@ -78,6 +89,7 @@ export function FaceSearchCard({ event, billing, superAdmin, onChanged }: {
       on: status.enabled,
       disabled: !mayToggle || !status.available,
       why: !status.available ? (superAdmin ? 'Server feature flag is off.' : 'Coming soon.') : !mayToggle ? `Add it to this event first (${rupees(price)}).` : undefined,
+      note: covered && !status.enabled ? 'Included in your pack’s Find my photos. Turning it on uses one of this month’s pack events.' : undefined,
     },
     {
       key: 'privateGallery',
@@ -93,9 +105,9 @@ export function FaceSearchCard({ event, billing, superAdmin, onChanged }: {
     <Card title="Face search">
       {confirmDialog}
       {buying && billing && (
-        <BuyEventsDialog billing={billing} purchase={{ item: 'FACE_SEARCH', eventId: event.id }} faceSearchPrice={price}
-          onClose={() => setBuying(false)} onPaid={() => {
-            setBuying(false)
+        <BuyEventsDialog billing={billing} purchase={buying === 'pack' ? { item: 'FACE_PACK', quantity: 1 } : { item: 'FACE_SEARCH', eventId: event.id }} faceSearchPrice={price}
+          onClose={() => setBuying(null)} onPaid={() => {
+            setBuying(null)
             load()
             onChanged?.()
           }} />
@@ -109,6 +121,7 @@ export function FaceSearchCard({ event, billing, superAdmin, onChanged }: {
                 <span data-testid={r.key === 'enabled' ? 'face-search-state' : 'private-gallery-state'} className={`text-xs font-normal ${r.on ? 'text-emerald-700' : 'text-muted'}`}>{r.on ? 'On' : 'Off'}</span>
               </p>
               <p className="text-xs text-muted">{r.hint}</p>
+              {r.note && !r.on && <p className="mt-1 text-xs text-emerald-800" data-testid="face-search-pack-hint">{r.note}</p>}
               {r.why && !r.on && <p className="mt-1 text-xs text-amber-800" data-testid={r.key === 'enabled' ? 'face-search-unavailable' : undefined}>{r.why}</p>}
             </div>
             <button
@@ -127,9 +140,20 @@ export function FaceSearchCard({ event, billing, superAdmin, onChanged }: {
       </ul>
 
       {canBuy && (
-        <div className="mt-3">
-          <Button variant="primary" onClick={() => setBuying(true)}>Add face search — {rupees(price)}</Button>
-          <p className="mt-1 text-xs text-muted">{rupees(status.mainPrice)} per Main event, {rupees(status.quickPrice)} per Quick event.</p>
+        <div className="mt-3 space-y-3">
+          {notCoveringWhy && <p className="text-sm text-muted" data-testid="face-pack-not-covering">{notCoveringWhy}</p>}
+          <div>
+            <Button variant={canOfferPack ? 'secondary' : 'primary'} onClick={() => setBuying('event')}>Add face search — {rupees(price)}</Button>
+            <p className="mt-1 text-xs text-muted">{rupees(status.mainPrice)} per Main event, {rupees(status.quickPrice)} per Quick event.</p>
+          </div>
+          {canOfferPack && billing && (
+            <div>
+              <Button variant="primary" onClick={() => setBuying('pack')}>Add Find my photos to your pack — {rupees(packTotal)} a month</Button>
+              <p className="mt-1 text-xs text-muted">
+                {rupees(facePackAddOn(billing.plan, billing.prices))} a month on top of your {packShortName(billing.plan)}. Covers face search on your pack’s events each month.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

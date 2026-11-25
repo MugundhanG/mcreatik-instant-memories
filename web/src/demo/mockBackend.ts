@@ -357,7 +357,7 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
     if (!e) return notFound()
     if (method === 'PUT') faceSearchOn[e.id] = !!(body as { enabled?: boolean })?.enabled
     const total = e.photos.length
-    return json({ enabled: faceSearchOn[e.id] ?? true, available: true, indexed: total, total, mainPrice: 999, quickPrice: 499 })
+    return json({ enabled: faceSearchOn[e.id] ?? true, available: true, indexed: total, total, mainPrice: 499, quickPrice: 299 })
   }
   if ((m = path.match(/^\/api\/public\/events\/([^/]+)(\/photos)?$/))) {
     const e = events.find((x) => x.slug === decodeURIComponent(m![1]))
@@ -393,7 +393,12 @@ async function handle(method: string, url: URL, body: unknown): Promise<Response
       { id: 'demo-studio-2', name: 'Frame Stories', email: 'hello@framestories.com', role: 'STUDIO', disabled: false, mustChangePassword: true, createdAt: '2026-10-30T00:00:00Z', events: 0, photos: 0, storageBytes: 0, brand: { name: 'Frame Stories', logoUrl: null, instagram: null, mcreatik: false } }])
   }
   if (path === '/api/admin/billing/settings' && method === 'GET') {
-    return json({ upiId: 'mcreatik@upi', payeeName: 'McreatiK', perEventPrice: 2999, extraEventPrice: 2999, monthlyPrice: 9999, quickPrice: 999, main2Price: 5499, main4Price: 9999, quick2Price: 1799, quick4Price: 3299, upgradePrice: 999, upgradeGuests: 500, storageGbPrice: 49, freeStorageGb: 25, freeStorageGbQuick: 10, clientSetupPrice: 499, activeMonths: 3, main2ExtraPrice: 2499, main4ExtraPrice: 2299, quick2ExtraPrice: 899, quick4ExtraPrice: 799, quickPackMainPrice: 4999 })
+    return json({ upiId: 'mcreatik@upi', payeeName: 'McreatiK', perEventPrice: 2999, extraEventPrice: 2999, monthlyPrice: 9999, quickPrice: 999, main2Price: 5499, main4Price: 9999, quick2Price: 1799, quick4Price: 3299, upgradePrice: 999, upgradeGuests: 500, storageGbPrice: 49, freeStorageGb: 25, freeStorageGbQuick: 10, clientSetupPrice: 499, activeMonths: 3, main2ExtraPrice: 2499, main4ExtraPrice: 2299, quick2ExtraPrice: 899, quick4ExtraPrice: 799, quickPackMainPrice: 4999, faceSearchMainPrice: 499, faceSearchQuickPrice: 299, facePackMain2Price: 500, facePackMain4Price: 1000, facePackQuick2Price: 500, facePackQuick4Price: 1000 })
+  }
+  if (path === '/api/admin/face-usage' && method === 'GET') {
+    // A few days of made-up usage, so the demo shows the page.
+    const days = Array.from({ length: 14 }, (_, i) => ({ day: `2026-11-${String(i + 1).padStart(2, '0')}`, photosScanned: 80 + ((i * 37) % 160), facesIndexed: 120 + ((i * 53) % 240), searches: 5 + ((i * 11) % 40) }))
+    return json({ from: '2026-11-01', to: '2026-11-25', days, events: events.slice(0, 3).map((e, i) => ({ eventId: e.id, eventName: e.name, studioName: 'Lens & Light Studio', eventType: i === 1 ? 'QUICK' : 'MAIN', eventDate: e.eventDate, paid: i !== 2, photosScanned: e.photos.length + 300 * (i + 1), facesIndexed: 900 * (i + 1), searches: 40 * (i + 1), firstDay: '2026-11-02', lastDay: '2026-11-14' })) })
   }
   if (path === '/api/admin/billing/payments' && method === 'GET') {
     return json([{ id: 'pay-1', studioId: 'demo-studio-1', studioName: 'Lens & Light Studio', events: 1, unitPrice: 2999, amount: 2999, utr: '412345678901', status: 'PENDING', note: null, createdAt: '2026-11-11T09:30:00Z', reviewedAt: null, method: 'UPI_QR', item: 'MAIN_EVENT', eventId: null, eventName: null, plan: null }])

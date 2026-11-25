@@ -104,12 +104,18 @@ Current prices are always on [the pricing page](https://live.mcreatik.com/pricin
 
 ### Add-on: Find my photos (face search)
 
-**Find my photos** lets guests take a selfie in the live gallery and see only the photos they are in. It is an optional add-on, bought per event:
+**Find my photos** lets guests take a selfie in the live gallery and see only the photos they are in. It is an optional add-on, bought per event or with your monthly pack:
 
 | | Price |
 | --- | --- |
-| **Main event** | +₹699 |
-| **Quick event** | +₹399 |
+| **Main event**, one by one | +₹499 |
+| **Quick event**, one by one | +₹299 |
+| **Main 2 pack** with Find my photos | ₹3,999 a month (pack ₹3,499 + ₹500) |
+| **Main 4 pack** with Find my photos | ₹5,999 a month (pack ₹4,999 + ₹1,000) |
+| **Quick 2 pack** with Find my photos | ₹2,999 a month (pack ₹2,499 + ₹500) |
+| **Quick 4 pack** with Find my photos | ₹4,999 a month (pack ₹3,999 + ₹1,000) |
+
+- **With a pack:** add Find my photos to your pack from any event's **Settings → Face search** (**Add Find my photos to your pack**), paid month by month like the pack. It then covers face search on your pack's events each month (2 or 4): open an event's **Settings → Face search** and switch it on, with nothing more to pay. A Main pack covers Main and Quick events, a Quick pack only Quick events. Once switched on, the event keeps face search even after the month ends. More events than your pack's in a month are bought one by one. The add-on needs a paid-up pack.
 
 - **How to buy:** open the event, go to **Settings → Face search** and press **Add face search**. Pay with the same UPI QR and UTR as any other purchase; it switches on once the payment counts. McreatiK can also switch it on for an event (for example a free trial). A client gallery has no guest gallery, so it has no face search.
 - **Switches (Settings → Face search):** once bought for an event, you switch **Find my photos** on and off yourself, like the gallery switches. Turning it off deletes the event's face data; turning it on again scans all photos again. You are never charged twice for the same event.

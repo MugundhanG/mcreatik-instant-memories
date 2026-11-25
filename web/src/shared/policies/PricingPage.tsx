@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { publicApi } from '../../lib/api'
 import type { Prices, PublicPricing } from '../../lib/types'
+import { FACE_SEARCH_MAIN_DEFAULT, FACE_SEARCH_QUICK_DEFAULT, facePackAddOn, packWithFacePrice } from '../../admin/plans'
 import { BUSINESS } from './business'
 import { PolicyLayout, Section } from './PolicyLayout'
 
-const UPDATED = '20 November 2026'
+const UPDATED = '25 November 2026'
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`
 
 function PriceCard({ name, price, unit, body }: { name: string; price: number; unit: string; body: string }) {
@@ -21,10 +22,10 @@ function PriceCard({ name, price, unit, body }: { name: string; price: number; u
 /** Main and Quick events, the monthly packs and how they work. */
 function Packages({ k }: { k: Prices }) {
   const packs = [
-    ['Main · 2 events a month', k.main2, 2, k.main2Extra],
-    ['Main · 4 events a month', k.main4, 4, k.main4Extra],
-    ['Quick · 2 events a month', k.quick2, 2, k.quick2Extra],
-    ['Quick · 4 events a month', k.quick4, 4, k.quick4Extra],
+    ['Main · 2 events a month', k.main2, 2, k.main2Extra, 'MAIN_2'],
+    ['Main · 4 events a month', k.main4, 4, k.main4Extra, 'MAIN_4'],
+    ['Quick · 2 events a month', k.quick2, 2, k.quick2Extra, 'QUICK_2'],
+    ['Quick · 4 events a month', k.quick4, 4, k.quick4Extra, 'QUICK_4'],
   ] as const
   return (
     <div data-testid="prices">
@@ -38,15 +39,16 @@ function Packages({ k }: { k: Prices }) {
       <div className="mt-3 overflow-hidden rounded-2xl border border-line bg-white">
         <table className="w-full text-sm">
           <thead className="bg-stone-50 text-left text-xs text-muted">
-            <tr><th className="px-4 py-2 font-medium">Pack</th><th className="px-4 py-2 text-right font-medium">Per month</th><th className="px-4 py-2 text-right font-medium">Per event</th><th className="px-4 py-2 text-right font-medium">Extra event</th></tr>
+            <tr><th className="px-4 py-2 font-medium">Pack</th><th className="px-4 py-2 text-right font-medium">Per month</th><th className="px-4 py-2 text-right font-medium">Per event</th><th className="px-4 py-2 text-right font-medium">Extra event</th><th className="px-4 py-2 text-right font-medium">With Find my photos</th></tr>
           </thead>
           <tbody>
-            {packs.map(([name, price, events, extra]) => (
+            {packs.map(([name, price, events, extra, plan]) => (
               <tr key={name} className="border-t border-line">
                 <td className="px-4 py-2.5">{name}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums">{rupees(price)}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums">{rupees(Math.round(price / events))}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums">{extra ? rupees(extra) : '–'}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums" title={`${rupees(facePackAddOn(plan, k))} a month on top of the pack`}>{rupees(packWithFacePrice(plan, k))}</td>
               </tr>
             ))}
           </tbody>
@@ -63,11 +65,12 @@ function Packages({ k }: { k: Prices }) {
       <div className="mt-3 rounded-2xl border border-line bg-white p-5" data-testid="face-search-addon">
         <p className="font-semibold text-ink">Find my photos</p>
         <p className="mt-1 text-sm text-ink/85">
-          AI face search for guests: +{rupees(k.faceSearchMain ?? 699)} per Main event, +{rupees(k.faceSearchQuick ?? 399)} per Quick event.
+          AI face search for guests: {rupees(k.faceSearchMain ?? FACE_SEARCH_MAIN_DEFAULT)} per Main event, {rupees(k.faceSearchQuick ?? FACE_SEARCH_QUICK_DEFAULT)} per Quick event, one by one, or included with a monthly pack at the price in the “With Find my photos” column above.
         </p>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink/85">
           <li>Guests take one selfie with their phone’s front camera and see only the photos they are in. New photos of them appear by themselves, with no second selfie.</li>
           <li><b className="font-medium">Private gallery</b> included: switch it on and guests see no photos until their selfie, then only their own. Nobody sees the whole gallery. Ideal for families who want privacy.</li>
+          <li>With a pack, it is added month by month and covers up to your pack’s events each month: a Main pack’s on Main and Quick events, a Quick pack’s on Quick events. It needs a paid-up pack.</li>
           <li>Switch it on and off per event from your dashboard (Settings → Face search); you are never charged twice for the same event.</li>
         </ul>
         <p className="mt-2 text-sm text-muted">

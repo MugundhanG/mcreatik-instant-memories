@@ -66,12 +66,14 @@ describe('Studio accounts', () => {
     const { unmount } = renderAt('')
     expect(await screen.findByRole('link', { name: 'Events' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Studios' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Face usage' })).not.toBeInTheDocument()
     unmount()
 
     mockApi(account('SUPER_ADMIN'))
     signIn('SUPER_ADMIN')
     renderAt('')
     expect(await screen.findByRole('link', { name: 'Studios' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Face usage' })).toHaveAttribute('href', '/admin/face-usage')
   })
 
   it("lets McreatiK's own login edit its branding on the Account page and on the Studios page", async () => {

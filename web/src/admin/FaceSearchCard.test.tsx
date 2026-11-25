@@ -12,6 +12,8 @@ const billing: BillingSummary = {
     storageGb: 15, freeStorageGb: 5, clientSetup: 250, activeMonths: 3,
     main2Extra: 1499, main4Extra: 999, quick2Extra: 999, quick4Extra: 799, quickPackMain: 1499 },
 }
+const packBilling: BillingSummary = { ...billing, plan: 'MAIN_4', monthlyQuota: 4, packActive: true, planPaidUntil: '2026-12-10', monthlyPrice: 4999, facePackActive: false,
+  prices: { ...billing.prices, facePackMain2: 500, facePackMain4: 1000, facePackQuick2: 500, facePackQuick4: 1000 } }
 const event = (over: Partial<EventDetail> = {}): EventDetail => ({
   id: 'e1', name: 'Arun & Priya', slug: 'arun-priya', eventDate: '2026-11-01', startTime: null, endTime: null, status: 'LIVE',
   coverPhotoId: null, coverUrl: null, galleryUrl: 'https://live.test/e/arun-priya', retentionUntil: '2027-05-31',
@@ -116,6 +118,42 @@ describe('Face search card', () => {
     expect(await screen.findByRole('switch', { name: 'Private gallery' })).toBeDisabled()
     expect(screen.getByText('Needs Find my photos on.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Add face search/ })).not.toBeInTheDocument() // paid already
+  })
+
+  it('lets a studio switch it on when its pack covers the event, without paying', async () => {
+    const fn = serve(status({ packCovered: true }))
+    render(<FaceSearchCard event={event()} billing={{ ...packBilling, facePackActive: true }} superAdmin={false} />)
+    expect(await screen.findByTestId('face-search-pack-hint')).toHaveTextContent('Included in your pack’s Find my photos')
+    expect(screen.getByTestId('face-search-pack-hint')).toHaveTextContent('uses one of this month’s pack events')
+    expect(screen.queryByRole('button', { name: /Add face search/ })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('switch', { name: 'Find my photos' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Turn on' }))
+    await waitFor(() => expect(screen.getByTestId('face-search-state')).toHaveTextContent('On'))
+    const put = fn.mock.calls.find(([, init]) => init?.method === 'PUT')!
+    expect(JSON.parse(String(put[1]!.body))).toEqual({ enabled: true })
+  })
+
+  it('offers Find my photos for the pack with the pack total, and opens the dialog', async () => {
+    serve(status())
+    render(<FaceSearchCard event={event()} billing={packBilling} superAdmin={false} />)
+    const offer = await screen.findByRole('button', { name: 'Add Find my photos to your pack — ₹5,999 a month' })
+    expect(screen.getByRole('button', { name: /Add face search/ })).toBeInTheDocument() // the one-off stays
+    expect(screen.getByText(/₹1,000 a month on top of your Main 4 pack/)).toBeInTheDocument()
+    await userEvent.click(offer)
+    expect(screen.getByRole('dialog', { name: 'Find my photos for your Main 4 pack' })).toBeInTheDocument()
+    expect(screen.getByTestId('amount')).toHaveTextContent('₹1,000')
+  })
+
+  it('explains why a pack with Find my photos still does not cover the event', async () => {
+    serve(status())
+    const quickPack: BillingSummary = { ...packBilling, plan: 'QUICK_2', facePackActive: true }
+    const { unmount } = render(<FaceSearchCard event={event()} billing={quickPack} superAdmin={false} />)
+    expect(await screen.findByTestId('face-pack-not-covering')).toHaveTextContent('Quick events only')
+    expect(screen.getByRole('button', { name: /Add face search/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /to your pack/ })).not.toBeInTheDocument()
+    unmount()
+    render(<FaceSearchCard event={event({ eventType: 'QUICK' })} billing={{ ...packBilling, facePackActive: true }} superAdmin={false} />)
+    expect(await screen.findByTestId('face-pack-not-covering')).toHaveTextContent('are used')
   })
 
   it('is not shown for a client gallery', async () => {

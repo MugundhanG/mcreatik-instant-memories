@@ -12,9 +12,16 @@ public class FaceSearchConfig {
 
     private static final Logger log = LoggerFactory.getLogger(FaceSearchConfig.class);
 
-    /** Rekognition when face search is on and the AWS keys are set; otherwise the in-memory fake (no AWS calls ever). */
+    /**
+     * Rekognition when face search is on and the AWS keys are set; otherwise the in-memory fake (no AWS calls ever).
+     * Either way every billable call is counted per event (Face search usage).
+     */
     @Bean
-    FaceSearchProvider faceSearchProvider(GalleryProperties properties) {
+    FaceSearchProvider faceSearchProvider(GalleryProperties properties, org.springframework.jdbc.core.JdbcTemplate jdbc) {
+        return new MeteredFaceSearchProvider(engine(properties), jdbc);
+    }
+
+    private static FaceSearchProvider engine(GalleryProperties properties) {
         GalleryProperties.FaceSearch config = properties.faceSearch();
         if (config.enabled() && config.hasKeys()) {
             log.info("Face search: AWS Rekognition in {}", config.region());

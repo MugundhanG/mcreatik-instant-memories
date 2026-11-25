@@ -16,7 +16,7 @@ McreatiK Instant Memories puts wedding photos on guests' phones within seconds o
 
 ## Find my photos and Private gallery
 
-**Find my photos** is an optional add-on per event (+₹699 per Main event, +₹399 per Quick event; not for Client-only events). The studio buys it in the event's **Settings → Face search** and switches it on and off there. A guest taps **Find my photos**, agrees to a short notice, takes one selfie with the front camera inside the page, and sees **Photos of you**. The phone remembers the guest, so new photos of them appear by themselves. Face data is processed by AWS in Mumbai and deleted with the photos.
+**Find my photos** is an optional add-on per event (+₹499 per Main event, +₹299 per Quick event; not for Client-only events), or included with a monthly pack for a little more a month (Main 2 ₹3,999, Main 4 ₹5,999, Quick 2 ₹2,999, Quick 4 ₹4,999). The studio buys it in the event's **Settings → Face search** and switches it on and off there. A guest taps **Find my photos**, agrees to a short notice, takes one selfie with the front camera inside the page, and sees **Photos of you**. The phone remembers the guest, so new photos of them appear by themselves. Face data is processed by AWS in Mumbai and deleted with the photos.
 
 **Private gallery** is a second switch in the same card (needs Find my photos on). Guests then see no photos until they take a selfie, and afterwards only the photos they are in. The couple's Client gallery is not affected. The event's **Analytics** page has a **Find my photos** section.
 

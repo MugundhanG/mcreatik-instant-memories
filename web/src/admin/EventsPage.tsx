@@ -103,6 +103,7 @@ function PlanBar({ billing: b, onBuy }: { billing: BillingSummary; onBuy: (p: Pu
             {owed ? 'payment not received for some events' : bought ? `${bought} bought` : 'no bought events'}
           </span>
           {pack && b.planPaidUntil && b.packActive && !renewSoon && <span className="text-muted"> · paid until {formatDay(b.planPaidUntil)}</span>}
+          {pack && b.facePackActive && b.facePackPaidUntil && <span className="text-muted" data-testid="face-pack-until"> · Find my photos paid until {formatDay(b.facePackPaidUntil)}</span>}
         </p>
         <div className="flex gap-4 text-sm font-medium text-[#8a5a1c]">
           <button type="button" onClick={() => onBuy({ item: 'MAIN_EVENT', quantity: 1 })} className="hover:underline">Buy events</button>

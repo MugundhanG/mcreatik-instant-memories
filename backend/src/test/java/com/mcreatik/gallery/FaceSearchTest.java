@@ -56,7 +56,7 @@ class FaceSearchTest extends IntegrationTest {
 
     @BeforeEach
     void freshFake() {
-        fake = (FakeFaceSearchProvider) provider;
+        fake = (FakeFaceSearchProvider) ((com.mcreatik.gallery.face.MeteredFaceSearchProvider) provider).engine();
         fake.reset();
     }
 
@@ -750,6 +750,140 @@ class FaceSearchTest extends IntegrationTest {
         mvc.perform(post("/api/admin/billing/payments/" + q + "/reject").header("Authorization", bearer(adminToken()))
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNoContent());
         assertThat(jdbc.queryForObject("SELECT face_search_enabled FROM events WHERE id = ?", Boolean.class, UUID.fromString(quick))).isFalse();
+    }
+
+    /** A studio on a monthly pack (paid for a month by McreatiK's change of plan), as {token, id}. */
+    private String[] packStudio(String plan) throws Exception {
+        String email = "pack-" + UUID.randomUUID().toString().substring(0, 8) + "@client.test";
+        String studioId = JsonPath.read(mvc.perform(post("/api/admin/studios").header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Lens\",\"email\":\"" + email + "\",\"password\":\"temporary-123\",\"plan\":\"PER_EVENT\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        mvc.perform(patch("/api/admin/billing/studios/" + studioId).header("Authorization", bearer(adminToken()))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"plan\":\"" + plan + "\"}")).andExpect(status().isOk());
+        trustStudio(studioId);
+        String ipAddr = ip();
+        String token = JsonPath.read(mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"temporary-123\"}").with(r -> {
+                            r.setRemoteAddr(ipAddr);
+                            return r;
+                        })).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), "$.token");
+        return new String[] {token, studioId};
+    }
+
+    private ResultActions buyFacePack(String token, int months) throws Exception {
+        return mvc.perform(post("/api/admin/billing/payments").header("Authorization", bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"item\":\"FACE_PACK\",\"quantity\":" + months + ",\"utr\":\"FP" + System.nanoTime() + "\"}"));
+    }
+
+    private ResultActions switchOn(String token, String eventId) throws Exception {
+        return mvc.perform(put("/api/admin/events/" + eventId + "/face-search").header("Authorization", bearer(token))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}"));
+    }
+
+    @Test
+    void thePacksFaceSearchPricesAreOnThePricingPage() throws Exception {
+        // (The one-off prices, ₹499 / ₹299 since V35, are changed by another test, so they are not checked here.)
+        mvc.perform(get("/api/public/pricing"))
+                .andExpect(jsonPath("$.packages.facePackMain2").value(500)).andExpect(jsonPath("$.packages.facePackMain4").value(1000))
+                .andExpect(jsonPath("$.packages.facePackQuick2").value(500)).andExpect(jsonPath("$.packages.facePackQuick4").value(1000));
+    }
+
+    @Test
+    void thePacksFaceSearchCoversItsEventsEachMonth() throws Exception {
+        String[] s = packStudio("MAIN_2");
+        String token = s[0];
+        // Not on a pack or not paid up: no face search pack to buy.
+        String[] perEvent = packStudio("PER_EVENT");
+        buyFacePack(perEvent[0], 1).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PACK_NEEDED"));
+
+        mvc.perform(patch("/api/admin/billing/studios/" + s[1]).header("Authorization", bearer(adminToken()))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"addCredits\":2}")).andExpect(status().isOk());
+        String a = studioEvent(token, "MAIN");
+        String b = studioEvent(token, "QUICK");
+        String c = studioEvent(token, "MAIN"); // an extra event past the pack's two
+        mvc.perform(get("/api/admin/events/" + a + "/face-search").header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$.packCovered").value(false));
+        switchOn(token, a).andExpect(status().isPaymentRequired());
+
+        mvc.perform(post("/api/admin/billing/quote").header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"item\":\"FACE_PACK\",\"quantity\":3}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.unitPrice").value(500)).andExpect(jsonPath("$.amount").value(1500));
+        buyFacePack(token, 1).andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(500));
+        LocalDate until = jdbc.queryForObject("SELECT face_pack_paid_until FROM admin_users WHERE id = ?::uuid", java.sql.Date.class, s[1]).toLocalDate();
+        assertThat(until).isEqualTo(LocalDate.now(java.time.ZoneId.of("Asia/Kolkata")).plusMonths(1));
+        mvc.perform(get("/api/admin/billing").header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$.facePackActive").value(true)).andExpect(jsonPath("$.facePackPaidUntil").value(until.toString()));
+
+        // Covered: switched on without paying, and the event keeps it (paid) from then on.
+        mvc.perform(get("/api/admin/events/" + a + "/face-search").header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$.packCovered").value(true));
+        mvc.perform(post("/api/admin/billing/quote").header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"item\":\"FACE_SEARCH\",\"eventId\":\"" + a + "\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("INCLUDED_IN_PACK"));
+        switchOn(token, a).andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true)).andExpect(jsonPath("$.paid").value(true));
+        // Off and on again uses nothing more.
+        mvc.perform(put("/api/admin/events/" + a + "/face-search").header("Authorization", bearer(token))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false}")).andExpect(status().isOk());
+        switchOn(token, a).andExpect(status().isOk());
+        // A Main pack covers a Quick event too.
+        switchOn(token, b).andExpect(status().isOk()).andExpect(jsonPath("$.paid").value(true));
+        // Two a month on a 2-event pack: the third is bought on its own.
+        mvc.perform(get("/api/admin/events/" + c + "/face-search").header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$.packCovered").value(false));
+        switchOn(token, c).andExpect(status().isPaymentRequired());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM event_charges WHERE owner_id = ?::uuid AND kind = 'FACE'", Integer.class, s[1])).isEqualTo(2);
+
+        // A second payment extends from the paid-until date; a rejected one takes its months back.
+        String second = JsonPath.read(buyFacePack(token, 2).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        assertThat(jdbc.queryForObject("SELECT face_pack_paid_until FROM admin_users WHERE id = ?::uuid", java.sql.Date.class, s[1]).toLocalDate())
+                .isEqualTo(until.plusMonths(2));
+        mvc.perform(post("/api/admin/billing/payments/" + second + "/reject").header("Authorization", bearer(adminToken()))
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT face_pack_paid_until FROM admin_users WHERE id = ?::uuid", java.sql.Date.class, s[1]).toLocalDate())
+                .isEqualTo(until);
+
+        // Lapsed beyond the grace days: no longer covers.
+        jdbc.update("UPDATE admin_users SET face_pack_paid_until = ? WHERE id = ?::uuid",
+                java.sql.Date.valueOf(LocalDate.now(java.time.ZoneId.of("Asia/Kolkata")).minusDays(4)), s[1]);
+        String d = studioEvent(token, "QUICK");
+        mvc.perform(get("/api/admin/events/" + d + "/face-search").header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$.packCovered").value(false));
+    }
+
+    @Test
+    void aQuickPacksFaceSearchDoesNotCoverAMainEvent() throws Exception {
+        String[] s = packStudio("QUICK_4");
+        buyFacePack(s[0], 1).andExpect(status().isCreated()).andExpect(jsonPath("$.amount").value(1000));
+        mvc.perform(patch("/api/admin/billing/studios/" + s[1]).header("Authorization", bearer(adminToken()))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"addCredits\":1}")).andExpect(status().isOk());
+        String main = studioEvent(s[0], "MAIN");
+        String quick = studioEvent(s[0], "QUICK");
+        switchOn(s[0], main).andExpect(status().isPaymentRequired());
+        switchOn(s[0], quick).andExpect(status().isOk());
+    }
+
+    @Test
+    void everyBillableEngineCallIsCountedPerEventForMcreatiK() throws Exception {
+        String json = createEvent("Usage", "LIVE");
+        String id = eventId(json);
+        String token = createUploader(id, "Camera 1");
+        uploadPhoto(token, "IMG_1.JPG", jpeg(800, 600));
+        uploadPhoto(token, "IMG_2.JPG", jpeg(800, 601));
+        processAll();
+        setFaceSearch(id, true);
+        indexAll();
+        var usage = jdbc.queryForMap("SELECT sum(photos_scanned) AS scanned, sum(searches) AS searches FROM face_usage WHERE event_id = ?::uuid", id);
+        assertThat(((Number) usage.get("scanned")).intValue()).isEqualTo(2);
+        assertThat(((Number) usage.get("searches")).intValue()).isZero();
+
+        mvc.perform(get("/api/admin/face-usage").header("Authorization", bearer(adminToken())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[?(@.eventId == '" + id + "')].photosScanned").value(2))
+                .andExpect(jsonPath("$.events[?(@.eventId == '" + id + "')].eventName").value("Usage"));
+        // McreatiK only.
+        mvc.perform(get("/api/admin/face-usage").header("Authorization", bearer(studioToken(0)))).andExpect(status().isForbidden());
     }
 
     private ResultActions quote(String token, String eventId) throws Exception {

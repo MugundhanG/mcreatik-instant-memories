@@ -336,7 +336,7 @@ export default function EventDashboardPage() {
       <section {...panel('settings')} className="anim-fade-in space-y-6">
         <GalleryAccessCard event={event} superAdmin={superAdmin} onChange={setEvent} />
         {!clientOnly && <WatermarkCard event={event} onChange={setEvent} />}
-        {!clientOnly && <FaceSearchCard event={event} billing={billing} superAdmin={superAdmin} />}
+        {!clientOnly && <FaceSearchCard event={event} billing={billing} superAdmin={superAdmin} onChanged={() => adminApi.billing().then(setBilling).catch(() => {})} />}
         <Card title="Privacy & data">
           <div className="flex flex-wrap items-end justify-between gap-4">
             {billing?.free ? (

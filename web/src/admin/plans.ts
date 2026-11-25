@@ -12,11 +12,17 @@ export const PLAN_LABEL: Record<Plan, string> = {
 
 export const PACKS: Plan[] = ['MAIN_2', 'MAIN_4', 'QUICK_2', 'QUICK_4']
 
+/** Events a pack gives each month. */
+export const PACK_EVENTS: Partial<Record<Plan, number>> = { MAIN_2: 2, MAIN_4: 4, QUICK_2: 2, QUICK_4: 4 }
+
+/** "Main 4 pack": a pack's short name. */
+export const packShortName = (p: Plan) => `${p.startsWith('QUICK') ? 'Quick' : 'Main'} ${PACK_EVENTS[p] ?? ''} pack`.replace('  ', ' ')
+
 export const isPack = (p: Plan) => PACKS.includes(p)
 
 /** Shown until the server sends the add-on's prices (older servers). */
-export const FACE_SEARCH_MAIN_DEFAULT = 699
-export const FACE_SEARCH_QUICK_DEFAULT = 399
+export const FACE_SEARCH_MAIN_DEFAULT = 499
+export const FACE_SEARCH_QUICK_DEFAULT = 299
 
 /** GB included with a new event of this type (a Quick event has its own, smaller allowance; older servers send one). */
 export function includedGb(prices: Pick<Prices, 'freeStorageGb' | 'freeStorageGbQuick'>, type: EventType): number {
@@ -36,6 +42,20 @@ export function packPrice(plan: Plan, prices: Prices): number {
   }
 }
 
+/** What "Find my photos" adds to a pack a month (older servers: 500 for a 2-event pack, 1,000 for a 4-event pack). */
+export function facePackAddOn(plan: Plan, prices: Prices): number {
+  switch (plan) {
+    case 'MAIN_2': return prices.facePackMain2 ?? 500
+    case 'MAIN_4': return prices.facePackMain4 ?? 1000
+    case 'QUICK_2': return prices.facePackQuick2 ?? 500
+    case 'QUICK_4': return prices.facePackQuick4 ?? 1000
+    default: return 0
+  }
+}
+
+/** What studios pay in total a month: the pack plus Find my photos. */
+export const packWithFacePrice = (plan: Plan, prices: Prices) => packPrice(plan, prices) + facePackAddOn(plan, prices)
+
 /** What one unit of a purchase costs, the same way the server prices it. */
 export function unitPrice(item: PurchaseItem, billing: BillingSummary, plan?: Plan, months?: number): number {
   switch (item) {
@@ -48,6 +68,7 @@ export function unitPrice(item: PurchaseItem, billing: BillingSummary, plan?: Pl
     case 'STORAGE_EXTEND': return billing.prices.storageGb
     case 'CLIENT_SETUP': return billing.prices.clientSetup
     case 'FACE_SEARCH': return billing.prices.faceSearchMain ?? FACE_SEARCH_MAIN_DEFAULT
+    case 'FACE_PACK': return facePackAddOn(billing.plan, billing.prices)
   }
 }
 
@@ -100,6 +121,7 @@ export function describe(p: Purchase, billing: BillingSummary): string {
     case 'QUICK_EVENT': return `${n} Quick event${n === 1 ? '' : 's'}`
     case 'UPGRADE': return 'Upgrade to a Main event'
     case 'FACE_SEARCH': return 'Find my photos (face search)'
+    case 'FACE_PACK': return `Find my photos · ${packShortName(p.plan ?? billing.plan)} · ${n} month${n === 1 ? '' : 's'}`
     case 'PLAN': return `${n} month${n === 1 ? '' : 's'} of ${PLAN_LABEL[p.plan ?? billing.plan]}`
     case 'STORAGE': { const m = p.months ?? billing.prices.activeMonths; return `${n} GB of storage for ${m} month${m === 1 ? '' : 's'}` }
     case 'STORAGE_EXTEND': {
