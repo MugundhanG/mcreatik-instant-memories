@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, FormEvent, ReactNode, RefObject } from 'react'
 import { ApiError } from '../lib/api'
 import { formatCount } from '../lib/format'
-import { chromeIntentUrl, downloadPhoto, fetchPhoto, guestDownloadUrl, isAndroid, isIOS, sharePhoto } from '../lib/photoActions'
+import { chromeIntentUrl, downloadPhoto, fetchPhotoWithSource, guestDownloadUrl, isAndroid, isIOS, sharePhoto } from '../lib/photoActions'
 import type { PublicPhoto } from '../lib/types'
 import type { Watermarker } from '../lib/watermark'
 import { INSTAGRAM_HANDLE, InstagramIcon, InstagramLink } from '../shared/StudioLogo'
@@ -143,8 +143,8 @@ export function PhotoViewer({
     // iPhone (Download opens the share sheet) and Share both need the photo ready the moment it's tapped.
     if (!currentId || !currentWebUrl || !(isIOS() || shareCaption)) return
     let active = true
-    fetchPhoto(currentWebUrl, guestDownloadUrl(eventSlug, currentId, matchId))
-      .then((blob) => (watermark ? watermark(blob) : blob))
+    fetchPhotoWithSource(currentWebUrl, guestDownloadUrl(eventSlug, currentId, matchId))
+      .then(({ blob, fromApi }) => (watermark && !fromApi ? watermark(blob) : blob)) // the API's copy is already marked
       .then((blob) => active && setPrefetched({ id: currentId, blob }))
       .catch(() => {}) // Download then falls back to the press-and-hold hint
     return () => {
@@ -161,7 +161,8 @@ export function PhotoViewer({
     if (prefetched?.id === p.id) return prefetched.blob
     if (!watermark) return null
     try {
-      return await watermark(await fetchPhoto(p.webUrl, guestDownloadUrl(eventSlug, p.id, matchId)))
+      const { blob, fromApi } = await fetchPhotoWithSource(p.webUrl, guestDownloadUrl(eventSlug, p.id, matchId))
+      return fromApi ? blob : await watermark(blob) // the API's copy is already marked
     } catch {
       return null
     }

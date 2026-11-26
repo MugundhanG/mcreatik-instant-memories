@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { chromeIntentUrl, guestDownloadUrl, withDownloadParam } from './photoActions'
 
 describe('withDownloadParam', () => {
-  it('adds dl=1 to a plain media URL', () => {
-    expect(withDownloadParam('https://im-media.mcreatik.com/web/a.jpg')).toBe('https://im-media.mcreatik.com/web/a.jpg?dl=1')
+  it('adds dl=2 to a plain media URL', () => {
+    expect(withDownloadParam('https://im-media.mcreatik.com/web/a.jpg')).toBe('https://im-media.mcreatik.com/web/a.jpg?dl=2')
   })
   it('respects an existing query string and a fragment', () => {
-    expect(withDownloadParam('https://m.test/a.jpg?v=2')).toBe('https://m.test/a.jpg?v=2&dl=1')
-    expect(withDownloadParam('https://m.test/a.jpg?v=2#x')).toBe('https://m.test/a.jpg?v=2&dl=1#x')
+    expect(withDownloadParam('https://m.test/a.jpg?v=2')).toBe('https://m.test/a.jpg?v=2&dl=2')
+    expect(withDownloadParam('https://m.test/a.jpg?v=2#x')).toBe('https://m.test/a.jpg?v=2&dl=2#x')
   })
   it('does not add it twice, and leaves signed URLs alone', () => {
-    expect(withDownloadParam('https://m.test/a.jpg?dl=1')).toBe('https://m.test/a.jpg?dl=1')
+    expect(withDownloadParam('https://m.test/a.jpg?dl=2')).toBe('https://m.test/a.jpg?dl=2')
     const signed = 'https://x.r2.cloudflarestorage.com/a.jpg?X-Amz-Signature=abc'
     expect(withDownloadParam(signed)).toBe(signed)
   })

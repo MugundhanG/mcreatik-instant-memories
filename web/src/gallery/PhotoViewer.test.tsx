@@ -109,8 +109,8 @@ describe('Photo viewer', () => {
     expect(screen.queryByRole('dialog', { name: 'Follow on Instagram' })).not.toBeInTheDocument()
     expect(open).not.toHaveBeenCalled()
     // Bypasses the cached non-CORS copy the <img> loaded, which would make the CORS fetch fail.
-    // `dl=1` also gives the CDN a separate cache key from the <img> request.
-    const call = vi.mocked(fetch).mock.calls.find(([input]) => String(input).endsWith('/web/3.jpg?dl=1'))
+    // `dl=2` also gives the CDN a separate cache key from the <img> request.
+    const call = vi.mocked(fetch).mock.calls.find(([input]) => String(input).endsWith('/web/3.jpg?dl=2'))
     expect(call?.[1]).toMatchObject({ mode: 'cors', cache: 'no-store' })
     expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).endsWith('/web/3.jpg'))).toBe(false)
   })
@@ -136,6 +136,26 @@ describe('Photo viewer', () => {
     // Only the attempt to mark it in the browser read the media file; the saved file came from the API.
     const saved = (createObjectURL.mock.calls[0] as unknown as [Blob])[0]
     expect(saved.size).toBe(4)
+  })
+
+  it('watermark on: a photo that came from the API (already marked by the server) is saved as it is, never marked twice', async () => {
+    const user = userEvent.setup()
+    const createObjectURL = vi.fn(() => 'blob:photo')
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }))
+    const decode = vi.fn(async () => { throw new Error('should not be called') })
+    vi.stubGlobal('createImageBitmap', decode)
+    mockFetch({
+      [base]: () => ({ ...liveEvent, watermark: true }),
+      [`${base}/photos`]: () => ({ photos: [photo(3), photo(2), photo(1)], nextCursor: null }),
+      // No media route: the media host refuses (as with a missing CORS policy), so the API's copy is used.
+      [apiDownload(3)]: () => new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x01]), { headers: { 'Content-Type': 'image/jpeg' } }),
+    })
+    renderGallery()
+    await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
+    await user.click(screen.getByRole('button', { name: 'Download' }))
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
+    expect(decode).not.toHaveBeenCalled()
+    expect((createObjectURL.mock.calls[0] as unknown as [Blob])[0].size).toBe(5)
   })
 
   it('guests get Like in place of Share', async () => {
@@ -175,7 +195,7 @@ describe('Photo viewer', () => {
     renderGallery()
     await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
     // prefetched as soon as the photo is shown, so the tap can open the sheet immediately
-    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).endsWith('/web/3.jpg?dl=1'))).toBe(true))
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).endsWith('/web/3.jpg?dl=2'))).toBe(true))
     await new Promise((r) => setTimeout(r, 0))
 
     await user.click(screen.getByRole('button', { name: 'Download' }))
@@ -225,7 +245,7 @@ describe('Photo viewer', () => {
       await openAndDownload()
       expect(await screen.findByRole('dialog', { name: 'Follow on Instagram' })).toHaveTextContent('Saved to your phone')
       const urls = fetchMock.mock.calls.map(([u]) => String(u))
-      expect(urls).toContain('https://media.test/web/3.jpg?dl=1')
+      expect(urls).toContain('https://media.test/web/3.jpg?dl=2')
       expect(urls.some((u) => u.endsWith(apiDownload(3)))).toBe(true)
       expect(createObjectURL).toHaveBeenCalledTimes(1)
       expect(anchorClick).toHaveBeenCalledTimes(1) // the blob save only
@@ -280,7 +300,7 @@ describe('Photo viewer', () => {
       renderGallery()
       const user = userEvent.setup()
       await user.click(await screen.findByRole('button', { name: 'Open photo 1' }))
-      await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith('/web/3.jpg?dl=1'))).toBe(true))
+      await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith('/web/3.jpg?dl=2'))).toBe(true))
       await new Promise((r) => setTimeout(r, 0))
       await user.click(screen.getByRole('button', { name: 'Download' }))
       await waitFor(() => expect(share).toHaveBeenCalled())
