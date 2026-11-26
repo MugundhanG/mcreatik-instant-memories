@@ -153,7 +153,7 @@ public class StudioController {
     // ---- McreatiK sets up a studio's branding (logo, name, Instagram, poster logo size) during onboarding ----
 
     public record BrandingRequest(String displayName, String instagram, Integer logoScale, String boardTheme,
-                                  String phone) {
+                                  String phone, StudioBranding.MarkEdit mark) {
     }
 
     @PatchMapping("/{studioId}/branding")
@@ -162,7 +162,7 @@ public class StudioController {
                                              @RequestBody BrandingRequest request) {
         AdminUser studio = studio(auth, studioId);
         branding.edit(studio, request.displayName(), request.instagram(), request.logoScale(), request.boardTheme(),
-                request.phone());
+                request.phone(), request.mark());
         return branding.of(studio);
     }
 

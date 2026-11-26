@@ -1,5 +1,5 @@
 import type { PreparedPhoto } from '../admin/prepareUpload'
-import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, Gallery, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, FaceSearchStatus, FaceUsage, FindMeResult, MatchResult, EventType, DocPage, DocPageSummary, GuestAnalytics, HqRequest, HqRequestInput, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
+import type { Account, AdminPhoto, AdminPhotoPage, AdminPhotoQuery, AlbumSelection, BillingSettings, BillingSummary, Brand, Category, EventClient, Gallery, MarkSettings, EventDetail, EventPayment, EventStats, EventStatus, EventSummary, FaceSearchStatus, FaceUsage, FindMeResult, MatchResult, EventType, DocPage, DocPageSummary, GuestAnalytics, HqRequest, HqRequestInput, LoginResponse, OriginalUploadSession, PhotoFacets, Plan, PreparedZip, PublicEvent, PublicPhotoPage, Prices, PublicPricing, Purchase, Studio, StudioBilling, UploaderCredentials } from './types'
 
 export type BulkPhotoAction = 'LIKE' | 'UNLIKE' | 'HIDE' | 'SHOW' | 'DELETE'
 
@@ -257,7 +257,7 @@ export const adminApi = {
     request<UploaderCredentials>(`/api/admin/events/${eventId}/uploaders`, { method: 'POST', body: json({ name }) }, true),
   rotateUploader: (uploaderId: string) =>
     request<UploaderCredentials>(`/api/admin/uploaders/${uploaderId}/rotate-token`, { method: 'POST' }, true),
-  updateAccount: (input: { displayName?: string; instagram?: string; phone?: string; logoScale?: number; boardTheme?: 'cream' | 'dark' | 'white' }) =>
+  updateAccount: (input: { displayName?: string; instagram?: string; phone?: string; logoScale?: number; boardTheme?: 'cream' | 'dark' | 'white'; mark?: Partial<MarkSettings> }) =>
     request<Account>('/api/admin/account', { method: 'PATCH', body: json(input) }, true),
   uploadLogo: (png: Blob) => {
     const form = new FormData()
@@ -270,7 +270,7 @@ export const adminApi = {
     request<void>(`/api/admin/events/${eventId}/hq-requests/${id}`, { method: 'PATCH', body: json({ done }) }, true),
   analytics: (eventId: string) => request<GuestAnalytics>(`/api/admin/events/${eventId}/analytics`, {}, true),
   /** McreatiK sets up a studio's branding (onboarding). */
-  updateStudioBranding: (studioId: string, input: { displayName?: string; instagram?: string; phone?: string; logoScale?: number; boardTheme?: 'cream' | 'dark' | 'white' }) =>
+  updateStudioBranding: (studioId: string, input: { displayName?: string; instagram?: string; phone?: string; logoScale?: number; boardTheme?: 'cream' | 'dark' | 'white'; mark?: Partial<MarkSettings> }) =>
     request<Brand>(`/api/admin/studios/${studioId}/branding`, { method: 'PATCH', body: json(input) }, true),
   uploadStudioLogo: (studioId: string, png: Blob) => {
     const form = new FormData()

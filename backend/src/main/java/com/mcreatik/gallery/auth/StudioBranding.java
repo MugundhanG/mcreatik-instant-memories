@@ -24,8 +24,26 @@ public class StudioBranding {
      * For studios, {@code logoUrl}, {@code instagram} and {@code phone} are null until the studio sets them.
      */
     public record Brand(String name, String logoUrl, String instagram, boolean mcreatik, int logoScale,
-                        String boardTheme, String phone) {
+                        String boardTheme, String phone, Mark mark) {
     }
+
+    /**
+     * The watermark on guests' downloads. {@code style} CORNER or STRIP, {@code position} LEFT, CENTER or RIGHT,
+     * {@code size} SMALL or MEDIUM; the booleans pick the details to show (a detail the studio hasn't set is skipped).
+     */
+    public record Mark(String style, String position, String size, boolean logo, boolean name, boolean instagram,
+                       boolean phone) {
+        public static final Mark DEFAULT = new Mark("CORNER", "RIGHT", "SMALL", true, false, true, false);
+    }
+
+    /** An edit of the watermark settings: fields left null stay as they are. */
+    public record MarkEdit(String style, String position, String size, Boolean logo, Boolean name, Boolean instagram,
+                           Boolean phone) {
+    }
+
+    static final java.util.Set<String> MARK_STYLES = java.util.Set.of("CORNER", "STRIP");
+    static final java.util.Set<String> MARK_POSITIONS = java.util.Set.of("LEFT", "CENTER", "RIGHT");
+    static final java.util.Set<String> MARK_SIZES = java.util.Set.of("SMALL", "MEDIUM");
 
     /** The designs a studio can pick for its printed board and event cards. */
     static final java.util.Set<String> BOARD_THEMES = java.util.Set.of("cream", "dark", "white");
@@ -47,7 +65,9 @@ public class StudioBranding {
         return new Brand(owner.getDisplayName(),
                 owner.getLogoKey() == null ? null : storage.publicMediaUrl(owner.getLogoKey()),
                 owner.getInstagramHandle(), owner.isSuperAdmin(), owner.getLogoScale(),
-                owner.getBoardTheme(), owner.getContactPhone());
+                owner.getBoardTheme(), owner.getContactPhone(),
+                new Mark(owner.getWmStyle(), owner.getWmPosition(), owner.getWmSize(), owner.isWmLogo(),
+                        owner.isWmName(), owner.isWmInstagram(), owner.isWmPhone()));
     }
 
     /** A logo file as stored: its bytes and image type. */
@@ -67,7 +87,7 @@ public class StudioBranding {
 
     public Brand ofOwner(UUID ownerId) {
         return admins.findById(ownerId).map(this::of)
-                .orElseGet(() -> new Brand("McreatiK Studios", null, null, true, 100, "cream", null));
+                .orElseGet(() -> new Brand("McreatiK Studios", null, null, true, 100, "cream", null, Mark.DEFAULT));
     }
 
     /** Accepts "name", "@name" or a profile link; blank clears it. */
@@ -102,6 +122,15 @@ public class StudioBranding {
     /** As above, plus the board design ({@code cream}, {@code dark} or {@code white}). */
     public void edit(AdminUser user, String displayName, String instagram, Integer logoScale, String boardTheme,
                      String phone) {
+        edit(user, displayName, instagram, logoScale, boardTheme, phone, null);
+    }
+
+    /** As above, plus the watermark settings (null: unchanged). Everything is validated before anything is saved. */
+    public void edit(AdminUser user, String displayName, String instagram, Integer logoScale, String boardTheme,
+                     String phone, MarkEdit mark) {
+        if (mark != null) {
+            checkMark(mark);
+        }
         if (boardTheme != null && !BOARD_THEMES.contains(boardTheme)) {
             throw ApiException.badRequest("INVALID_THEME", "Pick the cream, dark or white board design");
         }
@@ -126,6 +155,42 @@ public class StudioBranding {
         }
         if (phone != null) {
             user.setContactPhone(normalizePhone(phone));
+        }
+        if (mark != null) {
+            applyMark(user, mark);
+        }
+    }
+
+    private static void checkMark(MarkEdit m) {
+        if ((m.style() != null && !MARK_STYLES.contains(m.style()))
+                || (m.position() != null && !MARK_POSITIONS.contains(m.position()))
+                || (m.size() != null && !MARK_SIZES.contains(m.size()))) {
+            throw ApiException.badRequest("INVALID_MARK",
+                    "The watermark style must be CORNER or STRIP, its position LEFT, CENTER or RIGHT and its size SMALL or MEDIUM");
+        }
+    }
+
+    private static void applyMark(AdminUser user, MarkEdit m) {
+        if (m.style() != null) {
+            user.setWmStyle(m.style());
+        }
+        if (m.position() != null) {
+            user.setWmPosition(m.position());
+        }
+        if (m.size() != null) {
+            user.setWmSize(m.size());
+        }
+        if (m.logo() != null) {
+            user.setWmLogo(m.logo());
+        }
+        if (m.name() != null) {
+            user.setWmName(m.name());
+        }
+        if (m.instagram() != null) {
+            user.setWmInstagram(m.instagram());
+        }
+        if (m.phone() != null) {
+            user.setWmPhone(m.phone());
         }
     }
 

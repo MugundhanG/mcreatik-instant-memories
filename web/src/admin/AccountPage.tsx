@@ -61,6 +61,7 @@ export default function AccountPage() {
             update: async (input) => (await adminApi.updateAccount(input)).brand!,
             upload: async (png) => (await adminApi.uploadLogo(png)).brand!,
             remove: async () => (await adminApi.removeLogo()).brand!,
+            loadLogo: adminApi.accountLogo,
           }}
           onSaved={(brand) => {
             setAccount({ ...account, displayName: brand.name, brand })

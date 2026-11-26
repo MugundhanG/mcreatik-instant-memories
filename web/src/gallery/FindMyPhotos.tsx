@@ -376,6 +376,7 @@ export function FindMyPhotos({ event, instagram, onActivity, liked, onToggleLike
           onClose={() => setSelected(-1)}
           onNearEnd={() => {}}
           instagram={instagram}
+          studioName={event.brand?.name}
           onActivity={onActivity}
           liked={liked}
           onToggleLike={onToggleLike}

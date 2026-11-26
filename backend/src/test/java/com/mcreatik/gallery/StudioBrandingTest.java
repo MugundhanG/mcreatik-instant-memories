@@ -117,6 +117,58 @@ class StudioBrandingTest extends IntegrationTest {
     }
 
     @Test
+    void watermarkSettingsDefaultToACornerLogoAndInstagramAndAreSaved() throws Exception {
+        String slug = studioEventSlug();
+        mvc.perform(get("/api/public/events/" + slug))
+                .andExpect(jsonPath("$.brand.mark.style").value("CORNER"))
+                .andExpect(jsonPath("$.brand.mark.position").value("RIGHT"))
+                .andExpect(jsonPath("$.brand.mark.size").value("SMALL"))
+                .andExpect(jsonPath("$.brand.mark.logo").value(true))
+                .andExpect(jsonPath("$.brand.mark.name").value(false))
+                .andExpect(jsonPath("$.brand.mark.instagram").value(true))
+                .andExpect(jsonPath("$.brand.mark.phone").value(false));
+        // Only the fields sent change.
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mark\":{\"style\":\"STRIP\",\"position\":\"CENTER\",\"phone\":true}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.brand.mark.style").value("STRIP"))
+                .andExpect(jsonPath("$.brand.mark.position").value("CENTER"))
+                .andExpect(jsonPath("$.brand.mark.phone").value(true))
+                .andExpect(jsonPath("$.brand.mark.size").value("SMALL"))
+                .andExpect(jsonPath("$.brand.mark.instagram").value(true));
+        mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"displayName\":\"Lens\"}"))
+                .andExpect(jsonPath("$.brand.mark.style").value("STRIP"));
+        mvc.perform(get("/api/public/events/" + slug))
+                .andExpect(jsonPath("$.brand.mark.style").value("STRIP"))
+                .andExpect(jsonPath("$.brand.mark.phone").value(true));
+    }
+
+    @Test
+    void mcreatikCanSetAStudiosWatermarkAndBadValuesAreRefused() throws Exception {
+        mvc.perform(patch("/api/admin/studios/" + studioId + "/branding").header("Authorization", bearer(adminToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mark\":{\"size\":\"MEDIUM\",\"name\":true,\"logo\":false}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mark.size").value("MEDIUM"))
+                .andExpect(jsonPath("$.mark.name").value(true))
+                .andExpect(jsonPath("$.mark.logo").value(false));
+        for (String bad : new String[] {"{\"style\":\"BOX\"}", "{\"position\":\"TOP\"}", "{\"size\":\"HUGE\"}"}) {
+            mvc.perform(patch("/api/admin/account").header("Authorization", bearer(studio))
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"displayName\":\"Changed\",\"mark\":" + bad + "}"))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_MARK"));
+            mvc.perform(patch("/api/admin/studios/" + studioId + "/branding").header("Authorization", bearer(adminToken()))
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"mark\":" + bad + "}"))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_MARK"));
+        }
+        // A refused request changes nothing (not even the name sent with it).
+        mvc.perform(get("/api/admin/account").header("Authorization", bearer(studio)))
+                .andExpect(jsonPath("$.brand.name").value("Lens & Light"))
+                .andExpect(jsonPath("$.brand.mark.style").value("CORNER"));
+    }
+
+    @Test
     void mcreatikEventsKeepTheMcreatikDesign() throws Exception {
         String slug = slug(createEvent("Own event", "LIVE"));
         mvc.perform(get("/api/public/events/" + slug)).andExpect(jsonPath("$.brand.mcreatik").value(true));

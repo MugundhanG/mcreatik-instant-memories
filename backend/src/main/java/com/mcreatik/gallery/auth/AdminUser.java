@@ -72,6 +72,28 @@ public class AdminUser {
     @Column(name = "board_theme", nullable = false)
     private String boardTheme = "cream";
 
+    /** The watermark on guests' downloads: CORNER or STRIP, where it sits, how big, and which details it shows. */
+    @Column(name = "wm_style", nullable = false)
+    private String wmStyle = "CORNER";
+
+    @Column(name = "wm_position", nullable = false)
+    private String wmPosition = "RIGHT";
+
+    @Column(name = "wm_size", nullable = false)
+    private String wmSize = "SMALL";
+
+    @Column(name = "wm_logo", nullable = false)
+    private boolean wmLogo = true;
+
+    @Column(name = "wm_name", nullable = false)
+    private boolean wmName = false;
+
+    @Column(name = "wm_instagram", nullable = false)
+    private boolean wmInstagram = true;
+
+    @Column(name = "wm_phone", nullable = false)
+    private boolean wmPhone = false;
+
     protected AdminUser() {
     }
 
@@ -153,6 +175,62 @@ public class AdminUser {
 
     public void setBoardTheme(String boardTheme) {
         this.boardTheme = boardTheme;
+    }
+
+    public String getWmStyle() {
+        return wmStyle;
+    }
+
+    public void setWmStyle(String wmStyle) {
+        this.wmStyle = wmStyle;
+    }
+
+    public String getWmPosition() {
+        return wmPosition;
+    }
+
+    public void setWmPosition(String wmPosition) {
+        this.wmPosition = wmPosition;
+    }
+
+    public String getWmSize() {
+        return wmSize;
+    }
+
+    public void setWmSize(String wmSize) {
+        this.wmSize = wmSize;
+    }
+
+    public boolean isWmLogo() {
+        return wmLogo;
+    }
+
+    public void setWmLogo(boolean wmLogo) {
+        this.wmLogo = wmLogo;
+    }
+
+    public boolean isWmName() {
+        return wmName;
+    }
+
+    public void setWmName(boolean wmName) {
+        this.wmName = wmName;
+    }
+
+    public boolean isWmInstagram() {
+        return wmInstagram;
+    }
+
+    public void setWmInstagram(boolean wmInstagram) {
+        this.wmInstagram = wmInstagram;
+    }
+
+    public boolean isWmPhone() {
+        return wmPhone;
+    }
+
+    public void setWmPhone(boolean wmPhone) {
+        this.wmPhone = wmPhone;
     }
 
     public void rename(String displayName) {
