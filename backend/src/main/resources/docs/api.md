@@ -38,7 +38,7 @@ All endpoints live under `https://im-api.mcreatik.com`. Requests and responses a
 | --- | --- | --- | --- |
 | POST | `/api/auth/login` | Public | `{email, password}` → `{token, expiresAt, email, displayName, role, mustChangePassword}` |
 | POST | `/api/auth/forgot-password` | Public | `{email}` → always 204 |
-| GET / PATCH | `/api/admin/account` | Admin | Account and branding. PATCH takes any of `displayName`, `instagram`, `phone` (contact number for guests; a 10-digit Indian number gets +91, blank removes it, 400 `INVALID_PHONE`), `logoScale` (50–200) and `boardTheme` (`cream`, `dark` or `white`: the studio board and card design). Public events carry it as `brand.phone` |
+| GET / PATCH | `/api/admin/account` | Admin | Account and branding. PATCH takes any of `displayName`, `instagram`, `phone` (contact number for guests; a 10-digit Indian number gets +91, blank removes it, 400 `INVALID_PHONE`), `logoScale` (50–200) and `boardTheme` (`cream`, `dark` or `white`: the studio board and card design). Public events carry it as `brand.phone`. Also `mark` (watermark on guest downloads, any field optional): `style` `CORNER`/`STRIP`, `position` `LEFT`/`CENTER`/`RIGHT`, `size` `SMALL`/`MEDIUM`, booleans `logo`, `name`, `instagram`, `phone`; 400 `INVALID_MARK`. Returned as `brand.mark` |
 | GET / POST / DELETE | `/api/admin/account/logo` | Admin | GET: the logo file itself (for the printed board; 404 without a logo). POST: multipart `logo`, PNG, JPEG or WebP up to 1 MB |
 | POST | `/api/admin/account/password` | Admin | `{currentPassword, newPassword}` → new token; other devices logged out |
 

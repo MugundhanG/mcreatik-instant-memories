@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { fakeCanvas } from '../test/canvas'
 import type { EventDetail } from '../lib/types'
 import { WatermarkCard } from './WatermarkCard'
 
@@ -12,13 +14,21 @@ const event = (over: Partial<EventDetail> = {}): EventDetail => ({
 })
 
 describe('Watermark card', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+  const renderCard = (e: EventDetail, onChange = vi.fn()) => render(<MemoryRouter><WatermarkCard event={e} onChange={onChange} /></MemoryRouter>)
 
   it('is on by default, and says the studio name is used without a logo', () => {
-    render(<WatermarkCard event={event()} onChange={vi.fn()} />)
+    const canvas = fakeCanvas()
+    renderCard(event())
     expect(screen.getByRole('switch', { name: /Studio logo/ })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByTestId('watermark-no-logo')).toBeInTheDocument()
-    expect(screen.getByTestId('watermark-preview')).toHaveTextContent('Lens Studio')
+    // The preview draws the real mark: no logo and no Instagram, so the studio name.
+    expect(screen.getByTestId('watermark-preview')).toBeInTheDocument()
+    expect(canvas.texts).toContain('Lens Studio')
+    expect(screen.getByRole('link', { name: 'Change how it looks' })).toHaveAttribute('href', '/admin/account')
   })
 
   it('switches it off for the event', async () => {
@@ -26,7 +36,8 @@ describe('Watermark card', () => {
       new Response(JSON.stringify(event({ ...JSON.parse(String(init?.body)) })), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     vi.stubGlobal('fetch', fetchMock)
     const onChange = vi.fn()
-    render(<WatermarkCard event={event({ brand: { name: 'Lens Studio', logoUrl: 'https://media.test/logo.png', instagram: null, mcreatik: false } })} onChange={onChange} />)
+    fakeCanvas()
+    renderCard(event({ brand: { name: 'Lens Studio', logoUrl: 'https://media.test/logo.png', instagram: null, mcreatik: false } }), onChange)
     expect(screen.queryByTestId('watermark-no-logo')).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('switch', { name: /Studio logo/ }))
     await waitFor(() => expect(onChange).toHaveBeenCalled())
@@ -38,7 +49,8 @@ describe('Watermark card', () => {
   })
 
   it('shows clean photos wording when off', () => {
-    render(<WatermarkCard event={event({ watermark: false })} onChange={vi.fn()} />)
+    fakeCanvas()
+    renderCard(event({ watermark: false }))
     expect(screen.getByRole('switch', { name: /Studio logo/ })).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByText(/clean photos/)).toBeInTheDocument()
     expect(screen.queryByTestId('watermark-preview')).not.toBeInTheDocument()

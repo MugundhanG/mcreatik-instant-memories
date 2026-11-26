@@ -299,6 +299,7 @@ export default function GalleryPage() {
           onClose={close}
           onNearEnd={loadMore}
           instagram={brand.instagram}
+          studioName={brand.name}
           onActivity={onActivity}
           liked={isLiked}
           onToggleLike={toggleLike}

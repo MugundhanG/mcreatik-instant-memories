@@ -16,6 +16,19 @@ export interface Brand {
   boardTheme?: 'cream' | 'dark' | 'white'
   /** Contact number for guests (e.g. +919876543210), or null. */
   phone?: string | null
+  /** What the watermark on guests' downloads shows and how it looks. Absent from older servers: the defaults. */
+  mark?: MarkSettings
+}
+
+/** The studio's watermark settings (Account → Studio branding → Watermark). */
+export interface MarkSettings {
+  style: 'CORNER' | 'STRIP'
+  position: 'LEFT' | 'CENTER' | 'RIGHT'
+  size: 'SMALL' | 'MEDIUM'
+  logo: boolean
+  name: boolean
+  instagram: boolean
+  phone: boolean
 }
 
 export interface PublicEvent {

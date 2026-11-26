@@ -103,10 +103,16 @@ describe('Photo viewer', () => {
     expect(within(card).getByRole('link', { name: 'Follow on Instagram' })).toHaveAttribute('href', 'https://www.instagram.com/mcreatik.studios/')
     await user.click(within(card).getByRole('button', { name: 'Not now' }))
     expect(screen.queryByRole('dialog', { name: 'Follow on Instagram' })).not.toBeInTheDocument()
-    // Later downloads only confirm the save.
+    // Later downloads show a slim bar at the top: Saved, who took the photos, and a Follow link.
     await user.click(screen.getByRole('button', { name: 'Download' }))
-    expect(await screen.findByText('Saved ✓')).toBeInTheDocument()
+    const bar = await screen.findByTestId('follow-bar')
+    expect(within(bar).getByRole('status')).toHaveTextContent(/^Saved ✓ · Photos by McreatiK Studios/)
+    const follow = within(bar).getByRole('link', { name: /^Follow/ })
+    expect(follow).toHaveAttribute('href', 'https://www.instagram.com/mcreatik.studios/')
+    expect(bar).toHaveClass('pointer-events-none') // never blocks taps on the photo
     expect(screen.queryByRole('dialog', { name: 'Follow on Instagram' })).not.toBeInTheDocument()
+    await user.click(follow)
+    expect(screen.queryByTestId('follow-bar')).not.toBeInTheDocument()
     expect(open).not.toHaveBeenCalled()
     // Bypasses the cached non-CORS copy the <img> loaded, which would make the CORS fetch fail.
     // `dl=2` also gives the CDN a separate cache key from the <img> request.

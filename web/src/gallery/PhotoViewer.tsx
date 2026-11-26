@@ -27,6 +27,8 @@ interface Props {
   promoteFollow?: boolean
   /** Instagram the download toast invites guests to follow; null shows no invite. */
   instagram?: string | null
+  /** The studio's name, for the "Photos by" credit in the bar shown after later downloads. */
+  studioName?: string
   /** Caption for Share (the studio's credit). Share is shown only when it's set: the guest gallery. */
   shareCaption?: string
   /** Guest analytics (the public gallery only): photo shown, downloaded, shared, Instagram tapped. */
@@ -47,6 +49,8 @@ interface Props {
 const SAVE_HINT = 'Press and hold the photo, then tap “Save image”'
 /** Guests shown the hint still save by press-and-hold, and in-app guests are told how to get out: all count as downloads. */
 const COUNTED_DOWNLOADS = new Set(['saved', 'save-sheet', 'hint', 'in-app'])
+/** How long the Saved · Follow bar stays. */
+const FOLLOW_BAR_MS = 4000
 const FOLLOW_SHOWN_KEY = 'mcreatik.follow-invite'
 
 /** The follow card shows on the first download of a visit only. */
@@ -67,12 +71,14 @@ function markFollowInviteShown() {
 }
 
 export function PhotoViewer({
-  photos, index, total, eventSlug, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, onActivity, hideDownload = false, shareCaption, liked, onToggleLike, onRequestHd, matchId, watermark,
+  photos, index, total, eventSlug, onIndexChange, onClose, onNearEnd, actions, promoteFollow: promote = true, caption, instagram = INSTAGRAM_HANDLE, studioName, onActivity, hideDownload = false, shareCaption, liked, onToggleLike, onRequestHd, matchId, watermark,
 }: Props) {
   const photo = photos[index]
   const count = Math.max(total, photos.length)
   const [toast, setToast] = useState<{ text: string; ms: number } | null>(null)
   const [followCard, setFollowCard] = useState<string | null>(null)
+  // After the first download of a visit (which got the card): a slim bar at the top, with a Follow link.
+  const [followBar, setFollowBar] = useState<{ note?: string } | null>(null)
   // iPhone: the photo must already be fetched when Download is tapped (see downloadPhoto).
   const [prefetched, setPrefetched] = useState<{ id: string; blob: Blob } | null>(null)
   const [busy, setBusy] = useState<'download' | 'share' | null>(null)
@@ -128,6 +134,12 @@ export function PhotoViewer({
     const t = setTimeout(() => setToast(null), toast.ms)
     return () => clearTimeout(t)
   }, [toast])
+
+  useEffect(() => {
+    if (!followBar) return
+    const t = setTimeout(() => setFollowBar(null), FOLLOW_BAR_MS)
+    return () => clearTimeout(t)
+  }, [followBar])
 
   const currentId = photo?.id
   const currentWebUrl = photo?.webUrl
@@ -189,6 +201,11 @@ export function PhotoViewer({
       markFollowInviteShown()
       setToast(null)
       return setFollowCard(status)
+    }
+    // Every later save: a small bar up top (not over Chrome's download bar) with a Follow link, instead of the toast.
+    if (promote && instagram && result === 'saved') {
+      setToast(null)
+      return setFollowBar({ note: savedNote })
     }
     setToast({ text: result === 'saved' && !savedNote ? 'Saved ✓' : status, ms: result === 'hint' ? 6000 : savedNote ? 4500 : 2500 })
   }
@@ -341,6 +358,27 @@ export function PhotoViewer({
           className="anim-drop-in pointer-events-none absolute top-16 left-1/2 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-white px-4 py-2 text-center text-sm text-ink shadow-lg"
         >
           {toast.text}
+        </div>
+      )}
+
+      {followBar && instagram && (
+        <div className="anim-drop-in pointer-events-none absolute top-16 inset-x-0 z-10 flex justify-center px-4" data-testid="follow-bar">
+          <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-x-1.5 rounded-2xl bg-white px-4 py-2 text-center text-sm text-ink shadow-lg">
+            <span role="status">
+              Saved ✓{studioName ? ` · Photos by ${studioName}` : ''}{followBar.note ? ` · ${followBar.note}` : ''}
+            </span>
+            <span aria-hidden="true">·</span>
+            <InstagramLink
+              handle={instagram}
+              onClick={() => {
+                onActivity?.('INSTAGRAM')
+                setFollowBar(null)
+              }}
+              className="font-semibold underline underline-offset-2"
+            >
+              Follow<span className="sr-only"> @{instagram} on Instagram</span>
+            </InstagramLink>
+          </div>
         </div>
       )}
 

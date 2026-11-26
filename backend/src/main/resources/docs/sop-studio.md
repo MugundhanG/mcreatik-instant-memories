@@ -128,6 +128,18 @@ Current prices are always on [the pricing page](https://live.mcreatik.com/pricin
 - **Privacy:** face data is processed by Amazon Web Services in Mumbai, India, only to match photos at that event. It is deleted when a photo is removed, and with the gallery's photos 30 days after the gallery period. If a guest asks to remove their face data, email connect@mcreatik.com.
 - If the card says **Coming soon**, the feature is not switched on for your account yet.
 
+### Logo watermark on guest downloads
+
+Every photo a guest **downloads or shares** from the live gallery carries your studio's mark, so each photo they post advertises you. Your couple's full-quality photos are never marked.
+
+- **How it looks (Account → Studio branding → Watermark):**
+  - **Corner mark** (default): small white logo and/or text in a bottom corner, with a soft shadow and no box. A dark logo with a transparent background is shown in white so it reads on any photo.
+  - **Signature strip:** a slim off-white band added **below** the photo with your logo and details. It never covers the image; the saved photo is a little taller.
+- **What to show:** tick **Logo**, **Studio name**, **Instagram handle** and/or **Phone number** (only details you have filled in can be ticked). With nothing available, your studio name is used.
+- **Where and how big:** bottom-left, centre or right; Small or Medium (corner mark). A live preview shows the result on a sample photo.
+- **Per event:** switch it off for one event in the event's **Settings → Logo watermark**; it is on by default.
+- **Instagram:** after a guest's first download they see a **Follow on Instagram** card; after every later download, a small bar at the top: *"Saved ✓ · Photos by your studio · Follow"*.
+
 ### Need more events?
 
 Press **Buy events**, choose **Main** or **Quick** and how many. **Monthly packs** (or **Renew or change pack**) opens the same window for a pack. Then pay:

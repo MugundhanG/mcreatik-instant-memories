@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { adminApi, ApiError } from '../lib/api'
 import type { EventDetail } from '../lib/types'
 import { Card } from './ui'
+import { Link } from 'react-router'
+import { DEFAULT_MARK } from '../lib/watermark'
+import { WatermarkPreview } from './WatermarkPreview'
 
 /**
  * The studio's logo on photos guests download and share (on by default). Every photo a guest posts on WhatsApp or
@@ -58,12 +61,12 @@ export function WatermarkCard({ event, onChange }: { event: EventDetail; onChang
         </button>
       </div>
       {on && (
-        <div className="relative mt-4 aspect-[3/2] w-full max-w-xs overflow-hidden rounded-xl bg-gradient-to-br from-stone-500 via-stone-700 to-stone-900" aria-hidden="true" data-testid="watermark-preview">
-          <span className="absolute right-[3%] bottom-[3%] flex items-center rounded-md bg-white/80 p-1.5">
-            {brand?.logoUrl
-              ? <img src={brand.logoUrl} alt="" className="h-5 max-w-24 object-contain" />
-              : <span className="text-[11px] font-bold text-ink">{brand?.name ?? 'Your studio'}</span>}
-          </span>
+        <div className="mt-4 space-y-2">
+          <WatermarkPreview settings={brand?.mark ?? DEFAULT_MARK} name={brand?.name ?? 'Your studio'} instagram={brand?.instagram ?? null}
+            phone={brand?.phone ?? null} logoUrl={brand?.logoUrl ?? null} logoScale={brand?.logoScale ?? 100} loadLogo={() => adminApi.eventLogo(event.id)} />
+          <p className="text-xs text-muted">
+            <Link to="/admin/account" className="underline underline-offset-2">Change how it looks</Link> (Account → Studio branding).
+          </p>
         </div>
       )}
       {error && <p className="mt-2 text-sm text-red-700" role="alert">{error}</p>}

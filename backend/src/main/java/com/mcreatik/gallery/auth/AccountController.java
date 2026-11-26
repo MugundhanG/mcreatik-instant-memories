@@ -74,7 +74,8 @@ public class AccountController {
 
     /** Studio name, Instagram and contact number (blank removes them). Fields left out stay as they are. */
     public record UpdateAccountRequest(@Size(min = 1, max = 120) String displayName, @Size(max = 200) String instagram,
-                                       Integer logoScale, String boardTheme, @Size(max = 30) String phone) {
+                                       Integer logoScale, String boardTheme, @Size(max = 30) String phone,
+                                       StudioBranding.MarkEdit mark) {
     }
 
     @PatchMapping
@@ -82,7 +83,7 @@ public class AccountController {
     public Account update(Authentication auth, @Valid @RequestBody UpdateAccountRequest request) {
         AdminUser user = access.current(auth);
         branding.edit(user, request.displayName(), request.instagram(), request.logoScale(), request.boardTheme(),
-                request.phone());
+                request.phone(), request.mark());
         return account(user);
     }
 
