@@ -7,7 +7,8 @@ function fileNameFor(eventSlug: string, photoId: string) {
 }
 
 /**
- * The media URL with `dl=1`. The viewer already loaded this image through a plain <img> (no Origin header), and
+ * The media URL with `dl=2` (`dl=1` until the media bucket had its CORS policy: Cloudflare may still hold copies of
+ * those answers without CORS headers, so a new key starts clean). The viewer already loaded this image through a plain <img> (no Origin header), and
  * Cloudflare's edge caches that response without CORS headers and does not vary its cache on Origin, so a later CORS
  * fetch of the same URL gets the cached copy and fails. A different query string is a different cache key, so
  * download fetches are cached (and answered with Access-Control-Allow-Origin) separately. Signed URLs are left
@@ -19,7 +20,7 @@ export function withDownloadParam(url: string): string {
   const base = hash >= 0 ? url.slice(0, hash) : url
   const fragment = hash >= 0 ? url.slice(hash) : ''
   if (/[?&]dl=/.test(base)) return url
-  return `${base}${base.includes('?') ? '&' : '?'}dl=1${fragment}`
+  return `${base}${base.includes('?') ? '&' : '?'}dl=2${fragment}`
 }
 
 /** The API's own download of a guest photo (attachment, no CORS needed for a plain link). */
@@ -36,16 +37,21 @@ async function fetchBlob(url: string): Promise<Blob> {
 }
 
 /**
- * Fetches the web-quality photo as a blob: the media URL (with `dl=1`, see above) first; if that fails and the
- * caller has an API download URL, that one (the API allows CORS from the gallery).
+ * Fetches the web-quality photo as a blob: the media URL (with `dl=2`, see above) first; if that fails and the
+ * caller has an API download URL, that one (the API allows CORS from the gallery). {@code fromApi}: it came from the
+ * API, which already put the studio's watermark on it when the event has one, so it must not be marked again.
  */
-export async function fetchPhoto(url: string, apiUrl?: string): Promise<Blob> {
+export async function fetchPhotoWithSource(url: string, apiUrl?: string): Promise<{ blob: Blob; fromApi: boolean }> {
   try {
-    return await fetchBlob(withDownloadParam(url))
+    return { blob: await fetchBlob(withDownloadParam(url)), fromApi: false }
   } catch (e) {
     if (!apiUrl) throw e
-    return fetchBlob(apiUrl)
+    return { blob: await fetchBlob(apiUrl), fromApi: true }
   }
+}
+
+export async function fetchPhoto(url: string, apiUrl?: string): Promise<Blob> {
+  return (await fetchPhotoWithSource(url, apiUrl)).blob
 }
 
 /** Starts a top-level download of a URL that answers with Content-Disposition: attachment; the page stays put. */
