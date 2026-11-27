@@ -103,11 +103,11 @@ describe('Photo viewer', () => {
     expect(within(card).getByRole('link', { name: 'Follow on Instagram' })).toHaveAttribute('href', 'https://www.instagram.com/mcreatik.studios/')
     await user.click(within(card).getByRole('button', { name: 'Not now' }))
     expect(screen.queryByRole('dialog', { name: 'Follow on Instagram' })).not.toBeInTheDocument()
-    // Later downloads show a slim bar at the top: Saved, who took the photos, and a Follow link.
+    // Later downloads show a bar just above the buttons: Saved, and a clear Follow on Instagram button.
     await user.click(screen.getByRole('button', { name: 'Download' }))
     const bar = await screen.findByTestId('follow-bar')
-    expect(within(bar).getByRole('status')).toHaveTextContent(/^Saved ✓ · Photos by McreatiK Studios/)
-    const follow = within(bar).getByRole('link', { name: /^Follow/ })
+    expect(within(bar).getByRole('status')).toHaveTextContent('Saved ✓ Love these photos? Follow McreatiK Studios on Instagram')
+    const follow = within(bar).getByRole('link', { name: /^Follow on Instagram/ })
     expect(follow).toHaveAttribute('href', 'https://www.instagram.com/mcreatik.studios/')
     expect(bar).toHaveClass('pointer-events-none') // never blocks taps on the photo
     expect(screen.queryByRole('dialog', { name: 'Follow on Instagram' })).not.toBeInTheDocument()

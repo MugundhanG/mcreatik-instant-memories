@@ -303,6 +303,27 @@ export function PhotoViewer({
             <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
           </button>
         )}
+        {followBar && instagram && (
+          // Just above the Download / Share buttons, where the guest is looking after tapping Download.
+          <div className="anim-drop-in pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-4" data-testid="follow-bar">
+            <div className="pointer-events-auto flex max-w-full flex-col items-center gap-2 rounded-2xl bg-white px-4 py-3 text-center text-ink shadow-lg sm:flex-row sm:gap-3">
+              <span role="status" className="text-sm">
+                <b className="font-semibold">Saved ✓</b> Love these photos? Follow {studioName ?? 'the studio'} on Instagram{followBar.note ? `. ${followBar.note}` : ''}
+              </span>
+              <InstagramLink
+                handle={instagram}
+                onClick={() => {
+                  onActivity?.('INSTAGRAM')
+                  setFollowBar(null)
+                }}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#b37a2c] px-4 py-2 text-sm font-semibold text-white"
+              >
+                <InstagramIcon className="size-4" />
+                Follow on Instagram<span className="sr-only"> (@{instagram})</span>
+              </InstagramLink>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className={`flex items-center justify-center gap-3 px-4 pt-3 ${onRequestHd ? 'pb-1' : 'pb-[max(env(safe-area-inset-bottom),1rem)]'}`}>
@@ -358,27 +379,6 @@ export function PhotoViewer({
           className="anim-drop-in pointer-events-none absolute top-16 left-1/2 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-white px-4 py-2 text-center text-sm text-ink shadow-lg"
         >
           {toast.text}
-        </div>
-      )}
-
-      {followBar && instagram && (
-        <div className="anim-drop-in pointer-events-none absolute top-16 inset-x-0 z-10 flex justify-center px-4" data-testid="follow-bar">
-          <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-x-1.5 rounded-2xl bg-white px-4 py-2 text-center text-sm text-ink shadow-lg">
-            <span role="status">
-              Saved ✓{studioName ? ` · Photos by ${studioName}` : ''}{followBar.note ? ` · ${followBar.note}` : ''}
-            </span>
-            <span aria-hidden="true">·</span>
-            <InstagramLink
-              handle={instagram}
-              onClick={() => {
-                onActivity?.('INSTAGRAM')
-                setFollowBar(null)
-              }}
-              className="font-semibold underline underline-offset-2"
-            >
-              Follow<span className="sr-only"> @{instagram} on Instagram</span>
-            </InstagramLink>
-          </div>
         </div>
       )}
 
